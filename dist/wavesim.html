@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>wave equation demo</title>
+        <base href="." />
+        <script type="module" src="wavesim.js"></script>
+        <style>
+            .applet-container {
+                display: flex;
+                justify-content: center; /* Centers horizontally */
+                align-items: center; /* Centers vertically */
+                width: 50%; /* A width less than 100% is required */
+                margin-left: auto;
+                margin-right: auto;
+                padding: 20px;
+                text-align: center;
+                font-family: Arial, sans-serif;
+            }
+            .slider {
+                display: flex;
+                justify-content: center; /* Centers horizontally */
+                align-items: center; /* Centers vertically */
+                width: 40%;
+                height: 25px;
+                margin: 20px 0;
+                margin-left: auto;
+                margin-right: auto;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div style="text-align: center; margin: 10px auto">
+            <div class="applet-container" id="scene-container"></div>
+            <!--<br />
+            <div class="slider" id="slider-gravity-container"></div>
+            <br />
+            <div class="slider" id="slider-energy-container"></div>-->
+        </div>
+    </body>
+</html>
