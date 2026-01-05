@@ -88,11 +88,10 @@ class OneSidedSpringScene extends Scene {
   }
   // |x''| = -k * max(|x| - length, 0) - c*|x'|
   d2x(state: State2D): Vec2D {
-    return vec_sum_list([
-      this.spring_term(state),
-      this.friction_term(state),
-      this.gravity_term(),
-    ]);
+    let spring_term = this.spring_term(state);
+    let friction_term = this.friction_term(state);
+    let gravity_term = this.gravity_term();
+    return vec_sum_list([spring_term, friction_term, gravity_term]);
   }
   // Evolves the simulation forward by time dt
   step(dt: number) {

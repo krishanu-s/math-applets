@@ -1,12 +1,22 @@
 // Testing the direct feeding of a pixel array to the canvas
 import * as np from "numpy-ts";
+import { MObject, Scene, Slider } from "./base.js";
+import {
+  Vec2D,
+  vec_scale,
+  vec_sum,
+  vec_sub,
+  vec_norm,
+  vec_sum_list,
+} from "./base.js";
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-let WAVE_PROPAGATION_SPEED = 1.0;
-let PML_WIDTH = 1.0;
+const WAVE_PROPAGATION_SPEED = 1.0;
+const PML_STRENGTH = 5.0;
+const PML_WIDTH = 1.0;
 
 // Clamps a number to the interval [0, 1].
 function clamp(x: number): number {
@@ -40,12 +50,57 @@ function add_scaled_array(
 ): Array<number> {
   return linear_combination_arrays(arr, 1.0, other_arr, c);
 }
-function scale_array(arr: Array<number>, c: number): Array<number> {
-  let new_arr = new Array(arr.length);
-  for (let i = 0; i < arr.length; i++) {
-    new_arr[i] = c * (arr[i] as number);
+
+// A pixel heatmap
+class HeatMap extends MObject {
+  width: number;
+  height: number;
+  min_val: number; // Float value corresponding to 0 colorscale
+  max_val: number; // Float value corresponding to 256 colorscale
+  valArray: Array<number>;
+  constructor(
+    width: number,
+    height: number,
+    min_val: number,
+    max_val: number,
+    valArray: Array<number>,
+  ) {
+    super();
+    this.width = width;
+    this.height = height;
+    this.min_val = min_val;
+    this.max_val = max_val;
+    this.valArray = valArray;
   }
-  return new_arr;
+  // Makes a new array
+  new_arr(): Array<number> {
+    return new Array(this.width * this.height).fill(0);
+  }
+  // Gets/sets values
+  set_vals(vals: Array<number>) {
+    this.valArray = vals;
+  }
+  get_vals(): Array<number> {
+    return this.valArray;
+  }
+  // Converts xy-coordinates to linear array coordinates
+  index(x: number, y: number): number {
+    return y * this.width + x;
+  }
+  // Draws on the canvas
+  draw(canvas: HTMLCanvasElement, scene: Scene, imageData: ImageData) {
+    let data = imageData.data;
+    for (let i = 0; i < this.width * this.height; i++) {
+      const px_val = this.valArray[i] as number;
+      const gray = (px_val - this.min_val) / (this.max_val - this.min_val);
+      const idx = i * 4;
+      data[idx] = data[idx + 1] = data[idx + 2] = 256 * clamp(gray);
+      data[idx + 3] = 255;
+    }
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.putImageData(imageData, 0, 0);
+  }
 }
 
 // Holds a pixel array internally (in grayscale) as an array of
@@ -116,9 +171,11 @@ class PixelArray {
 // where p = (p_x, p_y) is an auxiliary field introduced to handle PML at the boundaries.
 //
 // TODO Should the point source at the origin be modeled as an impulse term added to dv/dt?
-// TODO Major refactoring needed for efficiency. Convert to numpy-ts.
 // When the functions \sigma_x and \sigma_y are both 0, we retrieve the undamped wave equation.
-class WaveEquationSimulatorPML {
+//
+// TODO For speed, convert the array-construction methods into functions which input
+// a pair of indices (x, y) and output a linear combination of input array values.
+class WaveEquationScene extends Scene {
   time: number;
   width: number;
   height: number;
@@ -130,9 +187,12 @@ class WaveEquationSimulatorPML {
   vValues: Array<number>;
   pxValues: Array<number>;
   pyValues: Array<number>;
-  // sx: np.NDArray;
-  // sy: np.NDArray;
+  point_source: Vec2D;
+  imageData: ImageData;
+  action_queue: Array<CallableFunction>;
   constructor(
+    canvas: HTMLCanvasElement,
+    imageData: ImageData,
     width: number,
     height: number,
     min_val: number,
@@ -140,6 +200,8 @@ class WaveEquationSimulatorPML {
     dx: number,
     dy: number,
   ) {
+    super(canvas);
+    this.imageData = imageData;
     this.time = 0;
     this.width = width;
     this.height = height;
@@ -152,22 +214,29 @@ class WaveEquationSimulatorPML {
     this.pxValues = this.new_arr();
     this.pyValues = this.new_arr();
 
-    // let s;
-    // this.sx = this.new_arr();
-    // for (let x = 0; x < this.width; x++) {
-    //   s = this.sigma_x(x);
-    //   for (let y = 0; y < this.width; y++) {
-    //     this.sx.set([x, y], s);
-    //   }
-    // }
-    // this.sy = this.new_arr();
-    // for (let y = 0; y < this.width; y++) {
-    //   s = this.sigma_y(y);
-    //   for (let x = 0; x < this.width; x++) {
-    //     this.sy.set([x, y], s);
-    //   }
-    // }
+    this.point_source = [
+      Math.floor(this.width / 2),
+      Math.floor(this.height / 2),
+    ];
+    this.action_queue = [];
+
     this.add_point_source(this.uValues, this.vValues, this.time);
+
+    this.add(
+      "heatmap",
+      new HeatMap(width, height, min_val, max_val, this.uValues),
+    );
+  }
+  // Adds to the action queue
+  add_to_queue(callback: () => void) {
+    this.action_queue.push(callback);
+  }
+  // Moves the point source
+  move_point_source_x(x: number) {
+    this.point_source[0] = x;
+  }
+  move_point_source_y(y: number) {
+    this.point_source[1] = y;
   }
   // Makes a new array
   new_arr(): Array<number> {
@@ -192,13 +261,12 @@ class WaveEquationSimulatorPML {
   }
   _sigma_x(x: number): number {
     // Defined on real numbers
-    return 0;
-    // let layer_start = ((this.width - 1) / 2) * this.dx - PML_WIDTH;
-    // if (Math.abs(x) >= layer_start) {
-    //   return 5 * (Math.abs(x) - layer_start) ** 2;
-    // } else {
-    //   return 0;
-    // }
+    let layer_start = ((this.width - 1) / 2) * this.dx - PML_WIDTH;
+    if (Math.abs(x) >= layer_start) {
+      return PML_STRENGTH * (Math.abs(x) - layer_start) ** 2;
+    } else {
+      return 0;
+    }
   }
   sigma_y(y: number): number {
     // Defines on integer slice indices
@@ -206,59 +274,32 @@ class WaveEquationSimulatorPML {
   }
   _sigma_y(y: number): number {
     // Defined on real numbers
-    return 0;
-    // let layer_start = ((this.height - 1) / 2) * this.dy - PML_WIDTH;
-    // if (Math.abs(y) >= layer_start) {
-    //   return 5 * (Math.abs(y) - layer_start) ** 2;
-    // } else {
-    //   return 0;
-    // }
+    let layer_start = ((this.height - 1) / 2) * this.dy - PML_WIDTH;
+    if (Math.abs(y) >= layer_start) {
+      return PML_STRENGTH * (Math.abs(y) - layer_start) ** 2;
+    } else {
+      return 0;
+    }
   }
-  // Converts from a flat Array<number> to a np.NDArray of shape (W, H) where the
-  // first index proceeds faster than the second.
-  to_numpy(arr: Array<number>): np.NDArray {
-    return np.array(arr).reshape(this.height, this.width).transpose();
-  }
-  // Converts to a flat Array<number> from a np.NDArray of shape (W, H) where the
-  // first index proceeds faster than the second.
-  from_numpy(arr: np.NDArray): Array<number> {
-    return np.reshape(arr.transpose(), [this.width * this.height]).toArray();
-  }
-  // (d/dx)
+  // (d/dx). TODO: Maybe there's a way to bury this array manipulation somewhere.
   d_x(arr: Array<number>): Array<number> {
-    let np_arr = this.to_numpy(arr);
-    let mid = np_arr
-      .slice("2:", ":")
-      .subtract(np_arr.slice(":-2", ":"))
-      .multiply(1 / (2 * this.dx));
-    let left = mid
-      .slice("0", ":")
-      .multiply(2)
-      .subtract(mid.slice("1", ":"))
-      .expand_dims(0);
-    let right = mid
-      .slice("-1", ":")
-      .multiply(2)
-      .subtract(mid.slice("-2", ":"))
-      .expand_dims(0);
-    return this.from_numpy(np.concatenate([left, mid, right], 0));
-    // let dX = this.new_arr();
-    // for (let y = 0; y < this.height; y++) {
-    //   for (let x = 1; x < this.width - 1; x++) {
-    //     dX[this.index(x, y)] =
-    //       ((arr[this.index(x + 1, y)] as number) -
-    //         (arr[this.index(x - 1, y)] as number)) /
-    //       (2 * this.dx);
-    //   }
-    //   dX[this.index(0, y)] =
-    //     2 * (dX[this.index(1, y)] as number) - (dX[this.index(2, y)] as number);
-    //   dX[this.index(this.width - 1, y)] =
-    //     2 * (dX[this.index(this.width - 2, y)] as number) -
-    //     (dX[this.index(this.width - 3, y)] as number);
-    // }
-    // return dX;
+    let dX = this.new_arr();
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 1; x < this.width - 1; x++) {
+        dX[this.index(x, y)] =
+          ((arr[this.index(x + 1, y)] as number) -
+            (arr[this.index(x - 1, y)] as number)) /
+          (2 * this.dx);
+      }
+      dX[this.index(0, y)] =
+        2 * (dX[this.index(1, y)] as number) - (dX[this.index(2, y)] as number);
+      dX[this.index(this.width - 1, y)] =
+        2 * (dX[this.index(this.width - 2, y)] as number) -
+        (dX[this.index(this.width - 3, y)] as number);
+    }
+    return dX;
   }
-  // (d/dy)
+  // (d/dy). TODO: Maybe there's a way to bury this array manipulation somewhere.
   d_y(arr: Array<number>): Array<number> {
     let dY = this.new_arr();
     for (let x = 0; x < this.width; x++) {
@@ -276,7 +317,7 @@ class WaveEquationSimulatorPML {
     }
     return dY;
   }
-  // (d/dx)^2
+  // (d/dx)^2. TODO: Maybe there's a way to bury this array manipulation somewhere.
   l_x(arr: Array<number>): Array<number> {
     let lapX = this.new_arr();
     for (let y = 0; y < this.height; y++) {
@@ -296,7 +337,7 @@ class WaveEquationSimulatorPML {
     }
     return lapX;
   }
-  // (d/dy)^2
+  // (d/dy)^2. TODO: Maybe there's a way to bury this array manipulation somewhere.
   l_y(arr: Array<number>): Array<number> {
     let lapY = this.new_arr();
     for (let x = 0; x < this.width; x++) {
@@ -358,14 +399,15 @@ class WaveEquationSimulatorPML {
   pxDot(u: Array<number>, px: Array<number>): Array<number> {
     let dxu = this.d_x(u);
     let arr = this.new_arr();
-    let ind;
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
+    let ind, sx;
+    for (let x = 0; x < this.width; x++) {
+      sx = this.sigma_x(x);
+      for (let y = 0; y < this.height; y++) {
         ind = this.index(x, y);
         arr[ind] =
-          -this.sigma_x(x) * (px[ind] as number) +
+          -sx * (px[ind] as number) +
           WAVE_PROPAGATION_SPEED ** 2 *
-            (this.sigma_y(y) - this.sigma_x(x)) *
+            (this.sigma_y(y) - sx) *
             (dxu[ind] as number);
       }
     }
@@ -375,39 +417,24 @@ class WaveEquationSimulatorPML {
   pyDot(u: Array<number>, py: Array<number>): Array<number> {
     let dyu = this.d_y(u);
     let arr = this.new_arr();
-    let ind;
+    let ind, sy;
     for (let y = 0; y < this.height; y++) {
+      sy = this.sigma_y(y);
       for (let x = 0; x < this.width; x++) {
         ind = this.index(x, y);
         arr[ind] =
-          -this.sigma_y(y) * (py[ind] as number) +
+          -sy * (py[ind] as number) +
           WAVE_PROPAGATION_SPEED ** 2 *
-            (this.sigma_x(x) - this.sigma_y(y)) *
+            (this.sigma_x(x) - sy) *
             (dyu[ind] as number);
       }
     }
     return arr;
   }
-  // // First derivative in time for p-array
-  // pDot(u: Array<number>, v: Array<number>, p: Array<number>): Array<number> {
-  //   let lu_x = this.l_x(u);
-  //   let lu_y = this.l_y(u);
-  //   let arr = this.new_arr();
-  //   let ind;
-  //   for (let y = 0; y < this.height; y++) {
-  //     for (let x = 0; x < this.width; x++) {
-  //       ind = this.index(x, y);
-  //       arr[ind] =
-  //         WAVE_PROPAGATION_SPEED ** 2 *
-  //           (this.sigma_y(y) * (lu_x[ind] as number) +
-  //             this.sigma_x(x) * (lu_y[ind] as number)) -
-  //         this.sigma_x(x) * this.sigma_y(y) * (v[ind] as number);
-  //     }
-  //   }
-  //   return arr;
-  // }
   // Uses either finite-difference or Runge-Kutta to advance the differential equation.
   step(dt: number) {
+    let u, v, px, py;
+
     let du_1 = this.uDot(this.vValues);
     let dv_1 = this.vDot(
       this.uValues,
@@ -418,67 +445,71 @@ class WaveEquationSimulatorPML {
     let dpx_1 = this.pxDot(this.uValues, this.pxValues);
     let dpy_1 = this.pxDot(this.uValues, this.pyValues);
 
-    let u1 = add_scaled_array(this.uValues, du_1, dt / 2);
-    let v1 = add_scaled_array(this.vValues, dv_1, dt / 2);
-    let px1 = add_scaled_array(this.pxValues, dpx_1, dt / 2);
-    let py1 = add_scaled_array(this.pyValues, dpy_1, dt / 2);
+    u = add_scaled_array(this.uValues, du_1, dt / 2);
+    v = add_scaled_array(this.vValues, dv_1, dt / 2);
+    px = add_scaled_array(this.pxValues, dpx_1, dt / 2);
+    py = add_scaled_array(this.pyValues, dpy_1, dt / 2);
 
-    this.add_point_source(u1, v1, this.time + dt / 2);
+    this.add_point_source(u, v, this.time + dt / 2);
 
-    let du_2 = this.uDot(v1);
-    let dv_2 = this.vDot(u1, v1, px1, py1);
-    let dpx_2 = this.pxDot(u1, px1);
-    let dpy_2 = this.pyDot(u1, py1);
+    let du_2 = this.uDot(v);
+    let dv_2 = this.vDot(u, v, px, py);
+    let dpx_2 = this.pxDot(u, px);
+    let dpy_2 = this.pyDot(u, py);
 
-    let u2 = add_scaled_array(this.uValues, du_2, dt / 2);
-    let v2 = add_scaled_array(this.vValues, dv_2, dt / 2);
-    let px2 = add_scaled_array(this.pxValues, dpx_2, dt / 2);
-    let py2 = add_scaled_array(this.pyValues, dpy_2, dt / 2);
+    u = add_scaled_array(this.uValues, du_2, dt / 2);
+    v = add_scaled_array(this.vValues, dv_2, dt / 2);
+    px = add_scaled_array(this.pxValues, dpx_2, dt / 2);
+    py = add_scaled_array(this.pyValues, dpy_2, dt / 2);
 
-    this.add_point_source(u2, v2, this.time + dt / 2);
+    this.add_point_source(u, v, this.time + dt / 2);
 
-    let du_3 = this.uDot(v2);
-    let dv_3 = this.vDot(u2, v2, px2, py2);
-    let dpx_3 = this.pxDot(u2, px2);
-    let dpy_3 = this.pyDot(u2, py2);
+    let du_3 = this.uDot(v);
+    let dv_3 = this.vDot(u, v, px, py);
+    let dpx_3 = this.pxDot(u, px);
+    let dpy_3 = this.pyDot(u, py);
 
-    let u3 = add_scaled_array(this.uValues, du_3, dt);
-    let v3 = add_scaled_array(this.vValues, dv_3, dt);
-    let px3 = add_scaled_array(this.pxValues, dpx_3, dt);
-    let py3 = add_scaled_array(this.pyValues, dpy_3, dt);
+    u = add_scaled_array(this.uValues, du_3, dt);
+    v = add_scaled_array(this.vValues, dv_3, dt);
+    px = add_scaled_array(this.pxValues, dpx_3, dt);
+    py = add_scaled_array(this.pyValues, dpy_3, dt);
 
-    this.add_point_source(u3, v3, this.time + dt);
+    this.add_point_source(u, v, this.time + dt);
 
-    let du_4 = this.uDot(v3);
-    let dv_4 = this.vDot(u3, v3, px3, py3);
-    let dpx_4 = this.pxDot(u3, px3);
-    let dpy_4 = this.pyDot(u3, py3);
+    let du_4 = this.uDot(v);
+    let dv_4 = this.vDot(u, v, px, py);
+    let dpx_4 = this.pxDot(u, px);
+    let dpy_4 = this.pyDot(u, py);
 
     let s;
     for (let ind = 0; ind < this.width * this.height; ind++) {
-      s = (du_1[ind] as number) * (dt / 6);
-      s += (du_2[ind] as number) * (dt / 3);
-      s += (du_3[ind] as number) * (dt / 3);
-      s += (du_4[ind] as number) * (dt / 6);
-      this.uValues[ind] = (this.uValues[ind] as number) + s;
+      this.uValues[ind] =
+        (this.uValues[ind] as number) +
+        (du_1[ind] as number) * (dt / 6) +
+        (du_2[ind] as number) * (dt / 3) +
+        (du_3[ind] as number) * (dt / 3) +
+        (du_4[ind] as number) * (dt / 6);
 
-      s = (dv_1[ind] as number) * (dt / 6);
-      s += (dv_2[ind] as number) * (dt / 3);
-      s += (dv_3[ind] as number) * (dt / 3);
-      s += (dv_4[ind] as number) * (dt / 6);
-      this.vValues[ind] = (this.vValues[ind] as number) + s;
+      this.vValues[ind] =
+        (this.vValues[ind] as number) +
+        (dv_1[ind] as number) * (dt / 6) +
+        (dv_2[ind] as number) * (dt / 3) +
+        (dv_3[ind] as number) * (dt / 3) +
+        (dv_4[ind] as number) * (dt / 6);
 
-      s = (dpx_1[ind] as number) * (dt / 6);
-      s += (dpx_2[ind] as number) * (dt / 3);
-      s += (dpx_3[ind] as number) * (dt / 3);
-      s += (dpx_4[ind] as number) * (dt / 6);
-      this.pxValues[ind] = (this.pxValues[ind] as number) + s;
+      this.pxValues[ind] =
+        (this.pxValues[ind] as number) +
+        (dpx_1[ind] as number) * (dt / 6) +
+        (dpx_2[ind] as number) * (dt / 3) +
+        (dpx_3[ind] as number) * (dt / 3) +
+        (dpx_4[ind] as number) * (dt / 6);
 
-      s = (dpy_1[ind] as number) * (dt / 6);
-      s += (dpy_2[ind] as number) * (dt / 3);
-      s += (dpy_3[ind] as number) * (dt / 3);
-      s += (dpy_4[ind] as number) * (dt / 6);
-      this.pyValues[ind] = (this.pyValues[ind] as number) + s;
+      this.pyValues[ind] =
+        (this.pyValues[ind] as number) +
+        (dpy_1[ind] as number) * (dt / 6) +
+        (dpy_2[ind] as number) * (dt / 3) +
+        (dpy_3[ind] as number) * (dt / 3) +
+        (dpy_4[ind] as number) * (dt / 6);
     }
 
     this.add_point_source(this.uValues, this.vValues, this.time + dt);
@@ -487,13 +518,34 @@ class WaveEquationSimulatorPML {
   add_point_source(u: Array<number>, v: Array<number>, t: number): void {
     let w = 3.0;
     let ind = this.index(
-      Math.floor(this.width / 2),
-      Math.floor(this.height / 2),
+      Math.floor(this.point_source[0]),
+      Math.floor(this.point_source[1]),
     );
 
     u[ind] = Math.sin(w * t);
     v[ind] = w * Math.cos(w * t);
     // Unnecessary to modify the auxiliary fields as they vanish inside the vacuum region
+  }
+  // Draws the scene
+  draw() {
+    let ctx = this.canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    let heatmap = this.get_mobj("heatmap") as HeatMap;
+    heatmap.set_vals(this.uValues);
+    heatmap.draw(this.canvas, this, this.imageData);
+  }
+  // Starts animation
+  start_playing() {
+    if (this.action_queue.length > 0) {
+      let callback = this.action_queue.shift() as () => void;
+      callback();
+    } else {
+      this.step(0.03);
+      this.write_data(this.imageData.data);
+      this.draw();
+    }
+    window.requestAnimationFrame(this.start_playing.bind(this));
   }
   // Writes the pixel array to an ImageDataArray object for rendering.
   write_data(data: ImageDataArray) {
@@ -673,8 +725,9 @@ class WaveEquationSimulatorPMLNumpy {
   l_x(arr: np.NDArray): np.NDArray {
     let mid = arr
       .slice("2:", ":")
+      .copy()
       .add(arr.slice(":-2", ":"))
-      .subtract(arr.slice("1:-1", ":").multiply(2))
+      .subtract(arr.slice("1:-1", ":").copy().multiply(2))
       .multiply(1 / (this.dx * this.dx));
     let left = mid
       .slice("0", ":")
@@ -709,8 +762,9 @@ class WaveEquationSimulatorPMLNumpy {
   l_y(arr: np.NDArray): np.NDArray {
     let mid = arr
       .slice(":", "2:")
+      .copy()
       .add(arr.slice(":", ":-2"))
-      .subtract(arr.slice(":", "1:-1").multiply(2))
+      .subtract(arr.slice(":", "1:-1").copy().multiply(2))
       .multiply(1 / (this.dy * this.dy));
     let top = mid
       .slice(":", "0")
@@ -766,87 +820,22 @@ class WaveEquationSimulatorPMLNumpy {
     return this.laplacian(u)
       .multiply(WAVE_PROPAGATION_SPEED ** 2)
       .add(this.d_x(px))
-      .add(this.d_y(py))
-      .subtract(v.multiply(this.sx.add(this.sy)))
-      .subtract(u.multiply(this.sx.multiply(this.sy)));
-    // let lu = this.laplacian(u);
-    // let dxpx = this.d_x(px);
-    // let dypy = this.d_y(py);
-    // let arr = this.new_arr();
-    // let ind;
-    // for (let y = 0; y < this.height; y++) {
-    //   for (let x = 0; x < this.width; x++) {
-    //     ind = this.index(x, y);
-    //     arr[ind] =
-    //       WAVE_PROPAGATION_SPEED ** 2 * (lu[ind] as number) +
-    //       (dxpx[ind] as number) +
-    //       (dypy[ind] as number) -
-    //       (this.sigma_x(x) + this.sigma_y(y)) * (v[ind] as number) -
-    //       this.sigma_x(x) * this.sigma_y(y) * (u[ind] as number);
-    //   }
-    // }
-    // return arr;
+      .add(this.d_y(py));
   }
   // First derivative in time for x-component of p
   pxDot(u: np.NDArray, px: np.NDArray): np.NDArray {
     return this.d_x(u)
-      .multiply(this.sy.subtract(this.sx))
+      .multiply(this.sy.copy().subtract(this.sx.copy()))
       .multiply(WAVE_PROPAGATION_SPEED ** 2)
-      .subtract(px.multiply(this.sx));
-    // let dxu = this.d_x(u);
-    // let arr = this.new_arr();
-    // let ind;
-    // for (let y = 0; y < this.height; y++) {
-    //   for (let x = 0; x < this.width; x++) {
-    //     ind = this.index(x, y);
-    //     arr[ind] =
-    //       -this.sigma_x(x) * (px[ind] as number) +
-    //       WAVE_PROPAGATION_SPEED ** 2 *
-    //         (this.sigma_y(y) - this.sigma_x(x)) *
-    //         (dxu[ind] as number);
-    //   }
-    // }
-    // return arr;
+      .subtract(px.copy().multiply(this.sx.copy()));
   }
   // First derivative in time for y-component of p
   pyDot(u: np.NDArray, py: np.NDArray): np.NDArray {
     return this.d_y(u)
-      .multiply(this.sx.subtract(this.sy))
+      .multiply(this.sx.copy().subtract(this.sy.copy()))
       .multiply(WAVE_PROPAGATION_SPEED ** 2)
-      .subtract(py.multiply(this.sy));
-    // let dyu = this.d_y(u);
-    // let arr = this.new_arr();
-    // let ind;
-    // for (let y = 0; y < this.height; y++) {
-    //   for (let x = 0; x < this.width; x++) {
-    //     ind = this.index(x, y);
-    //     arr[ind] =
-    //       -this.sigma_y(y) * (py[ind] as number) +
-    //       WAVE_PROPAGATION_SPEED ** 2 *
-    //         (this.sigma_x(x) - this.sigma_y(y)) *
-    //         (dyu[ind] as number);
-    //   }
-    // }
-    // return arr;
+      .subtract(py.copy().multiply(this.sy.copy()));
   }
-  // // First derivative in time for p-array
-  // pDot(u: Array<number>, v: Array<number>, p: Array<number>): Array<number> {
-  //   let lu_x = this.l_x(u);
-  //   let lu_y = this.l_y(u);
-  //   let arr = this.new_arr();
-  //   let ind;
-  //   for (let y = 0; y < this.height; y++) {
-  //     for (let x = 0; x < this.width; x++) {
-  //       ind = this.index(x, y);
-  //       arr[ind] =
-  //         WAVE_PROPAGATION_SPEED ** 2 *
-  //           (this.sigma_y(y) * (lu_x[ind] as number) +
-  //             this.sigma_x(x) * (lu_y[ind] as number)) -
-  //         this.sigma_x(x) * this.sigma_y(y) * (v[ind] as number);
-  //     }
-  //   }
-  //   return arr;
-  // }
   // Uses either finite-difference or Runge-Kutta to advance the differential equation.
   step(dt: number) {
     let du_1 = this.uDot(this.vValues);
@@ -859,10 +848,6 @@ class WaveEquationSimulatorPMLNumpy {
     let dpx_1 = this.pxDot(this.uValues, this.pxValues);
     let dpy_1 = this.pxDot(this.uValues, this.pyValues);
 
-    // let u1 = add_scaled_array(this.uValues, du_1, dt / 2);
-    // let v1 = add_scaled_array(this.vValues, dv_1, dt / 2);
-    // let px1 = add_scaled_array(this.pxValues, dpx_1, dt / 2);
-    // let py1 = add_scaled_array(this.pyValues, dpy_1, dt / 2);
     let u1 = this.uValues.add(du_1.multiply(dt / 2));
     let v1 = this.vValues.add(dv_1.multiply(dt / 2));
     let px1 = this.pxValues.add(dpx_1.multiply(dt / 2));
@@ -875,10 +860,6 @@ class WaveEquationSimulatorPMLNumpy {
     let dpx_2 = this.pxDot(u1, px1);
     let dpy_2 = this.pyDot(u1, py1);
 
-    // let u2 = add_scaled_array(this.uValues, du_2, dt / 2);
-    // let v2 = add_scaled_array(this.vValues, dv_2, dt / 2);
-    // let px2 = add_scaled_array(this.pxValues, dpx_2, dt / 2);
-    // let py2 = add_scaled_array(this.pyValues, dpy_2, dt / 2);
     let u2 = this.uValues.add(du_2.multiply(dt / 2));
     let v2 = this.vValues.add(dv_2.multiply(dt / 2));
     let px2 = this.pxValues.add(dpx_2.multiply(dt / 2));
@@ -891,10 +872,6 @@ class WaveEquationSimulatorPMLNumpy {
     let dpx_3 = this.pxDot(u2, px2);
     let dpy_3 = this.pyDot(u2, py2);
 
-    // let u3 = add_scaled_array(this.uValues, du_3, dt);
-    // let v3 = add_scaled_array(this.vValues, dv_3, dt);
-    // let px3 = add_scaled_array(this.pxValues, dpx_3, dt);
-    // let py3 = add_scaled_array(this.pyValues, dpy_3, dt);
     let u3 = this.uValues.add(du_3.multiply(dt));
     let v3 = this.vValues.add(dv_3.multiply(dt));
     let px3 = this.pxValues.add(dpx_3.multiply(dt));
@@ -928,33 +905,6 @@ class WaveEquationSimulatorPMLNumpy {
       .add(dpy_3.multiply(dt / 3))
       .add(dpy_4.multiply(dt / 6));
 
-    // let s;
-    // for (let ind = 0; ind < this.width * this.height; ind++) {
-    //   s = (du_1[ind] as number) * (dt / 6);
-    //   s += (du_2[ind] as number) * (dt / 3);
-    //   s += (du_3[ind] as number) * (dt / 3);
-    //   s += (du_4[ind] as number) * (dt / 6);
-    //   this.uValues[ind] = (this.uValues[ind] as number) + s;
-
-    //   s = (dv_1[ind] as number) * (dt / 6);
-    //   s += (dv_2[ind] as number) * (dt / 3);
-    //   s += (dv_3[ind] as number) * (dt / 3);
-    //   s += (dv_4[ind] as number) * (dt / 6);
-    //   this.vValues[ind] = (this.vValues[ind] as number) + s;
-
-    //   s = (dpx_1[ind] as number) * (dt / 6);
-    //   s += (dpx_2[ind] as number) * (dt / 3);
-    //   s += (dpx_3[ind] as number) * (dt / 3);
-    //   s += (dpx_4[ind] as number) * (dt / 6);
-    //   this.pxValues[ind] = (this.pxValues[ind] as number) + s;
-
-    //   s = (dpy_1[ind] as number) * (dt / 6);
-    //   s += (dpy_2[ind] as number) * (dt / 3);
-    //   s += (dpy_3[ind] as number) * (dt / 3);
-    //   s += (dpy_4[ind] as number) * (dt / 6);
-    //   this.pyValues[ind] = (this.pyValues[ind] as number) + s;
-    // }
-
     this.add_point_source(this.uValues, this.vValues, this.time + dt);
     this.time += dt;
   }
@@ -968,13 +918,6 @@ class WaveEquationSimulatorPMLNumpy {
       [Math.floor(this.width / 2), Math.floor(this.height / 2)],
       w * Math.cos(w * t),
     );
-    // let ind = this.index(
-    //   Math.floor(this.width / 2),
-    //   Math.floor(this.height / 2),
-    // );
-
-    // u[ind] = Math.sin(w * t);
-    // v[ind] = w * Math.cos(w * t);
     // Unnecessary to modify the auxiliary fields as they vanish inside the vacuum region
   }
   // Writes the pixel array to an ImageDataArray object for rendering.
@@ -988,13 +931,6 @@ class WaveEquationSimulatorPMLNumpy {
         data[idx + 3] = 255;
       }
     }
-    // for (let i = 0; i < this.width * this.height; i++) {
-    //   const px_val = this.uValues[i] as number;
-    //   const gray = (px_val - this.min_val) / (this.max_val - this.min_val);
-    //   const idx = i * 4;
-    //   data[idx] = data[idx + 1] = data[idx + 2] = 256 * clamp(gray);
-    //   data[idx + 3] = 255;
-    // }
   }
 }
 
@@ -1310,15 +1246,26 @@ class WaveEquationSimulator {
     const ymax = 5;
 
     // Prepare the canvas and scene
-    let width = 151;
-    let height = 151;
+    let width = 301;
+    let height = 301;
     const dx = (xmax - xmin) / (width - 1);
     const dy = (ymax - ymin) / (height - 1);
     const frame_length = 1 / 30;
-    const num_steps = 5;
+    const num_steps = 1;
     const dt = frame_length / num_steps;
 
     let canvas = prepare_canvas(width, height, "scene-container");
+
+    // Get the context for drawing
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Failed to get 2D context");
+    }
+
+    // Create ImageData object
+    const imageData = ctx.createImageData(width, height);
+    const data = imageData.data;
+    console.log("Prepared image data object");
 
     // Create test pattern pixel array
     // let waveEquationSim = new WaveEquationSimulator(
@@ -1330,7 +1277,9 @@ class WaveEquationSimulator {
     //   dy,
     // );
 
-    let waveEquationSim = new WaveEquationSimulatorPML(
+    let waveEquationSim = new WaveEquationScene(
+      canvas,
+      imageData,
       width,
       height,
       -1.0,
@@ -1338,6 +1287,15 @@ class WaveEquationSimulator {
       dx,
       dy,
     );
+
+    // let waveEquationSim = new WaveEquationSimulatorPMLNumpy(
+    //   width,
+    //   height,
+    //   -1.0,
+    //   1.0,
+    //   dx,
+    //   dy,
+    // );
 
     // Initial conditions, for rectilinear case
     // let x0 = waveEquationSim.new_arr();
@@ -1352,32 +1310,52 @@ class WaveEquationSimulator {
     // }
     // waveEquationSim.set_init_conditions(x0, v0);
 
-    // Get the context for drawing
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      throw new Error("Failed to get 2D context");
-    }
+    // Make a slider which can be used to modify the mobject
+    // It should send a message to the owning scene
+    let x_slider = Slider(
+      document.getElementById("slider-container-1") as HTMLElement,
+      function (x: number) {
+        waveEquationSim.add_to_queue(
+          waveEquationSim.move_point_source_x.bind(waveEquationSim, x),
+        );
+      },
+      `${Math.floor(width / 2)}`,
+      0,
+      width,
+      1,
+    );
+    x_slider.width = 200;
 
-    // Create ImageData object
-    const imageData = ctx.createImageData(width, height);
-    const data = imageData.data;
-    console.log("Prepared image data object");
+    let y_slider = Slider(
+      document.getElementById("slider-container-2") as HTMLElement,
+      function (y: number) {
+        waveEquationSim.add_to_queue(
+          waveEquationSim.move_point_source_y.bind(waveEquationSim, y),
+        );
+      },
+      `${Math.floor(height / 2)}`,
+      0,
+      height,
+      1,
+    );
+    y_slider.width = 200;
 
-    while (true) {
-      // waveEquationSim.tick();
-      for (let i = 0; i < num_steps; i++) {
-        waveEquationSim.step(dt);
-      }
+    waveEquationSim.start_playing();
+    // while (true) {
+    //   // waveEquationSim.tick();
+    //   for (let i = 0; i < num_steps; i++) {
+    //     waveEquationSim.step(dt);
+    //   }
 
-      // (2) Write to the imageData object
-      waveEquationSim.write_data(data);
+    //   // (2) Write to the imageData object
+    //   waveEquationSim.write_data(data);
 
-      // (3) Draw to canvas
-      ctx.putImageData(imageData, 0, 0);
+    //   // (3) Draw to canvas
+    //   ctx.putImageData(imageData, 0, 0);
 
-      // Frame rate 30 FPS
-      console.log("Advancing one frame");
-      await sleep(5 * frame_length);
-    }
+    //   // Frame rate 30 FPS
+    //   console.log("Advancing one frame");
+    //   await sleep(5 * frame_length);
+    // }
   });
 })();

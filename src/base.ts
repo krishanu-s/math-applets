@@ -32,7 +32,7 @@ export function vec_sub(x: Vec2D, y: Vec2D): Vec2D {
 // Base class for mathematical objects
 export class MObject {
   constructor() {}
-  draw(canvas: HTMLCanvasElement, scene: Scene): void {}
+  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {}
 }
 
 // A dot with a center and radius
@@ -201,7 +201,7 @@ export class Scene {
     return mobj;
   }
   // Draws the scene
-  draw() {
+  draw(args?: any) {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -211,12 +211,6 @@ export class Scene {
       mobj.draw(this.canvas, this);
     });
   }
-  // Ticks the animation forward by one step
-  tick() {}
-  // Start animation
-  start_playing() {
-    // TODO Implement
-  }
 }
 
 // *** INTERACTIVE ELEMENTS ***
@@ -224,13 +218,28 @@ export function Slider(
   container: HTMLElement,
   callback: Function,
   initial_value: string,
+  min?: number,
+  max?: number,
+  step?: number,
 ): HTMLInputElement {
   // Make slider object
   let slider = document.createElement("input");
   slider.type = "range";
-  slider.min = "0";
-  slider.max = "10";
-  slider.step = "0.001";
+  if (min == undefined) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min}`;
+  }
+  if (max == undefined) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max}`;
+  }
+  if (step == undefined) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
+  }
   slider.value = initial_value;
   slider.classList.add("slider");
   slider.id = "floatSlider";
