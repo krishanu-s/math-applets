@@ -130,9 +130,6 @@ class HeatMap extends MObject {
 //
 // TODO Should the point source at the origin be modeled as an impulse term added to dv/dt?
 // When the functions \sigma_x and \sigma_y are both 0, we retrieve the undamped wave equation.
-//
-// TODO For speed, convert the array-construction methods into functions which input
-// a pair of indices (x, y) and output a linear combination of input array values.
 class WaveEquationScene extends Scene {
   time: number;
   width: number;
@@ -230,7 +227,7 @@ class WaveEquationScene extends Scene {
       return 0;
     }
   }
-  // (d/dx). TODO: Maybe there's a way to bury this array manipulation somewhere.
+  // (d/dx).
   d_x(arr: Array<number>): Array<number> {
     let dX = this.new_arr();
     for (let y = 0; y < this.height; y++) {
@@ -248,7 +245,7 @@ class WaveEquationScene extends Scene {
     }
     return dX;
   }
-  d_x_entry(arr: Array<number>, x: number, y: number) {
+  d_x_entry(arr: Array<number>, x: number, y: number): number {
     if (x == 0) {
       return (
         (2 * (arr[this.index(2, y)] as number) -
@@ -273,7 +270,7 @@ class WaveEquationScene extends Scene {
       );
     }
   }
-  // (d/dy). TODO: Maybe there's a way to bury this array manipulation somewhere.
+  // (d/dy).
   d_y(arr: Array<number>): Array<number> {
     let dY = this.new_arr();
     for (let x = 0; x < this.width; x++) {
@@ -291,7 +288,7 @@ class WaveEquationScene extends Scene {
     }
     return dY;
   }
-  d_y_entry(arr: Array<number>, x: number, y: number) {
+  d_y_entry(arr: Array<number>, x: number, y: number): number {
     if (y == 0) {
       return (
         (2 * (arr[this.index(x, 2)] as number) -
@@ -316,7 +313,7 @@ class WaveEquationScene extends Scene {
       );
     }
   }
-  // (d/dx)^2. TODO: Maybe there's a way to bury this array manipulation somewhere.
+  // (d/dx)^2.
   l_x(arr: Array<number>): Array<number> {
     let lapX = this.new_arr();
     for (let y = 0; y < this.height; y++) {
@@ -336,7 +333,33 @@ class WaveEquationScene extends Scene {
     }
     return lapX;
   }
-  // (d/dy)^2. TODO: Maybe there's a way to bury this array manipulation somewhere.
+  l_x_entry(arr: Array<number>, x: number, y: number): number {
+    if (x == 0) {
+      return (
+        (2 * (arr[this.index(0, y)] as number) -
+          5 * (arr[this.index(1, y)] as number) +
+          4 * (arr[this.index(2, y)] as number) -
+          (arr[this.index(3, y)] as number)) /
+        (this.dx * this.dx)
+      );
+    } else if (x == this.width - 1) {
+      return (
+        (2 * (arr[this.index(this.width - 1, y)] as number) -
+          5 * (arr[this.index(this.width - 2, y)] as number) +
+          4 * (arr[this.index(this.width - 3, y)] as number) -
+          (arr[this.index(this.width - 4, y)] as number)) /
+        (this.dx * this.dx)
+      );
+    } else {
+      return (
+        ((arr[this.index(x + 1, y)] as number) -
+          2 * (arr[this.index(x, y)] as number) +
+          (arr[this.index(x - 1, y)] as number)) /
+        (this.dx * this.dx)
+      );
+    }
+  }
+  // (d/dy)^2.
   l_y(arr: Array<number>): Array<number> {
     let lapY = this.new_arr();
     for (let x = 0; x < this.width; x++) {
@@ -356,10 +379,38 @@ class WaveEquationScene extends Scene {
     }
     return lapY;
   }
+  l_y_entry(arr: Array<number>, x: number, y: number): number {
+    if (y == 0) {
+      return (
+        (2 * (arr[this.index(x, 0)] as number) -
+          5 * (arr[this.index(x, 1)] as number) +
+          4 * (arr[this.index(x, 2)] as number) -
+          (arr[this.index(x, 3)] as number)) /
+        (this.dy * this.dy)
+      );
+    } else if (y == this.height - 1) {
+      return (
+        (2 * (arr[this.index(x, this.height - 1)] as number) -
+          5 * (arr[this.index(x, this.height - 2)] as number) +
+          4 * (arr[this.index(x, this.height - 3)] as number) -
+          (arr[this.index(x, this.height - 4)] as number)) /
+        (this.dy * this.dy)
+      );
+    } else {
+      return (
+        ((arr[this.index(x, y + 1)] as number) -
+          2 * (arr[this.index(x, y)] as number) +
+          (arr[this.index(x, y - 1)] as number)) /
+        (this.dy * this.dy)
+      );
+    }
+  }
   // Given the current state of shape (W, H), computes the Laplacian of shape (W, H)
-  // TODO Combine computation of l_x and l_y for efficiency
   laplacian(arr: Array<number>): Array<number> {
     return linear_combination_arrays(this.l_x(arr), 1.0, this.l_y(arr), 1.0);
+  }
+  laplacian_entry(arr: Array<number>, x: number, y: number): number {
+    return this.l_x_entry(arr, x, y) + this.l_y_entry(arr, x, y);
   }
   // First-derivative in time for u-array
   uDot(v: Array<number>): Array<number> {
@@ -376,14 +427,13 @@ class WaveEquationScene extends Scene {
     px: Array<number>,
     py: Array<number>,
   ): Array<number> {
-    let lu = this.laplacian(u);
     let arr = new Array(this.width * this.height);
     let ind;
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         ind = this.index(x, y);
         arr[ind] =
-          WAVE_PROPAGATION_SPEED ** 2 * (lu[ind] as number) +
+          WAVE_PROPAGATION_SPEED ** 2 * this.laplacian_entry(u, x, y) +
           this.d_x_entry(px, x, y) +
           this.d_y_entry(py, x, y) -
           (this.sigma_x(x) + this.sigma_y(y)) * (v[ind] as number) -
@@ -429,6 +479,10 @@ class WaveEquationScene extends Scene {
   // Uses either finite-difference or Runge-Kutta to advance the differential equation.
   step(dt: number) {
     let u, v, px, py;
+    u = new Array(this.width * this.height);
+    v = new Array(this.width * this.height);
+    px = new Array(this.width * this.height);
+    py = new Array(this.width * this.height);
 
     let du_1 = this.uDot(this.vValues);
     let dv_1 = this.vDot(
@@ -440,10 +494,12 @@ class WaveEquationScene extends Scene {
     let dpx_1 = this.pxDot(this.uValues, this.pxValues);
     let dpy_1 = this.pxDot(this.uValues, this.pyValues);
 
-    u = add_scaled_array(this.uValues, du_1, dt / 2);
-    v = add_scaled_array(this.vValues, dv_1, dt / 2);
-    px = add_scaled_array(this.pxValues, dpx_1, dt / 2);
-    py = add_scaled_array(this.pyValues, dpy_1, dt / 2);
+    for (let i = 0; i < this.width * this.height; i++) {
+      u[i] = (this.uValues[i] as number) + (dt / 2) * (du_1[i] as number);
+      v[i] = (this.vValues[i] as number) + (dt / 2) * (dv_1[i] as number);
+      px[i] = (this.pxValues[i] as number) + (dt / 2) * (dpx_1[i] as number);
+      py[i] = (this.pyValues[i] as number) + (dt / 2) * (dpy_1[i] as number);
+    }
 
     this.add_boundary_conditions(u, v, this.time + dt / 2);
 
@@ -452,10 +508,12 @@ class WaveEquationScene extends Scene {
     let dpx_2 = this.pxDot(u, px);
     let dpy_2 = this.pyDot(u, py);
 
-    u = add_scaled_array(this.uValues, du_2, dt / 2);
-    v = add_scaled_array(this.vValues, dv_2, dt / 2);
-    px = add_scaled_array(this.pxValues, dpx_2, dt / 2);
-    py = add_scaled_array(this.pyValues, dpy_2, dt / 2);
+    for (let i = 0; i < this.width * this.height; i++) {
+      u[i] = (this.uValues[i] as number) + (dt / 2) * (du_2[i] as number);
+      v[i] = (this.vValues[i] as number) + (dt / 2) * (dv_2[i] as number);
+      px[i] = (this.pxValues[i] as number) + (dt / 2) * (dpx_2[i] as number);
+      py[i] = (this.pyValues[i] as number) + (dt / 2) * (dpy_2[i] as number);
+    }
 
     this.add_boundary_conditions(u, v, this.time + dt / 2);
 
@@ -464,10 +522,12 @@ class WaveEquationScene extends Scene {
     let dpx_3 = this.pxDot(u, px);
     let dpy_3 = this.pyDot(u, py);
 
-    u = add_scaled_array(this.uValues, du_3, dt);
-    v = add_scaled_array(this.vValues, dv_3, dt);
-    px = add_scaled_array(this.pxValues, dpx_3, dt);
-    py = add_scaled_array(this.pyValues, dpy_3, dt);
+    for (let i = 0; i < this.width * this.height; i++) {
+      u[i] = (this.uValues[i] as number) + dt * (du_3[i] as number);
+      v[i] = (this.vValues[i] as number) + dt * (dv_3[i] as number);
+      px[i] = (this.pxValues[i] as number) + dt * (dpx_3[i] as number);
+      py[i] = (this.pyValues[i] as number) + dt * (dpy_3[i] as number);
+    }
 
     this.add_boundary_conditions(u, v, this.time + dt);
 
@@ -476,7 +536,6 @@ class WaveEquationScene extends Scene {
     let dpx_4 = this.pxDot(u, px);
     let dpy_4 = this.pyDot(u, py);
 
-    let s;
     for (let ind = 0; ind < this.width * this.height; ind++) {
       this.uValues[ind] =
         (this.uValues[ind] as number) +
@@ -591,6 +650,8 @@ class WaveEquationScenePointSource extends WaveEquationScene {
   }
 }
 
+// TODO Implement reflecting surfaces, such as a conic section.
+
 // Wave equation scene where waves emanate from a pair of opposed point
 // sources centered around the middle of the scene
 class WaveEquationSceneDipole extends WaveEquationScene {
@@ -644,650 +705,6 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     v[ind_1] = this.a * this.w * Math.cos(this.w * t);
     u[ind_2] = -this.a * Math.sin(this.w * t);
     v[ind_2] = -this.a * this.w * Math.cos(this.w * t);
-  }
-}
-
-// DEPRECATED
-class WaveEquationSimulatorPMLNumpy {
-  time: number;
-  width: number;
-  height: number;
-  min_val: number; // Float value corresponding to 0 colorscale
-  max_val: number; // Float value corresponding to 256 colorscale
-  dx: number;
-  dy: number;
-  uValues: np.NDArray;
-  vValues: np.NDArray;
-  pxValues: np.NDArray;
-  pyValues: np.NDArray;
-  sx: np.NDArray;
-  sy: np.NDArray;
-  constructor(
-    width: number,
-    height: number,
-    min_val: number,
-    max_val: number,
-    dx: number,
-    dy: number,
-  ) {
-    this.time = 0;
-    this.width = width;
-    this.height = height;
-    this.min_val = min_val;
-    this.max_val = max_val;
-    this.dx = dx;
-    this.dy = dy;
-    this.uValues = this.new_arr();
-    this.vValues = this.new_arr();
-    this.pxValues = this.new_arr();
-    this.pyValues = this.new_arr();
-
-    let s;
-    this.sx = this.new_arr();
-    for (let x = 0; x < this.width; x++) {
-      s = this.sigma_x(x);
-      for (let y = 0; y < this.width; y++) {
-        this.sx.set([x, y], s);
-      }
-    }
-    this.sy = this.new_arr();
-    for (let y = 0; y < this.width; y++) {
-      s = this.sigma_y(y);
-      for (let x = 0; x < this.width; x++) {
-        this.sy.set([x, y], s);
-      }
-    }
-    this.add_point_source(this.uValues, this.vValues, this.time);
-  }
-  // Makes a new array
-  new_arr(): np.NDArray {
-    return np.zeros([this.width, this.height]);
-  }
-  // Converts xy-coordinates to linear array coordinates
-  index(x: number, y: number): number {
-    return y * this.width + x;
-  }
-  // Sets the initial conditions
-  set_init_conditions(x0: np.NDArray, v0: np.NDArray): void {
-    this.uValues = x0;
-    this.vValues = v0;
-    this.pxValues = this.new_arr();
-    this.pyValues = this.new_arr();
-    this.time = 0;
-  }
-  // Sigma function which defines the Perfectly Matching Layer at the edges of the domain
-  sigma_x(x: number): number {
-    // Defines on integer slice indices
-    return this._sigma_x((x - (this.width - 1) / 2) * this.dx);
-  }
-  _sigma_x(x: number): number {
-    // Defined on real numbers
-    return 0;
-    // let layer_start = ((this.width - 1) / 2) * this.dx - PML_WIDTH;
-    // if (Math.abs(x) >= layer_start) {
-    //   return 5 * (Math.abs(x) - layer_start) ** 2;
-    // } else {
-    //   return 0;
-    // }
-  }
-  sigma_y(y: number): number {
-    // Defines on integer slice indices
-    return this._sigma_y((y - (this.height - 1) / 2) * this.dy);
-  }
-  _sigma_y(y: number): number {
-    // Defined on real numbers
-    return 0;
-    // let layer_start = ((this.height - 1) / 2) * this.dy - PML_WIDTH;
-    // if (Math.abs(y) >= layer_start) {
-    //   return 5 * (Math.abs(y) - layer_start) ** 2;
-    // } else {
-    //   return 0;
-    // }
-  }
-  // (d/dx)
-  d_x(arr: np.NDArray): np.NDArray {
-    let mid = arr
-      .slice("2:", ":")
-      .subtract(arr.slice(":-2", ":"))
-      .multiply(1 / (2 * this.dx));
-    let left = mid
-      .slice("0", ":")
-      .multiply(2)
-      .subtract(mid.slice("1", ":"))
-      .expand_dims(0);
-    let right = mid
-      .slice("-1", ":")
-      .multiply(2)
-      .subtract(mid.slice("-2", ":"))
-      .expand_dims(0);
-    return np.concatenate([left, mid, right], 0);
-    // let dX = this.new_arr();
-    // for (let y = 0; y < this.height; y++) {
-    //   for (let x = 1; x < this.width - 1; x++) {
-    //     dX[this.index(x, y)] =
-    //       ((arr[this.index(x + 1, y)] as number) -
-    //         (arr[this.index(x - 1, y)] as number)) /
-    //       (2 * this.dx);
-    //   }
-    //   dX[this.index(0, y)] =
-    //     2 * (dX[this.index(1, y)] as number) - (dX[this.index(2, y)] as number);
-    //   dX[this.index(this.width - 1, y)] =
-    //     2 * (dX[this.index(this.width - 2, y)] as number) -
-    //     (dX[this.index(this.width - 3, y)] as number);
-    // }
-    // return dX;
-  }
-  // (d/dy)
-  d_y(arr: np.NDArray): np.NDArray {
-    let mid = arr
-      .slice(":", "2:")
-      .subtract(arr.slice(":", ":-2"))
-      .multiply(1 / (2 * this.dy));
-    let top = mid
-      .slice(":", "0")
-      .multiply(2)
-      .subtract(mid.slice(":", "1"))
-      .expand_dims(-1);
-    let bottom = mid
-      .slice(":", "-1")
-      .multiply(2)
-      .subtract(mid.slice(":", "-2"))
-      .expand_dims(-1);
-    return np.concatenate([top, mid, bottom], -1);
-    // let dY = this.new_arr();
-    // for (let x = 0; x < this.width; x++) {
-    //   for (let y = 1; y < this.height - 1; y++) {
-    //     dY[this.index(x, y)] =
-    //       ((arr[this.index(x, y + 1)] as number) -
-    //         (arr[this.index(x, y - 1)] as number)) /
-    //       (2 * this.dx);
-    //   }
-    //   dY[this.index(x, 0)] =
-    //     2 * (dY[this.index(x, 1)] as number) - (dY[this.index(x, 2)] as number);
-    //   dY[this.index(x, this.height - 1)] =
-    //     2 * (dY[this.index(x, this.height - 2)] as number) -
-    //     (dY[this.index(x, this.height - 3)] as number);
-    // }
-    // return dY;
-  }
-  // (d/dx)^2
-  l_x(arr: np.NDArray): np.NDArray {
-    let mid = arr
-      .slice("2:", ":")
-      .copy()
-      .add(arr.slice(":-2", ":"))
-      .subtract(arr.slice("1:-1", ":").copy().multiply(2))
-      .multiply(1 / (this.dx * this.dx));
-    let left = mid
-      .slice("0", ":")
-      .multiply(2)
-      .subtract(mid.slice("1", ":"))
-      .expand_dims(0);
-    let right = mid
-      .slice("-1", ":")
-      .multiply(2)
-      .subtract(mid.slice("-2", ":"))
-      .expand_dims(0);
-    return np.concatenate([left, mid, right], 0);
-    // let lapX = this.new_arr();
-    // for (let y = 0; y < this.height; y++) {
-    //   for (let x = 1; x < this.width - 1; x++) {
-    //     lapX[this.index(x, y)] =
-    //       ((arr[this.index(x - 1, y)] as number) +
-    //         (arr[this.index(x + 1, y)] as number) -
-    //         2 * (arr[this.index(x, y)] as number)) /
-    //       (this.dx * this.dx);
-    //   }
-    //   lapX[this.index(0, y)] =
-    //     2 * (lapX[this.index(1, y)] as number) -
-    //     (lapX[this.index(2, y)] as number);
-    //   lapX[this.index(this.width - 1, y)] =
-    //     2 * (lapX[this.index(this.width - 2, y)] as number) -
-    //     (lapX[this.index(this.width - 3, y)] as number);
-    // }
-    // return lapX;
-  }
-  // (d/dy)^2
-  l_y(arr: np.NDArray): np.NDArray {
-    let mid = arr
-      .slice(":", "2:")
-      .copy()
-      .add(arr.slice(":", ":-2"))
-      .subtract(arr.slice(":", "1:-1").copy().multiply(2))
-      .multiply(1 / (this.dy * this.dy));
-    let top = mid
-      .slice(":", "0")
-      .multiply(2)
-      .subtract(mid.slice(":", "1"))
-      .expand_dims(-1);
-    let bottom = mid
-      .slice(":", "-1")
-      .multiply(2)
-      .subtract(mid.slice(":", "-2"))
-      .expand_dims(-1);
-    return np.concatenate([top, mid, bottom], -1);
-    // let lapY = this.new_arr();
-    // for (let x = 0; x < this.width; x++) {
-    //   for (let y = 1; y < this.height - 1; y++) {
-    //     lapY[this.index(x, y)] =
-    //       ((arr[this.index(x, y - 1)] as number) +
-    //         (arr[this.index(x, y + 1)] as number) -
-    //         2 * (arr[this.index(x, y)] as number)) /
-    //       (this.dy * this.dy);
-    //   }
-    // lapY[this.index(x, 0)] =
-    //   2 * (lapY[this.index(x, 1)] as number) -
-    //   (lapY[this.index(x, 2)] as number);
-    // lapY[this.index(x, this.height - 1)] =
-    //   2 * (lapY[this.index(x, this.height - 2)] as number) -
-    //   (lapY[this.index(x, this.height - 3)] as number);
-    // }
-    // return lapY;
-  }
-  // Given the current state of shape (W, H), computes the Laplacian of shape (W, H)
-  // TODO Combine computation of l_x and l_y for efficiency
-  laplacian(arr: np.NDArray): np.NDArray {
-    return this.l_x(arr).add(this.l_y(arr));
-    // return linear_combination_arrays(this.l_x(arr), 1.0, this.l_y(arr), 1.0);
-  }
-  // First-derivative in time for u-array
-  uDot(v: np.NDArray): np.NDArray {
-    return v.copy();
-    // let arr = this.new_arr();
-    // for (let ind = 0; ind < this.width * this.height; ind++) {
-    //   arr[ind] = v[ind] as number;
-    // }
-    // return arr;
-  }
-  // First-derivative in time for v-array
-  vDot(
-    u: np.NDArray,
-    v: np.NDArray,
-    px: np.NDArray,
-    py: np.NDArray,
-  ): np.NDArray {
-    return this.laplacian(u)
-      .multiply(WAVE_PROPAGATION_SPEED ** 2)
-      .add(this.d_x(px))
-      .add(this.d_y(py));
-  }
-  // First derivative in time for x-component of p
-  pxDot(u: np.NDArray, px: np.NDArray): np.NDArray {
-    return this.d_x(u)
-      .multiply(this.sy.copy().subtract(this.sx.copy()))
-      .multiply(WAVE_PROPAGATION_SPEED ** 2)
-      .subtract(px.copy().multiply(this.sx.copy()));
-  }
-  // First derivative in time for y-component of p
-  pyDot(u: np.NDArray, py: np.NDArray): np.NDArray {
-    return this.d_y(u)
-      .multiply(this.sx.copy().subtract(this.sy.copy()))
-      .multiply(WAVE_PROPAGATION_SPEED ** 2)
-      .subtract(py.copy().multiply(this.sy.copy()));
-  }
-  // Uses either finite-difference or Runge-Kutta to advance the differential equation.
-  step(dt: number) {
-    let du_1 = this.uDot(this.vValues);
-    let dv_1 = this.vDot(
-      this.uValues,
-      this.vValues,
-      this.pxValues,
-      this.pyValues,
-    );
-    let dpx_1 = this.pxDot(this.uValues, this.pxValues);
-    let dpy_1 = this.pxDot(this.uValues, this.pyValues);
-
-    let u1 = this.uValues.add(du_1.multiply(dt / 2));
-    let v1 = this.vValues.add(dv_1.multiply(dt / 2));
-    let px1 = this.pxValues.add(dpx_1.multiply(dt / 2));
-    let py1 = this.pyValues.add(dpy_1.multiply(dt / 2));
-
-    this.add_point_source(u1, v1, this.time + dt / 2);
-
-    let du_2 = this.uDot(v1);
-    let dv_2 = this.vDot(u1, v1, px1, py1);
-    let dpx_2 = this.pxDot(u1, px1);
-    let dpy_2 = this.pyDot(u1, py1);
-
-    let u2 = this.uValues.add(du_2.multiply(dt / 2));
-    let v2 = this.vValues.add(dv_2.multiply(dt / 2));
-    let px2 = this.pxValues.add(dpx_2.multiply(dt / 2));
-    let py2 = this.pyValues.add(dpy_2.multiply(dt / 2));
-
-    this.add_point_source(u2, v2, this.time + dt / 2);
-
-    let du_3 = this.uDot(v2);
-    let dv_3 = this.vDot(u2, v2, px2, py2);
-    let dpx_3 = this.pxDot(u2, px2);
-    let dpy_3 = this.pyDot(u2, py2);
-
-    let u3 = this.uValues.add(du_3.multiply(dt));
-    let v3 = this.vValues.add(dv_3.multiply(dt));
-    let px3 = this.pxValues.add(dpx_3.multiply(dt));
-    let py3 = this.pyValues.add(dpy_3.multiply(dt));
-
-    this.add_point_source(u3, v3, this.time + dt);
-
-    let du_4 = this.uDot(v3);
-    let dv_4 = this.vDot(u3, v3, px3, py3);
-    let dpx_4 = this.pxDot(u3, px3);
-    let dpy_4 = this.pyDot(u3, py3);
-
-    this.uValues = this.uValues
-      .add(du_1.multiply(dt / 6))
-      .add(du_2.multiply(dt / 3))
-      .add(du_3.multiply(dt / 3))
-      .add(du_4.multiply(dt / 6));
-    this.vValues = this.vValues
-      .add(dv_1.multiply(dt / 6))
-      .add(dv_2.multiply(dt / 3))
-      .add(dv_3.multiply(dt / 3))
-      .add(dv_4.multiply(dt / 6));
-    this.pxValues = this.pxValues
-      .add(dpx_1.multiply(dt / 6))
-      .add(dpx_2.multiply(dt / 3))
-      .add(dpx_3.multiply(dt / 3))
-      .add(dpx_4.multiply(dt / 6));
-    this.pyValues = this.pyValues
-      .add(dpy_1.multiply(dt / 6))
-      .add(dpy_2.multiply(dt / 3))
-      .add(dpy_3.multiply(dt / 3))
-      .add(dpy_4.multiply(dt / 6));
-
-    this.add_point_source(this.uValues, this.vValues, this.time + dt);
-    this.time += dt;
-  }
-  add_point_source(u: np.NDArray, v: np.NDArray, t: number): void {
-    let w = 3.0;
-    u.set(
-      [Math.floor(this.width / 2), Math.floor(this.height / 2)],
-      Math.sin(w * t),
-    );
-    v.set(
-      [Math.floor(this.width / 2), Math.floor(this.height / 2)],
-      w * Math.cos(w * t),
-    );
-    // Unnecessary to modify the auxiliary fields as they vanish inside the vacuum region
-  }
-  // Writes the pixel array to an ImageDataArray object for rendering.
-  write_data(data: ImageDataArray) {
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        const px_val = this.uValues.get([x, y]) as number;
-        const gray = (px_val - this.min_val) / (this.max_val - this.min_val);
-        const idx = this.index(x, y) * 4;
-        data[idx] = data[idx + 1] = data[idx + 2] = 256 * clamp(gray);
-        data[idx + 3] = 255;
-      }
-    }
-  }
-}
-
-// Simulates the wave equation in 2D by storing the values as an array of shape (W, H)
-// and the derivatives as an array of shape (W, H).
-// To handle open boundary conditions we use the PML technique which attentuates the wave
-// in a region near the open boundary -- this requires that values are allowed to be complex
-// and so we need two more arrays for the imaginary parts.
-class WaveEquationSimulator {
-  time: number;
-  width: number;
-  height: number;
-  min_val: number; // Float value corresponding to 0 colorscale
-  max_val: number; // Float value corresponding to 256 colorscale
-  dx: number;
-  dy: number;
-  uValues: Array<number>;
-  uDotValues: Array<number>;
-  constructor(
-    width: number,
-    height: number,
-    min_val: number,
-    max_val: number,
-    dx: number,
-    dy: number,
-  ) {
-    this.time = 0;
-    this.width = width;
-    this.height = height;
-    this.min_val = min_val;
-    this.max_val = max_val;
-    this.dx = dx;
-    this.dy = dy;
-    // Scalar-valued function which represents the pixel array to be drawn.
-    this.uValues = new Array(width * height).fill(0);
-    this.uDotValues = new Array(width * height).fill(0);
-  }
-  // Makes a new pixel array
-  new_arr(): Array<number> {
-    return new Array(this.width * this.height).fill(0);
-  }
-  // Converts xy-coordinates to linear pixel array coordinates
-  index(x: number, y: number): number {
-    return y * this.width + x;
-  }
-  // Sets the initial (real) conditions
-  set_init_conditions(x0: Array<number>, v0: Array<number>): void {
-    this.uValues = x0;
-    this.uDotValues = v0;
-    this.time = 0;
-  }
-  // (d/dx)^2
-  l_x(arr: Array<number>): Array<number> {
-    let lapX = this.new_arr();
-    let lapXIm = this.new_arr();
-    // let new_arr = this.new_arr();
-    let d1, d2;
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 1; x < this.width - 1; x++) {
-        // // Set first and second derivative
-        // if (x == 1) {
-        //   d1 = (arr[this.index(x + 1, y)] as number) / (2 * this.dx);
-        //   d2 =
-        //     ((arr[this.index(x + 1, y)] as number) -
-        //       2 * (arr[this.index(x, y)] as number)) /
-        //     (this.dx * this.dx);
-        // } else if (x == this.width - 1) {
-        //   d1 = -(arr[this.index(x - 1, y)] as number) / (2 * this.dx);
-        //   d2 =
-        //     ((arr[this.index(x - 1, y)] as number) -
-        //       2 * (arr[this.index(x, y)] as number)) /
-        //     (this.dx * this.dx);
-        // } else {
-        //   d1 =
-        //     ((arr[this.index(x + 1, y)] as number) +
-        //       (arr[this.index(x - 1, y)] as number)) /
-        //     (2 * this.dx);
-        //   d2 =
-        //     ((arr[this.index(x - 1, y)] as number) +
-        //       (arr[this.index(x + 1, y)] as number) -
-        //       2 * (arr[this.index(x, y)] as number)) /
-        //     (this.dx * this.dx);
-        // }
-        // Middle section, no attenuation
-        lapX[this.index(x, y)] =
-          ((arr[this.index(x - 1, y)] as number) +
-            (arr[this.index(x + 1, y)] as number) -
-            2 * (arr[this.index(x, y)] as number)) /
-          (this.dx * this.dx);
-        // // Set Laplacian based on whether x is in an attenuated zone or not
-        // if (x * this.dx < PML_WIDTH) {
-        //   // Left strip
-        // } else if ((this.width - 1 - x) * this.dx < PML_WIDTH) {
-        //   // Right strip
-        // } else {
-        //   // Middle section, no attenuation
-        //   lapX[this.index(x, y)] =
-        //     ((arr[this.index(x - 1, y)] as number) +
-        //       (arr[this.index(x + 1, y)] as number) -
-        //       2 * (arr[this.index(x, y)] as number)) /
-        //     (this.dx * this.dx);
-        // }
-      }
-      // TODO This method of computing the Laplacian at the open boundary
-      // gives rebound effects.
-      // Option 0 (the preferred option, TODO): Use a PML to set the Laplacian on
-      // strips along the sides. This is the only part of the code we have to modify.
-
-      // Option 1: Compute the Laplacian at the end so that the last (n+2) Laplacians
-      // go as a degree-n poly, for n = 2
-
-      // new_arr[this.index(0, y)] =
-      //   3 * (new_arr[this.index(1, y)] as number) -
-      //   3 * (new_arr[this.index(2, y)] as number) +
-      //   (new_arr[this.index(3, y)] as number);
-      // new_arr[this.index(this.width - 1, y)] =
-      //   3 * (new_arr[this.index(this.width - 2, y)] as number) -
-      //   3 * (new_arr[this.index(this.width - 3, y)] as number) +
-      //   (new_arr[this.index(this.width - 4, y)] as number);
-      // Option 2
-      // new_arr[this.index(0, y)] =
-      //   ((arr[this.index(1, y)] as number) -
-      //     2 * (arr[this.index(0, y)] as number)) /
-      //   (this.dx * this.dx);
-      // new_arr[this.index(this.width - 1, y)] =
-      //   ((arr[this.index(this.width - 2, y)] as number) -
-      //     2 * (arr[this.index(this.width - 1, y)] as number)) /
-      //   (this.dx * this.dx);
-      // Option 3
-      // new_arr[this.index(0, y)] = 0;
-      // new_arr[this.index(this.width - 1, y)] = 0;
-    }
-    return lapX;
-  }
-  // (d/dy)^2
-  l_y(arr: Array<number>): Array<number> {
-    let new_arr = this.new_arr();
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 1; y < this.height - 1; y++) {
-        new_arr[this.index(x, y)] =
-          ((arr[this.index(x, y - 1)] as number) +
-            (arr[this.index(x, y + 1)] as number) -
-            2 * (arr[this.index(x, y)] as number)) /
-          (this.dy * this.dy);
-      }
-      // TODO This method of computing the Laplacian at the open boundary gives rebound effects.
-      // Option 0 (the preferred option, TODO): Use a PML to set the Laplacian on
-      // strips along the sides. This is the only part of the code we have to modify.
-      // Option 1: Compute the Laplacian at the end so that the last (n+2) Laplacians
-      // go as a degree-n poly, for n = 2
-      new_arr[this.index(x, 0)] =
-        3 * (new_arr[this.index(x, 1)] as number) -
-        3 * (new_arr[this.index(x, 2)] as number) +
-        (new_arr[this.index(x, 3)] as number);
-      new_arr[this.index(x, this.height - 1)] =
-        3 * (new_arr[this.index(x, this.height - 2)] as number) -
-        3 * (new_arr[this.index(x, this.height - 3)] as number) +
-        (new_arr[this.index(x, this.height - 4)] as number);
-      // Option 2
-      // new_arr[this.index(x, 0)] =
-      //   ((arr[this.index(x, 1)] as number) -
-      //     2 * (arr[this.index(x, 0)] as number)) /
-      //   (this.dy * this.dy);
-      // new_arr[this.index(x, this.height - 1)] =
-      //   ((arr[this.index(x, this.height - 2)] as number) -
-      //     2 * (arr[this.index(x, this.height - 1)] as number)) /
-      //   (this.dy * this.dy);
-      // Option 3
-      // new_arr[this.index(x, 0)] = 0;
-      // new_arr[this.index(x, this.height - 1)] = 0;
-    }
-    return new_arr;
-  }
-  // Given the current state of shape (W, H), computes the Laplacian of shape (W, H)
-  // TODO Combine computation of l_x and l_y for efficiency
-  laplacian(arr: Array<number>, t: number): Array<number> {
-    return linear_combination_arrays(this.l_x(arr), 1.0, this.l_y(arr), 1.0);
-  }
-  // Given an array of shape (2, W, H) containing the evolved values and derivatives,
-  // modifies it to reflect the boundary conditions
-  add_bdy_values(uArr: Array<number>, uDotArr: Array<number>, t: number): void {
-    // this.rectilinear_compact(arr, arr_deriv);
-    this.add_point_source(uArr, uDotArr);
-  }
-  // Special case corresponding to a point-source wave at the center of the array.
-  add_point_source(uArr: Array<number>, uDotArr: Array<number>): void {
-    let w = 3.0;
-    let index =
-      Math.floor(this.height / 2) * this.width + Math.floor(this.width / 2);
-    uArr[index] = Math.sin(w * this.time);
-    uDotArr[index] = w * Math.cos(w * this.time);
-  }
-  // Special case corresponding to the boundary condition 0 around the square
-  rectilinear_compact(uArr: Array<number>, uDotArr: Array<number>): void {
-    for (let x = 0; x < this.width; x++) {
-      uArr[this.index(x, 0)] = 0;
-      uArr[this.index(x, this.height - 1)] = 0;
-      uDotArr[this.index(x, 0)] = 0;
-      uDotArr[this.index(x, this.height - 1)] = 0;
-    }
-    for (let y = 0; y < this.width; y++) {
-      uArr[this.index(0, y)] = 0;
-      uArr[this.index(this.width - 1, y)] = 0;
-      uDotArr[this.index(0, y)] = 0;
-      uDotArr[this.index(this.width - 1, y)] = 0;
-    }
-  }
-  // Moves the simulation forward by time dt, using Runge-Kutta
-  // TODO The numerical speed of this simulation is the limiter to rendering speed.
-  // It would help if we can condense the loops.
-  // TODO Add in PML to computations here.
-  step(dt: number) {
-    const l1 = this.laplacian(this.uValues, this.time);
-    const v1 = add_scaled_array(this.uValues, this.uDotValues, dt / 2);
-    const d1 = add_scaled_array(
-      this.uDotValues,
-      l1,
-      (dt / 2) * WAVE_PROPAGATION_SPEED ** 2,
-    );
-    this.add_bdy_values(v1, d1, this.time + dt / 2);
-
-    const l2 = this.laplacian(v1, this.time + dt / 2);
-    const v2 = add_scaled_array(this.uValues, d1, dt / 2);
-    const d2 = add_scaled_array(
-      this.uDotValues,
-      l2,
-      (dt / 2) * WAVE_PROPAGATION_SPEED ** 2,
-    );
-    this.add_bdy_values(v2, d2, this.time + dt / 2);
-
-    const l3 = this.laplacian(v2, this.time + dt / 2);
-    const v3 = add_scaled_array(this.uValues, d2, dt);
-    const d3 = add_scaled_array(
-      this.uDotValues,
-      l3,
-      dt * WAVE_PROPAGATION_SPEED ** 2,
-    );
-    this.add_bdy_values(v3, d3, this.time + dt);
-
-    const l4 = this.laplacian(v3, this.time + dt);
-    let v4, d4;
-    v4 = add_scaled_array(this.uValues, this.uDotValues, dt / 6);
-    v4 = add_scaled_array(v4, d1, dt / 3);
-    v4 = add_scaled_array(v4, d2, dt / 3);
-    v4 = add_scaled_array(v4, d3, dt / 6);
-    d4 = add_scaled_array(
-      this.uDotValues,
-      l1,
-      (dt / 6) * WAVE_PROPAGATION_SPEED ** 2,
-    );
-    d4 = add_scaled_array(d4, l2, (dt / 3) * WAVE_PROPAGATION_SPEED ** 2);
-    d4 = add_scaled_array(d4, l3, (dt / 3) * WAVE_PROPAGATION_SPEED ** 2);
-    d4 = add_scaled_array(d4, l4, (dt / 6) * WAVE_PROPAGATION_SPEED ** 2);
-    this.add_bdy_values(v4, d4, this.time + dt);
-
-    this.uValues = v4;
-    this.uDotValues = d4;
-    this.time += dt;
-  }
-  // Writes the pixel array to an ImageDataArray object for rendering.
-  write_data(data: ImageDataArray) {
-    for (let i = 0; i < this.width * this.height; i++) {
-      const px_val = this.uValues[i] as number;
-      const gray = (px_val - this.min_val) / (this.max_val - this.min_val);
-      const idx = i * 4;
-      data[idx] = data[idx + 1] = data[idx + 2] = 256 * clamp(gray);
-      data[idx + 3] = 255;
-    }
   }
 }
 
