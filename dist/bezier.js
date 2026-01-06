@@ -10636,7 +10636,7 @@ var np = __toESM(require_numpy_ts_node(), 1);
 var MObject = class {
   constructor() {
   }
-  draw(canvas, scene) {
+  draw(canvas, scene, args) {
   }
 };
 var Dot = class extends MObject {
@@ -10744,7 +10744,7 @@ var Scene = class {
     return mobj;
   }
   // Draws the scene
-  draw() {
+  draw(args) {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -10753,12 +10753,6 @@ var Scene = class {
       if (mobj == void 0) throw new Error(`${name} not found`);
       mobj.draw(this.canvas, this);
     });
-  }
-  // Ticks the animation forward by one step
-  tick() {
-  }
-  // Start animation
-  start_playing() {
   }
 };
 

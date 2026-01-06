@@ -29,6 +29,11 @@ function clamp(x: number): number {
   }
 }
 
+// The function 1 / (1 + e^{-x})
+function sigmoid(x: number): number {
+  return 1 / (1 + Math.exp(-x));
+}
+
 // Helper functions with arrays
 function linear_combination_arrays(
   arr: Array<number>,
@@ -92,72 +97,25 @@ class HeatMap extends MObject {
     let data = imageData.data;
     for (let i = 0; i < this.width * this.height; i++) {
       const px_val = this.valArray[i] as number;
-      const gray = (px_val - this.min_val) / (this.max_val - this.min_val);
+      // Red-blue heatmap
+      const gray = sigmoid(px_val);
+      // const gray = (px_val - this.min_val) / (this.max_val - this.min_val);
       const idx = i * 4;
-      data[idx] = data[idx + 1] = data[idx + 2] = 256 * clamp(gray);
+      // data[idx] = data[idx + 1] = data[idx + 2] = 256 * clamp(gray);
+      if (gray < 0.5) {
+        data[idx] = 512 * gray;
+        data[idx + 1] = 512 * gray;
+        data[idx + 2] = 255;
+      } else {
+        data[idx] = 255;
+        data[idx + 1] = 512 * (1 - gray);
+        data[idx + 2] = 512 * (1 - gray);
+      }
       data[idx + 3] = 255;
     }
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.putImageData(imageData, 0, 0);
-  }
-}
-
-// Holds a pixel array internally (in grayscale) as an array of
-// real numbers between 0 and 1.
-// Writes to the ImageDataArray for rendering.
-// TODO: Make it possible to store the pixel array at a smaller size (pw, ph) than
-// the canvas (cw, ch), and then linearly interpolate for rendering
-class PixelArray {
-  time: number;
-  width: number;
-  height: number;
-  pixelArray: Array<number>;
-  min_val: number; // Float value corresponding to 0 colorscale
-  max_val: number; // Float value corresponding to 256 colorscale
-  constructor(width: number, height: number, min_val: number, max_val: number) {
-    this.time = 0;
-    this.width = width;
-    this.height = height;
-    this.min_val = min_val;
-    this.max_val = max_val;
-    this.pixelArray = this.new_arr();
-  }
-  // Makes a new pixel array
-  new_arr(): Array<number> {
-    return new Array(this.width * this.height).fill(0);
-  }
-  // Converts xy-coordinates to linear pixel array coordinates
-  index(x: number, y: number): number {
-    return y * this.width + x;
-  }
-  // Ticks the simulation forward by one step
-  // TODO Turn this into an actual simulator which propagates the changes according to some step
-  tick() {
-    this.make_horizontal_gradient(this.time / 256);
-    this.time++;
-  }
-  // TEST IMAGE: Horizontal grayscale gradient
-  make_horizontal_gradient(shift: number) {
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
-        const index = this.index(x, y);
-        const gray = (shift + x / this.width) % 1;
-        this.pixelArray[index] =
-          this.min_val + gray * (this.max_val - this.min_val);
-      }
-    }
-  }
-  // TEST IMAGE: Vertical grayscale gradient
-  make_vertical_gradient(shift: number) {
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
-        const index = this.index(x, y);
-        const gray = (shift + y / this.height) % 1;
-        this.pixelArray[index] =
-          this.min_val + gray * (this.max_val - this.min_val);
-      }
-    }
   }
 }
 
@@ -220,8 +178,6 @@ class WaveEquationScene extends Scene {
     ];
     this.action_queue = [];
 
-    this.add_point_source(this.uValues, this.vValues, this.time);
-
     this.add(
       "heatmap",
       new HeatMap(width, height, min_val, max_val, this.uValues),
@@ -230,13 +186,6 @@ class WaveEquationScene extends Scene {
   // Adds to the action queue
   add_to_queue(callback: () => void) {
     this.action_queue.push(callback);
-  }
-  // Moves the point source
-  move_point_source_x(x: number) {
-    this.point_source[0] = x;
-  }
-  move_point_source_y(y: number) {
-    this.point_source[1] = y;
   }
   // Makes a new array
   new_arr(): Array<number> {
@@ -299,6 +248,31 @@ class WaveEquationScene extends Scene {
     }
     return dX;
   }
+  d_x_entry(arr: Array<number>, x: number, y: number) {
+    if (x == 0) {
+      return (
+        (2 * (arr[this.index(2, y)] as number) -
+          2 * (arr[this.index(0, y)] as number) -
+          (arr[this.index(3, y)] as number) +
+          (arr[this.index(1, y)] as number)) /
+        (2 * this.dx)
+      );
+    } else if (x == this.width - 1) {
+      return (
+        (2 * (arr[this.index(this.width - 1, y)] as number) -
+          2 * (arr[this.index(this.width - 3, y)] as number) -
+          (arr[this.index(this.width - 2, y)] as number) +
+          (arr[this.index(this.width - 4, y)] as number)) /
+        (2 * this.dx)
+      );
+    } else {
+      return (
+        ((arr[this.index(x + 1, y)] as number) -
+          (arr[this.index(x - 1, y)] as number)) /
+        (2 * this.dx)
+      );
+    }
+  }
   // (d/dy). TODO: Maybe there's a way to bury this array manipulation somewhere.
   d_y(arr: Array<number>): Array<number> {
     let dY = this.new_arr();
@@ -316,6 +290,31 @@ class WaveEquationScene extends Scene {
         (dY[this.index(x, this.height - 3)] as number);
     }
     return dY;
+  }
+  d_y_entry(arr: Array<number>, x: number, y: number) {
+    if (y == 0) {
+      return (
+        (2 * (arr[this.index(x, 2)] as number) -
+          2 * (arr[this.index(x, 0)] as number) -
+          (arr[this.index(x, 3)] as number) +
+          (arr[this.index(x, 1)] as number)) /
+        (2 * this.dy)
+      );
+    } else if (y == this.height - 1) {
+      return (
+        (2 * (arr[this.index(x, this.height - 1)] as number) -
+          2 * (arr[this.index(x, this.height - 3)] as number) -
+          (arr[this.index(x, this.height - 2)] as number) +
+          (arr[this.index(x, this.height - 4)] as number)) /
+        (2 * this.dy)
+      );
+    } else {
+      return (
+        ((arr[this.index(x, y + 1)] as number) -
+          (arr[this.index(x, y - 1)] as number)) /
+        (2 * this.dy)
+      );
+    }
   }
   // (d/dx)^2. TODO: Maybe there's a way to bury this array manipulation somewhere.
   l_x(arr: Array<number>): Array<number> {
@@ -364,9 +363,9 @@ class WaveEquationScene extends Scene {
   }
   // First-derivative in time for u-array
   uDot(v: Array<number>): Array<number> {
-    let arr = this.new_arr();
+    let arr = [];
     for (let ind = 0; ind < this.width * this.height; ind++) {
-      arr[ind] = v[ind] as number;
+      arr.push(v[ind] as number);
     }
     return arr;
   }
@@ -378,17 +377,15 @@ class WaveEquationScene extends Scene {
     py: Array<number>,
   ): Array<number> {
     let lu = this.laplacian(u);
-    let dxpx = this.d_x(px);
-    let dypy = this.d_y(py);
-    let arr = this.new_arr();
+    let arr = new Array(this.width * this.height);
     let ind;
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         ind = this.index(x, y);
         arr[ind] =
           WAVE_PROPAGATION_SPEED ** 2 * (lu[ind] as number) +
-          (dxpx[ind] as number) +
-          (dypy[ind] as number) -
+          this.d_x_entry(px, x, y) +
+          this.d_y_entry(py, x, y) -
           (this.sigma_x(x) + this.sigma_y(y)) * (v[ind] as number) -
           this.sigma_x(x) * this.sigma_y(y) * (u[ind] as number);
       }
@@ -397,8 +394,7 @@ class WaveEquationScene extends Scene {
   }
   // First derivative in time for x-component of p
   pxDot(u: Array<number>, px: Array<number>): Array<number> {
-    let dxu = this.d_x(u);
-    let arr = this.new_arr();
+    let arr = new Array(this.width * this.height);
     let ind, sx;
     for (let x = 0; x < this.width; x++) {
       sx = this.sigma_x(x);
@@ -408,15 +404,14 @@ class WaveEquationScene extends Scene {
           -sx * (px[ind] as number) +
           WAVE_PROPAGATION_SPEED ** 2 *
             (this.sigma_y(y) - sx) *
-            (dxu[ind] as number);
+            this.d_x_entry(u, x, y);
       }
     }
     return arr;
   }
   // First derivative in time for y-component of p
   pyDot(u: Array<number>, py: Array<number>): Array<number> {
-    let dyu = this.d_y(u);
-    let arr = this.new_arr();
+    let arr = new Array(this.width * this.height);
     let ind, sy;
     for (let y = 0; y < this.height; y++) {
       sy = this.sigma_y(y);
@@ -426,7 +421,7 @@ class WaveEquationScene extends Scene {
           -sy * (py[ind] as number) +
           WAVE_PROPAGATION_SPEED ** 2 *
             (this.sigma_x(x) - sy) *
-            (dyu[ind] as number);
+            this.d_y_entry(u, x, y);
       }
     }
     return arr;
@@ -450,7 +445,7 @@ class WaveEquationScene extends Scene {
     px = add_scaled_array(this.pxValues, dpx_1, dt / 2);
     py = add_scaled_array(this.pyValues, dpy_1, dt / 2);
 
-    this.add_point_source(u, v, this.time + dt / 2);
+    this.add_boundary_conditions(u, v, this.time + dt / 2);
 
     let du_2 = this.uDot(v);
     let dv_2 = this.vDot(u, v, px, py);
@@ -462,7 +457,7 @@ class WaveEquationScene extends Scene {
     px = add_scaled_array(this.pxValues, dpx_2, dt / 2);
     py = add_scaled_array(this.pyValues, dpy_2, dt / 2);
 
-    this.add_point_source(u, v, this.time + dt / 2);
+    this.add_boundary_conditions(u, v, this.time + dt / 2);
 
     let du_3 = this.uDot(v);
     let dv_3 = this.vDot(u, v, px, py);
@@ -474,7 +469,7 @@ class WaveEquationScene extends Scene {
     px = add_scaled_array(this.pxValues, dpx_3, dt);
     py = add_scaled_array(this.pyValues, dpy_3, dt);
 
-    this.add_point_source(u, v, this.time + dt);
+    this.add_boundary_conditions(u, v, this.time + dt);
 
     let du_4 = this.uDot(v);
     let dv_4 = this.vDot(u, v, px, py);
@@ -512,20 +507,14 @@ class WaveEquationScene extends Scene {
         (dpy_4[ind] as number) * (dt / 6);
     }
 
-    this.add_point_source(this.uValues, this.vValues, this.time + dt);
+    this.add_boundary_conditions(this.uValues, this.vValues, this.time + dt);
     this.time += dt;
   }
-  add_point_source(u: Array<number>, v: Array<number>, t: number): void {
-    let w = 3.0;
-    let ind = this.index(
-      Math.floor(this.point_source[0]),
-      Math.floor(this.point_source[1]),
-    );
-
-    u[ind] = Math.sin(w * t);
-    v[ind] = w * Math.cos(w * t);
-    // Unnecessary to modify the auxiliary fields as they vanish inside the vacuum region
-  }
+  add_boundary_conditions(
+    u: Array<number>,
+    v: Array<number>,
+    t: number,
+  ): void {}
   // Draws the scene
   draw() {
     let ctx = this.canvas.getContext("2d");
@@ -559,6 +548,106 @@ class WaveEquationScene extends Scene {
   }
 }
 
+// Wave equation scene where waves emanate from a single point source
+class WaveEquationScenePointSource extends WaveEquationScene {
+  point_source: Vec2D;
+  w: number; // Frequency of oscillation
+  a: number; // Amplitude of oscillation
+  constructor(
+    canvas: HTMLCanvasElement,
+    imageData: ImageData,
+    width: number,
+    height: number,
+    min_val: number,
+    max_val: number,
+    dx: number,
+    dy: number,
+  ) {
+    super(canvas, imageData, width, height, min_val, max_val, dx, dy);
+    // Default settings
+    this.point_source = [
+      Math.floor(this.width / 2),
+      Math.floor(this.height / 2),
+    ];
+    this.w = 5.0;
+    this.a = 5.0;
+    this.add_boundary_conditions(this.uValues, this.vValues, this.time);
+  }
+
+  // Moves the point source
+  move_point_source_x(x: number) {
+    this.point_source[0] = x;
+  }
+  move_point_source_y(y: number) {
+    this.point_source[1] = y;
+  }
+  add_boundary_conditions(u: Array<number>, v: Array<number>, t: number) {
+    let ind = this.index(
+      Math.floor(this.point_source[0]),
+      Math.floor(this.point_source[1]),
+    );
+    u[ind] = this.a * Math.sin(this.w * t);
+    v[ind] = this.a * this.w * Math.cos(this.w * t);
+  }
+}
+
+// Wave equation scene where waves emanate from a pair of opposed point
+// sources centered around the middle of the scene
+class WaveEquationSceneDipole extends WaveEquationScene {
+  dipole: Vec2D;
+  w: number; // Frequency of oscillation
+  a: number; // Amplitude of oscillation
+  constructor(
+    canvas: HTMLCanvasElement,
+    imageData: ImageData,
+    width: number,
+    height: number,
+    min_val: number,
+    max_val: number,
+    dx: number,
+    dy: number,
+  ) {
+    super(canvas, imageData, width, height, min_val, max_val, dx, dy);
+    // Default settings
+    this.dipole = [Math.floor(this.width / 10), 0];
+    this.w = 5.0;
+    this.a = 5.0;
+    this.add_boundary_conditions(this.uValues, this.vValues, this.time);
+  }
+
+  // Moves the point source
+  move_dipole_x(x: number) {
+    this.dipole[0] = x as number;
+  }
+  move_dipole_y(y: number) {
+    this.dipole[1] = y as number;
+  }
+  // Set amplitude and frequency
+  set_a(a: number) {
+    this.a = a;
+  }
+  set_w(w: number) {
+    this.w = w;
+  }
+  add_boundary_conditions(u: Array<number>, v: Array<number>, t: number) {
+    // Positive point source
+    let ind_1 = this.index(
+      Math.floor(this.width / 2) + this.dipole[0],
+      Math.floor(this.height / 2) + this.dipole[1],
+    );
+    // Negative point source
+    let ind_2 = this.index(
+      Math.floor(this.width / 2) - this.dipole[0],
+      Math.floor(this.height / 2) - this.dipole[1],
+    );
+    u[ind_1] = this.a * Math.sin(this.w * t);
+    v[ind_1] = this.a * this.w * Math.cos(this.w * t);
+    u[ind_2] = -this.a * Math.sin(this.w * t);
+    v[ind_2] = -this.a * this.w * Math.cos(this.w * t);
+  }
+}
+
+// DEPRECATED
 class WaveEquationSimulatorPMLNumpy {
   time: number;
   width: number;
@@ -1277,7 +1366,18 @@ class WaveEquationSimulator {
     //   dy,
     // );
 
-    let waveEquationSim = new WaveEquationScene(
+    // let waveEquationSim = new WaveEquationScenePointSource(
+    //   canvas,
+    //   imageData,
+    //   width,
+    //   height,
+    //   -1.0,
+    //   1.0,
+    //   dx,
+    //   dy,
+    // );
+
+    let waveEquationSim = new WaveEquationSceneDipole(
       canvas,
       imageData,
       width,
@@ -1288,57 +1388,38 @@ class WaveEquationSimulator {
       dy,
     );
 
-    // let waveEquationSim = new WaveEquationSimulatorPMLNumpy(
-    //   width,
-    //   height,
-    //   -1.0,
-    //   1.0,
-    //   dx,
-    //   dy,
-    // );
-
-    // Initial conditions, for rectilinear case
-    // let x0 = waveEquationSim.new_arr();
-    // let v0 = waveEquationSim.new_arr();
-    // for (let y = 0; y < height; y++) {
-    //   for (let x = 0; x < width; x++) {
-    //     x0[waveEquationSim.index(x, y)] =
-    //       Math.sin((3 * Math.PI * x) / (width - 1)) *
-    //       Math.sin((3 * Math.PI * y) / (height - 1));
-    //     v0[waveEquationSim.index(x, y)] = 0.0;
-    //   }
-    // }
-    // waveEquationSim.set_init_conditions(x0, v0);
-
     // Make a slider which can be used to modify the mobject
     // It should send a message to the owning scene
     let x_slider = Slider(
       document.getElementById("slider-container-1") as HTMLElement,
       function (x: number) {
         waveEquationSim.add_to_queue(
-          waveEquationSim.move_point_source_x.bind(waveEquationSim, x),
+          waveEquationSim.move_dipole_x.bind(waveEquationSim, +x),
         );
       },
-      `${Math.floor(width / 2)}`,
+      // `${Math.floor(width / 2)}`,
+      `${Math.floor(width / 10)}`,
       0,
-      width,
+      // width,
+      Math.floor(width / 4),
       1,
     );
     x_slider.width = 200;
 
-    let y_slider = Slider(
-      document.getElementById("slider-container-2") as HTMLElement,
-      function (y: number) {
-        waveEquationSim.add_to_queue(
-          waveEquationSim.move_point_source_y.bind(waveEquationSim, y),
-        );
-      },
-      `${Math.floor(height / 2)}`,
-      0,
-      height,
-      1,
-    );
-    y_slider.width = 200;
+    // let y_slider = Slider(
+    //   document.getElementById("slider-container-2") as HTMLElement,
+    //   function (y: number) {
+    //     waveEquationSim.add_to_queue(
+    //       waveEquationSim.move_dipole_y.bind(waveEquationSim, y),
+    //     );
+    //   },
+    //   // `${Math.floor(height / 2)}`,
+    //   "0",
+    //   0,
+    //   height,
+    //   1,
+    // );
+    // y_slider.width = 200;
 
     waveEquationSim.start_playing();
     // while (true) {

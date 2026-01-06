@@ -2,7 +2,7 @@
 var MObject = class {
   constructor() {
   }
-  draw(canvas, scene) {
+  draw(canvas, scene, args) {
   }
 };
 var Dot = class extends MObject {
@@ -99,7 +99,7 @@ var Scene = class {
     return mobj;
   }
   // Draws the scene
-  draw() {
+  draw(args) {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -109,19 +109,25 @@ var Scene = class {
       mobj.draw(this.canvas, this);
     });
   }
-  // Ticks the animation forward by one step
-  tick() {
-  }
-  // Start animation
-  start_playing() {
-  }
 };
-function Slider(container, callback, initial_value) {
+function Slider(container, callback, initial_value, min, max, step) {
   let slider = document.createElement("input");
   slider.type = "range";
-  slider.min = "0";
-  slider.max = "10";
-  slider.step = "0.001";
+  if (min == void 0) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min}`;
+  }
+  if (max == void 0) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max}`;
+  }
+  if (step == void 0) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
+  }
   slider.value = initial_value;
   slider.classList.add("slider");
   slider.id = "floatSlider";
