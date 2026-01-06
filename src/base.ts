@@ -65,7 +65,7 @@ export class Dot extends MObject {
     let [x, y] = scene.s2c(this.center[0], this.center[1]);
     let xr = scene.s2c(this.center[0] + this.radius, this.center[1])[0];
     ctx.beginPath();
-    ctx.arc(x, y, xr - x, 0, 2 * Math.PI);
+    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
     ctx.fill();
   }
 }
@@ -178,7 +178,7 @@ export class Scene {
     return [
       (this.canvas.width * (x - this.xlims[0])) /
         (this.xlims[1] - this.xlims[0]),
-      (this.canvas.height * (y - this.ylims[0])) /
+      (this.canvas.height * (this.ylims[1] - y)) /
         (this.ylims[1] - this.ylims[0]),
     ];
   }
@@ -186,7 +186,7 @@ export class Scene {
   c2s(x: number, y: number): [number, number] {
     return [
       this.xlims[0] + (x * (this.xlims[1] - this.xlims[0])) / this.canvas.width,
-      this.ylims[0] +
+      this.ylims[1] -
         (y * (this.ylims[1] - this.ylims[0])) / this.canvas.height,
     ];
   }

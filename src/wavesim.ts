@@ -1,5 +1,4 @@
 // Testing the direct feeding of a pixel array to the canvas
-import * as np from "numpy-ts";
 import { MObject, Scene, Slider } from "./base.js";
 import {
   Vec2D,
