@@ -129,6 +129,9 @@ class HeatMap extends MObject {
 //
 // TODO Should the point source at the origin be modeled as an impulse term added to dv/dt?
 // When the functions \sigma_x and \sigma_y are both 0, we retrieve the undamped wave equation.
+// TODO Make the geometry of PML more user-definable.
+// TODO Make it possible to add regions with different values of WAVE_PROPAGATION_SPEED, for refraction.
+// TODO Make it possible to add a reflective element defined by an arbitrary curve. This will require some sophisticated math.
 class WaveEquationScene extends Scene {
   time: number;
   width: number;
@@ -582,6 +585,10 @@ class WaveEquationScene extends Scene {
     heatmap.set_vals(this.uValues);
     heatmap.draw(this.canvas, this, this.imageData);
   }
+  // Initializes the first step
+  init() {
+    this.add_boundary_conditions(this.uValues, this.vValues, this.time);
+  }
   // Starts animation
   start_playing() {
     if (this.action_queue.length > 0) {
@@ -589,24 +596,13 @@ class WaveEquationScene extends Scene {
       callback();
     } else {
       this.step(0.03);
-      this.write_data(this.imageData.data);
       this.draw();
     }
     window.requestAnimationFrame(this.start_playing.bind(this));
   }
-  // Writes the pixel array to an ImageDataArray object for rendering.
-  write_data(data: ImageDataArray) {
-    for (let i = 0; i < this.width * this.height; i++) {
-      const px_val = this.uValues[i] as number;
-      const gray = (px_val - this.min_val) / (this.max_val - this.min_val);
-      const idx = i * 4;
-      data[idx] = data[idx + 1] = data[idx + 2] = 256 * clamp(gray);
-      data[idx + 3] = 255;
-    }
-  }
 }
 
-// Wave equation scene where waves emanate from a single point source
+// Wave equation scene where waves emanate from a single point source at (0, 0)
 class WaveEquationScenePointSource extends WaveEquationScene {
   point_source: Vec2D;
   w: number; // Frequency of oscillation
@@ -623,13 +619,9 @@ class WaveEquationScenePointSource extends WaveEquationScene {
   ) {
     super(canvas, imageData, width, height, min_val, max_val, dx, dy);
     // Default settings
-    this.point_source = [
-      Math.floor(this.width / 2),
-      Math.floor(this.height / 2),
-    ];
+    this.point_source = [0, 0];
     this.w = 5.0;
     this.a = 5.0;
-    this.add_boundary_conditions(this.uValues, this.vValues, this.time);
   }
 
   // Moves the point source
@@ -640,19 +632,19 @@ class WaveEquationScenePointSource extends WaveEquationScene {
     this.point_source[1] = y;
   }
   add_boundary_conditions(u: Array<number>, v: Array<number>, t: number) {
-    let ind = this.index(
-      Math.floor(this.point_source[0]),
-      Math.floor(this.point_source[1]),
-    );
+    let [x, y] = this.s2c(this.point_source[0], this.point_source[1]);
+    let ind = this.index(Math.floor(x), Math.floor(y));
     u[ind] = this.a * Math.sin(this.w * t);
     v[ind] = this.a * this.w * Math.cos(this.w * t);
   }
 }
 
 // TODO Implement reflecting surfaces, such as a conic section.
+// Wave equation scene where waves emanate from a single point source at (0, 0)
+// with a parabolic reflector defined by y + 1 = x^2 / 4
 
 // Wave equation scene where waves emanate from a pair of opposed point
-// sources centered around the middle of the scene
+// sources centered around (0, 0)
 class WaveEquationSceneDipole extends WaveEquationScene {
   dipole: Vec2D;
   w: number; // Frequency of oscillation
@@ -669,10 +661,9 @@ class WaveEquationSceneDipole extends WaveEquationScene {
   ) {
     super(canvas, imageData, width, height, min_val, max_val, dx, dy);
     // Default settings
-    this.dipole = [Math.floor(this.width / 10), 0];
+    this.dipole = [0.5, 0];
     this.w = 5.0;
     this.a = 5.0;
-    this.add_boundary_conditions(this.uValues, this.vValues, this.time);
   }
 
   // Moves the point source
@@ -691,15 +682,21 @@ class WaveEquationSceneDipole extends WaveEquationScene {
   }
   add_boundary_conditions(u: Array<number>, v: Array<number>, t: number) {
     // Positive point source
-    let ind_1 = this.index(
-      Math.floor(this.width / 2) + this.dipole[0],
-      Math.floor(this.height / 2) + this.dipole[1],
-    );
+    let [x1, y1] = this.s2c(this.dipole[0], this.dipole[1]);
+    let ind_1 = this.index(Math.floor(x1), Math.floor(y1));
     // Negative point source
-    let ind_2 = this.index(
-      Math.floor(this.width / 2) - this.dipole[0],
-      Math.floor(this.height / 2) - this.dipole[1],
-    );
+    let [x2, y2] = this.s2c(-this.dipole[0], -this.dipole[1]);
+    let ind_2 = this.index(Math.floor(x2), Math.floor(y2));
+    // // Positive point source
+    // let ind_1 = this.index(
+    //   Math.floor(this.width / 2) + this.dipole[0],
+    //   Math.floor(this.height / 2) + this.dipole[1],
+    // );
+    // // Negative point source
+    // let ind_2 = this.index(
+    //   Math.floor(this.width / 2) - this.dipole[0],
+    //   Math.floor(this.height / 2) - this.dipole[1],
+    // );
     u[ind_1] = this.a * Math.sin(this.w * t);
     v[ind_1] = this.a * this.w * Math.cos(this.w * t);
     u[ind_2] = -this.a * Math.sin(this.w * t);
@@ -755,9 +752,6 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     let height = 301;
     const dx = (xmax - xmin) / (width - 1);
     const dy = (ymax - ymin) / (height - 1);
-    const frame_length = 1 / 30;
-    const num_steps = 1;
-    const dt = frame_length / num_steps;
 
     let canvas = prepare_canvas(width, height, "scene-container");
 
@@ -769,11 +763,9 @@ class WaveEquationSceneDipole extends WaveEquationScene {
 
     // Create ImageData object
     const imageData = ctx.createImageData(width, height);
-    const data = imageData.data;
-    console.log("Prepared image data object");
 
     // Create test pattern pixel array
-    // let waveEquationSim = new WaveEquationSimulator(
+    // let waveEquationScene = new WaveEquationSimulator(
     //   width,
     //   height,
     //   -1.0,
@@ -782,18 +774,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     //   dy,
     // );
 
-    // let waveEquationSim = new WaveEquationScenePointSource(
-    //   canvas,
-    //   imageData,
-    //   width,
-    //   height,
-    //   -1.0,
-    //   1.0,
-    //   dx,
-    //   dy,
-    // );
-
-    let waveEquationSim = new WaveEquationSceneDipole(
+    let waveEquationScene = new WaveEquationSceneDipole(
       canvas,
       imageData,
       width,
@@ -804,55 +785,38 @@ class WaveEquationSceneDipole extends WaveEquationScene {
       dy,
     );
 
+    // let waveEquationScene = new WaveEquationSceneDipole(
+    //   canvas,
+    //   imageData,
+    //   width,
+    //   height,
+    //   -1.0,
+    //   1.0,
+    //   dx,
+    //   dy,
+    // );
+
+    waveEquationScene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+    waveEquationScene.init();
+
     // Make a slider which can be used to modify the mobject
     // It should send a message to the owning scene
     let x_slider = Slider(
       document.getElementById("slider-container-1") as HTMLElement,
       function (x: number) {
-        waveEquationSim.add_to_queue(
-          waveEquationSim.move_dipole_x.bind(waveEquationSim, +x),
+        waveEquationScene.add_to_queue(
+          waveEquationScene.move_dipole_x.bind(waveEquationScene, +x),
         );
       },
       // `${Math.floor(width / 2)}`,
-      `${Math.floor(width / 10)}`,
-      0,
+      `0.5`,
+      xmin,
       // width,
-      Math.floor(width / 4),
-      1,
+      xmax,
+      0.01,
     );
     x_slider.width = 200;
 
-    // let y_slider = Slider(
-    //   document.getElementById("slider-container-2") as HTMLElement,
-    //   function (y: number) {
-    //     waveEquationSim.add_to_queue(
-    //       waveEquationSim.move_dipole_y.bind(waveEquationSim, y),
-    //     );
-    //   },
-    //   // `${Math.floor(height / 2)}`,
-    //   "0",
-    //   0,
-    //   height,
-    //   1,
-    // );
-    // y_slider.width = 200;
-
-    waveEquationSim.start_playing();
-    // while (true) {
-    //   // waveEquationSim.tick();
-    //   for (let i = 0; i < num_steps; i++) {
-    //     waveEquationSim.step(dt);
-    //   }
-
-    //   // (2) Write to the imageData object
-    //   waveEquationSim.write_data(data);
-
-    //   // (3) Draw to canvas
-    //   ctx.putImageData(imageData, 0, 0);
-
-    //   // Frame rate 30 FPS
-    //   console.log("Advancing one frame");
-    //   await sleep(5 * frame_length);
-    // }
+    waveEquationScene.start_playing();
   });
 })();
