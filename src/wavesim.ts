@@ -1,4 +1,5 @@
 // Testing the direct feeding of a pixel array to the canvas
+import { logical_and } from "numpy-ts";
 import { MObject, Scene, Slider } from "./base.js";
 import {
   Vec2D,
@@ -8,6 +9,7 @@ import {
   vec_norm,
   vec_sum_list,
 } from "./base.js";
+import { ParametricFunction } from "./parametric.js";
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -581,9 +583,16 @@ class WaveEquationScene extends Scene {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    let heatmap = this.get_mobj("heatmap") as HeatMap;
-    heatmap.set_vals(this.uValues);
-    heatmap.draw(this.canvas, this, this.imageData);
+    Object.keys(this.mobjects).forEach((name) => {
+      let mobj = this.get_mobj(name);
+      if (mobj == undefined) throw new Error(`${name} not found`);
+      if (mobj instanceof HeatMap) {
+        mobj.set_vals(this.uValues);
+        mobj.draw(this.canvas, this, this.imageData);
+      } else {
+        mobj.draw(this.canvas, this);
+      }
+    });
   }
   // Initializes the first step
   init() {
@@ -642,6 +651,340 @@ class WaveEquationScenePointSource extends WaveEquationScene {
 // TODO Implement reflecting surfaces, such as a conic section.
 // Wave equation scene where waves emanate from a single point source at (0, 0)
 // with a parabolic reflector defined by y + 1 = x^2 / 4
+class WaveEquationSceneParabolic extends WaveEquationScenePointSource {
+  // Points within this distance of the region boundary will be treated
+  // as outside of the boundary.
+  tolerance: number;
+  x_pos_mask: Array<number>;
+  x_neg_mask: Array<number>;
+  y_pos_mask: Array<number>;
+  y_neg_mask: Array<number>;
+  constructor(
+    canvas: HTMLCanvasElement,
+    imageData: ImageData,
+    width: number,
+    height: number,
+    min_val: number,
+    max_val: number,
+    dx: number,
+    dy: number,
+  ) {
+    super(canvas, imageData, width, height, min_val, max_val, dx, dy);
+    this.tolerance = 0.05;
+    this.add(
+      "parabola",
+      new ParametricFunction((t) => [t, 0.25 * t ** 2 - 1], -5, 5, 20),
+    );
+    // Make mask arrays
+    this._recalculate_masks();
+  }
+  // Returns whether the point (x, y) in scene coordinates is inside the domain.
+  inside_region(x: number, y: number): boolean {
+    return y + 1 > 0.25 * x ** 2;
+  }
+  init() {
+    super.init();
+    this._recalculate_masks();
+  }
+  _recalculate_masks() {
+    // Make mask arrays
+    this.x_pos_mask = [];
+    this.x_neg_mask = [];
+    this.y_pos_mask = [];
+    this.y_neg_mask = [];
+    let a_pos, a_neg;
+    for (let y_arr = 0; y_arr < this.height; y_arr++) {
+      for (let x_arr = 0; x_arr < this.width; x_arr++) {
+        [a_pos, a_neg] = this._calc_bdy_dists_x(x_arr, y_arr);
+        this.x_pos_mask.push(a_pos);
+        this.x_neg_mask.push(a_neg);
+        [a_pos, a_neg] = this._calc_bdy_dists_y(x_arr, y_arr);
+        this.y_pos_mask.push(a_pos);
+        this.y_neg_mask.push(a_neg);
+      }
+    }
+  }
+  // [0, 0] means an exterior point
+  // [1, 1] means an interior point
+  // A value between 0 and 1 in the first coordinate means moving to the right crosses the boundary
+  // A value between 0 and 1 in the second coordinate means moving to the left crosses the boundary
+  _calc_bdy_dists_x(x_arr: number, y_arr: number): Vec2D {
+    let [x, y] = this.c2s(x_arr, y_arr);
+    if (!this.inside_region(x, y)) {
+      // Exterior case
+      return [0, 0];
+    } else {
+      let a_pos, a_neg;
+      if (!this.inside_region(x + this.dx, y)) {
+        // Near right boundary case, and x is positive
+        // TODO Refactor in terms of inside_region
+        a_pos = Math.max(
+          this.tolerance,
+          Math.abs(Math.sqrt((y + 1) / 0.25) - x) / this.dx,
+        );
+      } else {
+        a_pos = 1;
+      }
+      if (!this.inside_region(x - this.dx, y)) {
+        // Near left boundary case, and x is negative
+        // TODO Refactor in terms of inside_region
+        a_neg = Math.max(
+          this.tolerance,
+          Math.abs(Math.sqrt((y + 1) / 0.25) + x) / this.dx,
+        );
+      } else {
+        a_neg = 1;
+      }
+      return [a_pos, a_neg];
+    }
+  }
+  _calc_bdy_dists_y(x_arr: number, y_arr: number): Vec2D {
+    let [x, y] = this.c2s(x_arr, y_arr);
+    if (!this.inside_region(x, y)) {
+      // Exterior case
+      return [0, 0];
+    } else {
+      let a_pos, a_neg;
+      if (!this.inside_region(x, y + this.dy)) {
+        // Near boundary case
+        a_pos = Math.max(
+          this.tolerance,
+          Math.abs(0.25 * x ** 2 - y - 1) / this.dy,
+        );
+      } else {
+        a_pos = 1;
+      }
+      if (!this.inside_region(x, y - this.dy)) {
+        // Near boundary case
+        a_neg = Math.max(
+          this.tolerance,
+          Math.abs(0.25 * x ** 2 - y - 1) / this.dy,
+        );
+      } else {
+        a_neg = 1;
+      }
+      return [a_pos, a_neg];
+    }
+  }
+  get_bdy_dists_x(x_arr: number, y_arr: number): Vec2D {
+    return [
+      this.x_pos_mask[this.index(x_arr, y_arr)] as number,
+      this.x_neg_mask[this.index(x_arr, y_arr)] as number,
+    ];
+  }
+  get_bdy_dists_y(x_arr: number, y_arr: number): Vec2D {
+    return [
+      this.y_pos_mask[this.index(x_arr, y_arr)] as number,
+      this.y_neg_mask[this.index(x_arr, y_arr)] as number,
+    ];
+  }
+  d_x_entry(arr: Array<number>, x: number, y: number): number {
+    // TODO Pre-calculate the foo matrices.
+    let [a_pos, a_neg] = this.get_bdy_dists_x(x, y);
+    if (a_pos == 0 && a_neg == 0) {
+      // If the point is in the exterior, return 0
+      return 0;
+    } else if (a_pos == 1 && a_neg == 1) {
+      // If the point is in the interior, calculate normally.
+      return super.d_x_entry(arr, x, y);
+    } else if (0 < a_pos && a_pos < 1 && a_neg == 1) {
+      // If the point is near a boundary on its right but not its left, use
+      // (f(x + a*dx, y) - f(x, y)) / (2 * a * dx) + d_x_neg / 2
+      if (x == 0) {
+        // If we're at a horizontal edge, then we don't have enough space to calculate the derivative
+        // on either side, so return 0
+        return 0;
+      } else {
+        return (
+          ((arr[this.index(x - 1, y)] as number) -
+            (arr[this.index(x, y)] as number)) /
+            (2 * a_pos * this.dx) +
+          ((arr[this.index(x, y)] as number) -
+            (arr[this.index(x - 1, y)] as number)) /
+            (2 * this.dx)
+        );
+      }
+    } else if (a_pos == 1 && 0 < a_neg && a_neg < 1) {
+      // If the point is near a boundary on its left but not its right, use
+      // d_x_pos / 2 + (f(x, y) - f(x - a*dx, y)) / (2 * a * dx)
+      if (x == this.width - 1) {
+        // If we're at a horizontal edge, then we don't have enough space to calculate the derivative
+        // on either side, so return 0
+        return 0;
+      } else {
+        return (
+          ((arr[this.index(x + 1, y)] as number) -
+            (arr[this.index(x, y)] as number)) /
+            (2 * this.dx) +
+          ((arr[this.index(x, y)] as number) -
+            (arr[this.index(x - 1, y)] as number)) /
+            (2 * a_neg * this.dx)
+        );
+      }
+    } else if (0 < a_pos && a_pos < 1 && 0 < a_neg && a_neg < 1) {
+      // If the point is near a boundary on both sides, use both masks
+      return (
+        -(arr[this.index(x, y)] as number) / (2 * a_pos * this.dx) +
+        (arr[this.index(x, y)] as number) / (2 * a_neg * this.dx)
+      );
+    } else {
+      throw new Error("Invalid mask values");
+    }
+  }
+  d_y_entry(arr: Array<number>, x: number, y: number): number {
+    let [a_pos, a_neg] = this.get_bdy_dists_y(x, y);
+    if (a_pos == 0 && a_neg == 0) {
+      return 0;
+    } else if (a_pos == 1 && a_neg == 1) {
+      return super.d_y_entry(arr, x, y);
+    } else if (0 < a_pos && a_pos < 1 && a_neg == 1) {
+      if (y == 0) {
+        // If we're at a vertical edge, then we don't have enough space to calculate the derivative
+        // on either side, so return 0
+        return 0;
+      } else {
+        return (
+          ((arr[this.index(x, y + 1)] as number) -
+            (arr[this.index(x, y)] as number)) /
+            (2 * a_pos * this.dy) +
+          ((arr[this.index(x, y)] as number) -
+            (arr[this.index(x, y - 1)] as number)) /
+            (2 * this.dy)
+        );
+      }
+    } else if (a_pos == 1 && 0 < a_neg && a_neg < 1) {
+      if (y == this.height - 1) {
+        // If we're at a vertical edge, then we don't have enough space to calculate the derivative
+        // on either side, so return 0
+        return 0;
+      } else {
+        return (
+          ((arr[this.index(x, y + 1)] as number) -
+            (arr[this.index(x, y)] as number)) /
+            (2 * this.dy) +
+          ((arr[this.index(x, y)] as number) -
+            (arr[this.index(x, y - 1)] as number)) /
+            (2 * a_neg * this.dy)
+        );
+      }
+    } else if (0 < a_pos && a_pos < 1 && 0 < a_neg && a_neg < 1) {
+      return (
+        ((arr[this.index(x, y + 1)] as number) -
+          (arr[this.index(x, y)] as number)) /
+          (2 * a_pos * this.dy) +
+        ((arr[this.index(x, y)] as number) -
+          (arr[this.index(x, y - 1)] as number)) /
+          (2 * a_neg * this.dy)
+      );
+    } else {
+      throw new Error("Invalid mask values");
+    }
+  }
+  l_x_entry(arr: Array<number>, x: number, y: number): number {
+    // TODO Pre-calculate the foo matrices.
+    let [a_pos, a_neg] = this.get_bdy_dists_x(x, y);
+    if (a_pos == 0 && a_neg == 0) {
+      // If the point is in the exterior, return 0
+      return 0;
+    } else if (a_pos == 1 && a_neg == 1) {
+      // If the point is in the interior, calculate normally.
+      return super.l_x_entry(arr, x, y);
+    } else if (0 < a_pos && a_pos < 1 && a_neg == 1) {
+      // If the point is near a boundary on its right but not its left, use
+      // (f(x + a*dx, y) - f(x, y) / (a * dx) - d_x_neg) / dx
+      if (x == 0) {
+        return 0;
+      } else {
+        return (
+          ((arr[this.index(x + 1, y)] as number) -
+            (arr[this.index(x, y)] as number)) /
+            (a_pos * this.dx ** 2) -
+          ((arr[this.index(x, y)] as number) -
+            (arr[this.index(x - 1, y)] as number)) /
+            this.dx ** 2
+        );
+      }
+    } else if (a_pos == 1 && 0 < a_neg && a_neg < 1) {
+      // If the point is near a boundary on its left but not its right, use
+      // (d_x_pos - (f(x, y) - f(x - a*dx, y)) / (a * dx)) / dx
+      if (x == this.width - 1) {
+        return 0;
+      } else {
+        return (
+          ((arr[this.index(x + 1, y)] as number) -
+            (arr[this.index(x, y)] as number)) /
+            this.dx ** 2 -
+          ((arr[this.index(x, y)] as number) -
+            (arr[this.index(x - 1, y)] as number)) /
+            (a_neg * this.dx ** 2)
+        );
+      }
+    } else if (0 < a_pos && a_pos < 1 && 0 < a_neg && a_neg < 1) {
+      // If the point is near a boundary on both sides, use both masks
+      return (
+        ((arr[this.index(x + 1, y)] as number) -
+          (arr[this.index(x, y)] as number)) /
+          (a_pos * this.dx ** 2) -
+        ((arr[this.index(x, y)] as number) -
+          (arr[this.index(x - 1, y)] as number)) /
+          (a_neg * this.dx ** 2)
+      );
+    } else {
+      throw new Error("Invalid mask values");
+    }
+  }
+  l_y_entry(arr: Array<number>, x: number, y: number): number {
+    let [a_pos, a_neg] = this.get_bdy_dists_y(x, y);
+    if (a_pos == 0 && a_neg == 0) {
+      return 0;
+    } else if (a_pos == 1 && a_neg == 1) {
+      return super.l_y_entry(arr, x, y);
+    } else if (0 < a_pos && a_pos < 1 && a_neg == 1) {
+      if (y == 0) {
+        return 0;
+      } else {
+        return (
+          ((arr[this.index(x, y + 1)] as number) -
+            (arr[this.index(x, y)] as number)) /
+            (a_pos * this.dy ** 2) -
+          ((arr[this.index(x, y)] as number) -
+            (arr[this.index(x, y - 1)] as number)) /
+            this.dy ** 2
+        );
+      }
+    } else if (a_pos == 1 && 0 < a_neg && a_neg < 1) {
+      if (y == this.height - 1) {
+        return 0;
+      } else {
+        return (
+          ((arr[this.index(x, y + 1)] as number) -
+            (arr[this.index(x, y)] as number)) /
+            this.dy ** 2 -
+          ((arr[this.index(x, y)] as number) -
+            (arr[this.index(x, y - 1)] as number)) /
+            (a_neg * this.dy ** 2)
+        );
+      }
+    } else if (0 < a_pos && a_pos < 1 && 0 < a_neg && a_neg < 1) {
+      return (
+        ((arr[this.index(x, y + 1)] as number) -
+          (arr[this.index(x, y)] as number)) /
+          (a_pos * this.dy ** 2) -
+        ((arr[this.index(x, y)] as number) -
+          (arr[this.index(x, y - 1)] as number)) /
+          (a_neg * this.dy ** 2)
+      );
+    } else {
+      throw new Error("Invalid mask values");
+    }
+  }
+  add_boundary_conditions(u: Array<number>, v: Array<number>, t: number) {
+    let [x, y] = this.s2c(this.point_source[0], this.point_source[1]);
+    let ind = this.index(Math.floor(x), Math.floor(y));
+    u[ind] = this.a * Math.sin(this.w * t);
+    v[ind] = this.a * this.w * Math.cos(this.w * t);
+  }
+}
 
 // Wave equation scene where waves emanate from a pair of opposed point
 // sources centered around (0, 0)
@@ -748,10 +1091,10 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     const ymax = 5;
 
     // Prepare the canvas and scene
-    let width = 301;
-    let height = 301;
-    const dx = (xmax - xmin) / (width - 1);
-    const dy = (ymax - ymin) / (height - 1);
+    let width = 150;
+    let height = 150;
+    const dx = (xmax - xmin) / width;
+    const dy = (ymax - ymin) / height;
 
     let canvas = prepare_canvas(width, height, "scene-container");
 
@@ -774,7 +1117,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     //   dy,
     // );
 
-    let waveEquationScene = new WaveEquationSceneDipole(
+    let waveEquationScene = new WaveEquationSceneParabolic(
       canvas,
       imageData,
       width,
@@ -801,21 +1144,21 @@ class WaveEquationSceneDipole extends WaveEquationScene {
 
     // Make a slider which can be used to modify the mobject
     // It should send a message to the owning scene
-    let x_slider = Slider(
-      document.getElementById("slider-container-1") as HTMLElement,
-      function (x: number) {
-        waveEquationScene.add_to_queue(
-          waveEquationScene.move_dipole_x.bind(waveEquationScene, +x),
-        );
-      },
-      // `${Math.floor(width / 2)}`,
-      `0.5`,
-      xmin,
-      // width,
-      xmax,
-      0.01,
-    );
-    x_slider.width = 200;
+    // let x_slider = Slider(
+    //   document.getElementById("slider-container-1") as HTMLElement,
+    //   function (x: number) {
+    //     waveEquationScene.add_to_queue(
+    //       waveEquationScene.move_dipole_x.bind(waveEquationScene, +x),
+    //     );
+    //   },
+    //   // `${Math.floor(width / 2)}`,
+    //   `0.5`,
+    //   xmin,
+    //   // width,
+    //   xmax,
+    //   0.01,
+    // );
+    // x_slider.width = 200;
 
     waveEquationScene.start_playing();
   });
