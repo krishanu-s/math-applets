@@ -176,12 +176,14 @@ class CatenaryScene extends Scene {
       ]);
     }
     // Add objects
+    // TODO: Make these invisible
     for (let i = 0; i <= num_segments; i++) {
       this.add(
         `p${i}`,
         new Dot(this.get_position(i)[0], this.get_position(i)[1], 0.08),
       );
     }
+    // TODO: Use a sequence of BezierCurve objects instead
     for (let i = 1; i <= num_segments; i++) {
       this.add(
         `v${i}`,
@@ -271,7 +273,7 @@ class CatenaryScene extends Scene {
     );
 
     return vec_sum_list([
-      [0, this.gravity / this.num_segments],
+      [0, -this.gravity / this.num_segments],
       vec_scale(this._get_velocity(index, state), -this.friction_constant),
       spring_term_1,
       spring_term_2,
@@ -406,8 +408,8 @@ class CatenaryScene extends Scene {
     let canvas = prepare_canvas(width, height, "scene-container");
 
     // Define the catenary scene
-    let p0: Vec2D = [-2, -2];
-    let p1: Vec2D = [2, -3];
+    let p0: Vec2D = [-2, 2];
+    let p1: Vec2D = [2, 3];
     let length = 6;
     let num_segments = 20;
     let scene = new CatenaryScene(canvas, p0, p1, length, num_segments);

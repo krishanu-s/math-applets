@@ -11,23 +11,13 @@ import {
 } from "./base.js";
 import { ParametricFunction } from "./parametric.js";
 
-async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 const WAVE_PROPAGATION_SPEED = 1.0;
 const PML_STRENGTH = 5.0;
 const PML_WIDTH = 1.0;
 
-// Clamps a number to the interval [0, 1].
+// Clamps a number to the interval [xmin, xmax].
 function clamp(x: number, xmin: number, xmax: number): number {
-  if (x < xmin) {
-    return xmin;
-  } else if (x > xmax) {
-    return xmax;
-  } else {
-    return x;
-  }
+  return Math.min(xmax, Math.max(xmin, x));
 }
 
 // The function 1 / (1 + e^{-x})
@@ -150,6 +140,7 @@ class WaveEquationScene extends Scene {
   point_source: Vec2D;
   imageData: ImageData;
   action_queue: Array<CallableFunction>;
+  paused: boolean;
   constructor(
     canvas: HTMLCanvasElement,
     imageData: ImageData,
@@ -181,11 +172,15 @@ class WaveEquationScene extends Scene {
       Math.floor(this.height / 2),
     ];
     this.action_queue = [];
+    this.paused = true;
 
     this.add(
       "heatmap",
       new HeatMap(width, height, min_val, max_val, this.uValues),
     );
+  }
+  toggle_pause() {
+    this.paused = !this.paused;
   }
   // Adds to the action queue
   add_to_queue(callback: () => void) {
@@ -347,7 +342,7 @@ class WaveEquationScene extends Scene {
           5 * (arr[this.index(1, y)] as number) +
           4 * (arr[this.index(2, y)] as number) -
           (arr[this.index(3, y)] as number)) /
-        (this.dx * this.dx)
+        this.dx ** 2
       );
     } else if (x == this.width - 1) {
       return (
@@ -355,14 +350,14 @@ class WaveEquationScene extends Scene {
           5 * (arr[this.index(this.width - 2, y)] as number) +
           4 * (arr[this.index(this.width - 3, y)] as number) -
           (arr[this.index(this.width - 4, y)] as number)) /
-        (this.dx * this.dx)
+        this.dx ** 2
       );
     } else {
       return (
         ((arr[this.index(x + 1, y)] as number) -
           2 * (arr[this.index(x, y)] as number) +
           (arr[this.index(x - 1, y)] as number)) /
-        (this.dx * this.dx)
+        this.dx ** 2
       );
     }
   }
@@ -393,7 +388,7 @@ class WaveEquationScene extends Scene {
           5 * (arr[this.index(x, 1)] as number) +
           4 * (arr[this.index(x, 2)] as number) -
           (arr[this.index(x, 3)] as number)) /
-        (this.dy * this.dy)
+        this.dy ** 2
       );
     } else if (y == this.height - 1) {
       return (
@@ -401,14 +396,14 @@ class WaveEquationScene extends Scene {
           5 * (arr[this.index(x, this.height - 2)] as number) +
           4 * (arr[this.index(x, this.height - 3)] as number) -
           (arr[this.index(x, this.height - 4)] as number)) /
-        (this.dy * this.dy)
+        this.dy ** 2
       );
     } else {
       return (
         ((arr[this.index(x, y + 1)] as number) -
           2 * (arr[this.index(x, y)] as number) +
           (arr[this.index(x, y - 1)] as number)) /
-        (this.dy * this.dy)
+        this.dy ** 2
       );
     }
   }
@@ -421,9 +416,9 @@ class WaveEquationScene extends Scene {
   }
   // First-derivative in time for u-array
   uDot(v: Array<number>): Array<number> {
-    let arr = [];
+    let arr = new Array(this.width * this.height);
     for (let ind = 0; ind < this.width * this.height; ind++) {
-      arr.push(v[ind] as number);
+      arr[ind] = v[ind] as number;
     }
     return arr;
   }
@@ -508,7 +503,7 @@ class WaveEquationScene extends Scene {
       py[i] = (this.pyValues[i] as number) + (dt / 2) * (dpy_1[i] as number);
     }
 
-    this.add_boundary_conditions(u, v, this.time + dt / 2);
+    this.add_boundary_conditions(u, v, px, py, this.time + dt / 2);
 
     let du_2 = this.uDot(v);
     let dv_2 = this.vDot(u, v, px, py);
@@ -522,7 +517,7 @@ class WaveEquationScene extends Scene {
       py[i] = (this.pyValues[i] as number) + (dt / 2) * (dpy_2[i] as number);
     }
 
-    this.add_boundary_conditions(u, v, this.time + dt / 2);
+    this.add_boundary_conditions(u, v, px, py, this.time + dt / 2);
 
     let du_3 = this.uDot(v);
     let dv_3 = this.vDot(u, v, px, py);
@@ -536,7 +531,7 @@ class WaveEquationScene extends Scene {
       py[i] = (this.pyValues[i] as number) + dt * (dpy_3[i] as number);
     }
 
-    this.add_boundary_conditions(u, v, this.time + dt);
+    this.add_boundary_conditions(u, v, px, py, this.time + dt);
 
     let du_4 = this.uDot(v);
     let dv_4 = this.vDot(u, v, px, py);
@@ -573,12 +568,20 @@ class WaveEquationScene extends Scene {
         (dpy_4[ind] as number) * (dt / 6);
     }
 
-    this.add_boundary_conditions(this.uValues, this.vValues, this.time + dt);
+    this.add_boundary_conditions(
+      this.uValues,
+      this.vValues,
+      this.pxValues,
+      this.pyValues,
+      this.time + dt,
+    );
     this.time += dt;
   }
   add_boundary_conditions(
     u: Array<number>,
     v: Array<number>,
+    px: Array<number>,
+    py: Array<number>,
     t: number,
   ): void {}
   // Draws the scene
@@ -599,18 +602,28 @@ class WaveEquationScene extends Scene {
   }
   // Initializes the first step
   init() {
-    this.add_boundary_conditions(this.uValues, this.vValues, this.time);
+    this.add_boundary_conditions(
+      this.uValues,
+      this.vValues,
+      this.pxValues,
+      this.pyValues,
+      this.time,
+    );
   }
   // Starts animation
-  start_playing() {
-    if (this.action_queue.length > 0) {
+  start_playing(until: number | undefined) {
+    if (this.paused) {
+      return;
+    } else if (this.action_queue.length > 0) {
       let callback = this.action_queue.shift() as () => void;
       callback();
+    } else if (this.time > (until as number)) {
+      return;
     } else {
       this.step(this.dt);
       this.draw();
     }
-    window.requestAnimationFrame(this.start_playing.bind(this));
+    window.requestAnimationFrame(this.start_playing.bind(this, until));
   }
 }
 
@@ -644,7 +657,13 @@ class WaveEquationScenePointSource extends WaveEquationScene {
   move_point_source_y(y: number) {
     this.point_source[1] = y;
   }
-  add_boundary_conditions(u: Array<number>, v: Array<number>, t: number) {
+  add_boundary_conditions(
+    u: Array<number>,
+    v: Array<number>,
+    px: Array<number>,
+    py: Array<number>,
+    t: number,
+  ) {
     let [x, y] = this.s2c(this.point_source[0], this.point_source[1]);
     let ind = this.index(Math.floor(x), Math.floor(y));
     u[ind] = this.a * Math.sin(this.w * t);
@@ -654,7 +673,8 @@ class WaveEquationScenePointSource extends WaveEquationScene {
 
 // TODO Implement reflecting surfaces, such as a conic section.
 // Wave equation scene where waves emanate from a single point source at (0, 0)
-// with a parabolic reflector defined by y + 1 = x^2 / 4
+// with a parabolic reflector with focus at (0, 0) and focal length f = 1
+// defined by y + f = x^2 / (4 * f)
 class WaveEquationSceneParabolic extends WaveEquationScenePointSource {
   // Points within this distance of the region boundary will be treated
   // as outside of the boundary.
@@ -662,6 +682,7 @@ class WaveEquationSceneParabolic extends WaveEquationScenePointSource {
   x_neg_mask: Array<number>;
   y_pos_mask: Array<number>;
   y_neg_mask: Array<number>;
+  focal_length: number;
   constructor(
     canvas: HTMLCanvasElement,
     imageData: ImageData,
@@ -674,6 +695,7 @@ class WaveEquationSceneParabolic extends WaveEquationScenePointSource {
     dt: number,
   ) {
     super(canvas, imageData, width, height, min_val, max_val, dx, dy, dt);
+    this.focal_length = 1;
     this.add(
       "parabola",
       new ParametricFunction((t) => [t, 0.25 * t ** 2 - 1], -5, 5, 20),
@@ -685,9 +707,31 @@ class WaveEquationSceneParabolic extends WaveEquationScenePointSource {
     this.y_neg_mask = new Array(this.width * this.height).fill(0);
     this._recalculate_masks();
   }
+  set_focal_length(f: number) {
+    this.focal_length = f;
+    let parabola = this.get_mobj("parabola") as ParametricFunction;
+    parabola.set_function((t) => [t, t ** 2 / (4 * f) - f]);
+    this._recalculate_masks();
+    this.zero_outside_region();
+  }
   // Returns whether the point (x, y) in scene coordinates is inside the domain.
   inside_region(x: number, y: number): boolean {
-    return y + 1 > 0.25 * x ** 2;
+    return y + this.focal_length > (1 / (4 * this.focal_length)) * x ** 2;
+  }
+  // Sets all points outside the region to 0
+  zero_outside_region() {
+    let x, y;
+    for (let y_arr = 0; y_arr < this.height; y_arr++) {
+      for (let x_arr = 0; x_arr < this.width; x_arr++) {
+        [x, y] = this.c2s(x_arr, y_arr);
+        if (!this.inside_region(x, y)) {
+          this.uValues[this.index(x_arr, y_arr)] = 0;
+          this.vValues[this.index(x_arr, y_arr)] = 0;
+          this.pxValues[this.index(x_arr, y_arr)] = 0;
+          this.pyValues[this.index(x_arr, y_arr)] = 0;
+        }
+      }
+    }
   }
   // *** Initialization methods ***
   init() {
@@ -725,14 +769,20 @@ class WaveEquationSceneParabolic extends WaveEquationScenePointSource {
       if (!this.inside_region(x + this.dx, y)) {
         // Near right boundary case, and x is positive
         // TODO Refactor in terms of inside_region
-        a_pos = Math.abs(Math.sqrt((y + 1) / 0.25) - x) / this.dx;
+        a_pos =
+          Math.abs(
+            Math.sqrt((y + this.focal_length) * 4 * this.focal_length) - x,
+          ) / this.dx;
       } else {
         a_pos = 1;
       }
       if (!this.inside_region(x - this.dx, y)) {
         // Near left boundary case, and x is negative
         // TODO Refactor in terms of inside_region
-        a_neg = Math.abs(Math.sqrt((y + 1) / 0.25) + x) / this.dx;
+        a_neg =
+          Math.abs(
+            Math.sqrt((y + this.focal_length) * 4 * this.focal_length) + x,
+          ) / this.dx;
       } else {
         a_neg = 1;
       }
@@ -748,13 +798,17 @@ class WaveEquationSceneParabolic extends WaveEquationScenePointSource {
       let a_pos, a_neg;
       if (!this.inside_region(x, y + this.dy)) {
         // Near boundary case
-        a_pos = Math.abs(0.25 * x ** 2 - y - 1) / this.dy;
+        a_pos =
+          Math.abs(x ** 2 / (4 * this.focal_length) - y - this.focal_length) /
+          this.dy;
       } else {
         a_pos = 1;
       }
       if (!this.inside_region(x, y - this.dy)) {
         // Near boundary case
-        a_neg = Math.abs(0.25 * x ** 2 - y - 1) / this.dy;
+        a_neg =
+          Math.abs(x ** 2 / (4 * this.focal_length) - y - this.focal_length) /
+          this.dy;
       } else {
         a_neg = 1;
       }
@@ -776,6 +830,50 @@ class WaveEquationSceneParabolic extends WaveEquationScenePointSource {
       this.y_neg_mask[this.index(x_arr, y_arr)] as number,
     ];
   }
+  d_x_plus(arr: Array<number>, x: number, y: number, a_plus: number): number {
+    if (x == this.width - 1) {
+      return -(arr[this.index(x, y)] as number) / (a_plus * this.dx);
+    } else {
+      return (
+        ((arr[this.index(x + 1, y)] as number) -
+          (arr[this.index(x, y)] as number)) /
+        (a_plus * this.dx)
+      );
+    }
+  }
+  d_x_minus(arr: Array<number>, x: number, y: number, a_minus: number): number {
+    if (x == 0) {
+      return (arr[this.index(x, y)] as number) / (a_minus * this.dx);
+    } else {
+      return (
+        ((arr[this.index(x, y)] as number) -
+          (arr[this.index(x - 1, y)] as number)) /
+        (a_minus * this.dx)
+      );
+    }
+  }
+  d_y_plus(arr: Array<number>, x: number, y: number, a_plus: number): number {
+    if (y == this.height - 1) {
+      return -(arr[this.index(x, y)] as number) / (a_plus * this.dy);
+    } else {
+      return (
+        ((arr[this.index(x, y + 1)] as number) -
+          (arr[this.index(x, y)] as number)) /
+        (a_plus * this.dy)
+      );
+    }
+  }
+  d_y_minus(arr: Array<number>, x: number, y: number, a_minus: number): number {
+    if (y == 0) {
+      return (arr[this.index(x, y)] as number) / (a_minus * this.dy);
+    } else {
+      return (
+        ((arr[this.index(x, y)] as number) -
+          (arr[this.index(x, y - 1)] as number)) /
+        (a_minus * this.dy)
+      );
+    }
+  }
   // Calculates an entry of (d/dx)(array)
   d_x_entry(arr: Array<number>, x: number, y: number): number {
     let [a_plus, a_minus] = this.get_bdy_dists_x(x, y);
@@ -786,15 +884,11 @@ class WaveEquationSceneParabolic extends WaveEquationScenePointSource {
       // If the point is in the interior, calculate normally.
       return super.d_x_entry(arr, x, y);
     } else {
-      let d_plus =
-        ((arr[this.index(x + 1, y)] as number) -
-          (arr[this.index(x, y)] as number)) /
-        (a_plus * this.dx);
-      let d_minus =
-        ((arr[this.index(x, y)] as number) -
-          (arr[this.index(x - 1, y)] as number)) /
-        (a_minus * this.dx);
-      return (a_minus * d_plus + a_plus * d_minus) / (a_minus + a_plus);
+      return (
+        (a_minus * this.d_x_plus(arr, x, y, a_plus) +
+          a_plus * this.d_x_minus(arr, x, y, a_minus)) /
+        (a_minus + a_plus)
+      );
     }
   }
   // Calculates an entry of (d/dy)(array)
@@ -805,15 +899,11 @@ class WaveEquationSceneParabolic extends WaveEquationScenePointSource {
     } else if (a_plus == 1 && a_minus == 1) {
       return super.d_y_entry(arr, x, y);
     } else {
-      let d_plus =
-        ((arr[this.index(x, y + 1)] as number) -
-          (arr[this.index(x, y)] as number)) /
-        (a_plus * this.dy);
-      let d_minus =
-        ((arr[this.index(x, y)] as number) -
-          (arr[this.index(x, y - 1)] as number)) /
-        (a_minus * this.dy);
-      return (a_minus * d_plus + a_plus * d_minus) / (a_minus + a_plus);
+      return (
+        (a_minus * this.d_y_plus(arr, x, y, a_plus) +
+          a_plus * this.d_y_minus(arr, x, y, a_minus)) /
+        (a_minus + a_plus)
+      );
     }
   }
   // Calculates an entry of (d/dx)(d/dx)(array)
@@ -827,15 +917,11 @@ class WaveEquationSceneParabolic extends WaveEquationScenePointSource {
       // If the point is in the interior, calculate normally.
       return super.l_x_entry(arr, x, y);
     } else {
-      let d_plus =
-        ((arr[this.index(x + 1, y)] as number) -
-          (arr[this.index(x, y)] as number)) /
-        (a_plus * this.dx);
-      let d_minus =
-        ((arr[this.index(x, y)] as number) -
-          (arr[this.index(x - 1, y)] as number)) /
-        (a_minus * this.dx);
-      return (d_plus - d_minus) / (((a_minus + a_plus) * this.dx) / 2);
+      return (
+        (this.d_x_plus(arr, x, y, a_plus) -
+          this.d_x_minus(arr, x, y, a_minus)) /
+        (((a_minus + a_plus) * this.dx) / 2)
+      );
     }
   }
   // Calculates an entry of (d/dy)(d/dy)(array)
@@ -846,28 +932,31 @@ class WaveEquationSceneParabolic extends WaveEquationScenePointSource {
     } else if (a_plus == 1 && a_minus == 1) {
       return super.l_y_entry(arr, x, y);
     } else {
-      let d_plus =
-        ((arr[this.index(x, y + 1)] as number) -
-          (arr[this.index(x, y)] as number)) /
-        (a_plus * this.dy);
-      let d_minus =
-        ((arr[this.index(x, y)] as number) -
-          (arr[this.index(x, y - 1)] as number)) /
-        (a_minus * this.dy);
-      return (d_plus - d_minus) / (((a_minus + a_plus) * this.dy) / 2);
+      return (
+        (this.d_y_plus(arr, x, y, a_plus) -
+          this.d_y_minus(arr, x, y, a_minus)) /
+        (((a_minus + a_plus) * this.dy) / 2)
+      );
     }
   }
-  add_boundary_conditions(u: Array<number>, v: Array<number>, t: number) {
+  add_boundary_conditions(
+    u: Array<number>,
+    v: Array<number>,
+    px: Array<number>,
+    py: Array<number>,
+    t: number,
+  ) {
     let [x, y] = this.s2c(this.point_source[0], this.point_source[1]);
     let ind = this.index(Math.floor(x), Math.floor(y));
     u[ind] = this.a * Math.sin(this.w * t);
     v[ind] = this.a * this.w * Math.cos(this.w * t);
 
     // Clamp for numerical stability
-    // TODO USe min_val and max_val
     for (let ind = 0; ind < this.width * this.height; ind++) {
       u[ind] = clamp(u[ind] as number, this.min_val, this.max_val);
       v[ind] = clamp(v[ind] as number, this.min_val, this.max_val);
+      px[ind] = clamp(px[ind] as number, this.min_val, this.max_val);
+      py[ind] = clamp(py[ind] as number, this.min_val, this.max_val);
     }
   }
 }
@@ -910,7 +999,13 @@ class WaveEquationSceneDipole extends WaveEquationScene {
   set_w(w: number) {
     this.w = w;
   }
-  add_boundary_conditions(u: Array<number>, v: Array<number>, t: number) {
+  add_boundary_conditions(
+    u: Array<number>,
+    v: Array<number>,
+    px: Array<number>,
+    py: Array<number>,
+    t: number,
+  ) {
     // Positive point source
     let [x1, y1] = this.s2c(this.dipole[0], this.dipole[1]);
     let ind_1 = this.index(Math.floor(x1), Math.floor(y1));
@@ -976,8 +1071,8 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     const xmax = 5;
     const ymin = -5;
     const ymax = 5;
-    const min_val = -20;
-    const max_val = 20;
+    const min_val = -10;
+    const max_val = 10;
 
     // Prepare the canvas and scene
     let width = 200;
@@ -1010,26 +1105,25 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     );
 
     waveEquationScene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-    waveEquationScene.init();
 
     // Make a slider which can be used to modify the mobject
     // It should send a message to the owning scene
-    // let x_slider = Slider(
-    //   document.getElementById("slider-container-1") as HTMLElement,
-    //   function (x: number) {
-    //     waveEquationScene.add_to_queue(
-    //       waveEquationScene.move_dipole_x.bind(waveEquationScene, +x),
-    //     );
-    //   },
-    //   // `${Math.floor(width / 2)}`,
-    //   `0.5`,
-    //   xmin,
-    //   // width,
-    //   xmax,
-    //   0.01,
-    // );
-    // x_slider.width = 200;
+    let y_slider = Slider(
+      document.getElementById("slider-container-1") as HTMLElement,
+      function (f: number) {
+        waveEquationScene.add_to_queue(
+          waveEquationScene.set_focal_length.bind(waveEquationScene, +f),
+        );
+      },
+      `1`,
+      0.5,
+      3,
+      0.01,
+    );
+    y_slider.width = 200;
 
-    waveEquationScene.start_playing();
+    waveEquationScene.init();
+    waveEquationScene.toggle_pause();
+    waveEquationScene.start_playing(undefined);
   });
 })();

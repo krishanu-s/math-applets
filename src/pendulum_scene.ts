@@ -17,10 +17,10 @@ class PendulumScene extends Scene {
     this.length = length;
     this.top = top;
     // TODO Width is 1.0, but make it modifiable
-    this.add("string", new Line(top, [top[0], top[1] + length], stroke_width));
+    this.add("string", new Line(top, [top[0], top[1] - length], stroke_width));
 
     // TODO Radius is 0.3, but make it modifiable
-    this.add("bob", new Dot(top[0], top[1] + length, radius));
+    this.add("bob", new Dot(top[0], top[1] - length, radius));
 
     // Position and velocity
     this.state = [0.0, 0.0];
@@ -31,8 +31,8 @@ class PendulumScene extends Scene {
 
     // Get the xy coordinates of the new position
     let theta = s / this.length;
-    let sx = this.top[0] + this.length * Math.sin(theta);
-    let sy = this.top[1] + this.length * Math.cos(theta);
+    let sx = this.top[0] - this.length * Math.sin(theta);
+    let sy = this.top[1] - this.length * Math.cos(theta);
 
     // Set the string
     let string = this.get_mobj("string") as Line;
@@ -158,7 +158,7 @@ class PendulumScene extends Scene {
 
     // Define the pendulum scene
     let length = 6.0;
-    let top: [number, number] = [0.0, -4.0];
+    let top: [number, number] = [0.0, 4.0];
     let scene = new PendulumScene(canvas, length, top, 0.05, 0.3);
 
     // Sets the initial parameters
