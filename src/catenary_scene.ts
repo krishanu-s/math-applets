@@ -1,5 +1,6 @@
 // import * as np from "numpy-ts";
-import { Line, Dot, Scene, Slider } from "./base.js";
+import { Line, Dot, Scene } from "./base.js";
+import { Slider } from "./interactive.js";
 import {
   Vec2D,
   vec_scale,

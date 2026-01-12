@@ -1,14 +1,7 @@
 // Testing the direct feeding of a pixel array to the canvas
-import { logical_and } from "numpy-ts";
-import { MObject, Scene, Slider } from "./base.js";
-import {
-  Vec2D,
-  vec_scale,
-  vec_sum,
-  vec_sub,
-  vec_norm,
-  vec_sum_list,
-} from "./base.js";
+import { MObject, Scene } from "./base.js";
+import { Slider, Button } from "./interactive.js";
+import { Vec2D } from "./base.js";
 import { ParametricFunction } from "./parametric.js";
 
 const WAVE_PROPAGATION_SPEED = 1.0;
@@ -114,7 +107,6 @@ class WaveEquationScene extends Scene {
   vValues: Array<number>;
   pxValues: Array<number>;
   pyValues: Array<number>;
-  point_source: Vec2D;
   imageData: ImageData;
   action_queue: Array<CallableFunction>;
   paused: boolean;
@@ -144,10 +136,6 @@ class WaveEquationScene extends Scene {
     this.pxValues = this.new_arr();
     this.pyValues = this.new_arr();
 
-    this.point_source = [
-      Math.floor(this.width / 2),
-      Math.floor(this.height / 2),
-    ];
     this.action_queue = [];
     this.paused = true;
 
@@ -158,10 +146,16 @@ class WaveEquationScene extends Scene {
   }
   toggle_pause() {
     this.paused = !this.paused;
+    this.play(undefined); // Restart playing if this was paused TODO Get around this hack.
   }
-  // Adds to the action queue
-  add_to_queue(callback: () => void) {
-    this.action_queue.push(callback);
+  // Adds to the action queue if the scene is currently playing,
+  // otherwise execute the callback immediately
+  add_to_queue(callback: () => void): void {
+    if (this.paused) {
+      callback();
+    } else {
+      this.action_queue.push(callback);
+    }
   }
   // Makes a new array
   new_arr(): Array<number> {
@@ -178,6 +172,9 @@ class WaveEquationScene extends Scene {
     this.pxValues = this.new_arr();
     this.pyValues = this.new_arr();
     this.time = 0;
+  }
+  clear(): void {
+    this.set_init_conditions(this.new_arr(), this.new_arr());
   }
   // Sigma function which defines the Perfectly Matching Layer at the edges of the domain
   sigma_x(x: number): number {
@@ -560,7 +557,7 @@ class WaveEquationScene extends Scene {
     );
   }
   // Starts animation
-  start_playing(until: number | undefined) {
+  play(until: number | undefined) {
     if (this.paused) {
       return;
     } else if (this.action_queue.length > 0) {
@@ -572,11 +569,11 @@ class WaveEquationScene extends Scene {
       this.step(this.dt);
       this.draw();
     }
-    window.requestAnimationFrame(this.start_playing.bind(this, until));
+    window.requestAnimationFrame(this.play.bind(this, until));
   }
 }
 
-// Wave equation scene where waves emanate from a single point source at (0, 0)
+// Wave equation scene where waves emanate from a single point source
 class WaveEquationScenePointSource extends WaveEquationScene {
   point_source: Vec2D;
   w: number; // Frequency of oscillation
@@ -694,6 +691,10 @@ class WaveEquationSceneReflector extends WaveEquationScene {
   init() {
     super.init();
     this._recalculate_masks();
+    this.zero_outside_region();
+    if (this.paused) {
+      this.draw();
+    }
   }
   // Recalculate mask arrays based on modified geometry
   _recalculate_masks() {
@@ -841,6 +842,7 @@ class WaveEquationSceneReflector extends WaveEquationScene {
 // with a parabolic reflector with focus at (0, 0) and focal length f = 1
 // defined by y + f = x^2 / (4 * f)
 class WaveEquationSceneParabolic extends WaveEquationSceneReflector {
+  point_source: Vec2D;
   focal_length: number;
   w: number;
   a: number;
@@ -904,6 +906,9 @@ class WaveEquationSceneParabolic extends WaveEquationSceneReflector {
     boundary.set_function((t) => [t, t ** 2 / (4 * f) - f]);
     this._recalculate_masks();
     this.zero_outside_region();
+    if (this.paused) {
+      this.draw();
+    }
   }
   set_amplitude(a: number) {
     this.a = a;
@@ -944,10 +949,12 @@ class WaveEquationSceneParabolic extends WaveEquationSceneReflector {
 // from one focus.
 // TODO Adapt this from parabola.
 class WaveEquationSceneElliptic extends WaveEquationSceneReflector {
+  foci: [Vec2D, Vec2D];
   semimajor_axis: number;
   semiminor_axis: number;
   w: number;
   a: number;
+  point_source_on: boolean;
   constructor(
     canvas: HTMLCanvasElement,
     imageData: ImageData,
@@ -978,12 +985,25 @@ class WaveEquationSceneElliptic extends WaveEquationSceneReflector {
     );
 
     // Default settings
-    this.point_source = [
-      Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
-      0,
+    this.foci = [
+      [Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2), 0],
+      [-Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2), 0],
     ];
     this.w = 5.0;
     this.a = 5.0;
+    this.point_source_on = true;
+  }
+  init() {
+    this.foci = [
+      [Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2), 0],
+      [-Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2), 0],
+    ];
+    let boundary = this.get_mobj("boundary") as ParametricFunction;
+    boundary.set_function((t) => [
+      this.semimajor_axis * Math.cos(t),
+      this.semiminor_axis * Math.sin(t),
+    ]);
+    super.init();
   }
   // *** Ellipse geometry ***
   inside_region(x: number, y: number): boolean {
@@ -1020,31 +1040,11 @@ class WaveEquationSceneElliptic extends WaveEquationSceneReflector {
   // *** Interactivity ***
   set_semimajor_axis(a: number) {
     this.semimajor_axis = a;
-    this.point_source = [
-      Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
-      0,
-    ];
-    let boundary = this.get_mobj("boundary") as ParametricFunction;
-    boundary.set_function((t) => [
-      this.semimajor_axis * Math.cos(t),
-      this.semiminor_axis * Math.sin(t),
-    ]);
-    this._recalculate_masks();
-    this.zero_outside_region();
+    this.init();
   }
   set_semiminor_axis(a: number) {
     this.semiminor_axis = a;
-    this.point_source = [
-      Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
-      0,
-    ];
-    let boundary = this.get_mobj("boundary") as ParametricFunction;
-    boundary.set_function((t) => [
-      this.semimajor_axis * Math.cos(t),
-      this.semiminor_axis * Math.sin(t),
-    ]);
-    this._recalculate_masks();
-    this.zero_outside_region();
+    this.init();
   }
   set_amplitude(a: number) {
     this.a = a;
@@ -1052,11 +1052,8 @@ class WaveEquationSceneElliptic extends WaveEquationSceneReflector {
   set_frequency(w: number) {
     this.w = w;
   }
-  move_point_source_x(x: number) {
-    this.point_source[0] = x;
-  }
-  move_point_source_y(y: number) {
-    this.point_source[1] = y;
+  toggle_point_source() {
+    this.point_source_on = !this.point_source_on;
   }
   // *** Simulation methods ***
   add_boundary_conditions(
@@ -1066,10 +1063,12 @@ class WaveEquationSceneElliptic extends WaveEquationSceneReflector {
     py: Array<number>,
     t: number,
   ) {
-    let [x, y] = this.s2c(this.point_source[0], this.point_source[1]);
-    let ind = this.index(Math.floor(x), Math.floor(y));
-    u[ind] = this.a * Math.sin(this.w * t);
-    v[ind] = this.a * this.w * Math.cos(this.w * t);
+    if (this.point_source_on) {
+      let [x, y] = this.s2c(this.foci[0][0], this.foci[0][1]);
+      let ind = this.index(Math.floor(x), Math.floor(y));
+      u[ind] = this.a * Math.sin(this.w * t);
+      v[ind] = this.a * this.w * Math.cos(this.w * t);
+    }
 
     // Clamp for numerical stability
     for (let ind = 0; ind < this.width * this.height; ind++) {
@@ -1191,8 +1190,8 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     const xmax = 5;
     const ymin = -5;
     const ymax = 5;
-    const min_val = -10;
-    const max_val = 10;
+    const min_val = -30;
+    const max_val = 30;
 
     // Prepare the canvas and scene
     let width = 200;
@@ -1228,22 +1227,50 @@ class WaveEquationSceneDipole extends WaveEquationScene {
 
     // Make a slider which can be used to modify the mobject
     // It should send a message to the owning scene
-    let y_slider = Slider(
+    let eccentricity_slider = Slider(
       document.getElementById("slider-container-1") as HTMLElement,
-      function (f: number) {
+      function (e: number) {
         waveEquationScene.add_to_queue(
-          waveEquationScene.set_semiminor_axis.bind(waveEquationScene, +f),
+          waveEquationScene.set_semiminor_axis.bind(
+            waveEquationScene,
+            Math.sqrt(1 - (+e) ** 2) * waveEquationScene.semimajor_axis,
+          ),
         );
       },
-      `3`,
-      0.5,
-      3,
+      `0.5`,
+      0,
+      1,
       0.01,
     );
-    y_slider.width = 200;
+    eccentricity_slider.width = 200;
+
+    let pauseButton = Button(
+      document.getElementById("button-container-1") as HTMLElement,
+      function () {
+        waveEquationScene.add_to_queue(
+          waveEquationScene.toggle_pause.bind(waveEquationScene),
+        );
+      },
+    );
+    pauseButton.textContent = "Pause simulation";
+    pauseButton.style.padding = "20px";
+
+    let pointSourceButton = Button(
+      document.getElementById("button-container-2") as HTMLElement,
+      function () {
+        waveEquationScene.add_to_queue(
+          waveEquationScene.toggle_point_source.bind(waveEquationScene),
+        );
+        pointSourceButton.textContent = waveEquationScene.point_source_on
+          ? "Turn on source"
+          : "Turn off source";
+      },
+    );
+    pointSourceButton.textContent = "Turn off source";
+    pointSourceButton.style.padding = "20px";
 
     waveEquationScene.init();
     waveEquationScene.toggle_pause();
-    waveEquationScene.start_playing(undefined);
+    waveEquationScene.play(undefined);
   });
 })();

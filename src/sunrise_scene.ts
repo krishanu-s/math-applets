@@ -1,5 +1,6 @@
 import * as np from "numpy-ts";
-import { Line, Dot, BezierCurve, Scene, Slider, MObject } from "./base.js";
+import { Line, Dot, BezierCurve, Scene, MObject } from "./base.js";
+import { Slider } from "./interactive.js";
 import {
   Vec2D,
   vec_scale,

@@ -1,8 +1,6 @@
 // *** TYPES ***
 export type Vec2D = [number, number];
 
-// TODO Add _from_np
-
 export function zero_vec(): Vec2D {
   return [0, 0];
 }
@@ -211,64 +209,4 @@ export class Scene {
       mobj.draw(this.canvas, this);
     });
   }
-}
-
-// *** INTERACTIVE ELEMENTS ***
-export function Slider(
-  container: HTMLElement,
-  callback: Function,
-  initial_value: string,
-  min?: number,
-  max?: number,
-  step?: number,
-): HTMLInputElement {
-  // Make slider object
-  let slider = document.createElement("input");
-  slider.type = "range";
-  if (min == undefined) {
-    slider.min = "0";
-  } else {
-    slider.min = `${min}`;
-  }
-  if (max == undefined) {
-    slider.max = "10";
-  } else {
-    slider.max = `${max}`;
-  }
-  if (step == undefined) {
-    slider.step = ".01";
-  } else {
-    slider.step = `${step}`;
-  }
-  slider.value = initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
-  container.appendChild(slider);
-
-  // Make value display
-  let valueDisplay = document.createElement("span");
-  valueDisplay.classList.add("value-display");
-  valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = slider.value;
-  container.appendChild(valueDisplay);
-
-  // Update display with float value
-  function updateDisplay() {
-    callback(slider.value);
-    valueDisplay.textContent = slider.value;
-    updateSliderColor(slider);
-  }
-
-  // Update slider visual appearance
-  function updateSliderColor(sliderElement: HTMLInputElement) {
-    const value = 100 * parseFloat(sliderElement.value);
-    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
-  }
-
-  // Initialize
-  updateDisplay();
-
-  // Update when slider moves
-  slider.addEventListener("input", updateDisplay);
-  return slider;
 }

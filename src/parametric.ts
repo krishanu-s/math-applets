@@ -1,6 +1,7 @@
 // TODO Graph of a parametric function
 import * as np from "numpy-ts";
-import { MObject, Scene, Slider } from "./base.js";
+import { MObject, Scene } from "./base.js";
+import { Slider } from "./interactive.js";
 import {
   Vec2D,
   vec_scale,
@@ -41,7 +42,7 @@ export class ParametricFunction extends MObject {
 
     // Generate anchors
     let points: Array<np.NDArray> = [np.array(this.function(this.tmin))];
-    for (let i = 1; i < this.num_steps + 1; i++) {
+    for (let i = 1; i <= this.num_steps; i++) {
       points.push(
         np.array(
           this.function(
