@@ -25,6 +25,18 @@ export function vec_sub(x: Vec2D, y: Vec2D): Vec2D {
   return [x[0] - y[0], x[1] - y[1]];
 }
 
+// *** FUNCTIONS ***
+
+// Clamps a number to the interval [xmin, xmax].
+export function clamp(x: number, xmin: number, xmax: number): number {
+  return Math.min(xmax, Math.max(xmin, x));
+}
+
+// The function 1 / (1 + e^{-x})
+export function sigmoid(x: number): number {
+  return 1 / (1 + Math.exp(-x));
+}
+
 // *** MATH OBJECTS ***
 
 // Base class for mathematical objects

@@ -1,85 +1,9 @@
 // Testing the direct feeding of a pixel array to the canvas
 import { MObject, Scene } from "./base.js";
 import { Slider, Button } from "./interactive.js";
-import { Vec2D } from "./base.js";
+import { Vec2D, clamp, sigmoid } from "./base.js";
 import { ParametricFunction } from "./parametric.js";
-
-const WAVE_PROPAGATION_SPEED = 1.0;
-const PML_STRENGTH = 5.0;
-const PML_WIDTH = 1.0;
-
-// Clamps a number to the interval [xmin, xmax].
-function clamp(x: number, xmin: number, xmax: number): number {
-  return Math.min(xmax, Math.max(xmin, x));
-}
-
-// The function 1 / (1 + e^{-x})
-function sigmoid(x: number): number {
-  return 1 / (1 + Math.exp(-x));
-}
-
-// A pixel heatmap
-class HeatMap extends MObject {
-  width: number;
-  height: number;
-  min_val: number; // Float value corresponding to 0 colorscale
-  max_val: number; // Float value corresponding to 256 colorscale
-  valArray: Array<number>;
-  constructor(
-    width: number,
-    height: number,
-    min_val: number,
-    max_val: number,
-    valArray: Array<number>,
-  ) {
-    super();
-    this.width = width;
-    this.height = height;
-    this.min_val = min_val;
-    this.max_val = max_val;
-    this.valArray = valArray;
-  }
-  // Makes a new array
-  new_arr(): Array<number> {
-    return new Array(this.width * this.height).fill(0);
-  }
-  // Gets/sets values
-  set_vals(vals: Array<number>) {
-    this.valArray = vals;
-  }
-  get_vals(): Array<number> {
-    return this.valArray;
-  }
-  // Converts xy-coordinates to linear array coordinates
-  index(x: number, y: number): number {
-    return y * this.width + x;
-  }
-  // Draws on the canvas
-  draw(canvas: HTMLCanvasElement, scene: Scene, imageData: ImageData) {
-    let data = imageData.data;
-    for (let i = 0; i < this.width * this.height; i++) {
-      const px_val = this.valArray[i] as number;
-      // Red-blue heatmap
-      const gray = sigmoid(px_val);
-      // const gray = (px_val - this.min_val) / (this.max_val - this.min_val);
-      const idx = i * 4;
-      // data[idx] = data[idx + 1] = data[idx + 2] = 256 * clamp(gray, 0, 1);
-      if (gray < 0.5) {
-        data[idx] = 512 * gray;
-        data[idx + 1] = 512 * gray;
-        data[idx + 2] = 255;
-      } else {
-        data[idx] = 255;
-        data[idx + 1] = 512 * (1 - gray);
-        data[idx + 2] = 512 * (1 - gray);
-      }
-      data[idx + 3] = 255;
-    }
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.putImageData(imageData, 0, 0);
-  }
-}
+import { HeatMap } from "./heatmap.js";
 
 // Ref: https://arxiv.org/pdf/1001.0319, equation (2.14).
 // A scalar field in (2+1)-D, u(x, y, t), evolving according to the wave equation formulated as
@@ -98,11 +22,13 @@ class WaveEquationScene extends Scene {
   time: number;
   width: number;
   height: number;
-  min_val: number; // Float value corresponding to 0 colorscale
-  max_val: number; // Float value corresponding to 256 colorscale
+  clamp_value: number; // Maximum allowed amplitude, clamped at each step
   dx: number;
   dy: number;
   dt: number;
+  wave_propagation_speed: number;
+  pml_strength: number;
+  pml_width: number;
   uValues: Array<number>;
   vValues: Array<number>;
   pxValues: Array<number>;
@@ -115,8 +41,7 @@ class WaveEquationScene extends Scene {
     imageData: ImageData,
     width: number,
     height: number,
-    min_val: number,
-    max_val: number,
+    clamp_value: number,
     dx: number,
     dy: number,
     dt: number,
@@ -126,11 +51,13 @@ class WaveEquationScene extends Scene {
     this.time = 0;
     this.width = width;
     this.height = height;
-    this.min_val = min_val;
-    this.max_val = max_val;
+    this.clamp_value = clamp_value;
     this.dx = dx;
     this.dy = dy;
     this.dt = dt;
+    this.wave_propagation_speed = 1.0;
+    this.pml_strength = 5.0;
+    this.pml_width = 1.0;
     this.uValues = this.new_arr();
     this.vValues = this.new_arr();
     this.pxValues = this.new_arr();
@@ -139,11 +66,19 @@ class WaveEquationScene extends Scene {
     this.action_queue = [];
     this.paused = true;
 
-    this.add(
-      "heatmap",
-      new HeatMap(width, height, min_val, max_val, this.uValues),
-    );
+    this.add("heatmap", new HeatMap(width, height, -1, 1, this.uValues));
   }
+  // Sets the wave propagation speed
+  set_wave_propagation_speed(c: number) {
+    this.wave_propagation_speed = c;
+  }
+  set_pml_strength(x: number) {
+    this.pml_strength = x;
+  }
+  set_pml_width(x: number) {
+    this.pml_width = x;
+  }
+  // Pauses or unpauses the simulation
   toggle_pause() {
     this.paused = !this.paused;
     this.play(undefined); // Restart playing if this was paused TODO Get around this hack.
@@ -183,9 +118,9 @@ class WaveEquationScene extends Scene {
   }
   _sigma_x(x: number): number {
     // Defined on real numbers
-    let layer_start = ((this.width - 1) / 2) * this.dx - PML_WIDTH;
+    let layer_start = ((this.width - 1) / 2) * this.dx - this.pml_width;
     if (Math.abs(x) >= layer_start) {
-      return PML_STRENGTH * (Math.abs(x) - layer_start) ** 2;
+      return this.pml_strength * (Math.abs(x) - layer_start) ** 2;
     } else {
       return 0;
     }
@@ -196,9 +131,9 @@ class WaveEquationScene extends Scene {
   }
   _sigma_y(y: number): number {
     // Defined on real numbers
-    let layer_start = ((this.height - 1) / 2) * this.dy - PML_WIDTH;
+    let layer_start = ((this.height - 1) / 2) * this.dy - this.pml_width;
     if (Math.abs(y) >= layer_start) {
-      return PML_STRENGTH * (Math.abs(y) - layer_start) ** 2;
+      return this.pml_strength * (Math.abs(y) - layer_start) ** 2;
     } else {
       return 0;
     }
@@ -381,7 +316,7 @@ class WaveEquationScene extends Scene {
       for (let x = 0; x < this.width; x++) {
         ind = this.index(x, y);
         arr[ind] =
-          WAVE_PROPAGATION_SPEED ** 2 * this.laplacian_entry(u, x, y) +
+          this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x, y) +
           this.d_x_entry(px, x, y) +
           this.d_y_entry(py, x, y) -
           (this.sigma_x(x) + this.sigma_y(y)) * (v[ind] as number) -
@@ -400,7 +335,7 @@ class WaveEquationScene extends Scene {
         ind = this.index(x, y);
         arr[ind] =
           -sx * (px[ind] as number) +
-          WAVE_PROPAGATION_SPEED ** 2 *
+          this.wave_propagation_speed ** 2 *
             (this.sigma_y(y) - sx) *
             this.d_x_entry(u, x, y);
       }
@@ -417,7 +352,7 @@ class WaveEquationScene extends Scene {
         ind = this.index(x, y);
         arr[ind] =
           -sy * (py[ind] as number) +
-          WAVE_PROPAGATION_SPEED ** 2 *
+          this.wave_propagation_speed ** 2 *
             (this.sigma_x(x) - sy) *
             this.d_y_entry(u, x, y);
       }
@@ -583,13 +518,12 @@ class WaveEquationScenePointSource extends WaveEquationScene {
     imageData: ImageData,
     width: number,
     height: number,
-    min_val: number,
-    max_val: number,
+    clamp_value: number,
     dx: number,
     dy: number,
     dt: number,
   ) {
-    super(canvas, imageData, width, height, min_val, max_val, dx, dy, dt);
+    super(canvas, imageData, width, height, clamp_value, dx, dy, dt);
     // Default settings
     this.point_source = [0, 0];
     this.w = 5.0;
@@ -638,13 +572,12 @@ class WaveEquationSceneReflector extends WaveEquationScene {
     imageData: ImageData,
     width: number,
     height: number,
-    min_val: number,
-    max_val: number,
+    clamp_value: number,
     dx: number,
     dy: number,
     dt: number,
   ) {
-    super(canvas, imageData, width, height, min_val, max_val, dx, dy, dt);
+    super(canvas, imageData, width, height, clamp_value, dx, dy, dt);
 
     // Make mask arrays
     this.x_pos_mask = new Array(this.width * this.height).fill(0);
@@ -851,13 +784,12 @@ class WaveEquationSceneParabolic extends WaveEquationSceneReflector {
     imageData: ImageData,
     width: number,
     height: number,
-    min_val: number,
-    max_val: number,
+    clamp_value: number,
     dx: number,
     dy: number,
     dt: number,
   ) {
-    super(canvas, imageData, width, height, min_val, max_val, dx, dy, dt);
+    super(canvas, imageData, width, height, clamp_value, dx, dy, dt);
 
     // Specify parabola
     this.focal_length = 1;
@@ -937,10 +869,10 @@ class WaveEquationSceneParabolic extends WaveEquationSceneReflector {
 
     // Clamp for numerical stability
     for (let ind = 0; ind < this.width * this.height; ind++) {
-      u[ind] = clamp(u[ind] as number, this.min_val, this.max_val);
-      v[ind] = clamp(v[ind] as number, this.min_val, this.max_val);
-      px[ind] = clamp(px[ind] as number, this.min_val, this.max_val);
-      py[ind] = clamp(py[ind] as number, this.min_val, this.max_val);
+      u[ind] = clamp(u[ind] as number, -this.clamp_value, this.clamp_value);
+      v[ind] = clamp(v[ind] as number, -this.clamp_value, this.clamp_value);
+      px[ind] = clamp(px[ind] as number, -this.clamp_value, this.clamp_value);
+      py[ind] = clamp(py[ind] as number, -this.clamp_value, this.clamp_value);
     }
   }
 }
@@ -960,13 +892,12 @@ class WaveEquationSceneElliptic extends WaveEquationSceneReflector {
     imageData: ImageData,
     width: number,
     height: number,
-    min_val: number,
-    max_val: number,
+    clamp_value: number,
     dx: number,
     dy: number,
     dt: number,
   ) {
-    super(canvas, imageData, width, height, min_val, max_val, dx, dy, dt);
+    super(canvas, imageData, width, height, clamp_value, dx, dy, dt);
 
     // Specify ellipse axes
     this.semimajor_axis = 4;
@@ -1072,10 +1003,10 @@ class WaveEquationSceneElliptic extends WaveEquationSceneReflector {
 
     // Clamp for numerical stability
     for (let ind = 0; ind < this.width * this.height; ind++) {
-      u[ind] = clamp(u[ind] as number, this.min_val, this.max_val);
-      v[ind] = clamp(v[ind] as number, this.min_val, this.max_val);
-      px[ind] = clamp(px[ind] as number, this.min_val, this.max_val);
-      py[ind] = clamp(py[ind] as number, this.min_val, this.max_val);
+      u[ind] = clamp(u[ind] as number, -this.clamp_value, this.clamp_value);
+      v[ind] = clamp(v[ind] as number, -this.clamp_value, this.clamp_value);
+      px[ind] = clamp(px[ind] as number, -this.clamp_value, this.clamp_value);
+      py[ind] = clamp(py[ind] as number, -this.clamp_value, this.clamp_value);
     }
   }
 }
@@ -1091,13 +1022,12 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     imageData: ImageData,
     width: number,
     height: number,
-    min_val: number,
-    max_val: number,
+    clamp_value: number,
     dx: number,
     dy: number,
     dt: number,
   ) {
-    super(canvas, imageData, width, height, min_val, max_val, dx, dy, dt);
+    super(canvas, imageData, width, height, clamp_value, dx, dy, dt);
     // Default settings
     this.dipole = [0.5, 0];
     this.w = 5.0;
@@ -1131,16 +1061,6 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     // Negative point source
     let [x2, y2] = this.s2c(-this.dipole[0], -this.dipole[1]);
     let ind_2 = this.index(Math.floor(x2), Math.floor(y2));
-    // // Positive point source
-    // let ind_1 = this.index(
-    //   Math.floor(this.width / 2) + this.dipole[0],
-    //   Math.floor(this.height / 2) + this.dipole[1],
-    // );
-    // // Negative point source
-    // let ind_2 = this.index(
-    //   Math.floor(this.width / 2) - this.dipole[0],
-    //   Math.floor(this.height / 2) - this.dipole[1],
-    // );
     u[ind_1] = this.a * Math.sin(this.w * t);
     v[ind_1] = this.a * this.w * Math.cos(this.w * t);
     u[ind_2] = -this.a * Math.sin(this.w * t);
@@ -1190,8 +1110,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     const xmax = 5;
     const ymin = -5;
     const ymax = 5;
-    const min_val = -30;
-    const max_val = 30;
+    const clamp_value = 30;
 
     // Prepare the canvas and scene
     let width = 200;
@@ -1216,14 +1135,15 @@ class WaveEquationSceneDipole extends WaveEquationScene {
       imageData,
       width,
       height,
-      min_val,
-      max_val,
+      clamp_value,
       dx,
       dy,
       dt,
     );
 
     waveEquationScene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+    waveEquationScene.set_pml_strength(5.0);
+    waveEquationScene.set_pml_width(1.0);
 
     // Make a slider which can be used to modify the mobject
     // It should send a message to the owning scene
