@@ -1,10 +1,6 @@
 // *** TYPES ***
 export type Vec2D = [number, number];
 
-export function zero_vec(): Vec2D {
-  return [0, 0];
-}
-
 export function vec_norm(x: Vec2D): number {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
@@ -84,12 +80,30 @@ export class Dot extends MObject {
 export class Line extends MObject {
   start: [number, number];
   end: [number, number];
-  width: number;
-  constructor(start: [number, number], end: [number, number], width: number) {
+  stroke_width: number;
+  stroke_color: string;
+  constructor(
+    start: [number, number],
+    end: [number, number],
+    kwargs: Record<string, any>,
+  ) {
     super();
     this.start = start;
     this.end = end;
-    this.width = width;
+
+    let stroke_width = kwargs["stroke_width"] as number;
+    if (stroke_width == undefined) {
+      this.stroke_width = 0.08;
+    } else {
+      this.stroke_width = stroke_width;
+    }
+
+    let stroke_color = kwargs["stroke_color"] as string;
+    if (stroke_color == undefined) {
+      this.stroke_color = `rgb(0, 0, 0)`;
+    } else {
+      this.stroke_color = stroke_color;
+    }
   }
   // Moves the start and end points
   move_start(x: number, y: number) {
@@ -105,7 +119,8 @@ export class Line extends MObject {
     let [start_x, start_y] = scene.s2c(this.start[0], this.start[1]);
     let [end_x, end_y] = scene.s2c(this.end[0], this.end[1]);
     let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.width * canvas.width) / (xmax - xmin);
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
     ctx.beginPath();
     ctx.moveTo(start_x, start_y);
     ctx.lineTo(end_x, end_y);

@@ -55,7 +55,7 @@ class OneSidedSpringScene extends Scene {
 
     this.add("base", new Dot(0, 0, 0.2));
     this.add("mass", new Dot(0, 0, 0.2));
-    this.add("spring", new Line([0, 0], [0, 0], 0.08));
+    this.add("spring", new Line([0, 0], [0, 0], { stroke_width: 0.08 }));
   }
   set_position(x: Vec2D) {
     this.state[0] = x;
@@ -147,6 +147,7 @@ class CatenaryScene extends Scene {
   spring_constant: number;
   friction_constant: number;
   gravity: number;
+  dt: number;
   constructor(
     canvas: HTMLCanvasElement,
     p0: Vec2D,
@@ -164,6 +165,7 @@ class CatenaryScene extends Scene {
     this.spring_constant = 1.0;
     this.friction_constant = 0.4;
     this.gravity = 1.0;
+    this.dt = 0.1;
 
     // Set intermediate points, shape (N + 1, 2).
     this.state = [];
@@ -188,7 +190,9 @@ class CatenaryScene extends Scene {
     for (let i = 1; i <= num_segments; i++) {
       this.add(
         `v${i}`,
-        new Line(this.get_position(i - 1), this.get_position(i), 0.05),
+        new Line(this.get_position(i - 1), this.get_position(i), {
+          stroke_width: 0.05,
+        }),
       );
     }
   }
@@ -200,6 +204,9 @@ class CatenaryScene extends Scene {
   }
   set_spring(k: number) {
     this.spring_constant = k;
+  }
+  set_dt(dt: number) {
+    this.dt = dt;
   }
   move_start(p: Vec2D) {
     this.p0 = p;
@@ -360,7 +367,7 @@ class CatenaryScene extends Scene {
   }
   // Starts animation
   start_playing() {
-    this.step(0.1);
+    this.step(this.dt);
     this.draw();
     window.requestAnimationFrame(this.start_playing.bind(this));
   }
@@ -424,18 +431,18 @@ class CatenaryScene extends Scene {
     let ylims: Vec2D = [-5.0, 5.0];
     scene.set_frame_lims(xlims, ylims);
 
-    // Make a slider which can be used to modify the mobject
-    // It should send a message to the owning scene
-    let gravity_slider = Slider(
-      document.getElementById("slider-gravity-container") as HTMLElement,
-      function (g: number) {
-        scene.set_gravity(g);
+    let spring_slider = Slider(
+      document.getElementById("slider-container-1") as HTMLElement,
+      function (k: number) {
+        scene.set_dt(0.5 / k ** 2);
+        scene.set_spring(k ** 2);
       },
       "1.0",
+      0.1,
+      10.0,
+      0.01,
     );
-    gravity_slider.min = "0.0";
-    gravity_slider.max = "8.0";
-    gravity_slider.width = 200;
+    spring_slider.width = 200;
 
     // TODO Make the two points in the scene movable
     // TODO Make the number of segments modifiable

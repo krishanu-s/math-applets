@@ -1,14 +1,6 @@
 import * as np from "numpy-ts";
-import { Line, Dot, BezierCurve, Scene } from "./base.js";
-import { Slider } from "./interactive.js";
-import {
-  Vec2D,
-  vec_scale,
-  vec_sum,
-  vec_sub,
-  vec_norm,
-  vec_sum_list,
-} from "./base.js";
+import { Dot, BezierCurve, Scene } from "./base.js";
+import { Vec2D } from "./base.js";
 import { SmoothClosedPathBezierHandleCalculator } from "./bezier.js";
 
 class ClosedCurveScene extends Scene {

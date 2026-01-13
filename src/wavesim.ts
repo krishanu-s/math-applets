@@ -110,6 +110,7 @@ class WaveEquationScene extends Scene {
   }
   clear(): void {
     this.set_init_conditions(this.new_arr(), this.new_arr());
+    this.draw();
   }
   // Sigma function which defines the Perfectly Matching Layer at the edges of the domain
   sigma_x(x: number): number {
@@ -508,7 +509,8 @@ class WaveEquationScene extends Scene {
   }
 }
 
-// Wave equation scene where waves emanate from a single point source
+// Wave equation scene where waves emanate from a single point source.
+//
 class WaveEquationScenePointSource extends WaveEquationScene {
   point_source: Vec2D;
   w: number; // Frequency of oscillation
@@ -559,7 +561,8 @@ class WaveEquationScenePointSource extends WaveEquationScene {
 }
 
 // Wave equation scene where there is a hard reflective surface defined by
-// a function. This is a general scaffold for subclasses.
+// a function.
+// This is a general scaffold for subclasses which include a reflective element.
 class WaveEquationSceneReflector extends WaveEquationScene {
   // Points within this distance of the region boundary will be treated
   // as outside of the boundary.
@@ -770,15 +773,15 @@ class WaveEquationSceneReflector extends WaveEquationScene {
   }
 }
 
-// TODO Implement reflecting surfaces, such as a conic section.
 // Wave equation scene where waves emanate from a single point source at (0, 0)
-// with a parabolic reflector with focus at (0, 0) and focal length f = 1
+// and with a parabolic reflector with focus at (0, 0) and focal length f = 1,
 // defined by y + f = x^2 / (4 * f)
 class WaveEquationSceneParabolic extends WaveEquationSceneReflector {
   point_source: Vec2D;
   focal_length: number;
   w: number;
   a: number;
+  point_source_on: boolean;
   constructor(
     canvas: HTMLCanvasElement,
     imageData: ImageData,
@@ -800,6 +803,7 @@ class WaveEquationSceneParabolic extends WaveEquationSceneReflector {
 
     // Default settings
     this.point_source = [0, 0];
+    this.point_source_on = true;
     this.w = 5.0;
     this.a = 5.0;
   }
@@ -848,6 +852,9 @@ class WaveEquationSceneParabolic extends WaveEquationSceneReflector {
   set_frequency(w: number) {
     this.w = w;
   }
+  toggle_point_source() {
+    this.point_source_on = !this.point_source_on;
+  }
   move_point_source_x(x: number) {
     this.point_source[0] = x;
   }
@@ -862,10 +869,12 @@ class WaveEquationSceneParabolic extends WaveEquationSceneReflector {
     py: Array<number>,
     t: number,
   ) {
-    let [x, y] = this.s2c(this.point_source[0], this.point_source[1]);
-    let ind = this.index(Math.floor(x), Math.floor(y));
-    u[ind] = this.a * Math.sin(this.w * t);
-    v[ind] = this.a * this.w * Math.cos(this.w * t);
+    if (this.point_source_on) {
+      let [x, y] = this.s2c(this.point_source[0], this.point_source[1]);
+      let ind = this.index(Math.floor(x), Math.floor(y));
+      u[ind] = this.a * Math.sin(this.w * t);
+      v[ind] = this.a * this.w * Math.cos(this.w * t);
+    }
 
     // Clamp for numerical stability
     for (let ind = 0; ind < this.width * this.height; ind++) {
@@ -879,7 +888,6 @@ class WaveEquationSceneParabolic extends WaveEquationSceneReflector {
 
 // Wave equation scene where the boundary is an ellipse with waves emanating
 // from one focus.
-// TODO Adapt this from parabola.
 class WaveEquationSceneElliptic extends WaveEquationSceneReflector {
   foci: [Vec2D, Vec2D];
   semimajor_axis: number;
@@ -1145,8 +1153,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     waveEquationScene.set_pml_strength(5.0);
     waveEquationScene.set_pml_width(1.0);
 
-    // Make a slider which can be used to modify the mobject
-    // It should send a message to the owning scene
+    // Slider which controls the eccentricity: specific to ellipse
     let eccentricity_slider = Slider(
       document.getElementById("slider-container-1") as HTMLElement,
       function (e: number) {
@@ -1164,23 +1171,30 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     );
     eccentricity_slider.width = 200;
 
+    // Button which pauses/unpauses the simulation
     let pauseButton = Button(
       document.getElementById("button-container-1") as HTMLElement,
       function () {
         waveEquationScene.add_to_queue(
           waveEquationScene.toggle_pause.bind(waveEquationScene),
         );
+        // TODO Make text change state on button press, not check simulator
+        pauseButton.textContent = waveEquationScene.paused
+          ? "Pause simulation"
+          : "Unpause simulation";
       },
     );
     pauseButton.textContent = "Pause simulation";
     pauseButton.style.padding = "20px";
 
+    // Button which turns the point source on or off.
     let pointSourceButton = Button(
       document.getElementById("button-container-2") as HTMLElement,
       function () {
         waveEquationScene.add_to_queue(
           waveEquationScene.toggle_point_source.bind(waveEquationScene),
         );
+        // TODO Make text change state on button press, not check simulator
         pointSourceButton.textContent = waveEquationScene.point_source_on
           ? "Turn on source"
           : "Turn off source";
@@ -1189,6 +1203,19 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     pointSourceButton.textContent = "Turn off source";
     pointSourceButton.style.padding = "20px";
 
+    // Button which clears the scene
+    let clearButton = Button(
+      document.getElementById("button-container-3") as HTMLElement,
+      function () {
+        waveEquationScene.add_to_queue(
+          waveEquationScene.clear.bind(waveEquationScene),
+        );
+      },
+    );
+    clearButton.textContent = "Clear";
+    clearButton.style.padding = "20px";
+
+    // Start the simulation
     waveEquationScene.init();
     waveEquationScene.toggle_pause();
     waveEquationScene.play(undefined);

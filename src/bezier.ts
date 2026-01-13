@@ -1,14 +1,4 @@
 import * as np from "numpy-ts";
-import { Line, Dot, BezierCurve, Scene } from "./base.js";
-import { Slider } from "./interactive.js";
-import {
-  Vec2D,
-  vec_scale,
-  vec_sum,
-  vec_sub,
-  vec_norm,
-  vec_sum_list,
-} from "./base.js";
 
 // TODO Make a smooth Bezier spline class
 

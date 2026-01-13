@@ -1,5 +1,4 @@
-import { Line, Dot, Scene } from "./base.js";
-import { Slider } from "./interactive.js";
+import { Dot, Scene } from "./base.js";
 // An orbiting body
 const GRAV_CONSTANT = 1.0;
 class OrbitScene extends Scene {
