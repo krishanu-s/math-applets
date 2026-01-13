@@ -1171,6 +1171,21 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     );
     eccentricity_slider.width = 200;
 
+    // Slider which controls the wave frequency
+    let frequency_slider = Slider(
+      document.getElementById("slider-container-1") as HTMLElement,
+      function (w: number) {
+        waveEquationScene.add_to_queue(
+          waveEquationScene.set_frequency.bind(waveEquationScene, +w),
+        );
+      },
+      `5.0`,
+      1.0,
+      10.0,
+      0.01,
+    );
+    frequency_slider.width = 200;
+
     // Button which pauses/unpauses the simulation
     let pauseButton = Button(
       document.getElementById("button-container-1") as HTMLElement,

@@ -92,7 +92,7 @@ class SunriseScene extends Scene {
               this.xlims[0],
             this.ylims[1],
           ],
-          { stroke_width: 0.08, stroke_color: `rgb(0, 128, 0)` },
+          { stroke_width: 0.2, stroke_color: `rgb(0, 150, 0)` },
         ),
       );
     }
@@ -112,7 +112,7 @@ class SunriseScene extends Scene {
             (i / num_day_steps) * (this.ylims[1] - this.ylims[0]) +
               this.ylims[0],
           ],
-          { stroke_width: 0.08, stroke_color: `rgb(0, 128, 0)` },
+          { stroke_width: 0.2, stroke_color: `rgb(0, 150, 0)` },
         ),
       );
     }
@@ -145,12 +145,13 @@ class SunriseScene extends Scene {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    let mobj;
+    mobj = this.get_mobj("heatmap") as TwoDimHeatMap;
+    mobj.draw(this.canvas, this, this.imageData);
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.get_mobj(name);
       if (mobj == undefined) throw new Error(`${name} not found`);
-      if (mobj instanceof TwoDimHeatMap) {
-        mobj.draw(this.canvas, this, this.imageData);
-      } else {
+      if (!(mobj instanceof TwoDimHeatMap)) {
         mobj.draw(this.canvas, this);
       }
     });
