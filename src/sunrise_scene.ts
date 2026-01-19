@@ -74,7 +74,13 @@ class SunriseScene extends Scene {
     this.latitude = 0;
     this.add(
       "heatmap",
-      new TwoDimHeatMap(width, height, this.zenith_values, this.azimuth_values),
+      new TwoDimHeatMap(
+        width,
+        height,
+        this.zenith_values,
+        this.azimuth_values,
+        {},
+      ),
     );
     // Lines for months
     let num_year_steps = 12;
@@ -201,7 +207,7 @@ class SunriseScene extends Scene {
     let width = 300;
     let height = 300;
 
-    let canvas = prepare_canvas(width, height, "scene-container");
+    let canvas = prepare_canvas(width, height, "scene-container-1");
 
     // Get the context for drawing
     const ctx = canvas.getContext("2d");

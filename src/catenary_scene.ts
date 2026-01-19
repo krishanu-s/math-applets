@@ -1,6 +1,7 @@
 // import * as np from "numpy-ts";
 import { Line, Dot, Scene } from "./base.js";
 import { Slider } from "./interactive.js";
+import { SmoothOpenPathBezierHandleCalculator } from "./bezier.js";
 import {
   Vec2D,
   vec_scale,
@@ -144,6 +145,8 @@ class CatenaryScene extends Scene {
   state: Array<State2D>; // Shape (N + 1, 2, 2)
   length: number; // Total length
   num_segments: number;
+  solver: SmoothOpenPathBezierHandleCalculator;
+  smooth: boolean;
   spring_constant: number;
   friction_constant: number;
   gravity: number;
@@ -161,6 +164,8 @@ class CatenaryScene extends Scene {
     this.length = length;
 
     this.num_segments = num_segments;
+    this.solver = new SmoothOpenPathBezierHandleCalculator(num_segments);
+    this.smooth = true;
 
     this.spring_constant = 1.0;
     this.friction_constant = 0.4;
@@ -180,13 +185,23 @@ class CatenaryScene extends Scene {
     }
     // Add objects
     // TODO: Make these invisible
-    for (let i = 0; i <= num_segments; i++) {
-      this.add(
-        `p${i}`,
-        new Dot(this.get_position(i)[0], this.get_position(i)[1], 0.08),
-      );
-    }
+    // for (let i = 0; i <= num_segments; i++) {
+    //   this.add(
+    //     `p${i}`,
+    //     new Dot(this.get_position(i)[0], this.get_position(i)[1], 0.08),
+    //   );
+    // }
+
     // TODO: Use a sequence of BezierCurve objects instead
+    // for (let i = 1; i <= num_segments; i++) {
+    //   this.add(
+    //     `v${i}`,
+    //     new Line(this.get_position(i - 1), this.get_position(i), {
+    //       stroke_width: 0.05,
+    //     }),
+    //   );
+    // }
+    // this.solver.get_bezier_handles(this.state)
     for (let i = 1; i <= num_segments; i++) {
       this.add(
         `v${i}`,
@@ -217,6 +232,8 @@ class CatenaryScene extends Scene {
   set_num_segments(n: number) {
     // TODO. This is done by constructing a piecewise-linear function from the current
     // state and then interpolating to generate a new state.
+    this.num_segments = n;
+    this.solver = new SmoothOpenPathBezierHandleCalculator(n);
   }
   get_state(index: number): State2D {
     return this.state[index] as State2D;

@@ -5,6 +5,88 @@ import { Vec2D, clamp, sigmoid } from "./base.js";
 import { ParametricFunction } from "./parametric.js";
 import { HeatMap } from "./heatmap.js";
 
+// Some toy examples
+// (1) A discretized, bounded wave simulation u(x, t) in R. This is equivalent
+//     to N point masses arranged in sequence by springs of equilibrium length 0,
+//     with two endpoints being fixed. The parameter x describes the point
+//     mass number and the function output u(x, t) describes the position.
+class WaveEquationSceneOneDim extends Scene {
+  time: number;
+  width: number;
+  height: number;
+  num_points: number;
+  dt: number;
+  uValues: Array<number>;
+  vValues: Array<number>;
+  action_queue: Array<CallableFunction>;
+  paused: boolean;
+  constructor(
+    canvas: HTMLCanvasElement,
+    width: number,
+    height: number,
+    num_points: number,
+    dt: number,
+  ) {
+    super(canvas);
+    this.time = 0;
+    this.width = width;
+    this.height = height;
+    this.uValues = this.new_arr();
+    this.vValues = this.new_arr();
+    this.num_points = num_points;
+    this.dt = dt;
+    this.action_queue = [];
+    this.paused = true;
+  }
+  // Pauses or unpauses the simulation
+  toggle_pause() {
+    this.paused = !this.paused;
+    this.play(undefined); // Restart playing if this was paused TODO Get around this hack.
+  }
+  // Adds to the action queue if the scene is currently playing,
+  // otherwise execute the callback immediately
+  add_to_queue(callback: () => void): void {
+    if (this.paused) {
+      callback();
+    } else {
+      this.action_queue.push(callback);
+    }
+  }
+  // Makes a new array
+  new_arr(): Array<number> {
+    return new Array(this.num_points).fill(0);
+  }
+  // Sets the initial conditions
+  set_init_conditions(x0: Array<number>, v0: Array<number>): void {
+    this.uValues = x0;
+    this.vValues = v0;
+    this.time = 0;
+  }
+  clear(): void {
+    this.set_init_conditions(this.new_arr(), this.new_arr());
+    this.draw();
+  }
+  // Uses either finite-difference or Runge-Kutta to advance the differential equation.
+  step(dt: number) {
+    let u = new Array(this.num_points);
+  }
+  // Starts animation
+  play(until: number | undefined) {
+    if (this.paused) {
+      return;
+    } else if (this.action_queue.length > 0) {
+      let callback = this.action_queue.shift() as () => void;
+      callback();
+    } else if (this.time > (until as number)) {
+      return;
+    } else {
+      this.step(this.dt);
+      this.draw();
+    }
+    window.requestAnimationFrame(this.play.bind(this, until));
+  }
+}
+
 // Ref: https://arxiv.org/pdf/1001.0319, equation (2.14).
 // A scalar field in (2+1)-D, u(x, y, t), evolving according to the wave equation formulated as
 // du/dt   = v
@@ -1200,7 +1282,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
       },
     );
     pauseButton.textContent = "Pause simulation";
-    pauseButton.style.padding = "20px";
+    pauseButton.style.padding = "15px";
 
     // Button which turns the point source on or off.
     let pointSourceButton = Button(
@@ -1216,7 +1298,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
       },
     );
     pointSourceButton.textContent = "Turn off source";
-    pointSourceButton.style.padding = "20px";
+    pointSourceButton.style.padding = "15px";
 
     // Button which clears the scene
     let clearButton = Button(
@@ -1228,7 +1310,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
       },
     );
     clearButton.textContent = "Clear";
-    clearButton.style.padding = "20px";
+    clearButton.style.padding = "15px";
 
     // Start the simulation
     waveEquationScene.init();
