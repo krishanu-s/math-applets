@@ -237,3 +237,39 @@ export class Scene {
     });
   }
 }
+
+// Prepare the canvas
+export function prepare_canvas(
+  width: number,
+  height: number,
+  name: string,
+): HTMLCanvasElement {
+  const container = document.getElementById(name);
+  if (container == null) throw new Error(`${name} not found`);
+
+  // Set size to 300 pixels by 300 pixels
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+
+  // Make a visual element
+  let wrapper = document.createElement("div");
+  wrapper.classList.add("canvas_container");
+  wrapper.classList.add("non_selectable");
+  wrapper.style.width = `${width}px`;
+  wrapper.style.height = `${height}px`;
+
+  let canvas = document.createElement("canvas");
+  canvas.classList.add("non_selectable");
+  canvas.style.position = "relative";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.height = height;
+  canvas.width = width;
+
+  wrapper.appendChild(canvas);
+  container.appendChild(wrapper);
+
+  console.log("Canvas made");
+
+  return canvas;
+}

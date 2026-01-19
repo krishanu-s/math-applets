@@ -5,6 +5,571 @@ import { Vec2D, clamp, sigmoid } from "./base.js";
 import { ParametricFunction } from "./parametric.js";
 import { HeatMap } from "./heatmap.js";
 
+// The "state" for a wave equation simulation on a bounded domain consists of a pair
+// $(\vec{u}, \vec{v})$ of array-valued functions, where $\vec{u}$ describes the wave
+// surface position and $\vec{v}$ describes its velocity.
+// To allow for the addition of damping layers which absorb waves, in 2 dimensions we
+// would use a quadruple $(\vec{u}, \vec{v}, \vec{p}_x, \vec{p}_y)$.
+
+// The state S of a dynamical system evolving under a differential equation.
+class State {
+  state_size: number;
+  vals: Array<number>;
+  time: number;
+  constructor(state_size: number) {
+    this.state_size = state_size;
+    this.vals = new Array(this.state_size).fill(0);
+    this.time = 0;
+  }
+  // Time-derivative of the current state. Overwritten in subclasses.
+  dot_entry(arr: Array<number>, i: number): number {
+    return 0;
+  }
+  dot(s: Array<number>): Array<number> {
+    let dS = new Array(this.state_size);
+    for (let i = 0; i < this.state_size; i++) {
+      dS[i] = this.dot_entry(s, i);
+    }
+    return dS;
+  }
+  // Adding any boundary conditions which override the differential equation
+  add_boundary_conditions(arr: Array<number>, t: number): void {}
+  // Step the differential equation forward
+  step(dt: number) {
+    return this.step_rk(dt);
+  }
+  // Step the differential equation forward using finite difference method
+  step_finite_diff(dt: number) {
+    let newS = new Array(this.state_size);
+    let dS = this.dot(this.vals);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = (this.vals[i] as number) + (dS[i] as number);
+    }
+    this.add_boundary_conditions(newS, this.time);
+    return newS;
+  }
+  // Step the differential equation forward using Runge-Kutta
+  step_rk(dt: number) {
+    let newS = new Array(this.state_size);
+
+    let dS_1 = this.dot(this.vals);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = (this.vals[i] as number) + (dt / 2) * (dS_1[i] as number);
+    }
+    this.add_boundary_conditions(newS, this.time + dt / 2);
+
+    let dS_2 = this.dot(newS);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = (this.vals[i] as number) + (dt / 2) * (dS_2[i] as number);
+    }
+    this.add_boundary_conditions(newS, this.time + dt / 2);
+
+    let dS_3 = this.dot(newS);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = (this.vals[i] as number) + dt * (dS_3[i] as number);
+    }
+    this.add_boundary_conditions(newS, this.time + dt);
+
+    let dS_4 = this.dot(newS);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] =
+        (this.vals[i] as number) +
+        (dt / 6) * (dS_1[i] as number) +
+        (dt / 3) * (dS_2[i] as number) +
+        (dt / 3) * (dS_3[i] as number) +
+        (dt / 6) * (dS_4[i] as number);
+    }
+    this.add_boundary_conditions(newS, this.time + dt);
+    this.time += dt;
+    return newS;
+  }
+}
+
+// One-dimensional wave equation simulator, with zeros (bounds) at the ends
+class WaveSimStateOneDim extends State {
+  wave_propagation_speed: number; // Optional spatial scaling
+  constructor(width: number) {
+    super(2 * width);
+    this.wave_propagation_speed = 1;
+  }
+  set_wave_propagation_speed(w: number) {
+    this.wave_propagation_speed = w;
+  }
+  width(): number {
+    return this.state_size / 2;
+  }
+  get_uValues(): Array<number> {
+    return this.vals.slice(0, this.width());
+  }
+  get_vValues(): Array<number> {
+    return this.vals.slice(this.width(), 2 * this.width());
+  }
+  // Entry of the Laplacian.
+  laplacian_entry(arr: Array<number>, i: number): number {
+    if (i == 0) {
+      return (
+        2 * (arr[0] as number) -
+        5 * (arr[1] as number) +
+        4 * (arr[2] as number) -
+        (arr[3] as number)
+      );
+    } else if (i == this.width() - 1) {
+      return (
+        2 * (arr[this.width() - 1] as number) -
+        5 * (arr[this.width() - 2] as number) +
+        4 * (arr[this.width() - 3] as number) -
+        (arr[this.width() - 4] as number)
+      );
+    } else {
+      return (
+        (arr[i + 1] as number) - 2 * (arr[i] as number) + (arr[i - 1] as number)
+      );
+    }
+  }
+  // (u, u') -> (u', (c**2) * L(u))
+  dot(arr: Array<number>): Array<number> {
+    let dS = new Array(this.state_size);
+    for (let i = 0; i < this.width(); i++) {
+      dS[i] = arr[i + this.width()];
+      dS[i + this.width()] =
+        this.wave_propagation_speed ** 2 * this.laplacian_entry(arr, i);
+    }
+    return dS;
+  }
+}
+
+// Two-dimensional wave equation simulator, with zeros around the boundary
+class WaveSimStateTwoDim extends State {
+  width: number;
+  height: number;
+  wave_propagation_speed: number; // Optional spatial scaling
+  constructor(width: number, height: number) {
+    super(2 * width * height);
+    this.width = width;
+    this.height = height;
+    this.wave_propagation_speed = 1.0;
+  }
+  size(): number {
+    return this.width * this.height;
+  }
+  // Converts xy-coordinates to linear array coordinates, where x-coordinate
+  // proceeds faster.
+  index(x: number, y: number): number {
+    return y * this.width + x;
+  }
+  set_wave_propagation_speed(w: number) {
+    this.wave_propagation_speed = w;
+  }
+  get_uValues(): Array<number> {
+    return this.vals.slice(0, this.size());
+  }
+  get_vValues(): Array<number> {
+    return this.vals.slice(this.size(), 2 * this.size());
+  }
+  // (d/dx)^2.
+  l_x_entry(arr: Array<number>, x: number, y: number): number {
+    if (x == 0) {
+      return (
+        2 * (arr[this.index(0, y)] as number) -
+        5 * (arr[this.index(1, y)] as number) +
+        4 * (arr[this.index(2, y)] as number) -
+        (arr[this.index(3, y)] as number)
+      );
+    } else if (x == this.width - 1) {
+      return (
+        2 * (arr[this.index(this.width - 1, y)] as number) -
+        5 * (arr[this.index(this.width - 2, y)] as number) +
+        4 * (arr[this.index(this.width - 3, y)] as number) -
+        (arr[this.index(this.width - 4, y)] as number)
+      );
+    } else {
+      return (
+        (arr[this.index(x + 1, y)] as number) -
+        2 * (arr[this.index(x, y)] as number) +
+        (arr[this.index(x - 1, y)] as number)
+      );
+    }
+  }
+  // (d/dy)^2.
+  l_y_entry(arr: Array<number>, x: number, y: number): number {
+    if (y == 0) {
+      return (
+        2 * (arr[this.index(x, 0)] as number) -
+        5 * (arr[this.index(x, 1)] as number) +
+        4 * (arr[this.index(x, 2)] as number) -
+        (arr[this.index(x, 3)] as number)
+      );
+    } else if (y == this.height - 1) {
+      return (
+        2 * (arr[this.index(x, this.height - 1)] as number) -
+        5 * (arr[this.index(x, this.height - 2)] as number) +
+        4 * (arr[this.index(x, this.height - 3)] as number) -
+        (arr[this.index(x, this.height - 4)] as number)
+      );
+    } else {
+      return (
+        (arr[this.index(x, y + 1)] as number) -
+        2 * (arr[this.index(x, y)] as number) +
+        (arr[this.index(x, y - 1)] as number)
+      );
+    }
+  }
+  laplacian_entry(arr: Array<number>, x: number, y: number): number {
+    return this.l_x_entry(arr, x, y) + this.l_y_entry(arr, x, y);
+  }
+  // (u, u') -> (u', (c**2) * L(u))
+  dot(arr: Array<number>): Array<number> {
+    let dS = new Array(this.state_size);
+    let i;
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        i = this.index(x, y);
+        dS[i] = arr[i + this.size()];
+        dS[i + this.size()] =
+          this.wave_propagation_speed ** 2 * this.laplacian_entry(arr, x, y);
+      }
+    }
+    return dS;
+  }
+}
+
+// Two-dimensional wave equation simulator, with PML damping around the boundary
+class WaveSimStateTwoDimDamped extends State {
+  width: number;
+  height: number;
+  wave_propagation_speed: number; // Optional spatial scaling
+  constructor(width: number, height: number) {
+    super(4 * width * height);
+    this.width = width;
+    this.height = height;
+    this.wave_propagation_speed = 1.0;
+  }
+  dx(): number {
+    return 1 / this.wave_propagation_speed;
+  }
+  dy(): number {
+    return 1 / this.wave_propagation_speed;
+  }
+  size(): number {
+    return this.width * this.height;
+  }
+  // Converts xy-coordinates to linear array coordinates, where x-coordinate
+  // proceeds faster.
+  index(x: number, y: number): number {
+    return y * this.width + x;
+  }
+  set_wave_propagation_speed(w: number) {
+    this.wave_propagation_speed = w;
+  }
+  get_uValues(arr: Array<number>): Array<number> {
+    return arr.slice(0, this.size());
+  }
+  get_vValues(arr: Array<number>): Array<number> {
+    return arr.slice(this.size(), 2 * this.size());
+  }
+  get_pxValues(arr: Array<number>): Array<number> {
+    return arr.slice(2 * this.size(), 3 * this.size());
+  }
+  get_pyValues(arr: Array<number>): Array<number> {
+    return arr.slice(3 * this.size(), 4 * this.size());
+  }
+  // Damping in x direction
+  sigma_x(x: number): number {
+    return 0;
+  }
+  // Damping in y direction
+  sigma_y(y: number): number {
+    return 0;
+  }
+  // One-sided derivative (f(x + a * dx) - f(x)) / (a * dx)
+  d_x_plus(arr: Array<number>, x: number, y: number, a_plus: number): number {
+    if (x == this.width - 1) {
+      return -(arr[this.index(x, y)] as number) / (a_plus * this.dx());
+    } else {
+      return (
+        ((arr[this.index(x + 1, y)] as number) -
+          (arr[this.index(x, y)] as number)) /
+        (a_plus * this.dx())
+      );
+    }
+  }
+  // One-sided derivative (f(x - a * dx) - f(x)) / (-a * dx)
+  d_x_minus(arr: Array<number>, x: number, y: number, a_minus: number): number {
+    if (x == 0) {
+      return (arr[this.index(x, y)] as number) / (a_minus * this.dx());
+    } else {
+      return (
+        ((arr[this.index(x, y)] as number) -
+          (arr[this.index(x - 1, y)] as number)) /
+        (a_minus * this.dx())
+      );
+    }
+  }
+  // One-sided derivative (f(y + a * dy) - f(y)) / (a * dy)
+  d_y_plus(arr: Array<number>, x: number, y: number, a_plus: number): number {
+    if (y == this.height - 1) {
+      return -(arr[this.index(x, y)] as number) / (a_plus * this.dy());
+    } else {
+      return (
+        ((arr[this.index(x, y + 1)] as number) -
+          (arr[this.index(x, y)] as number)) /
+        (a_plus * this.dy())
+      );
+    }
+  }
+  // One-sided derivative (f(y - a * dy) - f(y)) / (-a * dy)
+  d_y_minus(arr: Array<number>, x: number, y: number, a_minus: number): number {
+    if (y == 0) {
+      return (arr[this.index(x, y)] as number) / (a_minus * this.dy());
+    } else {
+      return (
+        ((arr[this.index(x, y)] as number) -
+          (arr[this.index(x, y - 1)] as number)) /
+        (a_minus * this.dy())
+      );
+    }
+  }
+  // Calculates an entry of (d/dx)(array)
+  d_x_entry(arr: Array<number>, x: number, y: number): number {
+    if (x == 0) {
+      return (
+        (2 * (arr[this.index(2, y)] as number) -
+          2 * (arr[this.index(0, y)] as number) -
+          (arr[this.index(3, y)] as number) +
+          (arr[this.index(1, y)] as number)) /
+        (2 * this.dx())
+      );
+    } else if (x == this.width - 1) {
+      return (
+        (2 * (arr[this.index(this.width - 1, y)] as number) -
+          2 * (arr[this.index(this.width - 3, y)] as number) -
+          (arr[this.index(this.width - 2, y)] as number) +
+          (arr[this.index(this.width - 4, y)] as number)) /
+        (2 * this.dx())
+      );
+    } else {
+      return (
+        ((arr[this.index(x + 1, y)] as number) -
+          (arr[this.index(x - 1, y)] as number)) /
+        (2 * this.dx())
+      );
+    }
+  }
+  // Calculates an entry of (d/dy)(array)
+  d_y_entry(arr: Array<number>, x: number, y: number): number {
+    if (y == 0) {
+      return (
+        (2 * (arr[this.index(x, 2)] as number) -
+          2 * (arr[this.index(x, 0)] as number) -
+          (arr[this.index(x, 3)] as number) +
+          (arr[this.index(x, 1)] as number)) /
+        (2 * this.dy())
+      );
+    } else if (y == this.height - 1) {
+      return (
+        (2 * (arr[this.index(x, this.height - 1)] as number) -
+          2 * (arr[this.index(x, this.height - 3)] as number) -
+          (arr[this.index(x, this.height - 2)] as number) +
+          (arr[this.index(x, this.height - 4)] as number)) /
+        (2 * this.dy())
+      );
+    } else {
+      return (
+        ((arr[this.index(x, y + 1)] as number) -
+          (arr[this.index(x, y - 1)] as number)) /
+        (2 * this.dy())
+      );
+    }
+  }
+  // (d/dx)^2.
+  l_x_entry(arr: Array<number>, x: number, y: number): number {
+    if (x == 0) {
+      return (
+        2 * (arr[this.index(0, y)] as number) -
+        5 * (arr[this.index(1, y)] as number) +
+        4 * (arr[this.index(2, y)] as number) -
+        (arr[this.index(3, y)] as number)
+      );
+    } else if (x == this.width - 1) {
+      return (
+        2 * (arr[this.index(this.width - 1, y)] as number) -
+        5 * (arr[this.index(this.width - 2, y)] as number) +
+        4 * (arr[this.index(this.width - 3, y)] as number) -
+        (arr[this.index(this.width - 4, y)] as number)
+      );
+    } else {
+      return (
+        (arr[this.index(x + 1, y)] as number) -
+        2 * (arr[this.index(x, y)] as number) +
+        (arr[this.index(x - 1, y)] as number)
+      );
+    }
+  }
+  // (d/dy)^2.
+  l_y_entry(arr: Array<number>, x: number, y: number): number {
+    if (y == 0) {
+      return (
+        2 * (arr[this.index(x, 0)] as number) -
+        5 * (arr[this.index(x, 1)] as number) +
+        4 * (arr[this.index(x, 2)] as number) -
+        (arr[this.index(x, 3)] as number)
+      );
+    } else if (y == this.height - 1) {
+      return (
+        2 * (arr[this.index(x, this.height - 1)] as number) -
+        5 * (arr[this.index(x, this.height - 2)] as number) +
+        4 * (arr[this.index(x, this.height - 3)] as number) -
+        (arr[this.index(x, this.height - 4)] as number)
+      );
+    } else {
+      return (
+        (arr[this.index(x, y + 1)] as number) -
+        2 * (arr[this.index(x, y)] as number) +
+        (arr[this.index(x, y - 1)] as number)
+      );
+    }
+  }
+  laplacian_entry(arr: Array<number>, x: number, y: number): number {
+    return this.l_x_entry(arr, x, y) + this.l_y_entry(arr, x, y);
+  }
+  // Ref: https://arxiv.org/pdf/1001.0319, equation (2.14).
+  // A scalar field in (2+1)-D, u(x, y, t), evolving according to the wave equation formulated as
+  // du/dt   = v
+  // dv/dt   = (c**2) * (Lu) - (\sigma_x + \sigma_y) * v - \sigma_x * \sigma_y * u + (dp_x/dx + dp_y / dy)
+  // dp_x/dt = -\sigma_x * p_x + (c**2) * (\sigma_y - \sigma_x) * du/dx
+  // dp_y/dt = -\sigma_y * p_y + (c**2) * (\sigma_x - \sigma_y) * du/dy
+  //
+  // where p = (p_x, p_y) is an auxiliary field introduced to handle PML at the boundaries.
+  dot(arr: Array<number>): Array<number> {
+    let dS = new Array(this.size());
+    let i, sx, sy;
+    let u = this.get_uValues(arr);
+    let px = this.get_pxValues(arr);
+    let py = this.get_pyValues(arr);
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        i = this.index(x, y);
+        sx = this.sigma_x(x);
+        sy = this.sigma_y(y);
+        dS[i] = arr[i + this.size()];
+        dS[i + this.size()] =
+          this.wave_propagation_speed ** 2 * this.laplacian_entry(arr, x, y) +
+          this.d_x_entry(px, x, y) +
+          this.d_y_entry(py, x, y) -
+          (sx + sy) * (arr[i + this.size()] as number) -
+          sx * sy * (arr[i] as number);
+        dS[i + 2 * this.size()] =
+          -sx * (arr[i + 2 * this.size()] as number) +
+          this.wave_propagation_speed ** 2 *
+            (sy - sx) *
+            this.d_x_entry(u, x, y);
+        dS[i + 3 * this.size()] =
+          -sy * (arr[i + 3 * this.size()] as number) +
+          this.wave_propagation_speed ** 2 *
+            (sx - sy) *
+            this.d_y_entry(u, x, y);
+      }
+    }
+    return dS;
+  }
+}
+
+// class WaveSimOneDim {
+//   width: number;
+//   uValues: Array<number>;
+//   vValues: Array<number>;
+//   wave_propagation_speed: number;
+//   dx: number;
+//   constructor(width: number, dx: number) {
+//     this.width = width;
+//     this.dx = dx;
+//     this.uValues = new Array(width).fill(0);
+//     this.vValues = new Array(width).fill(0);
+//     this.wave_propagation_speed = 1.0;
+//   }
+//   new_arr(): Array<number> {
+//     return new Array(this.width).fill(0);
+//   }
+//   set_uValues(u: Array<number>): void {
+//     this.uValues = u;
+//   }
+//   get_uValues(): Array<number> {
+//     return this.uValues;
+//   }
+//   set_vValues(v: Array<number>): void {
+//     this.vValues = v;
+//   }
+//   get_vValues(): Array<number> {
+//     return this.vValues;
+//   }
+//   set_wave_propagation_speed(w: number) {
+//     this.wave_propagation_speed = w;
+//   }
+//   laplacian_entry(arr: Array<number>, x: number): number {
+//     if (x == 0) {
+//       return (
+//         (2 * (arr[0] as number) -
+//           5 * (arr[1] as number) +
+//           4 * (arr[2] as number) -
+//           (arr[3] as number)) /
+//         this.dx ** 2
+//       );
+//     } else if (x == this.width - 1) {
+//       return (
+//         (2 * (arr[this.width - 1] as number) -
+//           5 * (arr[this.width - 2] as number) +
+//           4 * (arr[this.width - 3] as number) -
+//           (arr[this.width - 4] as number)) /
+//         this.dx ** 2
+//       );
+//     } else {
+//       return (
+//         ((arr[x + 1] as number) -
+//           2 * (arr[x] as number) +
+//           (arr[x - 1] as number)) /
+//         this.dx ** 2
+//       );
+//     }
+//   }
+//   uDot(u: Array<number>, v: Array<number>): Array<number> {
+//     let arr = new Array(this.width);
+//     for (let i = 0; i < this.width; i++) {
+//       arr[i] = v[i] as number;
+//     }
+//     return arr;
+//   }
+//   vDot(u: Array<number>, v: Array<number>): Array<number> {
+//     let arr = new Array(this.width);
+//     for (let i = 0; i < this.width; i++) {
+//       arr[i] = this.wave_propagation_speed ** 2 * this.laplacian_entry(u, i);
+//     }
+//     return arr;
+//   }
+//   step(dt: number) {
+//     this.step_rk(dt: number);
+//   }
+//   step_finite_difference(dt: number) {
+//     let du = this.uDot(this.uValues, this.vValues);
+//     let dv = this.vDot(this.uValues, this.vValues);
+//     for (let i = 0; i < this.width; i++) {
+//       [this.uValues[i], this.vValues[i]] = [
+//         (this.uValues[i] as number) + dt * (du[i] as number),
+//         (this.vValues[i] as number) + dt * (dv[i] as number),
+//       ];
+//     }
+//   }
+//   step_rk(dt: number)
+// }
+// class WaveStateTwoDim {
+//   width: number;
+//   height: number;
+//   values: Array<number>;
+//   // TODO
+// }
+// class WaveStateTwoDimDamped {
+//   // TODO
+// }
+
 // Some toy examples
 // (1) A discretized, bounded wave simulation u(x, t) in R. This is equivalent
 //     to N point masses arranged in sequence by springs of equilibrium length 0,
@@ -111,10 +676,7 @@ class WaveEquationScene extends Scene {
   wave_propagation_speed: number;
   pml_strength: number;
   pml_width: number;
-  uValues: Array<number>;
-  vValues: Array<number>;
-  pxValues: Array<number>;
-  pyValues: Array<number>;
+  state: Array<number>; // TODO Replace this with a WaveSimStateTwoDimDamped
   imageData: ImageData;
   action_queue: Array<CallableFunction>;
   paused: boolean;
@@ -140,15 +702,21 @@ class WaveEquationScene extends Scene {
     this.wave_propagation_speed = 1.0;
     this.pml_strength = 5.0;
     this.pml_width = 1.0;
-    this.uValues = this.new_arr();
-    this.vValues = this.new_arr();
-    this.pxValues = this.new_arr();
-    this.pyValues = this.new_arr();
+    this.state = new Array(this.state_size()).fill(0);
 
     this.action_queue = [];
     this.paused = true;
 
-    this.add("heatmap", new HeatMap(width, height, -1, 1, this.uValues));
+    this.add(
+      "heatmap",
+      new HeatMap(width, height, -1, 1, this.state.slice(0, this.size())),
+    );
+  }
+  size(): number {
+    return this.width * this.height;
+  }
+  state_size(): number {
+    return 4 * this.width * this.height;
   }
   // Sets the wave propagation speed
   set_wave_propagation_speed(c: number) {
@@ -176,7 +744,7 @@ class WaveEquationScene extends Scene {
   }
   // Makes a new array
   new_arr(): Array<number> {
-    return new Array(this.width * this.height).fill(0);
+    return new Array(this.size()).fill(0);
   }
   // Converts xy-coordinates to linear array coordinates
   index(x: number, y: number): number {
@@ -184,10 +752,12 @@ class WaveEquationScene extends Scene {
   }
   // Sets the initial conditions
   set_init_conditions(x0: Array<number>, v0: Array<number>): void {
-    this.uValues = x0;
-    this.vValues = v0;
-    this.pxValues = this.new_arr();
-    this.pyValues = this.new_arr();
+    for (let i = 0; i < this.size(); i++) {
+      this.state[i] = x0[i] as number;
+      this.state[i + this.size()] = v0[i] as number;
+      this.state[i + 2 * this.size()] = 0;
+      this.state[i + 3 * this.size()] = 0;
+    }
     this.time = 0;
   }
   clear(): void {
@@ -378,176 +948,98 @@ class WaveEquationScene extends Scene {
   laplacian_entry(arr: Array<number>, x: number, y: number): number {
     return this.l_x_entry(arr, x, y) + this.l_y_entry(arr, x, y);
   }
-  // First-derivative in time for u-array
-  uDot(v: Array<number>): Array<number> {
-    let arr = new Array(this.width * this.height);
-    for (let ind = 0; ind < this.width * this.height; ind++) {
-      arr[ind] = v[ind] as number;
+  // Collective first-derivative of u, v, px, py
+  dot(state: Array<number>): Array<number> {
+    let dS = new Array(this.state_size());
+    let ind, sx, sy;
+    let u = state.slice(0, this.size());
+    let px = state.slice(2 * this.size(), 3 * this.size());
+    let py = state.slice(3 * this.size(), 4 * this.size());
+
+    // u dot
+    for (let ind = 0; ind < this.size(); ind++) {
+      dS[ind] = state[ind + this.size()] as number;
     }
-    return arr;
-  }
-  // First-derivative in time for v-array
-  vDot(
-    u: Array<number>,
-    v: Array<number>,
-    px: Array<number>,
-    py: Array<number>,
-  ): Array<number> {
-    let arr = new Array(this.width * this.height);
-    let ind;
+
+    // v dot
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         ind = this.index(x, y);
-        arr[ind] =
+        dS[ind + this.size()] =
           this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x, y) +
           this.d_x_entry(px, x, y) +
           this.d_y_entry(py, x, y) -
-          (this.sigma_x(x) + this.sigma_y(y)) * (v[ind] as number) -
-          this.sigma_x(x) * this.sigma_y(y) * (u[ind] as number);
+          (this.sigma_x(x) + this.sigma_y(y)) *
+            (state[ind + this.size()] as number) -
+          this.sigma_x(x) * this.sigma_y(y) * (state[ind] as number);
       }
     }
-    return arr;
-  }
-  // First derivative in time for x-component of p
-  pxDot(u: Array<number>, px: Array<number>): Array<number> {
-    let arr = new Array(this.width * this.height);
-    let ind, sx;
+
+    // px dot
     for (let x = 0; x < this.width; x++) {
       sx = this.sigma_x(x);
       for (let y = 0; y < this.height; y++) {
         ind = this.index(x, y);
-        arr[ind] =
+        dS[ind + 2 * this.size()] =
           -sx * (px[ind] as number) +
           this.wave_propagation_speed ** 2 *
             (this.sigma_y(y) - sx) *
             this.d_x_entry(u, x, y);
       }
     }
-    return arr;
-  }
-  // First derivative in time for y-component of p
-  pyDot(u: Array<number>, py: Array<number>): Array<number> {
-    let arr = new Array(this.width * this.height);
-    let ind, sy;
+
+    // py dot
     for (let y = 0; y < this.height; y++) {
       sy = this.sigma_y(y);
       for (let x = 0; x < this.width; x++) {
         ind = this.index(x, y);
-        arr[ind] =
+        dS[ind + 3 * this.size()] =
           -sy * (py[ind] as number) +
           this.wave_propagation_speed ** 2 *
             (this.sigma_x(x) - sy) *
             this.d_y_entry(u, x, y);
       }
     }
-    return arr;
+
+    return dS;
   }
   // Uses either finite-difference or Runge-Kutta to advance the differential equation.
   step(dt: number) {
-    let u, v, px, py;
-    u = new Array(this.width * this.height);
-    v = new Array(this.width * this.height);
-    px = new Array(this.width * this.height);
-    py = new Array(this.width * this.height);
+    let s: Array<number> = new Array(this.state_size()).fill(0);
 
-    let du_1 = this.uDot(this.vValues);
-    let dv_1 = this.vDot(
-      this.uValues,
-      this.vValues,
-      this.pxValues,
-      this.pyValues,
-    );
-    let dpx_1 = this.pxDot(this.uValues, this.pxValues);
-    let dpy_1 = this.pxDot(this.uValues, this.pyValues);
+    let dS_1 = this.dot(this.state);
+    for (let i = 0; i < this.state_size(); i++) {
+      s[i] = (this.state[i] as number) + (dt / 2) * (dS_1[i] as number);
+    }
+    this.add_boundary_conditions(s, this.time + dt / 2);
 
-    for (let i = 0; i < this.width * this.height; i++) {
-      u[i] = (this.uValues[i] as number) + (dt / 2) * (du_1[i] as number);
-      v[i] = (this.vValues[i] as number) + (dt / 2) * (dv_1[i] as number);
-      px[i] = (this.pxValues[i] as number) + (dt / 2) * (dpx_1[i] as number);
-      py[i] = (this.pyValues[i] as number) + (dt / 2) * (dpy_1[i] as number);
+    let dS_2 = this.dot(s);
+    for (let i = 0; i < this.state_size(); i++) {
+      s[i] = (this.state[i] as number) + (dt / 2) * (dS_2[i] as number);
+    }
+    this.add_boundary_conditions(s, this.time + dt / 2);
+
+    let dS_3 = this.dot(s);
+    for (let i = 0; i < this.state_size(); i++) {
+      s[i] = (this.state[i] as number) + dt * (dS_3[i] as number);
+    }
+    this.add_boundary_conditions(s, this.time + dt);
+
+    let dS_4 = this.dot(s);
+
+    for (let ind = 0; ind < this.state_size(); ind++) {
+      this.state[ind] =
+        (this.state[ind] as number) +
+        (dS_1[ind] as number) * (dt / 6) +
+        (dS_2[ind] as number) * (dt / 3) +
+        (dS_3[ind] as number) * (dt / 3) +
+        (dS_4[ind] as number) * (dt / 6);
     }
 
-    this.add_boundary_conditions(u, v, px, py, this.time + dt / 2);
-
-    let du_2 = this.uDot(v);
-    let dv_2 = this.vDot(u, v, px, py);
-    let dpx_2 = this.pxDot(u, px);
-    let dpy_2 = this.pyDot(u, py);
-
-    for (let i = 0; i < this.width * this.height; i++) {
-      u[i] = (this.uValues[i] as number) + (dt / 2) * (du_2[i] as number);
-      v[i] = (this.vValues[i] as number) + (dt / 2) * (dv_2[i] as number);
-      px[i] = (this.pxValues[i] as number) + (dt / 2) * (dpx_2[i] as number);
-      py[i] = (this.pyValues[i] as number) + (dt / 2) * (dpy_2[i] as number);
-    }
-
-    this.add_boundary_conditions(u, v, px, py, this.time + dt / 2);
-
-    let du_3 = this.uDot(v);
-    let dv_3 = this.vDot(u, v, px, py);
-    let dpx_3 = this.pxDot(u, px);
-    let dpy_3 = this.pyDot(u, py);
-
-    for (let i = 0; i < this.width * this.height; i++) {
-      u[i] = (this.uValues[i] as number) + dt * (du_3[i] as number);
-      v[i] = (this.vValues[i] as number) + dt * (dv_3[i] as number);
-      px[i] = (this.pxValues[i] as number) + dt * (dpx_3[i] as number);
-      py[i] = (this.pyValues[i] as number) + dt * (dpy_3[i] as number);
-    }
-
-    this.add_boundary_conditions(u, v, px, py, this.time + dt);
-
-    let du_4 = this.uDot(v);
-    let dv_4 = this.vDot(u, v, px, py);
-    let dpx_4 = this.pxDot(u, px);
-    let dpy_4 = this.pyDot(u, py);
-
-    for (let ind = 0; ind < this.width * this.height; ind++) {
-      this.uValues[ind] =
-        (this.uValues[ind] as number) +
-        (du_1[ind] as number) * (dt / 6) +
-        (du_2[ind] as number) * (dt / 3) +
-        (du_3[ind] as number) * (dt / 3) +
-        (du_4[ind] as number) * (dt / 6);
-
-      this.vValues[ind] =
-        (this.vValues[ind] as number) +
-        (dv_1[ind] as number) * (dt / 6) +
-        (dv_2[ind] as number) * (dt / 3) +
-        (dv_3[ind] as number) * (dt / 3) +
-        (dv_4[ind] as number) * (dt / 6);
-
-      this.pxValues[ind] =
-        (this.pxValues[ind] as number) +
-        (dpx_1[ind] as number) * (dt / 6) +
-        (dpx_2[ind] as number) * (dt / 3) +
-        (dpx_3[ind] as number) * (dt / 3) +
-        (dpx_4[ind] as number) * (dt / 6);
-
-      this.pyValues[ind] =
-        (this.pyValues[ind] as number) +
-        (dpy_1[ind] as number) * (dt / 6) +
-        (dpy_2[ind] as number) * (dt / 3) +
-        (dpy_3[ind] as number) * (dt / 3) +
-        (dpy_4[ind] as number) * (dt / 6);
-    }
-
-    this.add_boundary_conditions(
-      this.uValues,
-      this.vValues,
-      this.pxValues,
-      this.pyValues,
-      this.time + dt,
-    );
+    this.add_boundary_conditions(this.state, this.time + dt);
     this.time += dt;
   }
-  add_boundary_conditions(
-    u: Array<number>,
-    v: Array<number>,
-    px: Array<number>,
-    py: Array<number>,
-    t: number,
-  ): void {}
+  add_boundary_conditions(state: Array<number>, t: number): void {}
   // Draws the scene
   draw() {
     let ctx = this.canvas.getContext("2d");
@@ -557,7 +1049,7 @@ class WaveEquationScene extends Scene {
       let mobj = this.get_mobj(name);
       if (mobj == undefined) throw new Error(`${name} not found`);
       if (mobj instanceof HeatMap) {
-        mobj.set_vals(this.uValues);
+        mobj.set_vals(this.state.slice(0, this.width * this.height));
         mobj.draw(this.canvas, this, this.imageData);
       } else {
         mobj.draw(this.canvas, this);
@@ -566,13 +1058,7 @@ class WaveEquationScene extends Scene {
   }
   // Initializes the first step
   init() {
-    this.add_boundary_conditions(
-      this.uValues,
-      this.vValues,
-      this.pxValues,
-      this.pyValues,
-      this.time,
-    );
+    this.add_boundary_conditions(this.state, this.time);
   }
   // Starts animation
   play(until: number | undefined) {
@@ -628,17 +1114,11 @@ class WaveEquationScenePointSource extends WaveEquationScene {
   move_point_source_y(y: number) {
     this.point_source[1] = y;
   }
-  add_boundary_conditions(
-    u: Array<number>,
-    v: Array<number>,
-    px: Array<number>,
-    py: Array<number>,
-    t: number,
-  ) {
+  add_boundary_conditions(state: Array<number>, t: number) {
     let [x, y] = this.s2c(this.point_source[0], this.point_source[1]);
     let ind = this.index(Math.floor(x), Math.floor(y));
-    u[ind] = this.a * Math.sin(this.w * t);
-    v[ind] = this.a * this.w * Math.cos(this.w * t);
+    state[ind] = this.a * Math.sin(this.w * t);
+    state[ind + this.size()] = this.a * this.w * Math.cos(this.w * t);
   }
 }
 
@@ -691,15 +1171,16 @@ class WaveEquationSceneReflector extends WaveEquationScene {
   }
   // Sets all points outside the region to 0
   zero_outside_region() {
-    let x, y;
+    let x, y, ind;
     for (let y_arr = 0; y_arr < this.height; y_arr++) {
       for (let x_arr = 0; x_arr < this.width; x_arr++) {
         [x, y] = this.c2s(x_arr, y_arr);
         if (!this.inside_region(x, y)) {
-          this.uValues[this.index(x_arr, y_arr)] = 0;
-          this.vValues[this.index(x_arr, y_arr)] = 0;
-          this.pxValues[this.index(x_arr, y_arr)] = 0;
-          this.pyValues[this.index(x_arr, y_arr)] = 0;
+          ind = this.index(x_arr, y_arr);
+          this.state[ind] = 0;
+          this.state[ind + this.size()] = 0;
+          this.state[ind + 2 * this.size()] = 0;
+          this.state[ind + 3 * this.size()] = 0;
         }
       }
     }
@@ -944,26 +1425,21 @@ class WaveEquationSceneParabolic extends WaveEquationSceneReflector {
     this.point_source[1] = y;
   }
   // *** Simulation methods ***
-  add_boundary_conditions(
-    u: Array<number>,
-    v: Array<number>,
-    px: Array<number>,
-    py: Array<number>,
-    t: number,
-  ) {
+  add_boundary_conditions(state: Array<number>, t: number) {
     if (this.point_source_on) {
       let [x, y] = this.s2c(this.point_source[0], this.point_source[1]);
       let ind = this.index(Math.floor(x), Math.floor(y));
-      u[ind] = this.a * Math.sin(this.w * t);
-      v[ind] = this.a * this.w * Math.cos(this.w * t);
+      state[ind] = this.a * Math.sin(this.w * t);
+      state[ind + this.size()] = this.a * this.w * Math.cos(this.w * t);
     }
 
     // Clamp for numerical stability
-    for (let ind = 0; ind < this.width * this.height; ind++) {
-      u[ind] = clamp(u[ind] as number, -this.clamp_value, this.clamp_value);
-      v[ind] = clamp(v[ind] as number, -this.clamp_value, this.clamp_value);
-      px[ind] = clamp(px[ind] as number, -this.clamp_value, this.clamp_value);
-      py[ind] = clamp(py[ind] as number, -this.clamp_value, this.clamp_value);
+    for (let ind = 0; ind < this.state_size(); ind++) {
+      state[ind] = clamp(
+        state[ind] as number,
+        -this.clamp_value,
+        this.clamp_value,
+      );
     }
   }
 }
@@ -1077,26 +1553,21 @@ class WaveEquationSceneElliptic extends WaveEquationSceneReflector {
     this.point_source_on = !this.point_source_on;
   }
   // *** Simulation methods ***
-  add_boundary_conditions(
-    u: Array<number>,
-    v: Array<number>,
-    px: Array<number>,
-    py: Array<number>,
-    t: number,
-  ) {
+  add_boundary_conditions(state: Array<number>, t: number) {
     if (this.point_source_on) {
       let [x, y] = this.s2c(this.foci[0][0], this.foci[0][1]);
       let ind = this.index(Math.floor(x), Math.floor(y));
-      u[ind] = this.a * Math.sin(this.w * t);
-      v[ind] = this.a * this.w * Math.cos(this.w * t);
+      state[ind] = this.a * Math.sin(this.w * t);
+      state[ind + this.size()] = this.a * this.w * Math.cos(this.w * t);
     }
 
     // Clamp for numerical stability
-    for (let ind = 0; ind < this.width * this.height; ind++) {
-      u[ind] = clamp(u[ind] as number, -this.clamp_value, this.clamp_value);
-      v[ind] = clamp(v[ind] as number, -this.clamp_value, this.clamp_value);
-      px[ind] = clamp(px[ind] as number, -this.clamp_value, this.clamp_value);
-      py[ind] = clamp(py[ind] as number, -this.clamp_value, this.clamp_value);
+    for (let ind = 0; ind < this.state_size(); ind++) {
+      state[ind] = clamp(
+        state[ind] as number,
+        -this.clamp_value,
+        this.clamp_value,
+      );
     }
   }
 }
@@ -1138,23 +1609,19 @@ class WaveEquationSceneDipole extends WaveEquationScene {
   set_w(w: number) {
     this.w = w;
   }
-  add_boundary_conditions(
-    u: Array<number>,
-    v: Array<number>,
-    px: Array<number>,
-    py: Array<number>,
-    t: number,
-  ) {
+  add_boundary_conditions(state: Array<number>, t: number) {
     // Positive point source
     let [x1, y1] = this.s2c(this.dipole[0], this.dipole[1]);
     let ind_1 = this.index(Math.floor(x1), Math.floor(y1));
     // Negative point source
     let [x2, y2] = this.s2c(-this.dipole[0], -this.dipole[1]);
     let ind_2 = this.index(Math.floor(x2), Math.floor(y2));
-    u[ind_1] = this.a * Math.sin(this.w * t);
-    v[ind_1] = this.a * this.w * Math.cos(this.w * t);
-    u[ind_2] = -this.a * Math.sin(this.w * t);
-    v[ind_2] = -this.a * this.w * Math.cos(this.w * t);
+    state[ind_1] = this.a * Math.sin(this.w * t);
+    state[ind_1 + this.width * this.height] =
+      this.a * this.w * Math.cos(this.w * t);
+    state[ind_2] = -this.a * Math.sin(this.w * t);
+    state[ind_2 + this.width * this.height] =
+      -this.a * this.w * Math.cos(this.w * t);
   }
 }
 
