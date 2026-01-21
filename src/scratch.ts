@@ -127,7 +127,7 @@ export class Simulator {
   }
 }
 
-// Example: Wave equation simulation in two dimensions.
+// Example: Wave equation simulation for a function R^2 -> R
 // Ref: https://arxiv.org/pdf/1001.0319, equation (2.14).
 // A scalar field in (2+1)-D, u(x, y, t), evolving according to the wave equation formulated as
 // du/dt   = v
@@ -148,7 +148,6 @@ export class WaveSimTwoDim extends Simulator implements HeatMapDrawable {
     this.width = width;
     this.height = height;
 
-    // TODO Add setters for the attributes below
     this.pml_strength = 5.0;
     this.pml_width = 0.2;
     this.wave_propagation_speed = 10.0; // TODO What's a good default value to set this to?
@@ -443,22 +442,43 @@ export class WaveSimTwoDimPointSource extends WaveSimTwoDim {
 // *** INTERACTIVE ANIMATION ***
 // Base class which controls interactive simulations
 export class InteractivePlayingScene extends Scene {
-  simulator: Simulator; // The internal simulator
+  simulators: Record<number, Simulator>; // The internal simulator
+  num_simulators: number;
   action_queue: Array<CallableFunction>;
   paused: boolean;
+  time: number;
+  dt: number;
   end_time: number | undefined; // Store a known end-time in case the simulation is paused and unpaused
-  constructor(canvas: HTMLCanvasElement, simulator: Simulator) {
+  constructor(canvas: HTMLCanvasElement, simulators: Array<Simulator>) {
     super(canvas);
-    this.simulator = simulator;
+    [this.num_simulators, this.simulators] = simulators.reduce(
+      ([ind, acc], item) => ((acc[ind] = item), [ind + 1, acc]),
+      [0, {}] as [number, Record<number, Simulator>],
+    );
     this.action_queue = [];
     this.paused = true;
+    this.time = 0;
+    this.dt = (simulators[0] as Simulator).dt;
   }
-  set_simulator_attr(name: string, val: number) {
-    this.simulator.set_attr(name as keyof typeof Simulator, val);
+  get_simulator(ind: number): Simulator {
+    return this.simulators[ind] as Simulator;
+  }
+  set_simulator_attr(
+    simulator_ind: number,
+    attr_name: string,
+    attr_val: number,
+  ) {
+    this.get_simulator(simulator_ind).set_attr(
+      attr_name as keyof typeof Simulator,
+      attr_val,
+    );
   }
   // Restarts the simulator
   reset(): void {
-    this.simulator.reset();
+    for (let ind = 0; ind < this.num_simulators; ind++) {
+      this.get_simulator(ind).reset();
+    }
+    this.time = 0;
     this.draw();
   }
   // Switches from paused to unpaused and vice-versa.
@@ -492,10 +512,13 @@ export class InteractivePlayingScene extends Scene {
         callback();
       }
       // If we have reached the end-time, stop.
-      else if (this.simulator.time > (until as number)) {
+      else if (this.time > (until as number)) {
         return;
       } else {
-        this.simulator.step();
+        for (let ind = 0; ind < this.num_simulators; ind++) {
+          this.get_simulator(ind).step();
+        }
+        this.time += this.get_simulator(0).dt;
         this.draw();
       }
       window.requestAnimationFrame(this.play.bind(this, until));
@@ -522,7 +545,7 @@ export class InteractivePlayingScene extends Scene {
   draw_mobject(mobj: MObject) {}
 }
 
-// Heatmap version of a 2D wave equation scene
+// Heatmap version of a 2D input wave equation scene
 // TODO Make this written for any Simulator satisfying HeatMapDrawable.
 export class WaveSimTwoDimHeatMapScene extends InteractivePlayingScene {
   simulator: WaveSimTwoDim;
@@ -532,7 +555,7 @@ export class WaveSimTwoDimHeatMapScene extends InteractivePlayingScene {
     simulator: WaveSimTwoDim,
     imageData: ImageData,
   ) {
-    super(canvas, simulator);
+    super(canvas, [simulator]);
     this.simulator = simulator;
     simulator satisfies HeatMapDrawable;
     this.add(
@@ -562,19 +585,76 @@ export class WaveSimTwoDimHeatMapScene extends InteractivePlayingScene {
 }
 
 // Dots-and-springs version of a 2D wave equation scene
-class WaveSimTwoDimDots extends InteractivePlayingScene {
-  simulator: WaveSimTwoDim;
+// TODO In this case, there are two simulators at play. One for the x-coordinate of the output,
+// and one for the y-coordinate of the output.
+export class WaveSimTwoDimDotsScene extends InteractivePlayingScene {
   constructor(
     canvas: HTMLCanvasElement,
-    simulator: WaveSimTwoDim,
+    simulators: [WaveSimTwoDim, WaveSimTwoDim],
     imageData: ImageData,
   ) {
-    super(canvas, simulator);
-    this.simulator = simulator;
-    // TODO Add Mobjects. Dots and lines.
+    super(canvas, simulators);
+    this.simulators = simulators;
+
+    if (simulators[0].width != simulators[1].width) {
+      throw new Error("Simulators have different width.");
+    }
+    if (simulators[0].height != simulators[1].height) {
+      throw new Error("Simulators have different height.");
+    }
+
+    // Add Mobjects
+    // TODO Add connecting lines
+    console.log(this.xlims[1], this.xlims[0]);
+    let w = simulators[0].width;
+    let h = simulators[0].height;
+    let x_eq, y_eq;
+    for (let x = 0; x < w; x++) {
+      for (let y = 0; y < h; y++) {
+        [x_eq, y_eq] = this.eq_position(x, y);
+        this.add(`p_{${x}, ${y}}`, new Dot(x_eq, y_eq, 2 / w));
+      }
+    }
   }
+  // Returns the equilibrium position of the dot at position (x, y)
+  eq_position(x: number, y: number): [number, number] {
+    return [
+      this.xlims[0] +
+        ((x + 0.5) * (this.xlims[1] - this.xlims[0])) / this.width(),
+      this.ylims[0] +
+        ((y + 0.5) * (this.ylims[1] - this.ylims[0])) / this.height(),
+    ];
+  }
+  get_simulator(ind: number): WaveSimTwoDim {
+    return super.get_simulator(ind) as WaveSimTwoDim;
+  }
+  width(): number {
+    return this.get_simulator(0).width;
+  }
+  height(): number {
+    return this.get_simulator(0).height;
+  }
+  // Move all of the dots, where the two simulators control
+  // the x-coordinates and y-coordinates, respectively.
   update_mobjects() {
-    // TODO Update mobjects
+    console.log("Updating mobjects");
+    let w = this.width();
+    let h = this.height();
+    let dot: Dot;
+    let ind: number;
+    let x_eq: number;
+    let y_eq: number;
+    let sim_0 = this.get_simulator(0);
+    let u_0 = sim_0.get_uValues();
+    let u_1 = this.get_simulator(1).get_uValues();
+    for (let x = 0; x < w; x++) {
+      for (let y = 0; y < h; y++) {
+        ind = sim_0.index(x, y);
+        [x_eq, y_eq] = this.eq_position(x, y);
+        dot = this.get_mobj(`p_{${x}, ${y}}`) as Dot;
+        dot.move_to(x_eq + (u_0[ind] as number), y_eq + (u_1[ind] as number));
+      }
+    }
   }
   draw_mobject(mobj: MObject) {
     mobj.draw(this.canvas, this);

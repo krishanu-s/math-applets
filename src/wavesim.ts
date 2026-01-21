@@ -5,8 +5,10 @@ import { Vec2D, clamp, sigmoid } from "./base.js";
 import { ParametricFunction } from "./parametric.js";
 import { HeatMap } from "./heatmap.js";
 import {
+  WaveSimTwoDim,
   WaveSimTwoDimPointSource,
   WaveSimTwoDimHeatMapScene,
+  WaveSimTwoDimDotsScene,
 } from "./scratch.js";
 
 // The "state" for a wave equation simulation on a bounded domain consists of a pair
@@ -1641,9 +1643,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     // Prepare the canvas and scene
     let width = 200;
     let height = 200;
-    const dx = (xmax - xmin) / width;
-    const dy = (ymax - ymin) / height;
-    const dt = 0.03;
+    const dt = 0.02;
 
     let canvas = prepare_canvas(width, height, "scene-container");
 
@@ -1656,13 +1656,31 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     // Create ImageData object
     const imageData = ctx.createImageData(width, height);
 
-    let waveSim = new WaveSimTwoDimPointSource(width, height, dt);
-
+    let sim_width = width;
+    let sim_height = height;
+    let waveSim = new WaveSimTwoDimPointSource(sim_width, sim_height, dt);
+    waveSim.wave_propagation_speed = sim_width / 10;
+    waveSim.a = 5.0;
     let waveEquationScene = new WaveSimTwoDimHeatMapScene(
       canvas,
       waveSim,
       imageData,
     );
+
+    // let sim_width = 20;
+    // let sim_height = 20;
+    // let waveSimX = new WaveSimTwoDimPointSource(sim_width, sim_height, dt);
+    // waveSimX.wave_propagation_speed = sim_width / 10;
+    // waveSimX.a = 1.0;
+    // waveSimX.pml_width = 0.2;
+    // waveSimX.pml_strength = 100.0;
+    // let waveSimY = new WaveSimTwoDim(sim_width, sim_height, dt);
+    // waveSimY.wave_propagation_speed = sim_width / 10;
+    // let waveEquationScene = new WaveSimTwoDimDotsScene(
+    //   canvas,
+    //   [waveSimX, waveSimY],
+    //   imageData,
+    // );
 
     // let waveEquationScene = new WaveEquationSceneElliptic(
     //   canvas,
@@ -1684,10 +1702,15 @@ class WaveEquationSceneDipole extends WaveEquationScene {
       document.getElementById("slider-container-1") as HTMLElement,
       function (w: number) {
         waveEquationScene.add_to_queue(
-          waveEquationScene.set_simulator_attr.bind(waveEquationScene, "w", w),
+          waveEquationScene.set_simulator_attr.bind(
+            waveEquationScene,
+            0,
+            "w",
+            w,
+          ),
         );
       },
-      `2.0`,
+      `0.5`,
       0,
       10,
       0.05,
