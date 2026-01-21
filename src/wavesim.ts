@@ -35,7 +35,7 @@ class State {
   // Adding any boundary conditions which override the differential equation
   add_boundary_conditions(arr: Array<number>, t: number): void {}
   // Step the differential equation forward
-  // TODO This part has to be moved outside, to the generic "Scene" class.
+  // TODO This part has to be moved outside, to the generic "DynamicScene" class.
   step(dt: number) {
     return this.step_rk(dt);
   }
