@@ -1,9 +1,13 @@
 // Testing the direct feeding of a pixel array to the canvas
-import { MObject, Scene } from "./base.js";
+import { MObject, Scene, prepare_canvas } from "./base.js";
 import { Slider, Button } from "./interactive.js";
 import { Vec2D, clamp, sigmoid } from "./base.js";
 import { ParametricFunction } from "./parametric.js";
 import { HeatMap } from "./heatmap.js";
+import {
+  WaveSimTwoDimPointSource,
+  WaveSimTwoDimHeatMapScene,
+} from "./scratch.js";
 
 // The "state" for a wave equation simulation on a bounded domain consists of a pair
 // $(\vec{u}, \vec{v})$ of array-valued functions, where $\vec{u}$ describes the wave
@@ -1628,42 +1632,6 @@ class WaveEquationSceneDipole extends WaveEquationScene {
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
-    // Prepare the canvas
-    function prepare_canvas(
-      width: number,
-      height: number,
-      name: string,
-    ): HTMLCanvasElement {
-      const container = document.getElementById(name);
-      if (container == null) throw new Error(`${name} not found`);
-
-      // Set size to 300 pixels by 300 pixels
-      container.style.width = `${width}px`;
-      container.style.height = `${height}px`;
-
-      // Make a visual element
-      let wrapper = document.createElement("div");
-      wrapper.classList.add("canvas_container");
-      wrapper.classList.add("non_selectable");
-      wrapper.style.width = `${width}px`;
-      wrapper.style.height = `${height}px`;
-
-      let canvas = document.createElement("canvas");
-      canvas.classList.add("non_selectable");
-      canvas.style.position = "relative";
-      canvas.style.top = "0";
-      canvas.style.left = "0";
-      canvas.height = height;
-      canvas.width = width;
-
-      wrapper.appendChild(canvas);
-      container.appendChild(wrapper);
-
-      console.log("Canvas made");
-
-      return canvas;
-    }
-
     const xmin = -5;
     const xmax = 5;
     const ymin = -5;
@@ -1688,53 +1656,43 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     // Create ImageData object
     const imageData = ctx.createImageData(width, height);
 
-    let waveEquationScene = new WaveEquationSceneElliptic(
+    let waveSim = new WaveSimTwoDimPointSource(width, height, dt);
+
+    let waveEquationScene = new WaveSimTwoDimHeatMapScene(
       canvas,
+      waveSim,
       imageData,
-      width,
-      height,
-      clamp_value,
-      dx,
-      dy,
-      dt,
     );
+
+    // let waveEquationScene = new WaveEquationSceneElliptic(
+    //   canvas,
+    //   imageData,
+    //   width,
+    //   height,
+    //   clamp_value,
+    //   dx,
+    //   dy,
+    //   dt,
+    // );
 
     waveEquationScene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-    waveEquationScene.set_pml_strength(5.0);
-    waveEquationScene.set_pml_width(1.0);
+    // waveEquationScene.set_pml_strength(5.0);
+    // waveEquationScene.set_pml_width(1.0);
 
-    // Slider which controls the eccentricity: specific to ellipse
-    let eccentricity_slider = Slider(
-      document.getElementById("slider-container-1") as HTMLElement,
-      function (e: number) {
-        waveEquationScene.add_to_queue(
-          waveEquationScene.set_semiminor_axis.bind(
-            waveEquationScene,
-            Math.sqrt(1 - (+e) ** 2) * waveEquationScene.semimajor_axis,
-          ),
-        );
-      },
-      `0.5`,
-      0,
-      1,
-      0.01,
-    );
-    eccentricity_slider.width = 200;
-
-    // Slider which controls the wave frequency
-    let frequency_slider = Slider(
+    // Slider which controls the frequency
+    let w_slider = Slider(
       document.getElementById("slider-container-1") as HTMLElement,
       function (w: number) {
         waveEquationScene.add_to_queue(
-          waveEquationScene.set_frequency.bind(waveEquationScene, +w),
+          waveEquationScene.set_simulator_attr.bind(waveEquationScene, "w", w),
         );
       },
-      `5.0`,
-      1.0,
-      10.0,
-      0.01,
+      `2.0`,
+      0,
+      10,
+      0.05,
     );
-    frequency_slider.width = 200;
+    w_slider.width = 200;
 
     // Button which pauses/unpauses the simulation
     let pauseButton = Button(
@@ -1743,37 +1701,93 @@ class WaveEquationSceneDipole extends WaveEquationScene {
         waveEquationScene.add_to_queue(
           waveEquationScene.toggle_pause.bind(waveEquationScene),
         );
-        // TODO Make text change state on button press, not check simulator
-        pauseButton.textContent = waveEquationScene.paused
-          ? "Pause simulation"
-          : "Unpause simulation";
+        if (pauseButton.textContent == "Pause simulation") {
+          pauseButton.textContent = "Unpause simulation";
+        } else if (pauseButton.textContent == "Unpause simulation") {
+          pauseButton.textContent = "Pause simulation";
+        } else {
+          throw new Error();
+        }
+        // // TODO Make text change state on button press, not check simulator
+        // pauseButton.textContent = waveEquationScene.paused
+        //   ? "Pause simulation"
+        //   : "Unpause simulation";
       },
     );
     pauseButton.textContent = "Pause simulation";
     pauseButton.style.padding = "15px";
 
-    // Button which turns the point source on or off.
-    let pointSourceButton = Button(
-      document.getElementById("button-container-2") as HTMLElement,
-      function () {
-        waveEquationScene.add_to_queue(
-          waveEquationScene.toggle_point_source.bind(waveEquationScene),
-        );
-        // TODO Make text change state on button press, not check simulator
-        pointSourceButton.textContent = waveEquationScene.point_source_on
-          ? "Turn on source"
-          : "Turn off source";
-      },
-    );
-    pointSourceButton.textContent = "Turn off source";
-    pointSourceButton.style.padding = "15px";
+    // // Slider which controls the eccentricity: specific to ellipse
+    // let eccentricity_slider = Slider(
+    //   document.getElementById("slider-container-1") as HTMLElement,
+    //   function (e: number) {
+    //     waveEquationScene.add_to_queue(
+    //       waveEquationScene.set_semiminor_axis.bind(
+    //         waveEquationScene,
+    //         Math.sqrt(1 - (+e) ** 2) * waveEquationScene.semimajor_axis,
+    //       ),
+    //     );
+    //   },
+    //   `0.5`,
+    //   0,
+    //   1,
+    //   0.01,
+    // );
+    // eccentricity_slider.width = 200;
+
+    // // Slider which controls the wave frequency
+    // let frequency_slider = Slider(
+    //   document.getElementById("slider-container-1") as HTMLElement,
+    //   function (w: number) {
+    //     waveEquationScene.add_to_queue(
+    //       waveEquationScene.set_frequency.bind(waveEquationScene, +w),
+    //     );
+    //   },
+    //   `5.0`,
+    //   1.0,
+    //   10.0,
+    //   0.01,
+    // );
+    // frequency_slider.width = 200;
+
+    // // Button which pauses/unpauses the simulation
+    // let pauseButton = Button(
+    //   document.getElementById("button-container-1") as HTMLElement,
+    //   function () {
+    //     waveEquationScene.add_to_queue(
+    //       waveEquationScene.toggle_pause.bind(waveEquationScene),
+    //     );
+    //     // TODO Make text change state on button press, not check simulator
+    //     pauseButton.textContent = waveEquationScene.paused
+    //       ? "Pause simulation"
+    //       : "Unpause simulation";
+    //   },
+    // );
+    // pauseButton.textContent = "Pause simulation";
+    // pauseButton.style.padding = "15px";
+
+    // // Button which turns the point source on or off.
+    // let pointSourceButton = Button(
+    //   document.getElementById("button-container-2") as HTMLElement,
+    //   function () {
+    //     waveEquationScene.add_to_queue(
+    //       waveEquationScene.toggle_point_source.bind(waveEquationScene),
+    //     );
+    //     // TODO Make text change state on button press, not check simulator
+    //     pointSourceButton.textContent = waveEquationScene.point_source_on
+    //       ? "Turn on source"
+    //       : "Turn off source";
+    //   },
+    // );
+    // pointSourceButton.textContent = "Turn off source";
+    // pointSourceButton.style.padding = "15px";
 
     // Button which clears the scene
     let clearButton = Button(
       document.getElementById("button-container-3") as HTMLElement,
       function () {
         waveEquationScene.add_to_queue(
-          waveEquationScene.clear.bind(waveEquationScene),
+          waveEquationScene.reset.bind(waveEquationScene),
         );
       },
     );
@@ -1781,7 +1795,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     clearButton.style.padding = "15px";
 
     // Start the simulation
-    waveEquationScene.init();
+    // waveSim.init();
     waveEquationScene.toggle_pause();
     waveEquationScene.play(undefined);
   });

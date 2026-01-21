@@ -31,9 +31,16 @@ type StateVals<T, ALength extends number> = [T, ...T[]] & { length: ALength };
 
 // *** STATE/SIMULATOR ***
 
+// Interface for a simulator defined on a 2D grid, whose heatmap can be drawn
+interface HeatMapDrawable {
+  width: number;
+  height: number;
+  get_uValues(): Array<number>;
+}
+
 // The basic state/simulator class. The state s(t) advances according to the differential equation
 // s'(t) = dot(s(t), t)
-class Simulator {
+export class Simulator {
   vals: Array<number>; // Array of values storing the state
   state_size: number; // Size of the array of values storing the state
   time: number; // Timestamp in the worldline of the simulator
@@ -44,11 +51,22 @@ class Simulator {
     this.time = 0;
     this.dt = dt;
   }
+  // Resets the simulation
+  reset() {
+    this.vals = new Array(this.state_size).fill(0);
+    this.time = 0;
+  }
+  // Generic setter, for interactivity
+  set_attr(name: keyof typeof Simulator, val: any) {
+    if (name in this) {
+      this[name] = val;
+    }
+  }
   // Getter and setter for state.
-  get_values(): Array<number> {
+  get_vals(): Array<number> {
     return this.vals;
   }
-  set_values(vals: Array<number>) {
+  set_vals(vals: Array<number>) {
     this.vals = vals;
   }
   // Time-derivative of a given state and time. Overwritten in subclasses.
@@ -67,7 +85,7 @@ class Simulator {
       newS[i] = (this.vals[i] as number) + this.dt * (dS[i] as number);
     }
     this.add_boundary_conditions(newS, this.time);
-    this.set_values(newS);
+    this.set_vals(newS);
   }
   // Advances the simulation using the differential equation with the Runge-Kutta method.
   step_runge_kutta() {
@@ -101,7 +119,7 @@ class Simulator {
         (this.dt / 6) * (dS_4[i] as number);
     }
     this.add_boundary_conditions(newS, this.time + this.dt);
-    this.set_values(newS);
+    this.set_vals(newS);
     this.time += this.dt;
   }
   step() {
@@ -119,7 +137,7 @@ class Simulator {
 //
 // where p = (p_x, p_y) is an auxiliary field introduced to handle PML at the boundaries.
 // When the functions \sigma_x and \sigma_y are both 0, we retrieve the undamped wave equation.
-class WaveSimTwoDim extends Simulator {
+export class WaveSimTwoDim extends Simulator implements HeatMapDrawable {
   width: number;
   height: number;
   pml_strength: number; // PML strength scales as this value times a quadratic
@@ -133,7 +151,7 @@ class WaveSimTwoDim extends Simulator {
     // TODO Add setters for the attributes below
     this.pml_strength = 5.0;
     this.pml_width = 0.2;
-    this.wave_propagation_speed = 30.0;
+    this.wave_propagation_speed = 10.0; // TODO What's a good default value to set this to?
   }
   // Sets the initial conditions of the simulation
   set_init_conditions(x0: Array<number>, v0: Array<number>): void {
@@ -398,12 +416,33 @@ class WaveSimTwoDim extends Simulator {
   }
 }
 
+export class WaveSimTwoDimPointSource extends WaveSimTwoDim {
+  point_source: Vec2D;
+  w: number; // Frequency
+  a: number; // Amplitude
+  constructor(width: number, height: number, dt: number) {
+    super(width, height, dt);
+    this.point_source = [
+      Math.floor(this.width / 2),
+      Math.floor(this.height / 2),
+    ];
+    this.w = 2.0;
+    this.a = 5.0;
+  }
+  add_boundary_conditions(s: Array<number>, t: number): void {
+    let ind = this.index(this.point_source[0], this.point_source[1]);
+    this.vals[ind] = this.a * Math.sin(this.w * t);
+    this.vals[ind + this.size()] = this.a * this.w * Math.cos(this.w * t);
+  }
+}
+
+// TODO Add friction terms to DE
 // TODO Do reflector case
 // TODO Do elliptic and parabolic reflector cases
 
 // *** INTERACTIVE ANIMATION ***
 // Base class which controls interactive simulations
-class InteractivePlayingScene extends Scene {
+export class InteractivePlayingScene extends Scene {
   simulator: Simulator; // The internal simulator
   action_queue: Array<CallableFunction>;
   paused: boolean;
@@ -413,6 +452,14 @@ class InteractivePlayingScene extends Scene {
     this.simulator = simulator;
     this.action_queue = [];
     this.paused = true;
+  }
+  set_simulator_attr(name: string, val: number) {
+    this.simulator.set_attr(name as keyof typeof Simulator, val);
+  }
+  // Restarts the simulator
+  reset(): void {
+    this.simulator.reset();
+    this.draw();
   }
   // Switches from paused to unpaused and vice-versa.
   toggle_pause() {
@@ -476,7 +523,8 @@ class InteractivePlayingScene extends Scene {
 }
 
 // Heatmap version of a 2D wave equation scene
-class WaveSimTwoDimHeatMap extends InteractivePlayingScene {
+// TODO Make this written for any Simulator satisfying HeatMapDrawable.
+export class WaveSimTwoDimHeatMapScene extends InteractivePlayingScene {
   simulator: WaveSimTwoDim;
   imageData: ImageData; // Target for heatmap data
   constructor(
@@ -486,6 +534,7 @@ class WaveSimTwoDimHeatMap extends InteractivePlayingScene {
   ) {
     super(canvas, simulator);
     this.simulator = simulator;
+    simulator satisfies HeatMapDrawable;
     this.add(
       "heatmap",
       new HeatMap(
