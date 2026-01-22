@@ -3,162 +3,13 @@ import { Slider, Button } from "./interactive.js";
 import { Vec2D, clamp, sigmoid } from "./base.js";
 import { ParametricFunction } from "./parametric.js";
 import { HeatMap } from "./heatmap.js";
+import {
+  Simulator,
+  TwoDimDrawable,
+  InteractivePlayingScene,
+} from "./statesim.js";
 
-// Aspirational structure for interactive, animated simulations, with several layers:
-//
-// "State": The lowest level. Encodes the state of the system being simulated. This contains
-// - dynamically-evolving quantities such as positions, velocities, etc. as an array of numbers.
-// - time value
-// - a method ("dot") to calculate the time-derivative of said quantities
-// - a method to add boundary conditions afterward
-// - parameters such as gravity, material properties, etc. as attributes which can be set interactively
-// A key method is the differential equation
-//
-// "Simulator": This is a thin layer which implements different finite-element ways of solving
-// a differential equation (such as finite-difference and Runge-Kutta) and contains the
-// user-settable elements of the State (such as gravity strength, energy, etc).
-// (TO BE IMPLEMENTED IN FUTURE, CURRENTLY PART OF BOTH STATE AND SCENE)
-//
-// "InteractivePlayingScene": Contains logic for pausing/playing, drawing, and taking commands
-// (from e.g. the user) which are queued up for execution. Extends "Scene".
-// Note that execution of a user-command might involve setting values at the lower level.
-//
-// "Renderer": This is the portion which interacts with the canvas. Takes commands from the Scene.
-// (TO BE IMPLEMENTED IN FUTURE, CURRENTLY PART OF SCENE)
-
-// TODO Figure out how to use this new type which is an array of size state_size.
-type StateVals<T, ALength extends number> = [T, ...T[]] & { length: ALength };
-
-// *** STATE/SIMULATOR ***
-
-// Interface for a simulator defined on a 2D grid, whose heatmap can be drawn
-interface HeatMapDrawable {
-  width: number;
-  height: number;
-  get_uValues(): Array<number>;
-}
-
-// The basic state/simulator class. The state s(t) advances according to the differential equation
-// s'(t) = dot(s(t), t)
-export class Simulator {
-  vals: Array<number>; // Array of values storing the state
-  state_size: number; // Size of the array of values storing the state
-  time: number = 0; // Timestamp in the worldline of the simulator
-  dt: number; // Length of time in each simulation step
-  constructor(state_size: number, dt: number) {
-    this.state_size = state_size;
-    this.vals = new Array(this.state_size).fill(0);
-    this.dt = dt;
-  }
-  // Resets the simulation
-  reset() {
-    this.vals = new Array(this.state_size).fill(0);
-    this.time = 0;
-    this.add_boundary_conditions(this.vals, 0);
-  }
-  // Generic setter, for interactivity
-  set_attr(name: keyof typeof Simulator, val: any) {
-    if (name in this) {
-      this[name] = val;
-    }
-  }
-  // Getter and setter for state.
-  get_vals(): Array<number> {
-    return this.vals;
-  }
-  set_vals(vals: Array<number>) {
-    this.vals = vals;
-  }
-  // Time-derivative of a given state and time. Overwritten in subclasses.
-  dot(vals: Array<number>, time: number): Array<number> {
-    return new Array(this.state_size).fill(0);
-  }
-  // Subroutine for adding any time-evolution calculation
-  // which does not adhere to the differential equation. Used in step().
-  add_boundary_conditions(s: Array<number>, t: number): void {}
-  // Advances the simulation using the differential equation with
-  // s(t + dt) = s(t) + dt * s'(t)
-  // NOTE: This is just for testing purposes. This appears to be pretty numerically unstable
-  // unless dt is set very small.
-  step_finite_diff() {
-    let newS = new Array(this.state_size).fill(0);
-    let dS = this.dot(this.vals, this.time);
-    for (let i = 0; i < this.state_size; i++) {
-      newS[i] = (this.vals[i] as number) + this.dt * (dS[i] as number);
-    }
-    this.add_boundary_conditions(newS, this.time + this.dt);
-    console.log(newS[20101]);
-    this.set_vals(newS);
-    this.time += this.dt;
-  }
-  // Advances the simulation using the differential equation with the Runge-Kutta method.
-  step_runge_kutta() {
-    let newS = new Array(this.state_size).fill(0);
-
-    let dS_1 = this.dot(this.vals, this.time);
-    for (let i = 0; i < this.state_size; i++) {
-      newS[i] = (this.vals[i] as number) + (this.dt / 2) * (dS_1[i] as number);
-      if (Math.abs(newS[i]) > 1000) {
-        console.log(
-          1,
-          Math.floor(i / 40000),
-          Math.floor(i / 200) % 200,
-          i % 200,
-          newS[i],
-        );
-      }
-    }
-    this.add_boundary_conditions(newS, this.time + this.dt / 2);
-
-    let dS_2 = this.dot(newS, this.time);
-    for (let i = 0; i < this.state_size; i++) {
-      newS[i] = (this.vals[i] as number) + (this.dt / 2) * (dS_2[i] as number);
-      if (Math.abs(newS[i]) > 1000) {
-        console.log(
-          2,
-          Math.floor(i / 40000),
-          Math.floor(i / 200) % 200,
-          i % 200,
-          newS[i],
-        );
-      }
-    }
-    this.add_boundary_conditions(newS, this.time + this.dt / 2);
-
-    let dS_3 = this.dot(newS, this.time);
-    for (let i = 0; i < this.state_size; i++) {
-      newS[i] = (this.vals[i] as number) + this.dt * (dS_3[i] as number);
-      if (Math.abs(newS[i]) > 1000) {
-        console.log(
-          3,
-          Math.floor(i / 40000),
-          Math.floor(i / 200) % 200,
-          i % 200,
-          newS[i],
-        );
-      }
-    }
-    this.add_boundary_conditions(newS, this.time + this.dt);
-
-    let dS_4 = this.dot(newS, this.time);
-    for (let i = 0; i < this.state_size; i++) {
-      newS[i] =
-        (this.vals[i] as number) +
-        (this.dt / 6) * (dS_1[i] as number) +
-        (this.dt / 3) * (dS_2[i] as number) +
-        (this.dt / 3) * (dS_3[i] as number) +
-        (this.dt / 6) * (dS_4[i] as number);
-    }
-    this.add_boundary_conditions(newS, this.time + this.dt);
-    this.set_vals(newS);
-    this.time += this.dt;
-  }
-  step() {
-    return this.step_runge_kutta();
-  }
-}
-
-// Example: Wave equation simulation for a function R^2 -> R
+// Wave equation simulation for a function R^2 -> R
 // Ref: https://arxiv.org/pdf/1001.0319, equation (2.14).
 // A scalar field in (2+1)-D, u(x, y, t), evolving according to the wave equation formulated as
 // du/dt   = v
@@ -168,16 +19,28 @@ export class Simulator {
 //
 // where p = (p_x, p_y) is an auxiliary field introduced to handle PML at the boundaries.
 // When the functions \sigma_x and \sigma_y are both 0, we retrieve the undamped wave equation.
-export class WaveSimTwoDim extends Simulator implements HeatMapDrawable {
+// TODO Make PML layers an added functionality, which modify the sigma function.
+// TODO Add friction terms to DE
+export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
   width: number;
   height: number;
-  pml_strength: number = 5.0; // PML strength scales as this value times a quadratic
-  pml_width: number = 0.2; // Thickness of PML layer on one side, divided by half of the region width
-  wave_propagation_speed: number = 10.0; // Speed of wave propagation
+  pml_layers: Record<number, [number, number]> = {};
+  wave_propagation_speed: number = 20.0; // Speed of wave propagation
   constructor(width: number, height: number, dt: number) {
     super(4 * width * height, dt);
     this.width = width;
     this.height = height;
+    this.set_pml_layer(true, true, 0.2, 200.0);
+    this.set_pml_layer(true, false, 0.2, 200.0);
+    this.set_pml_layer(false, true, 0.2, 200.0);
+    this.set_pml_layer(false, false, 0.2, 200.0);
+    // Test
+    for (let x = 0; x < this.width; x++) {
+      console.log(x, this.sigma_x(x));
+    }
+    for (let y = 0; y < this.height; y++) {
+      console.log(y, this.sigma_y(y));
+    }
   }
   // Sets the initial conditions of the simulation
   set_init_conditions(x0: Array<number>, v0: Array<number>): void {
@@ -215,73 +78,132 @@ export class WaveSimTwoDim extends Simulator implements HeatMapDrawable {
   _get_pyValues(vals: Array<number>): Array<number> {
     return vals.slice(3 * this.size(), 4 * this.size());
   }
-  // *** ARRAY FUNCTIONS USED IN SIMULATION, NOT TO BE CHANGED ***
-  // PML damping functions
+  // PML-related
+  // Adds a perfectly matched layer to the specified border of the domain. The magnitude of damping
+  // grows as max(0, C(L - x))^2, where C is the pml_strength parameter, L is the pml_width parameter,
+  // and x represents the ratio distance(point, border) / distance(center, border). That is, x = 1
+  // at the center of the grid, and x = 0 at the border of the grid.
+  set_pml_layer(
+    x_direction: boolean,
+    positive: boolean,
+    pml_width: number,
+    pml_strength: number,
+  ) {
+    let ind;
+    if (x_direction && positive) {
+      ind = 0;
+    } else if (x_direction && !positive) {
+      ind = 1;
+    } else if (!x_direction && positive) {
+      ind = 2;
+    } else if (!x_direction && !positive) {
+      ind = 3;
+    } else {
+      throw new Error("Invalid PML specification.");
+    }
+    console.log("Adding ", ind, " PML layer");
+    this.pml_layers[ind] = [pml_width, pml_strength];
+  }
   sigma_x(arr_x: number): number {
-    return this._sigma(arr_x, this.width);
-  }
-  sigma_y(arr_y: number): number {
-    return this._sigma(arr_y, this.height);
-  }
-  _sigma(arr_val: number, arr_size: number): number {
-    let l = Math.abs(arr_val / (arr_size / 2) - 1);
-    if (l > 1 - this.pml_width) {
-      return this.pml_strength * l ** 2;
+    let ind, pml_thickness, pml_strength;
+    // Find the right PML layer
+    if (arr_x - this.width / 2 >= 0) {
+      ind = 0;
+    } else {
+      ind = 1;
+    }
+    // Calculate the damping factor
+    if (this.pml_layers.hasOwnProperty(ind)) {
+      [pml_thickness, pml_strength] = this.pml_layers[ind] as [number, number];
+      let relative_distance_from_center = Math.abs(
+        -1 + arr_x / (this.width / 2),
+      );
+      return (
+        pml_strength *
+        Math.max(0, relative_distance_from_center + pml_thickness - 1) ** 2
+      );
     } else {
       return 0;
     }
   }
-  // *** TODO Move these into the "reflector" class
-  // One-sided derivative (f(x + a) - f(x)) / a
-  d_x_plus(arr: Array<number>, x: number, y: number, a_plus: number): number {
+  sigma_y(arr_y: number): number {
+    let ind, pml_thickness, pml_strength;
+    // Find the right PML layer
+    if (arr_y - this.height / 2 >= 0) {
+      ind = 2;
+    } else {
+      ind = 3;
+    }
+    // Calculate the damping factor
+    if (this.pml_layers.hasOwnProperty(ind)) {
+      [pml_thickness, pml_strength] = this.pml_layers[ind] as [number, number];
+      let relative_distance_from_center = Math.abs(
+        -1 + arr_y / (this.height / 2),
+      );
+      return (
+        pml_strength *
+        Math.max(0, relative_distance_from_center + pml_thickness - 1) ** 2
+      );
+    } else {
+      return 0;
+    }
+  }
+  // _sigma(arr_val: number, arr_size: number): number {
+  //   let l = Math.abs(arr_val / (arr_size / 2) - 1);
+  //   if (l > 1 - this.pml_width) {
+  //     return this.pml_strength * l ** 2;
+  //   } else {
+  //     return 0;
+  //   }
+  // }
+  // NOTE: Consider moving these into the "reflector" class, as they're only needed there.
+  // NOTE: These methods apply to any function f: R^2 -> R. Put them into their own class,
+  // which has width and height attributes, and a "index" function.
+  // One-sided derivative f(x + 1) - f(x)
+  d_x_plus(arr: Array<number>, x: number, y: number): number {
     if (x == this.width - 1) {
-      return -(arr[this.index(x, y)] as number) / a_plus;
+      return -(arr[this.index(x, y)] as number);
     } else {
       return (
-        ((arr[this.index(x + 1, y)] as number) -
-          (arr[this.index(x, y)] as number)) /
-        a_plus
+        (arr[this.index(x + 1, y)] as number) -
+        (arr[this.index(x, y)] as number)
       );
     }
   }
-  // One-sided derivative (f(x) - f(x - a)) / a
-  d_x_minus(arr: Array<number>, x: number, y: number, a_minus: number): number {
+  // One-sided derivative f(x) - f(x - 1)
+  d_x_minus(arr: Array<number>, x: number, y: number): number {
     if (x == 0) {
-      return (arr[this.index(x, y)] as number) / a_minus;
+      return arr[this.index(x, y)] as number;
     } else {
       return (
-        ((arr[this.index(x, y)] as number) -
-          (arr[this.index(x - 1, y)] as number)) /
-        a_minus
+        (arr[this.index(x, y)] as number) -
+        (arr[this.index(x - 1, y)] as number)
       );
     }
   }
-  // One-sided derivative (f(y + a) - f(y)) / a
-  d_y_plus(arr: Array<number>, x: number, y: number, a_plus: number): number {
+  // One-sided derivative f(y + 1) - f(y)
+  d_y_plus(arr: Array<number>, x: number, y: number): number {
     if (y == this.height - 1) {
-      return -(arr[this.index(x, y)] as number) / a_plus;
+      return -(arr[this.index(x, y)] as number);
     } else {
       return (
-        ((arr[this.index(x, y + 1)] as number) -
-          (arr[this.index(x, y)] as number)) /
-        a_plus
+        (arr[this.index(x, y + 1)] as number) -
+        (arr[this.index(x, y)] as number)
       );
     }
   }
-  // One-sided derivative (f(y) - f(y - a)) / a
-  d_y_minus(arr: Array<number>, x: number, y: number, a_minus: number): number {
+  // One-sided derivative f(y) - f(y - 1)
+  d_y_minus(arr: Array<number>, x: number, y: number): number {
     if (y == 0) {
-      return (arr[this.index(x, y)] as number) / a_minus;
+      return arr[this.index(x, y)] as number;
     } else {
       return (
-        ((arr[this.index(x, y)] as number) -
-          (arr[this.index(x, y - 1)] as number)) /
-        a_minus
+        (arr[this.index(x, y)] as number) -
+        (arr[this.index(x, y - 1)] as number)
       );
     }
   }
-  // ***
-  // d/dx.
+  // d/dx, computed as (f(x + 1) - f(x - 1)) / 2.
   d_x_entry(arr: Array<number>, x: number, y: number): number {
     if (x == 0) {
       return (
@@ -307,7 +229,7 @@ export class WaveSimTwoDim extends Simulator implements HeatMapDrawable {
       );
     }
   }
-  // d/dy.
+  // d/dy, computed as (f(y + 1) - f(y - 1)) / 2.
   d_y_entry(arr: Array<number>, x: number, y: number): number {
     if (y == 0) {
       return (
@@ -333,7 +255,7 @@ export class WaveSimTwoDim extends Simulator implements HeatMapDrawable {
       );
     }
   }
-  // (d/dx)^2.
+  // (d/dx)^2, computed as f(x + 1) - 2f(x) + f(x - 1).
   l_x_entry(arr: Array<number>, x: number, y: number): number {
     if (x == 0) {
       return (
@@ -357,7 +279,7 @@ export class WaveSimTwoDim extends Simulator implements HeatMapDrawable {
       );
     }
   }
-  // (d/dy)^2.
+  // (d/dy)^2, computed as f(y + 1) - 2f(y) + f(y - 1).
   l_y_entry(arr: Array<number>, x: number, y: number): number {
     if (y == 0) {
       return (
@@ -385,7 +307,8 @@ export class WaveSimTwoDim extends Simulator implements HeatMapDrawable {
   laplacian_entry(vals: Array<number>, x: number, y: number): number {
     return this.l_x_entry(vals, x, y) + this.l_y_entry(vals, x, y);
   }
-  // Constructs the time-derivative of the entire state array.
+  // Constructs the time-derivative of the entire state array. Here is where
+  // the wave equation is used.
   dot(vals: Array<number>, time: number): Array<number> {
     let dS = new Array(this.state_size);
     let ind, sx, sy;
@@ -609,8 +532,8 @@ export class WaveSimTwoDimReflector extends WaveSimTwoDim implements Reflector {
       return super.d_x_entry(arr, x, y);
     } else {
       return (
-        (a_minus * this.d_x_plus(arr, x, y, a_plus) +
-          a_plus * this.d_x_minus(arr, x, y, a_minus)) /
+        ((a_minus * this.d_x_plus(arr, x, y)) / a_plus +
+          (a_plus * this.d_x_minus(arr, x, y)) / a_minus) /
         (a_minus + a_plus)
       );
     }
@@ -623,8 +546,8 @@ export class WaveSimTwoDimReflector extends WaveSimTwoDim implements Reflector {
       return super.d_y_entry(arr, x, y);
     } else {
       return (
-        (a_minus * this.d_y_plus(arr, x, y, a_plus) +
-          a_plus * this.d_y_minus(arr, x, y, a_minus)) /
+        ((a_minus * this.d_y_plus(arr, x, y)) / a_plus +
+          (a_plus * this.d_y_minus(arr, x, y)) / a_minus) /
         (a_minus + a_plus)
       );
     }
@@ -640,8 +563,8 @@ export class WaveSimTwoDimReflector extends WaveSimTwoDim implements Reflector {
       return super.l_x_entry(arr, x, y);
     } else {
       return (
-        (this.d_x_plus(arr, x, y, a_plus) -
-          this.d_x_minus(arr, x, y, a_minus)) /
+        (this.d_x_plus(arr, x, y) / a_plus -
+          this.d_x_minus(arr, x, y) / a_minus) /
         ((a_minus + a_plus) / 2)
       );
     }
@@ -655,8 +578,8 @@ export class WaveSimTwoDimReflector extends WaveSimTwoDim implements Reflector {
       return super.l_y_entry(arr, x, y);
     } else {
       return (
-        (this.d_y_plus(arr, x, y, a_plus) -
-          this.d_y_minus(arr, x, y, a_minus)) /
+        (this.d_y_plus(arr, x, y) / a_plus -
+          this.d_y_minus(arr, x, y) / a_minus) /
         ((a_minus + a_plus) / 2)
       );
     }
@@ -773,114 +696,7 @@ export class WaveSimTwoDimEllipticReflector extends WaveSimTwoDimReflector {
   }
 }
 
-// TODO Add friction terms to DE
-// TODO Do elliptic and parabolic reflector cases
-
-// *** INTERACTIVE ANIMATION ***
-// Base class which controls interactive simulations
-export class InteractivePlayingScene extends Scene {
-  simulators: Record<number, Simulator>; // The internal simulator
-  num_simulators: number;
-  action_queue: Array<CallableFunction>;
-  paused: boolean;
-  time: number;
-  dt: number;
-  end_time: number | undefined; // Store a known end-time in case the simulation is paused and unpaused
-  constructor(canvas: HTMLCanvasElement, simulators: Array<Simulator>) {
-    super(canvas);
-    [this.num_simulators, this.simulators] = simulators.reduce(
-      ([ind, acc], item) => ((acc[ind] = item), [ind + 1, acc]),
-      [0, {}] as [number, Record<number, Simulator>],
-    );
-    this.action_queue = [];
-    this.paused = true;
-    this.time = 0;
-    this.dt = (simulators[0] as Simulator).dt;
-  }
-  get_simulator(ind: number): Simulator {
-    return this.simulators[ind] as Simulator;
-  }
-  set_simulator_attr(
-    simulator_ind: number,
-    attr_name: string,
-    attr_val: number,
-  ) {
-    this.get_simulator(simulator_ind).set_attr(
-      attr_name as keyof typeof Simulator,
-      attr_val,
-    );
-  }
-  // Restarts the simulator
-  reset(): void {
-    for (let ind = 0; ind < this.num_simulators; ind++) {
-      this.get_simulator(ind).reset();
-    }
-    this.time = 0;
-    this.draw();
-  }
-  // Switches from paused to unpaused and vice-versa.
-  toggle_pause() {
-    this.paused = !this.paused;
-    if (!this.paused) {
-      this.play(this.end_time);
-    }
-  }
-  // Adds to the action queue if the scene is currently playing,
-  // otherwise execute the callback immediately
-  add_to_queue(callback: () => void) {
-    if (this.paused) {
-      callback();
-    } else {
-      this.action_queue.push(callback);
-    }
-  }
-  // Starts animation
-  play(until: number | undefined) {
-    // If paused, record the end time and stop the loop
-    if (this.paused) {
-      this.end_time = until;
-      return;
-    }
-    // Otherwise, loop
-    else {
-      // If there are outstanding actions, perform them first
-      if (this.action_queue.length > 0) {
-        let callback = this.action_queue.shift() as () => void;
-        callback();
-      }
-      // If we have reached the end-time, stop.
-      else if (this.time > (until as number)) {
-        return;
-      } else {
-        for (let ind = 0; ind < this.num_simulators; ind++) {
-          this.get_simulator(ind).step();
-        }
-        this.time += this.get_simulator(0).dt;
-        this.draw();
-      }
-      window.requestAnimationFrame(this.play.bind(this, until));
-    }
-  }
-  // Updates a mobject to account for the new simulator state
-  update_mobjects() {}
-  // Draws the scene by passing to the renderer.
-  //
-  draw() {
-    // TODO Move canvas manipulation into the renderer.
-    let ctx = this.canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.update_mobjects();
-    Object.keys(this.mobjects).forEach((name) => {
-      let mobj = this.get_mobj(name);
-      if (mobj == undefined) throw new Error(`${name} not found`);
-      // TODO Move mobject-drawing into the renderer?
-      this.draw_mobject(mobj);
-    });
-  }
-  // Add drawing instructions in the subclass.
-  draw_mobject(mobj: MObject) {}
-}
+// TODO Do parabolic reflector case
 
 // Heatmap version of a 2D input wave equation scene
 // TODO Make this written for any Simulator satisfying HeatMapDrawable.
@@ -894,7 +710,7 @@ export class WaveSimTwoDimHeatMapScene extends InteractivePlayingScene {
   ) {
     super(canvas, [simulator]);
     this.simulator = simulator;
-    simulator satisfies HeatMapDrawable;
+    simulator satisfies TwoDimDrawable;
     this.add(
       "heatmap",
       new HeatMap(
