@@ -7,6 +7,7 @@ import {
   Simulator,
   TwoDimDrawable,
   InteractivePlayingScene,
+  TwoDimState,
 } from "./statesim.js";
 
 // Wave equation simulation for a function R^2 -> R
@@ -26,21 +27,16 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
   height: number;
   pml_layers: Record<number, [number, number]> = {};
   wave_propagation_speed: number = 20.0; // Speed of wave propagation
+  _two_dim_state: TwoDimState;
   constructor(width: number, height: number, dt: number) {
     super(4 * width * height, dt);
     this.width = width;
     this.height = height;
+    this._two_dim_state = new TwoDimState(width, height);
     this.set_pml_layer(true, true, 0.2, 200.0);
     this.set_pml_layer(true, false, 0.2, 200.0);
     this.set_pml_layer(false, true, 0.2, 200.0);
     this.set_pml_layer(false, false, 0.2, 200.0);
-    // Test
-    for (let x = 0; x < this.width; x++) {
-      console.log(x, this.sigma_x(x));
-    }
-    for (let y = 0; y < this.height; y++) {
-      console.log(y, this.sigma_y(y));
-    }
   }
   // Sets the initial conditions of the simulation
   set_init_conditions(x0: Array<number>, v0: Array<number>): void {
@@ -78,7 +74,7 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
   _get_pyValues(vals: Array<number>): Array<number> {
     return vals.slice(3 * this.size(), 4 * this.size());
   }
-  // PML-related
+  // PML-related TODO Split these off into their own config object?
   // Adds a perfectly matched layer to the specified border of the domain. The magnitude of damping
   // grows as max(0, C(L - x))^2, where C is the pml_strength parameter, L is the pml_width parameter,
   // and x represents the ratio distance(point, border) / distance(center, border). That is, x = 1
@@ -148,160 +144,32 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
       return 0;
     }
   }
-  // _sigma(arr_val: number, arr_size: number): number {
-  //   let l = Math.abs(arr_val / (arr_size / 2) - 1);
-  //   if (l > 1 - this.pml_width) {
-  //     return this.pml_strength * l ** 2;
-  //   } else {
-  //     return 0;
-  //   }
-  // }
-  // NOTE: Consider moving these into the "reflector" class, as they're only needed there.
-  // NOTE: These methods apply to any function f: R^2 -> R. Put them into their own class,
-  // which has width and height attributes, and a "index" function.
-  // One-sided derivative f(x + 1) - f(x)
+  // NOTE: All methods below apply to any function f: R^2 -> R. Put them into their own class,
+  // which has width and height attributes, and a "index" function. Maybe part of the same
+  // interface for TwoDimDrawable? Or TwoDimState?
   d_x_plus(arr: Array<number>, x: number, y: number): number {
-    if (x == this.width - 1) {
-      return -(arr[this.index(x, y)] as number);
-    } else {
-      return (
-        (arr[this.index(x + 1, y)] as number) -
-        (arr[this.index(x, y)] as number)
-      );
-    }
+    return this._two_dim_state.d_x_plus(arr, x, y);
   }
-  // One-sided derivative f(x) - f(x - 1)
   d_x_minus(arr: Array<number>, x: number, y: number): number {
-    if (x == 0) {
-      return arr[this.index(x, y)] as number;
-    } else {
-      return (
-        (arr[this.index(x, y)] as number) -
-        (arr[this.index(x - 1, y)] as number)
-      );
-    }
+    return this._two_dim_state.d_x_minus(arr, x, y);
   }
-  // One-sided derivative f(y + 1) - f(y)
   d_y_plus(arr: Array<number>, x: number, y: number): number {
-    if (y == this.height - 1) {
-      return -(arr[this.index(x, y)] as number);
-    } else {
-      return (
-        (arr[this.index(x, y + 1)] as number) -
-        (arr[this.index(x, y)] as number)
-      );
-    }
+    return this._two_dim_state.d_y_plus(arr, x, y);
   }
-  // One-sided derivative f(y) - f(y - 1)
   d_y_minus(arr: Array<number>, x: number, y: number): number {
-    if (y == 0) {
-      return arr[this.index(x, y)] as number;
-    } else {
-      return (
-        (arr[this.index(x, y)] as number) -
-        (arr[this.index(x, y - 1)] as number)
-      );
-    }
+    return this._two_dim_state.d_y_minus(arr, x, y);
   }
-  // d/dx, computed as (f(x + 1) - f(x - 1)) / 2.
   d_x_entry(arr: Array<number>, x: number, y: number): number {
-    if (x == 0) {
-      return (
-        (2 * (arr[this.index(2, y)] as number) -
-          2 * (arr[this.index(0, y)] as number) -
-          (arr[this.index(3, y)] as number) +
-          (arr[this.index(1, y)] as number)) /
-        2
-      );
-    } else if (x == this.width - 1) {
-      return (
-        (2 * (arr[this.index(this.width - 1, y)] as number) -
-          2 * (arr[this.index(this.width - 3, y)] as number) -
-          (arr[this.index(this.width - 2, y)] as number) +
-          (arr[this.index(this.width - 4, y)] as number)) /
-        2
-      );
-    } else {
-      return (
-        ((arr[this.index(x + 1, y)] as number) -
-          (arr[this.index(x - 1, y)] as number)) /
-        2
-      );
-    }
+    return this._two_dim_state.d_x_entry(arr, x, y);
   }
-  // d/dy, computed as (f(y + 1) - f(y - 1)) / 2.
   d_y_entry(arr: Array<number>, x: number, y: number): number {
-    if (y == 0) {
-      return (
-        (2 * (arr[this.index(x, 2)] as number) -
-          2 * (arr[this.index(x, 0)] as number) -
-          (arr[this.index(x, 3)] as number) +
-          (arr[this.index(x, 1)] as number)) /
-        2
-      );
-    } else if (y == this.height - 1) {
-      return (
-        (2 * (arr[this.index(x, this.height - 1)] as number) -
-          2 * (arr[this.index(x, this.height - 3)] as number) -
-          (arr[this.index(x, this.height - 2)] as number) +
-          (arr[this.index(x, this.height - 4)] as number)) /
-        2
-      );
-    } else {
-      return (
-        ((arr[this.index(x, y + 1)] as number) -
-          (arr[this.index(x, y - 1)] as number)) /
-        2
-      );
-    }
+    return this._two_dim_state.d_y_entry(arr, x, y);
   }
-  // (d/dx)^2, computed as f(x + 1) - 2f(x) + f(x - 1).
   l_x_entry(arr: Array<number>, x: number, y: number): number {
-    if (x == 0) {
-      return (
-        2 * (arr[this.index(0, y)] as number) -
-        5 * (arr[this.index(1, y)] as number) +
-        4 * (arr[this.index(2, y)] as number) -
-        (arr[this.index(3, y)] as number)
-      );
-    } else if (x == this.width - 1) {
-      return (
-        2 * (arr[this.index(this.width - 1, y)] as number) -
-        5 * (arr[this.index(this.width - 2, y)] as number) +
-        4 * (arr[this.index(this.width - 3, y)] as number) -
-        (arr[this.index(this.width - 4, y)] as number)
-      );
-    } else {
-      return (
-        (arr[this.index(x + 1, y)] as number) -
-        2 * (arr[this.index(x, y)] as number) +
-        (arr[this.index(x - 1, y)] as number)
-      );
-    }
+    return this._two_dim_state.l_x_entry(arr, x, y);
   }
-  // (d/dy)^2, computed as f(y + 1) - 2f(y) + f(y - 1).
   l_y_entry(arr: Array<number>, x: number, y: number): number {
-    if (y == 0) {
-      return (
-        2 * (arr[this.index(x, 0)] as number) -
-        5 * (arr[this.index(x, 1)] as number) +
-        4 * (arr[this.index(x, 2)] as number) -
-        (arr[this.index(x, 3)] as number)
-      );
-    } else if (y == this.height - 1) {
-      return (
-        2 * (arr[this.index(x, this.height - 1)] as number) -
-        5 * (arr[this.index(x, this.height - 2)] as number) +
-        4 * (arr[this.index(x, this.height - 3)] as number) -
-        (arr[this.index(x, this.height - 4)] as number)
-      );
-    } else {
-      return (
-        (arr[this.index(x, y + 1)] as number) -
-        2 * (arr[this.index(x, y)] as number) +
-        (arr[this.index(x, y - 1)] as number)
-      );
-    }
+    return this._two_dim_state.l_y_entry(arr, x, y);
   }
   // (d/dx)^2 + (d/dy)^2
   laplacian_entry(vals: Array<number>, x: number, y: number): number {
@@ -532,8 +400,8 @@ export class WaveSimTwoDimReflector extends WaveSimTwoDim implements Reflector {
       return super.d_x_entry(arr, x, y);
     } else {
       return (
-        ((a_minus * this.d_x_plus(arr, x, y)) / a_plus +
-          (a_plus * this.d_x_minus(arr, x, y)) / a_minus) /
+        ((a_minus * this._two_dim_state.d_x_plus(arr, x, y)) / a_plus +
+          (a_plus * this._two_dim_state.d_x_minus(arr, x, y)) / a_minus) /
         (a_minus + a_plus)
       );
     }
@@ -546,8 +414,8 @@ export class WaveSimTwoDimReflector extends WaveSimTwoDim implements Reflector {
       return super.d_y_entry(arr, x, y);
     } else {
       return (
-        ((a_minus * this.d_y_plus(arr, x, y)) / a_plus +
-          (a_plus * this.d_y_minus(arr, x, y)) / a_minus) /
+        ((a_minus * this._two_dim_state.d_y_plus(arr, x, y)) / a_plus +
+          (a_plus * this._two_dim_state.d_y_minus(arr, x, y)) / a_minus) /
         (a_minus + a_plus)
       );
     }
@@ -563,8 +431,8 @@ export class WaveSimTwoDimReflector extends WaveSimTwoDim implements Reflector {
       return super.l_x_entry(arr, x, y);
     } else {
       return (
-        (this.d_x_plus(arr, x, y) / a_plus -
-          this.d_x_minus(arr, x, y) / a_minus) /
+        (this._two_dim_state.d_x_plus(arr, x, y) / a_plus -
+          this._two_dim_state.d_x_minus(arr, x, y) / a_minus) /
         ((a_minus + a_plus) / 2)
       );
     }
@@ -578,8 +446,8 @@ export class WaveSimTwoDimReflector extends WaveSimTwoDim implements Reflector {
       return super.l_y_entry(arr, x, y);
     } else {
       return (
-        (this.d_y_plus(arr, x, y) / a_plus -
-          this.d_y_minus(arr, x, y) / a_minus) /
+        (this._two_dim_state.d_y_plus(arr, x, y) / a_plus -
+          this._two_dim_state.d_y_minus(arr, x, y) / a_minus) /
         ((a_minus + a_plus) / 2)
       );
     }

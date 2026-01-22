@@ -12,7 +12,7 @@ import { Scene, MObject } from "./base.js";
 
 // The basic state/simulator class. The state s(t) advances according to the differential equation
 // s'(t) = dot(s(t), t)
-export class Simulator {
+export abstract class Simulator {
   vals: Array<number>; // Array of values storing the state
   state_size: number; // Size of the array of values storing the state
   time: number = 0; // Timestamp in the worldline of the simulator
@@ -106,6 +106,9 @@ export interface OneDimDrawable {
   get_uValues(): Array<number>;
 }
 
+// TODO Methods associated to a state which is a one-dimensional grid of values,
+// representing a function f : R -> R.
+
 // A simulator where a subset of the state can be drawn in two dimensions
 export interface TwoDimDrawable {
   width: number;
@@ -113,8 +116,169 @@ export interface TwoDimDrawable {
   get_uValues(): Array<number>;
 }
 
+type Constructor = new (...args: any[]) => {};
+
+// Methods associated to a state which is a two-dimensional grid of values,
+// representing a function f : R^2 -> R.
+// TODO Turn this into a Mixin.
+export class TwoDimState {
+  width: number;
+  height: number;
+  constructor(width: number, height: number) {
+    this.width = width;
+    this.height = height;
+  }
+  index(x: number, y: number) {
+    return y * this.width + x;
+  }
+  // One-sided derivative f(x + 1) - f(x)
+  d_x_plus(arr: Array<number>, x: number, y: number): number {
+    if (x == this.width - 1) {
+      return -(arr[this.index(x, y)] as number);
+    } else {
+      return (
+        (arr[this.index(x + 1, y)] as number) -
+        (arr[this.index(x, y)] as number)
+      );
+    }
+  }
+  // One-sided derivative f(x) - f(x - 1)
+  d_x_minus(arr: Array<number>, x: number, y: number): number {
+    if (x == 0) {
+      return arr[this.index(x, y)] as number;
+    } else {
+      return (
+        (arr[this.index(x, y)] as number) -
+        (arr[this.index(x - 1, y)] as number)
+      );
+    }
+  }
+  // One-sided derivative f(y + 1) - f(y)
+  d_y_plus(arr: Array<number>, x: number, y: number): number {
+    if (y == this.height - 1) {
+      return -(arr[this.index(x, y)] as number);
+    } else {
+      return (
+        (arr[this.index(x, y + 1)] as number) -
+        (arr[this.index(x, y)] as number)
+      );
+    }
+  }
+  // One-sided derivative f(y) - f(y - 1)
+  d_y_minus(arr: Array<number>, x: number, y: number): number {
+    if (y == 0) {
+      return arr[this.index(x, y)] as number;
+    } else {
+      return (
+        (arr[this.index(x, y)] as number) -
+        (arr[this.index(x, y - 1)] as number)
+      );
+    }
+  }
+  // d/dx, computed as (f(x + 1) - f(x - 1)) / 2.
+  d_x_entry(arr: Array<number>, x: number, y: number): number {
+    if (x == 0) {
+      return (
+        (2 * (arr[this.index(2, y)] as number) -
+          2 * (arr[this.index(0, y)] as number) -
+          (arr[this.index(3, y)] as number) +
+          (arr[this.index(1, y)] as number)) /
+        2
+      );
+    } else if (x == this.width - 1) {
+      return (
+        (2 * (arr[this.index(this.width - 1, y)] as number) -
+          2 * (arr[this.index(this.width - 3, y)] as number) -
+          (arr[this.index(this.width - 2, y)] as number) +
+          (arr[this.index(this.width - 4, y)] as number)) /
+        2
+      );
+    } else {
+      return (
+        ((arr[this.index(x + 1, y)] as number) -
+          (arr[this.index(x - 1, y)] as number)) /
+        2
+      );
+    }
+  }
+  // d/dy, computed as (f(y + 1) - f(y - 1)) / 2.
+  d_y_entry(arr: Array<number>, x: number, y: number): number {
+    if (y == 0) {
+      return (
+        (2 * (arr[this.index(x, 2)] as number) -
+          2 * (arr[this.index(x, 0)] as number) -
+          (arr[this.index(x, 3)] as number) +
+          (arr[this.index(x, 1)] as number)) /
+        2
+      );
+    } else if (y == this.height - 1) {
+      return (
+        (2 * (arr[this.index(x, this.height - 1)] as number) -
+          2 * (arr[this.index(x, this.height - 3)] as number) -
+          (arr[this.index(x, this.height - 2)] as number) +
+          (arr[this.index(x, this.height - 4)] as number)) /
+        2
+      );
+    } else {
+      return (
+        ((arr[this.index(x, y + 1)] as number) -
+          (arr[this.index(x, y - 1)] as number)) /
+        2
+      );
+    }
+  }
+  // (d/dx)^2, computed as f(x + 1) - 2f(x) + f(x - 1).
+  l_x_entry(arr: Array<number>, x: number, y: number): number {
+    if (x == 0) {
+      return (
+        2 * (arr[this.index(0, y)] as number) -
+        5 * (arr[this.index(1, y)] as number) +
+        4 * (arr[this.index(2, y)] as number) -
+        (arr[this.index(3, y)] as number)
+      );
+    } else if (x == this.width - 1) {
+      return (
+        2 * (arr[this.index(this.width - 1, y)] as number) -
+        5 * (arr[this.index(this.width - 2, y)] as number) +
+        4 * (arr[this.index(this.width - 3, y)] as number) -
+        (arr[this.index(this.width - 4, y)] as number)
+      );
+    } else {
+      return (
+        (arr[this.index(x + 1, y)] as number) -
+        2 * (arr[this.index(x, y)] as number) +
+        (arr[this.index(x - 1, y)] as number)
+      );
+    }
+  }
+  // (d/dy)^2, computed as f(y + 1) - 2f(y) + f(y - 1).
+  l_y_entry(arr: Array<number>, x: number, y: number): number {
+    if (y == 0) {
+      return (
+        2 * (arr[this.index(x, 0)] as number) -
+        5 * (arr[this.index(x, 1)] as number) +
+        4 * (arr[this.index(x, 2)] as number) -
+        (arr[this.index(x, 3)] as number)
+      );
+    } else if (y == this.height - 1) {
+      return (
+        2 * (arr[this.index(x, this.height - 1)] as number) -
+        5 * (arr[this.index(x, this.height - 2)] as number) +
+        4 * (arr[this.index(x, this.height - 3)] as number) -
+        (arr[this.index(x, this.height - 4)] as number)
+      );
+    } else {
+      return (
+        (arr[this.index(x, y + 1)] as number) -
+        2 * (arr[this.index(x, y)] as number) +
+        (arr[this.index(x, y - 1)] as number)
+      );
+    }
+  }
+}
+
 // Base class which controls interactive simulations
-export class InteractivePlayingScene extends Scene {
+export abstract class InteractivePlayingScene extends Scene {
   simulators: Record<number, Simulator>; // The internal simulator
   num_simulators: number;
   action_queue: Array<CallableFunction>;
