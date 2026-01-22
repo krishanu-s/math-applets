@@ -9,6 +9,7 @@ import {
   WaveSimTwoDimPointSource,
   WaveSimTwoDimHeatMapScene,
   WaveSimTwoDimDotsScene,
+  WaveSimTwoDimEllipticReflector,
 } from "./scratch.js";
 
 // The "state" for a wave equation simulation on a bounded domain consists of a pair
@@ -1638,12 +1639,14 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     const xmax = 5;
     const ymin = -5;
     const ymax = 5;
-    const clamp_value = 30;
+    const clamp_value = 10;
 
     // Prepare the canvas and scene
     let width = 200;
     let height = 200;
-    const dt = 0.02;
+    let dx = (xmax - xmin) / width;
+    let dy = (ymax - ymin) / height;
+    const dt = 0.01;
 
     let canvas = prepare_canvas(width, height, "scene-container");
 
@@ -1658,14 +1661,16 @@ class WaveEquationSceneDipole extends WaveEquationScene {
 
     let sim_width = width;
     let sim_height = height;
-    let waveSim = new WaveSimTwoDimPointSource(sim_width, sim_height, dt);
+    let waveSim = new WaveSimTwoDimEllipticReflector(sim_width, sim_height, dt);
     waveSim.wave_propagation_speed = sim_width / 10;
     waveSim.a = 5.0;
+    waveSim.add_boundary_conditions(waveSim.vals, 0);
     let waveEquationScene = new WaveSimTwoDimHeatMapScene(
       canvas,
       waveSim,
       imageData,
     );
+    console.log("Simulation initialized");
 
     // let sim_width = 20;
     // let sim_height = 20;
@@ -1710,7 +1715,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
           ),
         );
       },
-      `0.5`,
+      `5.0`,
       0,
       10,
       0.05,
@@ -1819,6 +1824,10 @@ class WaveEquationSceneDipole extends WaveEquationScene {
 
     // Start the simulation
     // waveSim.init();
+    console.log("Ready to play");
+
+    // waveEquationScene.init();
+
     waveEquationScene.toggle_pause();
     waveEquationScene.play(undefined);
   });

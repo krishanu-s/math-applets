@@ -43,18 +43,18 @@ interface HeatMapDrawable {
 export class Simulator {
   vals: Array<number>; // Array of values storing the state
   state_size: number; // Size of the array of values storing the state
-  time: number; // Timestamp in the worldline of the simulator
+  time: number = 0; // Timestamp in the worldline of the simulator
   dt: number; // Length of time in each simulation step
   constructor(state_size: number, dt: number) {
     this.state_size = state_size;
     this.vals = new Array(this.state_size).fill(0);
-    this.time = 0;
     this.dt = dt;
   }
   // Resets the simulation
   reset() {
     this.vals = new Array(this.state_size).fill(0);
     this.time = 0;
+    this.add_boundary_conditions(this.vals, 0);
   }
   // Generic setter, for interactivity
   set_attr(name: keyof typeof Simulator, val: any) {
@@ -78,14 +78,18 @@ export class Simulator {
   add_boundary_conditions(s: Array<number>, t: number): void {}
   // Advances the simulation using the differential equation with
   // s(t + dt) = s(t) + dt * s'(t)
+  // NOTE: This is just for testing purposes. This appears to be pretty numerically unstable
+  // unless dt is set very small.
   step_finite_diff() {
     let newS = new Array(this.state_size).fill(0);
     let dS = this.dot(this.vals, this.time);
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = (this.vals[i] as number) + this.dt * (dS[i] as number);
     }
-    this.add_boundary_conditions(newS, this.time);
+    this.add_boundary_conditions(newS, this.time + this.dt);
+    console.log(newS[20101]);
     this.set_vals(newS);
+    this.time += this.dt;
   }
   // Advances the simulation using the differential equation with the Runge-Kutta method.
   step_runge_kutta() {
@@ -94,18 +98,45 @@ export class Simulator {
     let dS_1 = this.dot(this.vals, this.time);
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = (this.vals[i] as number) + (this.dt / 2) * (dS_1[i] as number);
+      if (Math.abs(newS[i]) > 1000) {
+        console.log(
+          1,
+          Math.floor(i / 40000),
+          Math.floor(i / 200) % 200,
+          i % 200,
+          newS[i],
+        );
+      }
     }
     this.add_boundary_conditions(newS, this.time + this.dt / 2);
 
     let dS_2 = this.dot(newS, this.time);
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = (this.vals[i] as number) + (this.dt / 2) * (dS_2[i] as number);
+      if (Math.abs(newS[i]) > 1000) {
+        console.log(
+          2,
+          Math.floor(i / 40000),
+          Math.floor(i / 200) % 200,
+          i % 200,
+          newS[i],
+        );
+      }
     }
     this.add_boundary_conditions(newS, this.time + this.dt / 2);
 
     let dS_3 = this.dot(newS, this.time);
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = (this.vals[i] as number) + this.dt * (dS_3[i] as number);
+      if (Math.abs(newS[i]) > 1000) {
+        console.log(
+          3,
+          Math.floor(i / 40000),
+          Math.floor(i / 200) % 200,
+          i % 200,
+          newS[i],
+        );
+      }
     }
     this.add_boundary_conditions(newS, this.time + this.dt);
 
@@ -140,17 +171,13 @@ export class Simulator {
 export class WaveSimTwoDim extends Simulator implements HeatMapDrawable {
   width: number;
   height: number;
-  pml_strength: number; // PML strength scales as this value times a quadratic
-  pml_width: number; // Thickness of PML layer on one side, divided by half of the region width
-  wave_propagation_speed: number; // Speed of wave propagation
+  pml_strength: number = 5.0; // PML strength scales as this value times a quadratic
+  pml_width: number = 0.2; // Thickness of PML layer on one side, divided by half of the region width
+  wave_propagation_speed: number = 10.0; // Speed of wave propagation
   constructor(width: number, height: number, dt: number) {
     super(4 * width * height, dt);
     this.width = width;
     this.height = height;
-
-    this.pml_strength = 5.0;
-    this.pml_width = 0.2;
-    this.wave_propagation_speed = 10.0; // TODO What's a good default value to set this to?
   }
   // Sets the initial conditions of the simulation
   set_init_conditions(x0: Array<number>, v0: Array<number>): void {
@@ -415,28 +442,338 @@ export class WaveSimTwoDim extends Simulator implements HeatMapDrawable {
   }
 }
 
+// TODO Allow multiple sources, of the form {ind => (p_x, p_y, a, w, phase)}
+// TODO Allow this interface to stack with others.
 export class WaveSimTwoDimPointSource extends WaveSimTwoDim {
-  point_source: Vec2D;
-  w: number; // Frequency
-  a: number; // Amplitude
+  source_x: number = Math.floor(this.width / 2);
+  source_y: number = Math.floor(this.height / 2);
+  w: number = 2.0; // Frequency
+  a: number = 5.0; // Amplitude
+  add_boundary_conditions(vals: Array<number>, t: number): void {
+    let ind = this.index(Math.floor(this.source_x), Math.floor(this.source_y));
+    vals[ind] = this.a * Math.sin(this.w * t);
+    vals[ind + this.size()] = this.a * this.w * Math.cos(this.w * t);
+  }
+}
+
+// A simulation of the wave equation whose domain is a subset of the grid points, circumscribed by
+// a "reflective surface" which is described as the zero-set of an equation f(x, y).
+// TODO No reason not to use Mixins here to inherit point sources and reflectors independently.
+interface Reflector {
+  x_pos_mask: Array<number>;
+  x_neg_mask: Array<number>;
+  y_pos_mask: Array<number>;
+  y_neg_mask: Array<number>;
+  inside_region(x: number, y: number): boolean;
+  _recalculate_masks(): void;
+  _calc_bdy_dists_x(x_arr: number, y_arr: number): Vec2D;
+  _calc_bdy_dists_y(x_arr: number, y_arr: number): Vec2D;
+  get_bdy_dists_x(x_arr: number, y_arr: number): Vec2D;
+  get_bdy_dists_y(x_arr: number, y_arr: number): Vec2D;
+}
+
+export class WaveSimTwoDimReflector extends WaveSimTwoDim implements Reflector {
+  // For each point p in the domain, and each possible direction N, S, E, W,
+  // if the adjacent grid point to p in the chosen direction lies outside
+  // of the domain, then we note down the distance to the region boundary in that direction.
+  // Otherwise, we note the number 1 (which is the maximum possible value).
+  x_pos_mask: Array<number> = new Array(this.size()).fill(1);
+  x_neg_mask: Array<number> = new Array(this.size()).fill(1);
+  y_pos_mask: Array<number> = new Array(this.size()).fill(1);
+  y_neg_mask: Array<number> = new Array(this.size()).fill(1);
   constructor(width: number, height: number, dt: number) {
     super(width, height, dt);
-    this.point_source = [
-      Math.floor(this.width / 2),
-      Math.floor(this.height / 2),
+    this._recalculate_masks();
+  }
+  set_attr(name: keyof typeof Simulator, val: any) {
+    super.set_attr(name, val);
+    this._recalculate_masks();
+    this.zero_outside_region();
+  }
+  // *** Encodes geometry ***
+  // Returns whether the point (x, y) in array coordinates is inside the domain.
+  inside_region(x: number, y: number): boolean {
+    return true;
+  }
+  // Helper functions which return the fraction of leeway right, left, up and down
+  // from the given array lattice point to the boundary.
+  _x_plus(x: number, y: number): number {
+    return 1;
+  }
+  _x_minus(x: number, y: number): number {
+    return 1;
+  }
+  _y_plus(x: number, y: number): number {
+    return 1;
+  }
+  _y_minus(x: number, y: number): number {
+    return 1;
+  }
+  // Recalculate mask arrays based on current geometry
+  _recalculate_masks() {
+    let ind;
+    for (let y_arr = 0; y_arr < this.height; y_arr++) {
+      for (let x_arr = 0; x_arr < this.width; x_arr++) {
+        ind = this.index(x_arr, y_arr);
+        [this.x_pos_mask[ind], this.x_neg_mask[ind]] = this._calc_bdy_dists_x(
+          x_arr,
+          y_arr,
+        );
+        [this.y_pos_mask[ind], this.y_neg_mask[ind]] = this._calc_bdy_dists_y(
+          x_arr,
+          y_arr,
+        );
+      }
+    }
+  }
+  // [0, 0] / [1, 1] means an exterior / interior point
+  // A value between 0 and 1 in the first coordinate means moving to the right crosses the boundary
+  // A value between 0 and 1 in the second coordinate means moving to the left crosses the boundary
+  _calc_bdy_dists_x(x_arr: number, y_arr: number): Vec2D {
+    if (!this.inside_region(x_arr, y_arr)) {
+      // Exterior case
+      return [0, 0];
+    } else {
+      let a_pos, a_neg;
+      if (!this.inside_region(x_arr + 1, y_arr)) {
+        // Near right boundary case, and x is positive
+        a_pos = this._x_plus(x_arr, y_arr);
+      } else {
+        a_pos = 1;
+      }
+      if (!this.inside_region(x_arr - 1, y_arr)) {
+        // Near left boundary case, and x is negative
+        a_neg = this._x_minus(x_arr, y_arr);
+      } else {
+        a_neg = 1;
+      }
+      return [a_pos, a_neg];
+    }
+  }
+  _calc_bdy_dists_y(x_arr: number, y_arr: number): Vec2D {
+    if (!this.inside_region(x_arr, y_arr)) {
+      // Exterior case
+      return [0, 0];
+    } else {
+      let a_plus, a_minus;
+      if (!this.inside_region(x_arr, y_arr + 1)) {
+        // Near boundary case
+        a_plus = this._y_plus(x_arr, y_arr);
+      } else {
+        a_plus = 1;
+      }
+      if (!this.inside_region(x_arr, y_arr - 1)) {
+        // Near boundary case
+        a_minus = this._y_minus(x_arr, y_arr);
+      } else {
+        a_minus = 1;
+      }
+      return [a_plus, a_minus];
+    }
+  }
+  // Sets all points outside the region to 0
+  zero_outside_region() {
+    let ind;
+    for (let y_arr = 0; y_arr < this.height; y_arr++) {
+      for (let x_arr = 0; x_arr < this.width; x_arr++) {
+        if (!this.inside_region(x_arr, y_arr)) {
+          ind = this.index(x_arr, y_arr);
+          this.vals[ind] = 0;
+          this.vals[ind + this.size()] = 0;
+          this.vals[ind + 2 * this.size()] = 0;
+          this.vals[ind + 3 * this.size()] = 0;
+        }
+      }
+    }
+  }
+  // *** Called during simulation ***
+  get_bdy_dists_x(x_arr: number, y_arr: number): Vec2D {
+    return [
+      this.x_pos_mask[this.index(x_arr, y_arr)] as number,
+      this.x_neg_mask[this.index(x_arr, y_arr)] as number,
     ];
-    this.w = 2.0;
-    this.a = 5.0;
+  }
+  get_bdy_dists_y(x_arr: number, y_arr: number): Vec2D {
+    return [
+      this.y_pos_mask[this.index(x_arr, y_arr)] as number,
+      this.y_neg_mask[this.index(x_arr, y_arr)] as number,
+    ];
+  }
+  d_x_entry(arr: Array<number>, x: number, y: number): number {
+    let [a_plus, a_minus] = this.get_bdy_dists_x(x, y);
+    if (a_plus == 0 && a_minus == 0) {
+      // If the point is in the exterior, return 0
+      return 0;
+    } else if (a_plus == 1 && a_minus == 1) {
+      // If the point is in the interior, calculate normally.
+      return super.d_x_entry(arr, x, y);
+    } else {
+      return (
+        (a_minus * this.d_x_plus(arr, x, y, a_plus) +
+          a_plus * this.d_x_minus(arr, x, y, a_minus)) /
+        (a_minus + a_plus)
+      );
+    }
+  }
+  d_y_entry(arr: Array<number>, x: number, y: number): number {
+    let [a_plus, a_minus] = this.get_bdy_dists_y(x, y);
+    if (a_plus == 0 && a_minus == 0) {
+      return 0;
+    } else if (a_plus == 1 && a_minus == 1) {
+      return super.d_y_entry(arr, x, y);
+    } else {
+      return (
+        (a_minus * this.d_y_plus(arr, x, y, a_plus) +
+          a_plus * this.d_y_minus(arr, x, y, a_minus)) /
+        (a_minus + a_plus)
+      );
+    }
+  }
+  // Calculates an entry of (d/dx)(d/dx)(array)
+  l_x_entry(arr: Array<number>, x: number, y: number): number {
+    let [a_plus, a_minus] = this.get_bdy_dists_x(x, y);
+    if (a_plus == 0 && a_minus == 0) {
+      // If the point is in the exterior, return 0
+      return 0;
+    } else if (a_plus == 1 && a_minus == 1) {
+      // If the point is in the interior, calculate normally.
+      return super.l_x_entry(arr, x, y);
+    } else {
+      return (
+        (this.d_x_plus(arr, x, y, a_plus) -
+          this.d_x_minus(arr, x, y, a_minus)) /
+        ((a_minus + a_plus) / 2)
+      );
+    }
+  }
+  // Calculates an entry of (d/dy)(d/dy)(array)
+  l_y_entry(arr: Array<number>, x: number, y: number): number {
+    let [a_plus, a_minus] = this.get_bdy_dists_y(x, y);
+    if (a_plus == 0 && a_minus == 0) {
+      return 0;
+    } else if (a_plus == 1 && a_minus == 1) {
+      return super.l_y_entry(arr, x, y);
+    } else {
+      return (
+        (this.d_y_plus(arr, x, y, a_plus) -
+          this.d_y_minus(arr, x, y, a_minus)) /
+        ((a_minus + a_plus) / 2)
+      );
+    }
+  }
+}
+
+// TODO the equation of the ellipse needs to be known in canvas-coordinates here, and in
+// scene-coordinates one level above (to define the ParametricFunction MObject).
+// Find some way to derive both of these from a single source of truth.
+export class WaveSimTwoDimEllipticReflector extends WaveSimTwoDimReflector {
+  // TODO: Ensure PML layer doesn't interfere with the region.
+  semimajor_axis: number = 80.0;
+  semiminor_axis: number = 60.0;
+  w: number = 5.0; // Frequency
+  a: number = 5.0; // Amplitude
+  foci: [Vec2D, Vec2D] = [
+    [
+      Math.floor(
+        this.width / 2 +
+          Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
+      ),
+      Math.floor(this.height / 2),
+    ],
+    [
+      Math.floor(
+        this.width / 2 -
+          Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
+      ),
+      Math.floor(this.height / 2),
+    ],
+  ];
+  clamp_value: number = 10.0;
+  constructor(width: number, height: number, dt: number) {
+    super(width, height, dt);
+  }
+  _recalculate_foci() {
+    this.foci = [
+      [
+        Math.floor(
+          this.width / 2 +
+            Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
+        ),
+        Math.floor(this.height / 2),
+      ],
+      [
+        Math.floor(
+          this.width / 2 -
+            Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
+        ),
+        Math.floor(this.height / 2),
+      ],
+    ];
+  }
+  set_attr(name: keyof typeof Simulator, val: any) {
+    super.set_attr(name, val);
+    this._recalculate_foci();
+    this.zero_outside_region();
+  }
+  inside_region(x_arr: number, y_arr: number): boolean {
+    return (
+      ((x_arr - this.width / 2) / this.semimajor_axis) ** 2 +
+        ((y_arr - this.height / 2) / this.semiminor_axis) ** 2 <
+      1
+    );
+  }
+  _x_plus(x: number, y: number): number {
+    return Math.abs(
+      this.semimajor_axis *
+        Math.sqrt(1 - ((y - this.height / 2) / this.semiminor_axis) ** 2) -
+        x +
+        this.width / 2,
+    );
+  }
+  _x_minus(x: number, y: number): number {
+    return Math.abs(
+      this.semimajor_axis *
+        Math.sqrt(1 - ((y - this.height / 2) / this.semiminor_axis) ** 2) +
+        x -
+        this.width / 2,
+    );
+  }
+  _y_plus(x: number, y: number): number {
+    return Math.abs(
+      this.semiminor_axis *
+        Math.sqrt(1 - ((x - this.width / 2) / this.semimajor_axis) ** 2) -
+        y +
+        this.height / 2,
+    );
+  }
+  _y_minus(x: number, y: number): number {
+    return Math.abs(
+      this.semiminor_axis *
+        Math.sqrt(1 - ((x - this.width / 2) / this.semimajor_axis) ** 2) +
+        y -
+        this.height / 2,
+    );
   }
   add_boundary_conditions(s: Array<number>, t: number): void {
-    let ind = this.index(this.point_source[0], this.point_source[1]);
+    let ind = this.index(
+      Math.floor(this.foci[0][0]),
+      Math.floor(this.foci[0][1]),
+    );
     this.vals[ind] = this.a * Math.sin(this.w * t);
     this.vals[ind + this.size()] = this.a * this.w * Math.cos(this.w * t);
+
+    // Clamp for numerical stability
+    for (let ind = 0; ind < this.state_size; ind++) {
+      this.vals[ind] = clamp(
+        this.vals[ind] as number,
+        -this.clamp_value,
+        this.clamp_value,
+      );
+    }
   }
 }
 
 // TODO Add friction terms to DE
-// TODO Do reflector case
 // TODO Do elliptic and parabolic reflector cases
 
 // *** INTERACTIVE ANIMATION ***
@@ -637,7 +974,6 @@ export class WaveSimTwoDimDotsScene extends InteractivePlayingScene {
   // Move all of the dots, where the two simulators control
   // the x-coordinates and y-coordinates, respectively.
   update_mobjects() {
-    console.log("Updating mobjects");
     let w = this.width();
     let h = this.height();
     let dot: Dot;
@@ -649,9 +985,9 @@ export class WaveSimTwoDimDotsScene extends InteractivePlayingScene {
     let u_1 = this.get_simulator(1).get_uValues();
     for (let x = 0; x < w; x++) {
       for (let y = 0; y < h; y++) {
+        dot = this.get_mobj(`p_{${x}, ${y}}`) as Dot;
         ind = sim_0.index(x, y);
         [x_eq, y_eq] = this.eq_position(x, y);
-        dot = this.get_mobj(`p_{${x}, ${y}}`) as Dot;
         dot.move_to(x_eq + (u_0[ind] as number), y_eq + (u_1[ind] as number));
       }
     }
