@@ -30,7 +30,7 @@ var Dot = class extends MObject {
     let [x, y] = scene.s2c(this.center[0], this.center[1]);
     let xr = scene.s2c(this.center[0] + this.radius, this.center[1])[0];
     ctx.beginPath();
-    ctx.arc(x, y, xr - x, 0, 2 * Math.PI);
+    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
     ctx.fill();
   }
 };
@@ -50,14 +50,14 @@ var Scene = class {
   s2c(x, y) {
     return [
       this.canvas.width * (x - this.xlims[0]) / (this.xlims[1] - this.xlims[0]),
-      this.canvas.height * (y - this.ylims[0]) / (this.ylims[1] - this.ylims[0])
+      this.canvas.height * (this.ylims[1] - y) / (this.ylims[1] - this.ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
   c2s(x, y) {
     return [
       this.xlims[0] + x * (this.xlims[1] - this.xlims[0]) / this.canvas.width,
-      this.ylims[0] + y * (this.ylims[1] - this.ylims[0]) / this.canvas.height
+      this.ylims[1] - y * (this.ylims[1] - this.ylims[0]) / this.canvas.height
     ];
   }
   // Adds a mobject to the scene

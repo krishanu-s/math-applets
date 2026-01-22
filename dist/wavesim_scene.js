@@ -1,7 +1,4 @@
 // src/base.ts
-function clamp(x, xmin, xmax) {
-  return Math.min(xmax, Math.max(xmin, x));
-}
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
 }
@@ -9,35 +6,6 @@ var MObject = class {
   constructor() {
   }
   draw(canvas, scene, args) {
-  }
-};
-var Dot = class extends MObject {
-  constructor(center_x, center_y, radius) {
-    super();
-    this.center = [center_x, center_y];
-    this.radius = radius;
-  }
-  // Get the center coordinates
-  get_center() {
-    return this.center;
-  }
-  // Move the center of the dot to a desired location
-  move_to(x, y) {
-    this.center = [x, y];
-  }
-  // Change the dot radius
-  set_radius(radius) {
-    this.radius = radius;
-  }
-  // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [x, y] = scene.s2c(this.center[0], this.center[1]);
-    let xr = scene.s2c(this.center[0] + this.radius, this.center[1])[0];
-    ctx.beginPath();
-    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
-    ctx.fill();
   }
 };
 var Scene = class {
@@ -88,6 +56,84 @@ var Scene = class {
     });
   }
 };
+function prepare_canvas(width, height, name) {
+  const container = document.getElementById(name);
+  if (container == null) throw new Error(`${name} not found`);
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+  let wrapper = document.createElement("div");
+  wrapper.classList.add("canvas_container");
+  wrapper.classList.add("non_selectable");
+  wrapper.style.width = `${width}px`;
+  wrapper.style.height = `${height}px`;
+  let canvas = document.createElement("canvas");
+  canvas.classList.add("non_selectable");
+  canvas.style.position = "relative";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.height = height;
+  canvas.width = width;
+  wrapper.appendChild(canvas);
+  container.appendChild(wrapper);
+  console.log("Canvas made");
+  return canvas;
+}
+
+// src/interactive.ts
+function Slider(container, callback, initial_value, min, max, step) {
+  let slider = document.createElement("input");
+  slider.type = "range";
+  if (min == void 0) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min}`;
+  }
+  if (max == void 0) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max}`;
+  }
+  if (step == void 0) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
+  }
+  slider.value = initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  container.appendChild(slider);
+  let valueDisplay = document.createElement("span");
+  valueDisplay.classList.add("value-display");
+  valueDisplay.id = "sliderValue";
+  valueDisplay.textContent = slider.value;
+  container.appendChild(valueDisplay);
+  function updateDisplay() {
+    callback(slider.value);
+    valueDisplay.textContent = slider.value;
+    updateSliderColor(slider);
+  }
+  function updateSliderColor(sliderElement) {
+    const value = 100 * parseFloat(sliderElement.value);
+    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
+  }
+  updateDisplay();
+  slider.addEventListener("input", updateDisplay);
+  return slider;
+}
+function Button(container, callback) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "interactiveButton";
+  container.appendChild(button);
+  button.addEventListener("click", (event) => {
+    callback();
+    button.style.transform = "scale(0.95)";
+    setTimeout(() => {
+      button.style.transform = "scale(1)";
+    }, 100);
+  });
+  return button;
+}
 
 // src/heatmap.ts
 function rb_colormap(z) {
@@ -599,266 +645,6 @@ var WaveSimTwoDimPointSource = class extends WaveSimTwoDim {
     }
   }
 };
-var WaveSimTwoDimDipole = class extends WaveSimTwoDim {
-};
-var WaveSimTwoDimReflector = class extends WaveSimTwoDim {
-  constructor(width, height, dt) {
-    super(width, height, dt);
-    // For each point p in the domain, and each possible direction N, S, E, W,
-    // if the adjacent grid point to p in the chosen direction lies outside
-    // of the domain, then we note down the distance to the region boundary in that direction.
-    // Otherwise, we note the number 1 (which is the maximum possible value).
-    this.x_pos_mask = new Array(this.size()).fill(1);
-    this.x_neg_mask = new Array(this.size()).fill(1);
-    this.y_pos_mask = new Array(this.size()).fill(1);
-    this.y_neg_mask = new Array(this.size()).fill(1);
-    this._recalculate_masks();
-  }
-  set_attr(name, val) {
-    super.set_attr(name, val);
-    this._recalculate_masks();
-    this.zero_outside_region();
-  }
-  // *** Encodes geometry ***
-  // Returns whether the point (x, y) in array coordinates is inside the domain.
-  inside_region(x, y) {
-    return true;
-  }
-  // Helper functions which return the fraction of leeway right, left, up and down
-  // from the given array lattice point to the boundary.
-  _x_plus(x, y) {
-    return 1;
-  }
-  _x_minus(x, y) {
-    return 1;
-  }
-  _y_plus(x, y) {
-    return 1;
-  }
-  _y_minus(x, y) {
-    return 1;
-  }
-  // Recalculate mask arrays based on current geometry
-  _recalculate_masks() {
-    let ind;
-    for (let y_arr = 0; y_arr < this.height; y_arr++) {
-      for (let x_arr = 0; x_arr < this.width; x_arr++) {
-        ind = this.index(x_arr, y_arr);
-        [this.x_pos_mask[ind], this.x_neg_mask[ind]] = this._calc_bdy_dists_x(
-          x_arr,
-          y_arr
-        );
-        [this.y_pos_mask[ind], this.y_neg_mask[ind]] = this._calc_bdy_dists_y(
-          x_arr,
-          y_arr
-        );
-      }
-    }
-  }
-  // [0, 0] / [1, 1] means an exterior / interior point
-  // A value between 0 and 1 in the first coordinate means moving to the right crosses the boundary
-  // A value between 0 and 1 in the second coordinate means moving to the left crosses the boundary
-  _calc_bdy_dists_x(x_arr, y_arr) {
-    if (!this.inside_region(x_arr, y_arr)) {
-      return [0, 0];
-    } else {
-      let a_pos, a_neg;
-      if (!this.inside_region(x_arr + 1, y_arr)) {
-        a_pos = this._x_plus(x_arr, y_arr);
-      } else {
-        a_pos = 1;
-      }
-      if (!this.inside_region(x_arr - 1, y_arr)) {
-        a_neg = this._x_minus(x_arr, y_arr);
-      } else {
-        a_neg = 1;
-      }
-      return [a_pos, a_neg];
-    }
-  }
-  _calc_bdy_dists_y(x_arr, y_arr) {
-    if (!this.inside_region(x_arr, y_arr)) {
-      return [0, 0];
-    } else {
-      let a_plus, a_minus;
-      if (!this.inside_region(x_arr, y_arr + 1)) {
-        a_plus = this._y_plus(x_arr, y_arr);
-      } else {
-        a_plus = 1;
-      }
-      if (!this.inside_region(x_arr, y_arr - 1)) {
-        a_minus = this._y_minus(x_arr, y_arr);
-      } else {
-        a_minus = 1;
-      }
-      return [a_plus, a_minus];
-    }
-  }
-  // Sets all points outside the region to 0
-  zero_outside_region() {
-    let ind;
-    for (let y_arr = 0; y_arr < this.height; y_arr++) {
-      for (let x_arr = 0; x_arr < this.width; x_arr++) {
-        if (!this.inside_region(x_arr, y_arr)) {
-          ind = this.index(x_arr, y_arr);
-          this.vals[ind] = 0;
-          this.vals[ind + this.size()] = 0;
-          this.vals[ind + 2 * this.size()] = 0;
-          this.vals[ind + 3 * this.size()] = 0;
-        }
-      }
-    }
-  }
-  // *** Called during simulation ***
-  get_bdy_dists_x(x_arr, y_arr) {
-    return [
-      this.x_pos_mask[this.index(x_arr, y_arr)],
-      this.x_neg_mask[this.index(x_arr, y_arr)]
-    ];
-  }
-  get_bdy_dists_y(x_arr, y_arr) {
-    return [
-      this.y_pos_mask[this.index(x_arr, y_arr)],
-      this.y_neg_mask[this.index(x_arr, y_arr)]
-    ];
-  }
-  d_x_entry(arr, x, y) {
-    let [a_plus, a_minus] = this.get_bdy_dists_x(x, y);
-    if (a_plus == 0 && a_minus == 0) {
-      return 0;
-    } else if (a_plus == 1 && a_minus == 1) {
-      return super.d_x_entry(arr, x, y);
-    } else {
-      return (a_minus * this._two_dim_state.d_x_plus(arr, x, y) / a_plus + a_plus * this._two_dim_state.d_x_minus(arr, x, y) / a_minus) / (a_minus + a_plus);
-    }
-  }
-  d_y_entry(arr, x, y) {
-    let [a_plus, a_minus] = this.get_bdy_dists_y(x, y);
-    if (a_plus == 0 && a_minus == 0) {
-      return 0;
-    } else if (a_plus == 1 && a_minus == 1) {
-      return super.d_y_entry(arr, x, y);
-    } else {
-      return (a_minus * this._two_dim_state.d_y_plus(arr, x, y) / a_plus + a_plus * this._two_dim_state.d_y_minus(arr, x, y) / a_minus) / (a_minus + a_plus);
-    }
-  }
-  // Calculates an entry of (d/dx)(d/dx)(array)
-  l_x_entry(arr, x, y) {
-    let [a_plus, a_minus] = this.get_bdy_dists_x(x, y);
-    if (a_plus == 0 && a_minus == 0) {
-      return 0;
-    } else if (a_plus == 1 && a_minus == 1) {
-      return super.l_x_entry(arr, x, y);
-    } else {
-      return (this._two_dim_state.d_x_plus(arr, x, y) / a_plus - this._two_dim_state.d_x_minus(arr, x, y) / a_minus) / ((a_minus + a_plus) / 2);
-    }
-  }
-  // Calculates an entry of (d/dy)(d/dy)(array)
-  l_y_entry(arr, x, y) {
-    let [a_plus, a_minus] = this.get_bdy_dists_y(x, y);
-    if (a_plus == 0 && a_minus == 0) {
-      return 0;
-    } else if (a_plus == 1 && a_minus == 1) {
-      return super.l_y_entry(arr, x, y);
-    } else {
-      return (this._two_dim_state.d_y_plus(arr, x, y) / a_plus - this._two_dim_state.d_y_minus(arr, x, y) / a_minus) / ((a_minus + a_plus) / 2);
-    }
-  }
-};
-var WaveSimTwoDimEllipticReflector = class extends WaveSimTwoDimReflector {
-  constructor(width, height, dt) {
-    super(width, height, dt);
-    // TODO: Ensure PML layer doesn't interfere with the region.
-    this.semimajor_axis = 80;
-    this.semiminor_axis = 60;
-    this.w = 5;
-    // Frequency
-    this.a = 5;
-    // Amplitude
-    this.foci = [
-      [
-        Math.floor(
-          this.width / 2 + Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2)
-        ),
-        Math.floor(this.height / 2)
-      ],
-      [
-        Math.floor(
-          this.width / 2 - Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2)
-        ),
-        Math.floor(this.height / 2)
-      ]
-    ];
-    this.clamp_value = 10;
-    let [x, y] = this.foci[0];
-    this.point_sources = [new PointSource(x, y, 5, 5)];
-  }
-  _recalculate_foci() {
-    let [focus_1_x, focus_1_y] = [
-      Math.floor(
-        this.width / 2 + Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2)
-      ),
-      Math.floor(this.height / 2)
-    ];
-    let [focus_2_x, focus_2_y] = [
-      Math.floor(
-        this.width / 2 - Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2)
-      ),
-      Math.floor(this.height / 2)
-    ];
-    this.point_sources = [new PointSource(focus_1_x, focus_1_y, 5, 5)];
-    this.foci = [
-      [focus_1_x, focus_1_y],
-      [focus_2_x, focus_2_y]
-    ];
-  }
-  set_attr(name, val) {
-    let p = this.point_sources[0];
-    if (name == "w") {
-      p.set_w(val);
-    } else if (name == "a") {
-      p.set_a(val);
-    } else {
-      this._recalculate_foci();
-    }
-    super.set_attr(name, val);
-  }
-  inside_region(x_arr, y_arr) {
-    return ((x_arr - this.width / 2) / this.semimajor_axis) ** 2 + ((y_arr - this.height / 2) / this.semiminor_axis) ** 2 < 1;
-  }
-  _x_plus(x, y) {
-    return Math.abs(
-      this.semimajor_axis * Math.sqrt(1 - ((y - this.height / 2) / this.semiminor_axis) ** 2) - x + this.width / 2
-    );
-  }
-  _x_minus(x, y) {
-    return Math.abs(
-      this.semimajor_axis * Math.sqrt(1 - ((y - this.height / 2) / this.semiminor_axis) ** 2) + x - this.width / 2
-    );
-  }
-  _y_plus(x, y) {
-    return Math.abs(
-      this.semiminor_axis * Math.sqrt(1 - ((x - this.width / 2) / this.semimajor_axis) ** 2) - y + this.height / 2
-    );
-  }
-  _y_minus(x, y) {
-    return Math.abs(
-      this.semiminor_axis * Math.sqrt(1 - ((x - this.width / 2) / this.semimajor_axis) ** 2) + y - this.height / 2
-    );
-  }
-  add_boundary_conditions(s, t) {
-    super.add_boundary_conditions(s, t);
-    for (let ind = 0; ind < this.state_size; ind++) {
-      this.vals[ind] = clamp(
-        this.vals[ind],
-        -this.clamp_value,
-        this.clamp_value
-      );
-    }
-  }
-};
-var WaveSimTwoDimParabolaReflector = class extends WaveSimTwoDimReflector {
-};
 var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
   // Target for heatmap data
   constructor(canvas, simulator, imageData) {
@@ -889,75 +675,103 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
     }
   }
 };
-var WaveSimTwoDimDotsScene = class extends InteractivePlayingScene {
-  constructor(canvas, simulators, imageData) {
-    super(canvas, simulators);
-    this.simulators = simulators;
-    if (simulators[0].width != simulators[1].width) {
-      throw new Error("Simulators have different width.");
+
+// src/wavesim_scene.ts
+(function() {
+  document.addEventListener("DOMContentLoaded", async function() {
+    const xmin = -5;
+    const xmax = 5;
+    const ymin = -5;
+    const ymax = 5;
+    const clamp_value = 10;
+    let width = 200;
+    let height = 200;
+    const dt = 0.01;
+    let canvas = prepare_canvas(width, height, "scene-container");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Failed to get 2D context");
     }
-    if (simulators[0].height != simulators[1].height) {
-      throw new Error("Simulators have different height.");
-    }
-    console.log(this.xlims[1], this.xlims[0]);
-    let w = simulators[0].width;
-    let h = simulators[0].height;
-    let x_eq, y_eq;
-    for (let x = 0; x < w; x++) {
-      for (let y = 0; y < h; y++) {
-        [x_eq, y_eq] = this.eq_position(x, y);
-        this.add(`p_{${x}, ${y}}`, new Dot(x_eq, y_eq, 2 / w));
+    const imageData = ctx.createImageData(width, height);
+    let waveSim = new WaveSimTwoDimPointSource(width, height, dt);
+    waveSim.wave_propagation_speed = width / 10;
+    waveSim.set_attr("a", 5);
+    waveSim.set_pml_layer(true, true, 0.2, 200);
+    waveSim.set_pml_layer(true, false, 0.2, 200);
+    waveSim.set_pml_layer(false, true, 0.2, 200);
+    waveSim.set_pml_layer(false, false, 0.2, 200);
+    waveSim.add_boundary_conditions(waveSim.vals, 0);
+    let waveEquationScene = new WaveSimTwoDimHeatMapScene(
+      canvas,
+      waveSim,
+      imageData
+    );
+    waveEquationScene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+    let w_slider = Slider(
+      document.getElementById("slider-container-1"),
+      function(w) {
+        waveEquationScene.add_to_queue(
+          waveEquationScene.set_simulator_attr.bind(
+            waveEquationScene,
+            0,
+            "w",
+            w
+          )
+        );
+      },
+      `5.0`,
+      0,
+      20,
+      0.05
+    );
+    w_slider.width = 200;
+    let pauseButton = Button(
+      document.getElementById("button-container-1"),
+      function() {
+        waveEquationScene.add_to_queue(
+          waveEquationScene.toggle_pause.bind(waveEquationScene)
+        );
+        if (pauseButton.textContent == "Pause simulation") {
+          pauseButton.textContent = "Unpause simulation";
+        } else if (pauseButton.textContent == "Unpause simulation") {
+          pauseButton.textContent = "Pause simulation";
+        } else {
+          throw new Error();
+        }
       }
-    }
-  }
-  // Returns the equilibrium position of the dot at position (x, y)
-  eq_position(x, y) {
-    return [
-      this.xlims[0] + (x + 0.5) * (this.xlims[1] - this.xlims[0]) / this.width(),
-      this.ylims[0] + (y + 0.5) * (this.ylims[1] - this.ylims[0]) / this.height()
-    ];
-  }
-  get_simulator(ind) {
-    return super.get_simulator(ind);
-  }
-  width() {
-    return this.get_simulator(0).width;
-  }
-  height() {
-    return this.get_simulator(0).height;
-  }
-  // Move all of the dots, where the two simulators control
-  // the x-coordinates and y-coordinates, respectively.
-  update_mobjects() {
-    let w = this.width();
-    let h = this.height();
-    let dot;
-    let ind;
-    let x_eq;
-    let y_eq;
-    let sim_0 = this.get_simulator(0);
-    let u_0 = sim_0.get_uValues();
-    let u_1 = this.get_simulator(1).get_uValues();
-    for (let x = 0; x < w; x++) {
-      for (let y = 0; y < h; y++) {
-        dot = this.get_mobj(`p_{${x}, ${y}}`);
-        ind = sim_0.index(x, y);
-        [x_eq, y_eq] = this.eq_position(x, y);
-        dot.move_to(x_eq + u_0[ind], y_eq + u_1[ind]);
+    );
+    pauseButton.textContent = "Pause simulation";
+    pauseButton.style.padding = "15px";
+    let a_slider = Slider(
+      document.getElementById("slider-container-1"),
+      function(a) {
+        waveEquationScene.add_to_queue(
+          waveEquationScene.set_simulator_attr.bind(
+            waveEquationScene,
+            0,
+            "a",
+            a
+          )
+        );
+      },
+      `5.0`,
+      0,
+      10,
+      0.05
+    );
+    a_slider.width = 200;
+    let clearButton = Button(
+      document.getElementById("button-container-3"),
+      function() {
+        waveEquationScene.add_to_queue(
+          waveEquationScene.reset.bind(waveEquationScene)
+        );
       }
-    }
-  }
-  draw_mobject(mobj) {
-    mobj.draw(this.canvas, this);
-  }
-};
-export {
-  WaveSimTwoDim,
-  WaveSimTwoDimDipole,
-  WaveSimTwoDimDotsScene,
-  WaveSimTwoDimEllipticReflector,
-  WaveSimTwoDimHeatMapScene,
-  WaveSimTwoDimParabolaReflector,
-  WaveSimTwoDimPointSource,
-  WaveSimTwoDimReflector
-};
+    );
+    clearButton.textContent = "Clear";
+    clearButton.style.padding = "15px";
+    console.log("Ready to play");
+    waveEquationScene.toggle_pause();
+    waveEquationScene.play(void 0);
+  });
+})();

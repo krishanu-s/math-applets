@@ -1,7 +1,4 @@
 // src/base.ts
-function zero_vec() {
-  return [0, 0];
-}
 function vec_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
@@ -16,6 +13,12 @@ function vec_sum_list(xs) {
 }
 function vec_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
+}
+function clamp(x, xmin, xmax) {
+  return Math.min(xmax, Math.max(xmin, x));
+}
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-x));
 }
 var MObject = class {
   constructor() {
@@ -48,16 +51,27 @@ var Dot = class extends MObject {
     let [x, y] = scene.s2c(this.center[0], this.center[1]);
     let xr = scene.s2c(this.center[0] + this.radius, this.center[1])[0];
     ctx.beginPath();
-    ctx.arc(x, y, xr - x, 0, 2 * Math.PI);
+    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
     ctx.fill();
   }
 };
 var Line = class extends MObject {
-  constructor(start, end, width) {
+  constructor(start, end, kwargs) {
     super();
     this.start = start;
     this.end = end;
-    this.width = width;
+    let stroke_width = kwargs["stroke_width"];
+    if (stroke_width == void 0) {
+      this.stroke_width = 0.08;
+    } else {
+      this.stroke_width = stroke_width;
+    }
+    let stroke_color = kwargs["stroke_color"];
+    if (stroke_color == void 0) {
+      this.stroke_color = `rgb(0, 0, 0)`;
+    } else {
+      this.stroke_color = stroke_color;
+    }
   }
   // Moves the start and end points
   move_start(x, y) {
@@ -73,7 +87,8 @@ var Line = class extends MObject {
     let [start_x, start_y] = scene.s2c(this.start[0], this.start[1]);
     let [end_x, end_y] = scene.s2c(this.end[0], this.end[1]);
     let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.width * canvas.width / (xmax - xmin);
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
     ctx.beginPath();
     ctx.moveTo(start_x, start_y);
     ctx.lineTo(end_x, end_y);
@@ -135,14 +150,14 @@ var Scene = class {
   s2c(x, y) {
     return [
       this.canvas.width * (x - this.xlims[0]) / (this.xlims[1] - this.xlims[0]),
-      this.canvas.height * (y - this.ylims[0]) / (this.ylims[1] - this.ylims[0])
+      this.canvas.height * (this.ylims[1] - y) / (this.ylims[1] - this.ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
   c2s(x, y) {
     return [
       this.xlims[0] + x * (this.xlims[1] - this.xlims[0]) / this.canvas.width,
-      this.ylims[0] + y * (this.ylims[1] - this.ylims[0]) / this.canvas.height
+      this.ylims[1] - y * (this.ylims[1] - this.ylims[0]) / this.canvas.height
     ];
   }
   // Adds a mobject to the scene
@@ -167,45 +182,27 @@ var Scene = class {
     });
   }
 };
-function Slider(container, callback, initial_value, min, max, step) {
-  let slider = document.createElement("input");
-  slider.type = "range";
-  if (min == void 0) {
-    slider.min = "0";
-  } else {
-    slider.min = `${min}`;
-  }
-  if (max == void 0) {
-    slider.max = "10";
-  } else {
-    slider.max = `${max}`;
-  }
-  if (step == void 0) {
-    slider.step = ".01";
-  } else {
-    slider.step = `${step}`;
-  }
-  slider.value = initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
-  container.appendChild(slider);
-  let valueDisplay = document.createElement("span");
-  valueDisplay.classList.add("value-display");
-  valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = slider.value;
-  container.appendChild(valueDisplay);
-  function updateDisplay() {
-    callback(slider.value);
-    valueDisplay.textContent = slider.value;
-    updateSliderColor(slider);
-  }
-  function updateSliderColor(sliderElement) {
-    const value = 100 * parseFloat(sliderElement.value);
-    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
-  }
-  updateDisplay();
-  slider.addEventListener("input", updateDisplay);
-  return slider;
+function prepare_canvas(width, height, name) {
+  const container = document.getElementById(name);
+  if (container == null) throw new Error(`${name} not found`);
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+  let wrapper = document.createElement("div");
+  wrapper.classList.add("canvas_container");
+  wrapper.classList.add("non_selectable");
+  wrapper.style.width = `${width}px`;
+  wrapper.style.height = `${height}px`;
+  let canvas = document.createElement("canvas");
+  canvas.classList.add("non_selectable");
+  canvas.style.position = "relative";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.height = height;
+  canvas.width = width;
+  wrapper.appendChild(canvas);
+  container.appendChild(wrapper);
+  console.log("Canvas made");
+  return canvas;
 }
 export {
   BezierCurve,
@@ -213,11 +210,12 @@ export {
   Line,
   MObject,
   Scene,
-  Slider,
+  clamp,
+  prepare_canvas,
+  sigmoid,
   vec_norm,
   vec_scale,
   vec_sub,
   vec_sum,
-  vec_sum_list,
-  zero_vec
+  vec_sum_list
 };

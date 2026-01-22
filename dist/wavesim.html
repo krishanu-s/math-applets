@@ -6,7 +6,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>wave equation demo</title>
         <base href="." />
-        <script type="module" src="wavesim.js"></script>
+        <script>
+            MathJax = {
+                tex: {
+                    inlineMath: { "[+]": [["$", "$"]] },
+                },
+            };
+        </script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
+        ></script>
+        <script type="module" src="wavesim_scene.js"></script>
         <style>
             .applet-container {
                 display: flex;
@@ -34,11 +45,57 @@
 
     <body>
         <div style="text-align: center; margin: 10px auto">
+            <p>
+                This is a simulation of the <b>wave equation</b> in two
+                dimensions. We use a color map where positive values appear in
+                red, and negative values in blue.
+            </p>
+            <p>
+                The value at each point $(x, y)$ at time $t$ is represented by a
+                real number $u(x, y, t)$. The function $u(x, y, t)$ obeys the
+                differential equation $$\left(\frac{\partial}{\partial
+                t}\right)^2u = \left(\frac{\partial}{\partial x}\right)^2u +
+                \left(\frac{\partial}{\partial y}\right)^2u$$ at almost all
+                points $(x, y)$. The points where this relationship is violated
+                come in two flavors: (1) stationary points where the function
+                value is held at 0 for all $t$, which act as reflective surfaces
+                for waves, and (2) wave point sources where the function value
+                goes as $A\cos(\omega t)$ for some amplitude $A$ and frequency
+                $\omega$.
+            </p>
+            <p>
+                In the simulation below, the reflective surface is chosen to be
+                a conic section, and one focus is chosen as a point source.
+            </p>
+            <br />
             <div class="applet-container" id="scene-container"></div>
             <br />
             <div class="slider" id="slider-container-1"></div>
             <br />
             <div class="slider" id="slider-container-2"></div>
+            <br />
+            <div class="button" id="button-container-1"></div>
+            <br />
+            <div class="button" id="button-container-2"></div>
+            <br />
+            <div class="button" id="button-container-3"></div>
+            <p>
+                TODO Why am I investigating this? Conic section property
+                (applet). Colloquially described in terms of light rays.
+                However, light behaves like waves (applet?). Are the wave
+                description and ray description the same? I don't think so:
+                think of light bending around a corner (applet).
+            </p>
+            <p>
+                TODO Where does the wave equation come from? Vibrating spring
+                example (applets). Next, do a sequence of point masses connected
+                by springs and fixed at ends (applet). Then in the limit,
+                retrieve 1D wave equation, i.e. vibrating string (applet). The
+                finite-difference describing the acceleration becomes a second
+                derivative. Then go to 2 dimensions, i.e. a lattice of point
+                masses connected by springs (applet).
+            </p>
         </div>
+        <a href="./index.html">back to main page</a>
     </body>
 </html>

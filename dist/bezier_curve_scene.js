@@ -41,7 +41,7 @@ var require_numpy_ts_node = __commonJS({
     };
     var ay = (r) => oy(te({}, "__esModule", { value: true }), r);
     var Ng = {};
-    ny(Ng, { Complex: () => E, DTYPE_TO_DESCR: () => At, InvalidNpyError: () => ir, NDArray: () => _, SUPPORTED_DTYPES: () => kt, UnsupportedDTypeError: () => Ir, __version__: () => Dg, abs: () => gn, absolute: () => gn, acos: () => hn, acosh: () => xn, amax: () => Mn, amin: () => Fn, angle: () => hf, append: () => $c, apply_along_axis: () => Gm, apply_over_axes: () => Wm, arange: () => Wi, arccos: () => hn, arccosh: () => xn, arcsin: () => bn, arcsinh: () => Nn, arctan: () => Sn, arctan2: () => Dn, arctanh: () => wn, argpartition: () => om, argsort: () => tm, argwhere: () => im, around: () => Rt, array: () => G, array_equal: () => Xc, array_equiv: () => Jc, array_split: () => uc, asanyarray: () => ou, asarray: () => Hr, asarray_chkfinite: () => Ji, ascontiguousarray: () => au, asfortranarray: () => su, asin: () => bn, asinh: () => Nn, atan: () => Sn, atan2: () => Dn, atanh: () => wn, atleast_1d: () => vc, atleast_2d: () => Bc, atleast_3d: () => Ec, average: () => el, bincount: () => Om, bindex: () => Zc, bitwise_and: () => ql, bitwise_count: () => Hl, bitwise_invert: () => Xl, bitwise_left_shift: () => Jl, bitwise_not: () => Pl, bitwise_or: () => Vl, bitwise_right_shift: () => Ql, bitwise_xor: () => jl, block: () => sc, broadcast_arrays: () => jc, broadcast_shapes: () => Pc, broadcast_to: () => Vc, byteswap: () => hc, can_cast: () => Jm, cbrt: () => Al, ceil: () => pm, choose: () => Hc, clip: () => vl, column_stack: () => Oc, common_type: () => Qm, compress: () => kf, concat: () => oc, concatenate: () => Tr, conj: () => vn, conjugate: () => bf, convolve: () => qm, copy: () => Ki, copysign: () => uf, copyto: () => Yc, corrcoef: () => jm, correlate: () => km, cos: () => Pu, cosh: () => Ju, count_nonzero: () => mm, cov: () => Vm, cross: () => Tm, cumprod: () => _n, cumsum: () => zn, cumulative_prod: () => _n, cumulative_sum: () => zn, deg2rad: () => Yu, degrees: () => Wu, delete: () => Rc, diag: () => yn, diag_indices: () => Pf, diag_indices_from: () => Lf, diagflat: () => iu, diagonal: () => Uu, diff: () => vm, digitize: () => Cm, divide: () => An, divmod: () => hl, dot: () => Ou, dsplit: () => Tc, dstack: () => nc, ediff1d: () => Bm, einsum: () => Mf, empty: () => mn, empty_like: () => eu, exp: () => hu, exp2: () => Su, expand_dims: () => wc, expm1: () => Du, extract: () => fm, eye: () => fn, fabs: () => bl, fill: () => dc, fill_diagonal: () => jf, fix: () => ym, flatnonzero: () => um, flatten: () => yc, flip: () => $t, fliplr: () => Ic, flipud: () => zc, float_power: () => xl, floor: () => dm, floor_divide: () => Bu, fmax: () => Tl, fmin: () => Ol, fmod: () => wl, frexp: () => Il, frombuffer: () => yu, fromfile: () => du, fromfunction: () => uu, fromiter: () => gu, fromstring: () => Au, full: () => pn, full_like: () => nu, gcd: () => zl, geomspace: () => Hi, geterr: () => Et, gradient: () => Em, heaviside: () => Nl, histogram: () => Um, histogram2d: () => $m, histogram_bin_edges: () => Pm, histogramdd: () => Rm, hsplit: () => lc, hstack: () => ec, hypot: () => Gu, i0: () => kl, identity: () => Xi, iindex: () => Wc, imag: () => Af, in1d: () => hm, indices: () => Xf, inner: () => ku, insert: () => kc, interp: () => Ul, intersect1d: () => Sm, invert: () => Ll, iscomplex: () => mf, iscomplexobj: () => pf, isdtype: () => zf, isfinite: () => nf, isfortran: () => Nf, isin: () => Dm, isinf: () => of, isnan: () => af, isnat: () => sf, isneginf: () => Sf, isposinf: () => Df, isreal: () => yf, isrealobj: () => df, isscalar: () => wf, issubdtype: () => ep, item: () => gc, iterable: () => If, ix_: () => Jf, kron: () => $u, lcm: () => _l, ldexp: () => Ml, left_shift: () => Gl, lexsort: () => em, linalg: () => Cf, linspace: () => Zi, loadNpz: () => Un, loadNpzSync: () => $n, log: () => Nu, log10: () => wu, log1p: () => Iu, log2: () => xu, logaddexp: () => zu, logaddexp2: () => _u, logical_and: () => Kl, logical_not: () => tf, logical_or: () => rf, logical_xor: () => ef, logspace: () => Yi, mask_indices: () => Hf, matrix_transpose: () => Bf, matvec: () => Tf, max: () => Mn, maximum: () => Bl, may_share_memory: () => Zm, median: () => Kc, meshgrid: () => cu, min: () => Fn, min_scalar_type: () => tp, minimum: () => El, mintypecode: () => op, mod: () => vu, modf: () => Fl, moveaxis: () => rc, nan_to_num: () => Cl, nanargmax: () => fl, nanargmin: () => ll, nancumprod: () => pl, nancumsum: () => ml, nanmax: () => cl, nanmean: () => al, nanmedian: () => yl, nanmin: () => ul, nanpercentile: () => gl, nanprod: () => ol, nanquantile: () => dl, nanstd: () => il, nansum: () => nl, nanvar: () => sl, ndim: () => Hm, negative: () => Mu, nextafter: () => lf, nonzero: () => sm, ones: () => ln, ones_like: () => tu, outer: () => qu, packbits: () => Zl, pad: () => qc, parseNpy: () => bt, parseNpyData: () => Vt, parseNpyHeader: () => qt, parseNpz: () => jt, parseNpzSync: () => Pt, partition: () => nm, percentile: () => rl, permute_dims: () => Ef, place: () => Vf, poly: () => ap, polyadd: () => sp, polyder: () => ip, polydiv: () => up, polyfit: () => cp, polyint: () => fp, polymul: () => mp, polysub: () => pp, polyval: () => yp, positive: () => Eu, pow: () => dn, power: () => dn, promote_types: () => _f, ptp: () => Qc, put: () => Gc, put_along_axis: () => $f, putmask: () => Rf, quantile: () => tl, rad2deg: () => Hu, radians: () => Zu, random: () => Sg, ravel: () => pc, ravel_multi_index: () => Qf, real: () => gf, real_if_close: () => xf, reciprocal: () => Tu, remainder: () => Dl, repeat: () => mc, require: () => Qi, reshape: () => Nc, resize: () => Uc, result_type: () => Km, right_shift: () => Wl, rint: () => gm, roll: () => Mc, rollaxis: () => Fc, roots: () => dp, rot90: () => _c, round: () => Rt, round_: () => Rt, row_stack: () => Cc, searchsorted: () => lm, select: () => qf, serializeNpy: () => Xr, serializeNpz: () => Rn, serializeNpzSync: () => kn, setdiff1d: () => Nm, seterr: () => Ve, setxor1d: () => xm, shape: () => Bn, shares_memory: () => Ym, sign: () => Fu, signbit: () => cf, sin: () => ju, sinc: () => Rl, sinh: () => Xu, size: () => Xm, sort: () => rm, sort_complex: () => am, spacing: () => ff, split: () => ic, sqrt: () => bu, square: () => Sl, squeeze: () => xc, stack: () => tc, swapaxes: () => Ku, take: () => Lc, take_along_axis: () => Uf, tan: () => Lu, tanh: () => Qu, tensordot: () => Vu, tile: () => fc, tobytes: () => bc, tofile: () => Dc, tolist: () => Ac, trace: () => Cu, transpose: () => Ru, trapezoid: () => Lm, tri: () => lu, tril: () => fu, tril_indices: () => Gf, tril_indices_from: () => Wf, trim_zeros: () => Im, triu: () => mu, triu_indices: () => Zf, triu_indices_from: () => Yf, true_divide: () => An, trunc: () => Am, typename: () => np2, union1d: () => wm, unique: () => bm, unique_all: () => zm, unique_counts: () => _m, unique_inverse: () => Mm, unique_values: () => Fm, unpackbits: () => Yl, unravel_index: () => Kf, unstack: () => ac, unwrap: () => $l, vander: () => pu, vdot: () => Ff, vecdot: () => vf, vecmat: () => Of, view: () => Sc, vsplit: () => cc, vstack: () => In, where: () => cm, zeros: () => wr, zeros_like: () => ru });
+    ny(Ng, { Complex: () => E, DTYPE_TO_DESCR: () => At, InvalidNpyError: () => ir, NDArray: () => _, SUPPORTED_DTYPES: () => kt, UnsupportedDTypeError: () => Ir, __version__: () => Dg, abs: () => gn, absolute: () => gn, acos: () => hn, acosh: () => xn, amax: () => Mn, amin: () => Fn, angle: () => hf, append: () => $c, apply_along_axis: () => Gm, apply_over_axes: () => Wm, arange: () => Wi, arccos: () => hn, arccosh: () => xn, arcsin: () => bn, arcsinh: () => Nn, arctan: () => Sn, arctan2: () => Dn, arctanh: () => wn, argpartition: () => om, argsort: () => tm, argwhere: () => im, around: () => Rt, array: () => G, array_equal: () => Xc, array_equiv: () => Jc, array_split: () => uc, asanyarray: () => ou, asarray: () => Hr, asarray_chkfinite: () => Ji, ascontiguousarray: () => au, asfortranarray: () => su, asin: () => bn, asinh: () => Nn, atan: () => Sn, atan2: () => Dn, atanh: () => wn, atleast_1d: () => vc, atleast_2d: () => Bc, atleast_3d: () => Ec, average: () => el, bincount: () => Om, bindex: () => Zc, bitwise_and: () => ql, bitwise_count: () => Hl, bitwise_invert: () => Xl, bitwise_left_shift: () => Jl, bitwise_not: () => Pl, bitwise_or: () => Vl, bitwise_right_shift: () => Ql, bitwise_xor: () => jl, block: () => sc, broadcast_arrays: () => jc, broadcast_shapes: () => Pc, broadcast_to: () => Vc, byteswap: () => hc, can_cast: () => Jm, cbrt: () => Al, ceil: () => pm, choose: () => Hc, clip: () => vl, column_stack: () => Oc, common_type: () => Qm, compress: () => kf, concat: () => oc, concatenate: () => Tr, conj: () => vn, conjugate: () => bf, convolve: () => qm, copy: () => Ki, copysign: () => uf, copyto: () => Yc, corrcoef: () => jm, correlate: () => km, cos: () => Pu, cosh: () => Ju, count_nonzero: () => mm, cov: () => Vm, cross: () => Tm, cumprod: () => _n, cumsum: () => zn, cumulative_prod: () => _n, cumulative_sum: () => zn, deg2rad: () => Yu, degrees: () => Wu, delete: () => Rc, diag: () => yn, diag_indices: () => Pf, diag_indices_from: () => Lf, diagflat: () => iu, diagonal: () => Uu, diff: () => vm, digitize: () => Cm, divide: () => An, divmod: () => hl, dot: () => Ou, dsplit: () => Tc, dstack: () => nc, ediff1d: () => Bm, einsum: () => Mf, empty: () => mn, empty_like: () => eu, exp: () => hu, exp2: () => Su, expand_dims: () => wc, expm1: () => Du, extract: () => fm, eye: () => fn, fabs: () => bl, fill: () => dc, fill_diagonal: () => jf, fix: () => ym, flatnonzero: () => um, flatten: () => yc, flip: () => $t, fliplr: () => Ic, flipud: () => zc, float_power: () => xl, floor: () => dm, floor_divide: () => Bu, fmax: () => Tl, fmin: () => Ol, fmod: () => wl, frexp: () => Il, frombuffer: () => yu, fromfile: () => du, fromfunction: () => uu, fromiter: () => gu, fromstring: () => Au, full: () => pn, full_like: () => nu, gcd: () => zl, geomspace: () => Hi, geterr: () => Et, gradient: () => Em, heaviside: () => Nl, histogram: () => Um, histogram2d: () => $m, histogram_bin_edges: () => Pm, histogramdd: () => Rm, hsplit: () => lc, hstack: () => ec, hypot: () => Gu, i0: () => kl, identity: () => Xi, iindex: () => Wc, imag: () => Af, in1d: () => hm, indices: () => Xf, inner: () => ku, insert: () => kc, interp: () => Ul, intersect1d: () => Sm, invert: () => Ll, iscomplex: () => mf, iscomplexobj: () => pf, isdtype: () => zf, isfinite: () => nf, isfortran: () => Nf, isin: () => Dm, isinf: () => of, isnan: () => af, isnat: () => sf, isneginf: () => Sf, isposinf: () => Df, isreal: () => yf, isrealobj: () => df, isscalar: () => wf, issubdtype: () => ep, item: () => gc, iterable: () => If, ix_: () => Jf, kron: () => $u, lcm: () => _l, ldexp: () => Ml, left_shift: () => Gl, lexsort: () => em, linalg: () => Cf, linspace: () => Zi, loadNpz: () => Un, loadNpzSync: () => $n, log: () => Nu, log10: () => wu, log1p: () => Iu, log2: () => xu, logaddexp: () => zu, logaddexp2: () => _u, logical_and: () => Kl, logical_not: () => tf, logical_or: () => rf, logical_xor: () => ef, logspace: () => Yi, mask_indices: () => Hf, matrix_transpose: () => Bf, matvec: () => Tf, max: () => Mn, maximum: () => Bl, may_share_memory: () => Zm, median: () => Kc, meshgrid: () => cu, min: () => Fn, min_scalar_type: () => tp, minimum: () => El, mintypecode: () => op, mod: () => vu, modf: () => Fl, moveaxis: () => rc, nan_to_num: () => Cl, nanargmax: () => fl, nanargmin: () => ll, nancumprod: () => pl, nancumsum: () => ml, nanmax: () => cl, nanmean: () => al, nanmedian: () => yl, nanmin: () => ul, nanpercentile: () => gl, nanprod: () => ol, nanquantile: () => dl, nanstd: () => il, nansum: () => nl, nanvar: () => sl, ndim: () => Hm, negative: () => Mu, nextafter: () => lf, nonzero: () => sm, ones: () => ln, ones_like: () => tu, outer: () => qu, packbits: () => Zl, pad: () => qc, parseNpy: () => bt, parseNpyData: () => Vt, parseNpyHeader: () => qt, parseNpz: () => jt, parseNpzSync: () => Pt, partition: () => nm, percentile: () => rl, permute_dims: () => Ef, place: () => Vf, poly: () => ap, polyadd: () => sp, polyder: () => ip, polydiv: () => up, polyfit: () => cp, polyint: () => fp, polymul: () => mp, polysub: () => pp, polyval: () => yp, positive: () => Eu, pow: () => dn, power: () => dn, promote_types: () => _f, ptp: () => Qc, put: () => Gc, put_along_axis: () => $f, putmask: () => Rf, quantile: () => tl, rad2deg: () => Hu, radians: () => Zu, random: () => Sg, ravel: () => pc, ravel_multi_index: () => Qf, real: () => gf, real_if_close: () => xf, reciprocal: () => Tu, remainder: () => Dl, repeat: () => mc, require: () => Qi, reshape: () => Nc, resize: () => Uc, result_type: () => Km, right_shift: () => Wl, rint: () => gm, roll: () => Mc, rollaxis: () => Fc, roots: () => dp, rot90: () => _c, round: () => Rt, round_: () => Rt, row_stack: () => Cc, searchsorted: () => lm, select: () => qf, serializeNpy: () => Xr, serializeNpz: () => Rn, serializeNpzSync: () => kn, setdiff1d: () => Nm, seterr: () => Ve, setxor1d: () => xm, shape: () => Bn, shares_memory: () => Ym, sign: () => Fu, signbit: () => cf, sin: () => ju, sinc: () => Rl, sinh: () => Xu, size: () => Xm, sort: () => rm, sort_complex: () => am, spacing: () => ff, split: () => ic, sqrt: () => bu, square: () => Sl, squeeze: () => xc, stack: () => tc, swapaxes: () => Ku, take: () => Lc, take_along_axis: () => Uf, tan: () => Lu, tanh: () => Qu, tensordot: () => Vu, tile: () => fc, tobytes: () => bc, tofile: () => Dc, tolist: () => Ac, trace: () => Cu, transpose: () => Ru, trapezoid: () => Lm, tri: () => lu, tril: () => fu, tril_indices: () => Gf, tril_indices_from: () => Wf, trim_zeros: () => Im, triu: () => mu, triu_indices: () => Zf, triu_indices_from: () => Yf, true_divide: () => An, trunc: () => Am, typename: () => np3, union1d: () => wm, unique: () => bm, unique_all: () => zm, unique_counts: () => _m, unique_inverse: () => Mm, unique_values: () => Fm, unpackbits: () => Yl, unravel_index: () => Kf, unstack: () => ac, unwrap: () => $l, vander: () => pu, vdot: () => Ff, vecdot: () => vf, vecmat: () => Of, view: () => Sc, vsplit: () => cc, vstack: () => In, where: () => cm, zeros: () => wr, zeros_like: () => ru });
     module.exports = ay(Ng);
     var E = class r {
       constructor(t, e = 0) {
@@ -9671,7 +9671,7 @@ var require_numpy_ts_node = __commonJS({
       let e = r instanceof _ ? r.dtype : r;
       return t === "integer" ? ["int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"].includes(e) : t === "signedinteger" ? ["int8", "int16", "int32", "int64"].includes(e) : t === "unsignedinteger" ? ["uint8", "uint16", "uint32", "uint64"].includes(e) : t === "floating" ? ["float32", "float64"].includes(e) : t === "complexfloating" ? ["complex64", "complex128"].includes(e) : t === "number" || t === "numeric" ? !["bool"].includes(e) : t === "inexact" ? ["float32", "float64", "complex64", "complex128"].includes(e) : e === t;
     }
-    function np2(r) {
+    function np3(r) {
       return { bool: "bool", uint8: "uint8", uint16: "uint16", uint32: "uint32", uint64: "uint64", int8: "int8", int16: "int16", int32: "int32", int64: "int64", float32: "float32", float64: "float64", complex64: "complex64", complex128: "complex128" }[r] || r;
     }
     function op(r, t = "GDFgdf", e = "d") {
@@ -10629,101 +10629,135 @@ var require_numpy_ts_node = __commonJS({
   }
 });
 
-// src/bezier.ts
-var np = __toESM(require_numpy_ts_node(), 1);
-var SmoothOpenPathBezierHandleCalculator = class {
-  constructor(n) {
-    this.n = n;
-    let below_diag_list = [];
-    for (let i = 0; i < n - 2; i++) {
-      below_diag_list.push(1);
-    }
-    below_diag_list.push(2);
-    let below_diag = np.array(below_diag_list);
-    let diag_list = [2];
-    for (let i = 0; i < n - 2; i++) {
-      diag_list.push(4);
-    }
-    diag_list.push(7);
-    let diag2 = np.array(diag_list);
-    let above_diag_list = [];
-    for (let i = 0; i < n - 1; i++) {
-      above_diag_list.push(1);
-    }
-    let above_diag = np.array(above_diag_list);
-    this.result = np.zeros([n, n + 1], "float32");
-    this.result.set([0, 0], 1);
-    this.result.set([0, 1], 2);
-    for (let i = 1; i < n - 1; i++) {
-      this.result.set([i, i], 4);
-      this.result.set([i, i + 1], 2);
-    }
-    this.result.set([n - 1, n - 1], 8);
-    this.result.set([n - 1, n], 1);
-    for (let i = 0; i < n - 1; i++) {
-      let scale = below_diag.get([i]) / diag2.get([i]);
-      diag2.set(
-        [i + 1],
-        diag2.get([i + 1]) - above_diag.get([i]) * scale
-      );
-      below_diag.set(
-        [i],
-        below_diag.get([i]) - diag2.get([i]) * scale
-      );
-      for (let j = 0; j < n + 1; j++) {
-        this.result.set(
-          [i + 1, j],
-          this.result.get([i + 1, j]) - this.result.get([i, j]) * scale
-        );
-      }
-    }
-    for (let i = n - 2; i >= 0; i--) {
-      let scale = above_diag.get([i]) / diag2.get([i + 1]);
-      for (let j = 0; j < n + 1; j++) {
-        this.result.set(
-          [i, j],
-          this.result.get([i, j]) - this.result.get([i + 1, j]) * scale
-        );
-      }
-    }
-    for (let i = 0; i < n; i++) {
-      let scale = 1 / diag2.get([i]);
-      for (let j = 0; j < n + 1; j++) {
-        this.result.set([i, j], this.result.get([i, j]) * scale);
-      }
-    }
+// src/bezier_curve_scene.ts
+var np2 = __toESM(require_numpy_ts_node(), 1);
+
+// src/base.ts
+var MObject = class {
+  constructor() {
   }
-  // Given a sequence of n+1 anchors, produces the corresponding bezier handles
-  get_bezier_handles(a) {
-    if (a.shape[0] !== this.n + 1) {
-      throw new Error("Invalid anchor array shape");
-    }
-    if (a.shape[1] !== 2) {
-      throw new Error("Invalid anchor array shape");
-    }
-    let h1 = this.result.matmul(a);
-    let h2 = np.zeros([this.n, 2]);
-    for (let i = 0; i < this.n - 1; i++) {
-      h2.set(
-        [i, 0],
-        2 * a.get([i + 1, 0]) - h1.get([i + 1, 0])
-      );
-      h2.set(
-        [i, 1],
-        2 * a.get([i + 1, 1]) - h1.get([i + 1, 1])
-      );
-    }
-    h2.set(
-      [this.n - 1, 0],
-      0.5 * (a.get([this.n, 0]) + h1.get([this.n - 1, 0]))
-    );
-    h2.set(
-      [this.n - 1, 1],
-      0.5 * (a.get([this.n, 1]) + h1.get([this.n - 1, 1]))
-    );
-    return [h1, h2];
+  draw(canvas, scene, args) {
   }
 };
+var Dot = class extends MObject {
+  constructor(center_x, center_y, radius) {
+    super();
+    this.center = [center_x, center_y];
+    this.radius = radius;
+  }
+  // Get the center coordinates
+  get_center() {
+    return this.center;
+  }
+  // Move the center of the dot to a desired location
+  move_to(x, y) {
+    this.center = [x, y];
+  }
+  // Change the dot radius
+  set_radius(radius) {
+    this.radius = radius;
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [x, y] = scene.s2c(this.center[0], this.center[1]);
+    let xr = scene.s2c(this.center[0] + this.radius, this.center[1])[0];
+    ctx.beginPath();
+    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
+    ctx.fill();
+  }
+};
+var BezierCurve = class extends MObject {
+  constructor(start, h1, h2, end, width) {
+    super();
+    this.start = start;
+    this.h1 = h1;
+    this.h2 = h2;
+    this.end = end;
+    this.width = width;
+  }
+  // Moves the start and end points
+  move_start(x, y) {
+    this.start = [x, y];
+  }
+  move_end(x, y) {
+    this.end = [x, y];
+  }
+  // Moves the handles
+  move_h1(x, y) {
+    this.h1 = [x, y];
+  }
+  move_h2(x, y) {
+    this.h2 = [x, y];
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [start_x, start_y] = scene.s2c(this.start[0], this.start[1]);
+    let [h1_x, h1_y] = scene.s2c(this.h1[0], this.h1[1]);
+    let [h2_x, h2_y] = scene.s2c(this.h2[0], this.h2[1]);
+    let [end_x, end_y] = scene.s2c(this.end[0], this.end[1]);
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.width * canvas.width / (xmax - xmin);
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, end_x, end_y);
+    ctx.stroke();
+  }
+};
+var Scene = class {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.mobjects = {};
+    this.xlims = [0, canvas.width];
+    this.ylims = [0, canvas.height];
+  }
+  // Sets the coordinates for the borders of the frame
+  set_frame_lims(xlims, ylims) {
+    this.xlims = xlims;
+    this.ylims = ylims;
+  }
+  // Converts scene coordinates to canvas coordinates
+  s2c(x, y) {
+    return [
+      this.canvas.width * (x - this.xlims[0]) / (this.xlims[1] - this.xlims[0]),
+      this.canvas.height * (this.ylims[1] - y) / (this.ylims[1] - this.ylims[0])
+    ];
+  }
+  // Converts canvas coordinates to scene coordinates
+  c2s(x, y) {
+    return [
+      this.xlims[0] + x * (this.xlims[1] - this.xlims[0]) / this.canvas.width,
+      this.ylims[1] - y * (this.ylims[1] - this.ylims[0]) / this.canvas.height
+    ];
+  }
+  // Adds a mobject to the scene
+  add(name, mobj) {
+    this.mobjects[name] = mobj;
+  }
+  // Gets the mobject by name
+  get_mobj(name) {
+    let mobj = this.mobjects[name];
+    if (mobj == void 0) throw new Error(`${name} not found`);
+    return mobj;
+  }
+  // Draws the scene
+  draw(args) {
+    let ctx = this.canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    Object.keys(this.mobjects).forEach((name) => {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      mobj.draw(this.canvas, this);
+    });
+  }
+};
+
+// src/bezier.ts
+var np = __toESM(require_numpy_ts_node(), 1);
 var SmoothClosedPathBezierHandleCalculator = class {
   constructor(n) {
     this.n = n;
@@ -10814,7 +10848,129 @@ var SmoothClosedPathBezierHandleCalculator = class {
     return [h1, h2];
   }
 };
-export {
-  SmoothClosedPathBezierHandleCalculator,
-  SmoothOpenPathBezierHandleCalculator
+
+// src/bezier_curve_scene.ts
+var ClosedCurveScene = class extends Scene {
+  constructor(canvas, n) {
+    super(canvas);
+    this.n = n;
+    this.calculator = new SmoothClosedPathBezierHandleCalculator(n);
+    this.x_cos_fourier_coeffs = [0, 1, 0, 0];
+    this.x_sin_fourier_coeffs = [0, 0, 0, 0];
+    this.y_cos_fourier_coeffs = [0, 0, 0, 0];
+    this.y_sin_fourier_coeffs = [0, 1, 0, 0];
+    let a_list = [];
+    for (let i = 0; i < n; i++) {
+      let p = this.calculate(i / n * Math.PI * 2);
+      this.add(`p${i}`, new Dot(p[0], p[1], 0.02));
+      a_list.push(np2.array(p));
+    }
+    a_list.push(np2.array(this.calculate(0)));
+    let a = np2.stack(a_list, 0);
+    let [handles_1, handles_2] = this.calculator.get_bezier_handles(a);
+    for (let i = 0; i < n; i++) {
+      let p = this.calculate(i / n * Math.PI * 2);
+      let q = this.calculate((i + 1) / n * Math.PI * 2);
+      let h1 = [handles_1.get([i, 0]), handles_1.get([i, 1])];
+      let h2 = [handles_2.get([i, 0]), handles_2.get([i, 1])];
+      this.add(`c_${i}`, new BezierCurve(p, h1, h2, q, 0.02));
+    }
+  }
+  // Move the anchors of the curve
+  _move_anchors() {
+    for (let i = 0; i < this.n; i++) {
+      let p = this.calculate(i / this.n * Math.PI * 2);
+      let pt = this.get_mobj(`p${i}`);
+      pt.move_to(p[0], p[1]);
+    }
+  }
+  _move_handles() {
+    let a_list = [];
+    for (let i = 0; i < this.n + 1; i++) {
+      let p = this.calculate(i / this.n * Math.PI * 2);
+      a_list.push(np2.array(p));
+    }
+    let a = np2.stack(a_list, 0);
+    let [handles_1, handles_2] = this.calculator.get_bezier_handles(a);
+    for (let i = 0; i < this.n; i++) {
+      let p = this.calculate(i / this.n * Math.PI * 2);
+      let q = this.calculate((i + 1) / this.n * Math.PI * 2);
+      let curve = this.get_mobj(`c${i}`);
+      curve.move_start(a.get([i, 0]), a.get([i, 1]));
+      curve.move_h1(
+        handles_1.get([i, 0]),
+        handles_1.get([i, 1])
+      );
+      curve.move_h2(
+        handles_2.get([i, 0]),
+        handles_2.get([i, 1])
+      );
+      curve.move_end(a.get([i + 1, 0]), a.get([i + 1, 1]));
+    }
+  }
+  // 0 < t < 2*pi
+  calculate(t) {
+    let result = [0, 0];
+    for (let w = 0; w < 4; w++) {
+      const cos2 = Math.cos(w * t);
+      const sin2 = Math.sin(w * t);
+      result[0] = result[0] + this.x_cos_fourier_coeffs[w] * cos2 - this.x_sin_fourier_coeffs[w] * sin2;
+      result[1] = result[1] + this.y_cos_fourier_coeffs[w] * cos2 - this.y_sin_fourier_coeffs[w] * sin2;
+    }
+    return result;
+  }
+  set_x_cos_fourier_coeff(w, val) {
+    this.x_cos_fourier_coeffs[w] = val;
+    this._move_anchors();
+    this._move_handles();
+  }
+  set_x_sin_fourier_coeff(w, val) {
+    this.x_sin_fourier_coeffs[w] = val;
+    this._move_anchors();
+    this._move_handles();
+  }
+  set_y_cos_fourier_coeff(w, val) {
+    this.y_cos_fourier_coeffs[w] = val;
+    this._move_anchors();
+    this._move_handles();
+  }
+  set_y_sin_fourier_coeff(w, val) {
+    this.y_sin_fourier_coeffs[w] = val;
+    this._move_anchors();
+    this._move_handles();
+  }
 };
+(function() {
+  document.addEventListener("DOMContentLoaded", async function() {
+    function prepare_canvas(width2, height2, name) {
+      const container = document.getElementById(name);
+      if (container == null) throw new Error(`${name} not found`);
+      container.style.width = `${width2}px`;
+      container.style.height = `${height2}px`;
+      let wrapper = document.createElement("div");
+      wrapper.classList.add("canvas_container");
+      wrapper.classList.add("non_selectable");
+      wrapper.style.width = `${width2}px`;
+      wrapper.style.height = `${height2}px`;
+      let canvas2 = document.createElement("canvas");
+      canvas2.classList.add("non_selectable");
+      canvas2.style.position = "relative";
+      canvas2.style.top = "0";
+      canvas2.style.left = "0";
+      canvas2.height = height2;
+      canvas2.width = width2;
+      wrapper.appendChild(canvas2);
+      container.appendChild(wrapper);
+      console.log("Canvas made");
+      return canvas2;
+    }
+    let width = 500;
+    let height = 500;
+    let canvas = prepare_canvas(width, height, "scene-container");
+    let scene = new ClosedCurveScene(canvas, 20);
+    let xlims = [-5, 5];
+    let ylims = [-5, 5];
+    scene.set_frame_lims(xlims, ylims);
+    scene.draw();
+  });
+})();

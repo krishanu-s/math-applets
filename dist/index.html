@@ -5,49 +5,43 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>tutorial</title>
-        <script type="importmap">
-            {
-                "imports": {
-                    "numpy-ts": "../node_modules/typescript/lib/_tsc.js"
-                }
-            }
-        </script>
-        <script type="module" src="./foo.js"></script>
-        <!--<link rel="stylesheet" href="styles.css" />-->
-        <!--<script type="module" src="index.js"></script>-->
-        <!--<script type="module" src="pendulum.js"></script>-->
-        <!--<script type="module" src="tautochrone_script.js"></script>-->
-        <!--<script type="module" src="pixel_array.js"></script>-->
-        <!--<script type="module" src="foo.js"></script>-->
         <!--Note that to run this, you would need to run
         python -m http.server 8000
         in one terminal, and go to localhost:8000 in your browser-->
     </head>
 
     <body>
-        <div style="text-align: center; margin: 10px auto">
-            <canvas id="maincanvas" style="background-color: black"></canvas>
-        </div>
+        <p>
+            This is a place where I'm experimenting with interactive animations
+            and explanations of math ideas. The code for these animations is
+            written almost entirely in Typescript, and can be viewed
+            <a href="">here</a>.
+        </p>
+        <p>
+            <b><a href="./sunrise_scene.html">Sunlight equation</a>:</b> This
+            page addresses the phenomenon of solar angle. I got inspired to
+            create these visualizations while investigating the questions, "What
+            is the optimal way to orient a solar panel? How would we estimate
+            the energy absorption over a day, depending on the time of year?"
+        </p>
+        <p>
+            <b><a href="./wavesim.html">Wave equation simulation</a>:</b> This
+            page depicts some simulations of the 2-dimensional wave equation. I
+            wrote this to help me visualize some phenomena in optics, such as
+            refraction, and the reflective properties of conic sections.
+        </p>
+        <p>
+            <b><a href="./catenary.html">Catenary simulation</a>:</b> A simple
+            simulation to show that a string suspended at two points and allowed
+            to hang under the influence of gravity forms a shape identical to
+            the graph of the hyperbolic cosine function.
+        </p>
 
-        <a href="./pendulum.html">pendulum demo</a>
-        <br />
-        <a href="./orbit.html">orbit demo</a>
-        <br />
-        <a href="./catenary.html">catenary demo</a>
-        <br />
-        <a href="./bezier.html">bezier demo</a>
-        <br />
-        <a href="./wavesim.html">wavesim demo</a>
-        <!--
-        <div class="applet-container" id="scene-container"></div>
-        <br />
-        <div class="applet-container" id="slider-length-container"></div>
-        <br />
-        <div class="applet-container" id="slider-energy-container"></div>
-
-        <div class="applet-container" id="pixel-array-container"></div>
-
-        <div class="applet-container" id="pendulum-container"></div>
-        <div class="applet-container" id="pendulum-pause-button"></div>-->
+        <p>
+            <b>Some simpler test demos:</b>
+            <a href="./pendulum.html">pendulum demo</a>,
+            <a href="./orbit.html">orbit demo</a>,
+            <a href="./parametric.html">graphing demo</a>
+        </p>
     </body>
 </html>

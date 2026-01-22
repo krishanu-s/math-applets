@@ -13,6 +13,17 @@
                 }
             }
         </script>
+        <script>
+            MathJax = {
+                tex: {
+                    inlineMath: { "[+]": [["$", "$"]] },
+                },
+            };
+        </script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
+        ></script>
         <script type="module" src="catenary_scene.js"></script>
         <style>
             .applet-container {
@@ -41,11 +52,30 @@
 
     <body>
         <div style="text-align: center; margin: 10px auto">
+            <p>
+                Imagine a string of a fixed length allowed to hang under the
+                influence of gravity, and with the two endpoints suspended at
+                fixed points of distance less than or equal to the length of the
+                string. The string forms some U-shaped curve, called a
+                <b>catenary</b>. It turns out that this curve matches to the
+                graph of a hyperbolic cosine function $\cosh(x) = \frac{e^x +
+                e^{-x}}{2}$.
+            </p>
+            <p>
+                Below is a physical simulation of this scenario, where the curve
+                is modeled as a finite number of point masses connected by
+                friction-ful springs. Because the string can stretch in this
+                simulation (as opposed to fully taut as in the prompt scenario),
+                the equilibrium position will be slightly incorrect, but we can
+                ameliorate this by sending the spring constant to $\infty$.
+            </p>
+            <br />
             <div class="applet-container" id="scene-container"></div>
             <br />
-            <div class="slider" id="slider-gravity-container"></div>
+            <div class="slider" id="slider-container-1"></div>
             <br />
-            <div class="slider" id="slider-energy-container"></div>
+            <div class="slider" id="slider-container-2"></div>
         </div>
+        <a href="./index.html">back to main page</a>
     </body>
 </html>

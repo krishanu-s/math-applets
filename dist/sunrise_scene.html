@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>sunrise demo</title>
+        <base href="." />
+        <script>
+            MathJax = {
+                tex: {
+                    inlineMath: { "[+]": [["$", "$"]] },
+                },
+            };
+        </script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
+        ></script>
+        <script type="module" src="sunrise_scene.js"></script>
+        <style>
+            .applet-container {
+                display: flex;
+                justify-content: center; /* Centers horizontally */
+                align-items: center; /* Centers vertically */
+                width: 50%; /* A width less than 100% is required */
+                margin-left: auto;
+                margin-right: auto;
+                padding: 20px;
+                text-align: center;
+                font-family: Arial, sans-serif;
+            }
+            .slider {
+                display: flex;
+                justify-content: center; /* Centers horizontally */
+                align-items: center; /* Centers vertically */
+                width: 40%;
+                height: 25px;
+                margin: 20px 0;
+                margin-left: auto;
+                margin-right: auto;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div style="text-align: center; margin: 10px auto">
+            <p>
+                Here are two heatmaps, representing the Sun's zenith angle
+                $\theta$ and azimuth angle $\phi$ respectively, at a point on
+                Earth's surface, as a function of the time of year and time of
+                day (varying along the horizontal and vertical axes,
+                respectively).
+            </p>
+            <p>
+                <b>Zenith angle</b> refers to the angle from directly overhead.
+                In the heatmap shown, white means $\theta=0^{\circ}$ (directly
+                overhead), and black means $\theta > 90^{\circ}$ (at or below
+                the horizon).
+            </p>
+            <p>
+                <b>Azimuth angle</b> refers to the angle of rotation from true
+                north. Here we use a color map which begins as red at $\phi =
+                0^{\circ}$, and cycles through green, blue, and back to red at
+                $\phi = 360^{\circ}$.
+            </p>
+            <p>
+                The slider below controls the latitude of the reference point on
+                earth, and it is assumed that the earth has an axial tilt of
+                $23^{\circ}$.
+            </p>
+            <br />
+            <div class="applet-container" id="scene-container-1"></div>
+            <br />
+            <div class="applet-container" id="scene-container-2"></div>
+            <br />
+            <div class="slider" id="slider-container-1"></div>
+            <br />
+            <div class="slider" id="slider-container-2"></div>
+            <br />
+            <!--<div class="button" id="button-container-1"></div>
+            <br />
+            <div class="button" id="button-container-2"></div>
+            <br />
+            <div class="button" id="button-container-3"></div>-->
+
+            <p>TODO Explain how one derives this heatmap, with a diagram.</p>
+            <p>
+                TODO Explain how one can use this. How it came up while
+                pondering solar panel angles.
+            </p>
+        </div>
+        <a href="./index.html">back to main page</a>
+    </body>
+</html>

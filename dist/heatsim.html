@@ -4,9 +4,20 @@
         <meta charset="UTF-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>bezier demo</title>
+        <title>wave equation demo</title>
         <base href="." />
-        <script type="module" src="bezier_curve_scene.js"></script>
+        <script>
+            MathJax = {
+                tex: {
+                    inlineMath: { "[+]": [["$", "$"]] },
+                },
+            };
+        </script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
+        ></script>
+        <!--<script type="module" src="wavesim.js"></script>-->
         <style>
             .applet-container {
                 display: flex;
@@ -34,11 +45,22 @@
 
     <body>
         <div style="text-align: center; margin: 10px auto">
+            <p>
+                Simulation of heat flow. First just conduction, then also
+                convection.
+            </p>
+            <br />
             <div class="applet-container" id="scene-container"></div>
             <br />
-            <div class="slider" id="slider-gravity-container"></div>
+            <div class="slider" id="slider-container-1"></div>
             <br />
-            <div class="slider" id="slider-energy-container"></div>
+            <div class="slider" id="slider-container-2"></div>
+            <br />
+            <div class="button" id="button-container-1"></div>
+            <br />
+            <div class="button" id="button-container-2"></div>
+            <br />
+            <div class="button" id="button-container-3"></div>
         </div>
         <a href="./index.html">back to main page</a>
     </body>

@@ -1,5 +1,6 @@
 // Plotting pendulum motion
 
+// TODO Convert this to use "statesim.ts"
 import { Point2D } from "./point.js";
 type Vec2<T> = [T, T];
 // Differential equation solvers
