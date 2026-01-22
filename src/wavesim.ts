@@ -55,6 +55,7 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
   wave_propagation_speed: number = 20.0; // Speed of wave propagation
   _two_dim_state: TwoDimState;
   point_sources: Array<PointSource> = [];
+  clamp_value: number = Infinity;
   constructor(width: number, height: number, dt: number) {
     super(4 * width * height, dt);
     this.width = width;
@@ -265,6 +266,14 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
       s[ind] = elem.a * Math.sin(elem.w * t);
       s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * t);
     });
+    // Clamp for numerical stability
+    for (let ind = 0; ind < this.state_size; ind++) {
+      this.vals[ind] = clamp(
+        this.vals[ind] as number,
+        -this.clamp_value,
+        this.clamp_value,
+      );
+    }
   }
 }
 
@@ -535,7 +544,6 @@ export class WaveSimTwoDimEllipticReflector extends WaveSimTwoDimReflector {
       Math.floor(this.height / 2),
     ],
   ];
-  clamp_value: number = 10.0;
   constructor(width: number, height: number, dt: number) {
     super(width, height, dt);
     let [x, y] = this.foci[0];
@@ -611,18 +619,6 @@ export class WaveSimTwoDimEllipticReflector extends WaveSimTwoDimReflector {
         y -
         this.height / 2,
     );
-  }
-  add_boundary_conditions(s: Array<number>, t: number): void {
-    super.add_boundary_conditions(s, t);
-
-    // Clamp for numerical stability
-    for (let ind = 0; ind < this.state_size; ind++) {
-      this.vals[ind] = clamp(
-        this.vals[ind] as number,
-        -this.clamp_value,
-        this.clamp_value,
-      );
-    }
   }
 }
 

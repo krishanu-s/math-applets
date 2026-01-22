@@ -41,6 +41,7 @@ import {
 
     // Set amplitude
     waveSim.set_attr("a", 5.0);
+    // waveSim.set_attr("clamp_value", clamp_value);
 
     // Set PML layers
     waveSim.set_pml_layer(true, true, 0.2, 200.0);
@@ -153,10 +154,6 @@ import {
     clearButton.style.padding = "15px";
 
     // Start the simulation
-    // waveSim.init();
-    console.log("Ready to play");
-
-    // waveEquationScene.init();
 
     waveEquationScene.toggle_pause();
     waveEquationScene.play(undefined);

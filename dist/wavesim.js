@@ -401,6 +401,7 @@ var WaveSimTwoDim = class extends Simulator {
     this.pml_layers = {};
     this.wave_propagation_speed = 20;
     this.point_sources = [];
+    this.clamp_value = Infinity;
     this.width = width;
     this.height = height;
     this._two_dim_state = new TwoDimState(width, height);
@@ -570,6 +571,13 @@ var WaveSimTwoDim = class extends Simulator {
       s[ind] = elem.a * Math.sin(elem.w * t);
       s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * t);
     });
+    for (let ind2 = 0; ind2 < this.state_size; ind2++) {
+      this.vals[ind2] = clamp(
+        this.vals[ind2],
+        -this.clamp_value,
+        this.clamp_value
+      );
+    }
   }
 };
 var WaveSimTwoDimPointSource = class extends WaveSimTwoDim {
@@ -789,7 +797,6 @@ var WaveSimTwoDimEllipticReflector = class extends WaveSimTwoDimReflector {
         Math.floor(this.height / 2)
       ]
     ];
-    this.clamp_value = 10;
     let [x, y] = this.foci[0];
     this.point_sources = [new PointSource(x, y, 5, 5)];
   }
@@ -845,16 +852,6 @@ var WaveSimTwoDimEllipticReflector = class extends WaveSimTwoDimReflector {
     return Math.abs(
       this.semiminor_axis * Math.sqrt(1 - ((x - this.width / 2) / this.semimajor_axis) ** 2) + y - this.height / 2
     );
-  }
-  add_boundary_conditions(s, t) {
-    super.add_boundary_conditions(s, t);
-    for (let ind = 0; ind < this.state_size; ind++) {
-      this.vals[ind] = clamp(
-        this.vals[ind],
-        -this.clamp_value,
-        this.clamp_value
-      );
-    }
   }
 };
 var WaveSimTwoDimParabolaReflector = class extends WaveSimTwoDimReflector {

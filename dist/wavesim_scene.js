@@ -1,4 +1,7 @@
 // src/base.ts
+function clamp(x, xmin, xmax) {
+  return Math.min(xmax, Math.max(xmin, x));
+}
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
 }
@@ -447,6 +450,7 @@ var WaveSimTwoDim = class extends Simulator {
     this.pml_layers = {};
     this.wave_propagation_speed = 20;
     this.point_sources = [];
+    this.clamp_value = Infinity;
     this.width = width;
     this.height = height;
     this._two_dim_state = new TwoDimState(width, height);
@@ -616,6 +620,13 @@ var WaveSimTwoDim = class extends Simulator {
       s[ind] = elem.a * Math.sin(elem.w * t);
       s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * t);
     });
+    for (let ind2 = 0; ind2 < this.state_size; ind2++) {
+      this.vals[ind2] = clamp(
+        this.vals[ind2],
+        -this.clamp_value,
+        this.clamp_value
+      );
+    }
   }
 };
 var WaveSimTwoDimPointSource = class extends WaveSimTwoDim {
@@ -770,7 +781,6 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
     );
     clearButton.textContent = "Clear";
     clearButton.style.padding = "15px";
-    console.log("Ready to play");
     waveEquationScene.toggle_pause();
     waveEquationScene.play(void 0);
   });
