@@ -29,9 +29,9 @@ export abstract class Simulator {
     this.add_boundary_conditions(this.vals, 0);
   }
   // Generic setter.
-  set_attr(name: keyof typeof Simulator, val: any) {
-    if (name in this) {
-      this[name] = val;
+  set_attr(name: string, val: any) {
+    if ((name as keyof typeof Simulator) in this) {
+      this[name as keyof typeof Simulator] = val;
     }
   }
   // Getter and setter for state.
@@ -305,10 +305,7 @@ export abstract class InteractivePlayingScene extends Scene {
     attr_name: string,
     attr_val: number,
   ) {
-    this.get_simulator(simulator_ind).set_attr(
-      attr_name as keyof typeof Simulator,
-      attr_val,
-    );
+    this.get_simulator(simulator_ind).set_attr(attr_name, attr_val);
   }
   // Restarts the simulator
   reset(): void {

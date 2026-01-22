@@ -10,6 +10,31 @@ import {
   TwoDimState,
 } from "./statesim.js";
 
+class PointSource {
+  x: number; // X-coordinate
+  y: number; // Y-coordinate
+  w: number; // Frequency
+  a: number; // Amplitude
+  constructor(x: number, y: number, w: number, a: number) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.a = a;
+  }
+  set_x(x: number) {
+    this.x = x;
+  }
+  set_y(y: number) {
+    this.y = y;
+  }
+  set_w(w: number) {
+    this.w = w;
+  }
+  set_a(a: number) {
+    this.a = a;
+  }
+}
+
 // Wave equation simulation for a function R^2 -> R
 // Ref: https://arxiv.org/pdf/1001.0319, equation (2.14).
 // A scalar field in (2+1)-D, u(x, y, t), evolving according to the wave equation formulated as
@@ -20,7 +45,6 @@ import {
 //
 // where p = (p_x, p_y) is an auxiliary field introduced to handle PML at the boundaries.
 // When the functions \sigma_x and \sigma_y are both 0, we retrieve the undamped wave equation.
-// TODO Make PML layers an added functionality, which modify the sigma function.
 // TODO Add friction terms to DE
 export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
   width: number;
@@ -28,6 +52,7 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
   pml_layers: Record<number, [number, number]> = {};
   wave_propagation_speed: number = 20.0; // Speed of wave propagation
   _two_dim_state: TwoDimState;
+  point_sources: Array<PointSource> = [];
   constructor(width: number, height: number, dt: number) {
     super(4 * width * height, dt);
     this.width = width;
@@ -54,9 +79,8 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
   size(): number {
     return this.width * this.height;
   }
-  // Converts xy-coordinates to linear array coordinates
   index(x: number, y: number): number {
-    return y * this.width + x;
+    return this._two_dim_state.index(x, y);
   }
   // Named portions of the state values
   get_uValues(): Array<number> {
@@ -231,19 +255,46 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
 
     return dS;
   }
+  // Add point sources
+  add_boundary_conditions(s: Array<number>, t: number): void {
+    let ind;
+    this.point_sources.forEach((elem) => {
+      ind = this.index(elem.x, elem.y);
+      s[ind] = elem.a * Math.sin(elem.w * t);
+      s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * t);
+    });
+  }
 }
 
 // TODO Allow multiple sources, of the form {ind => (p_x, p_y, a, w, phase)}
-// TODO Allow this interface to stack with others.
+// TODO Allow this interface to stack with others. Perhaps make "point sources" into
+// a subobject of WaveSimTwoDim, and these are added during the boundary conditions.
+// This would solve both problems.
 export class WaveSimTwoDimPointSource extends WaveSimTwoDim {
-  source_x: number = Math.floor(this.width / 2);
-  source_y: number = Math.floor(this.height / 2);
-  w: number = 2.0; // Frequency
-  a: number = 5.0; // Amplitude
-  add_boundary_conditions(vals: Array<number>, t: number): void {
-    let ind = this.index(Math.floor(this.source_x), Math.floor(this.source_y));
-    vals[ind] = this.a * Math.sin(this.w * t);
-    vals[ind + this.size()] = this.a * this.w * Math.cos(this.w * t);
+  constructor(width: number, height: number, dt: number) {
+    super(width, height, dt);
+    this.point_sources = [
+      new PointSource(
+        Math.floor(this.width / 2),
+        Math.floor(this.height / 2),
+        2.0,
+        5.0,
+      ),
+    ];
+  }
+  set_attr(name: string, val: any) {
+    let p = this.point_sources[0] as PointSource;
+    if (name == "w") {
+      p.set_w(val);
+    } else if (name == "a") {
+      p.set_a(val);
+    } else if (name == "source_x") {
+      p.set_x(val);
+    } else if (name == "source_y") {
+      p.set_y(val);
+    } else {
+      super.set_attr(name, val);
+    }
   }
 }
 
@@ -276,7 +327,7 @@ export class WaveSimTwoDimReflector extends WaveSimTwoDim implements Reflector {
     super(width, height, dt);
     this._recalculate_masks();
   }
-  set_attr(name: keyof typeof Simulator, val: any) {
+  set_attr(name: string, val: any) {
     super.set_attr(name, val);
     this._recalculate_masks();
     this.zero_outside_region();
@@ -482,29 +533,40 @@ export class WaveSimTwoDimEllipticReflector extends WaveSimTwoDimReflector {
   clamp_value: number = 10.0;
   constructor(width: number, height: number, dt: number) {
     super(width, height, dt);
+    let [x, y] = this.foci[0];
+    this.point_sources = [new PointSource(x, y, 5.0, 5.0)];
   }
   _recalculate_foci() {
+    let [focus_1_x, focus_1_y] = [
+      Math.floor(
+        this.width / 2 +
+          Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
+      ),
+      Math.floor(this.height / 2),
+    ];
+    let [focus_2_x, focus_2_y] = [
+      Math.floor(
+        this.width / 2 -
+          Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
+      ),
+      Math.floor(this.height / 2),
+    ];
+    this.point_sources = [new PointSource(focus_1_x, focus_1_y, 5.0, 5.0)];
     this.foci = [
-      [
-        Math.floor(
-          this.width / 2 +
-            Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
-        ),
-        Math.floor(this.height / 2),
-      ],
-      [
-        Math.floor(
-          this.width / 2 -
-            Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
-        ),
-        Math.floor(this.height / 2),
-      ],
+      [focus_1_x, focus_1_y],
+      [focus_2_x, focus_2_y],
     ];
   }
-  set_attr(name: keyof typeof Simulator, val: any) {
+  set_attr(name: string, val: any) {
+    let p = this.point_sources[0] as PointSource;
+    if (name == "w") {
+      p.set_w(val);
+    } else if (name == "a") {
+      p.set_a(val);
+    } else {
+      this._recalculate_foci();
+    }
     super.set_attr(name, val);
-    this._recalculate_foci();
-    this.zero_outside_region();
   }
   inside_region(x_arr: number, y_arr: number): boolean {
     return (
@@ -546,12 +608,7 @@ export class WaveSimTwoDimEllipticReflector extends WaveSimTwoDimReflector {
     );
   }
   add_boundary_conditions(s: Array<number>, t: number): void {
-    let ind = this.index(
-      Math.floor(this.foci[0][0]),
-      Math.floor(this.foci[0][1]),
-    );
-    this.vals[ind] = this.a * Math.sin(this.w * t);
-    this.vals[ind + this.size()] = this.a * this.w * Math.cos(this.w * t);
+    super.add_boundary_conditions(s, t);
 
     // Clamp for numerical stability
     for (let ind = 0; ind < this.state_size; ind++) {

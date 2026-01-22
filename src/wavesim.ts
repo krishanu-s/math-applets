@@ -1646,7 +1646,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     let height = 200;
     let dx = (xmax - xmin) / width;
     let dy = (ymax - ymin) / height;
-    const dt = 0.01;
+    const dt = 0.02;
 
     let canvas = prepare_canvas(width, height, "scene-container");
 
@@ -1662,7 +1662,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
     let sim_width = width;
     let sim_height = height;
     let waveSim = new WaveSimTwoDimEllipticReflector(sim_width, sim_height, dt);
-    waveSim.wave_propagation_speed = sim_width / 10;
+    waveSim.wave_propagation_speed = sim_width / 20;
     waveSim.a = 5.0;
     waveSim.add_boundary_conditions(waveSim.vals, 0);
     let waveEquationScene = new WaveSimTwoDimHeatMapScene(
@@ -1717,7 +1717,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
       },
       `5.0`,
       0,
-      10,
+      20,
       0.05,
     );
     w_slider.width = 200;
