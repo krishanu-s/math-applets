@@ -10721,6 +10721,14 @@ var Scene = class {
   add(name, mobj) {
     this.mobjects[name] = mobj;
   }
+  // Removes the mobject from the scene
+  remove(name) {
+    delete this.mobjects[name];
+  }
+  // Removes all mobjects from the scene
+  clear() {
+    this.mobjects = {};
+  }
   // Gets the mobject by name
   get_mobj(name) {
     let mobj = this.mobjects[name];
@@ -10741,36 +10749,45 @@ var Scene = class {
 };
 
 // src/interactive.ts
-function Slider(container, callback, initial_value, min2, max2, step) {
+function Slider(container, callback, kwargs) {
   let slider = document.createElement("input");
   slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
+  }
+  let min2 = kwargs.min;
   if (min2 == void 0) {
     slider.min = "0";
   } else {
     slider.min = `${min2}`;
   }
+  let max2 = kwargs.max;
   if (max2 == void 0) {
     slider.max = "10";
   } else {
     slider.max = `${max2}`;
   }
+  let step = kwargs.step;
   if (step == void 0) {
     slider.step = ".01";
   } else {
     slider.step = `${step}`;
   }
-  slider.value = initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
   container.appendChild(slider);
   let valueDisplay = document.createElement("span");
   valueDisplay.classList.add("value-display");
   valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = slider.value;
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
   container.appendChild(valueDisplay);
   function updateDisplay() {
     callback(slider.value);
-    valueDisplay.textContent = slider.value;
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
     updateSliderColor(slider);
   }
   function updateSliderColor(sliderElement) {
@@ -11126,10 +11143,7 @@ var CatenaryScene = class extends Scene {
         scene.set_dt(0.5 / k ** 2);
         scene.set_spring(k ** 2);
       },
-      "1.0",
-      0.1,
-      10,
-      0.01
+      { initial_value: "1.0", min: 0.1, max: 10, step: 0.01 }
     );
     spring_slider.width = 200;
     scene.draw();

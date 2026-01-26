@@ -10631,6 +10631,16 @@ var require_numpy_ts_node = __commonJS({
 
 // src/bezier.ts
 var np = __toESM(require_numpy_ts_node(), 1);
+
+// src/base.ts
+var MObject = class {
+  constructor() {
+  }
+  draw(canvas, scene, args) {
+  }
+};
+
+// src/bezier.ts
 var SmoothOpenPathBezierHandleCalculator = class {
   constructor(n) {
     this.n = n;
@@ -10724,6 +10734,66 @@ var SmoothOpenPathBezierHandleCalculator = class {
     return [h1, h2];
   }
 };
+var OpenBezierCurve = class extends MObject {
+  constructor(num_steps, kwargs) {
+    super();
+    this.num_steps = num_steps;
+    this.solver = new SmoothOpenPathBezierHandleCalculator(num_steps);
+    this.anchors = [];
+    for (let i = 0; i < num_steps + 1; i++) {
+      this.anchors.push([0, 0]);
+    }
+    let stroke_width = kwargs.stroke_width;
+    if (stroke_width == void 0) {
+      this.stroke_width = 0.08;
+    } else {
+      this.stroke_width = stroke_width;
+    }
+    let stroke_color = kwargs.stroke_color;
+    if (stroke_color == void 0) {
+      this.stroke_color = `rgb(0, 0, 0)`;
+    } else {
+      this.stroke_color = stroke_color;
+    }
+  }
+  set_anchors(new_anchors) {
+    this.anchors = new_anchors;
+  }
+  get_anchor(index) {
+    return this.anchors[index];
+  }
+  draw(canvas, scene) {
+    super.draw(canvas, scene);
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    let a_x, a_y, a;
+    a = this.get_anchor(0);
+    [a_x, a_y] = scene.s2c(a[0], a[1]);
+    ctx.beginPath();
+    ctx.moveTo(a_x, a_y);
+    let [handles_1, handles_2] = this.solver.get_bezier_handles(
+      np.array(this.anchors)
+    );
+    let h1_x, h1_y, h2_x, h2_y;
+    for (let i = 0; i < this.num_steps; i++) {
+      [h1_x, h1_y] = scene.s2c(
+        handles_1.get([i, 0]),
+        handles_1.get([i, 1])
+      );
+      [h2_x, h2_y] = scene.s2c(
+        handles_2.get([i, 0]),
+        handles_2.get([i, 1])
+      );
+      a = this.get_anchor(i + 1);
+      [a_x, a_y] = scene.s2c(a[0], a[1]);
+      ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
+      ctx.stroke();
+    }
+  }
+};
 var SmoothClosedPathBezierHandleCalculator = class {
   constructor(n) {
     this.n = n;
@@ -10815,6 +10885,7 @@ var SmoothClosedPathBezierHandleCalculator = class {
   }
 };
 export {
+  OpenBezierCurve,
   SmoothClosedPathBezierHandleCalculator,
   SmoothOpenPathBezierHandleCalculator
 };

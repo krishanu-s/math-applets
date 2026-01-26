@@ -10666,6 +10666,14 @@ var Scene = class {
   add(name, mobj) {
     this.mobjects[name] = mobj;
   }
+  // Removes the mobject from the scene
+  remove(name) {
+    delete this.mobjects[name];
+  }
+  // Removes all mobjects from the scene
+  clear() {
+    this.mobjects = {};
+  }
   // Gets the mobject by name
   get_mobj(name) {
     let mobj = this.mobjects[name];
@@ -10686,36 +10694,45 @@ var Scene = class {
 };
 
 // src/interactive.ts
-function Slider(container, callback, initial_value, min2, max2, step) {
+function Slider(container, callback, kwargs) {
   let slider = document.createElement("input");
   slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
+  }
+  let min2 = kwargs.min;
   if (min2 == void 0) {
     slider.min = "0";
   } else {
     slider.min = `${min2}`;
   }
+  let max2 = kwargs.max;
   if (max2 == void 0) {
     slider.max = "10";
   } else {
     slider.max = `${max2}`;
   }
+  let step = kwargs.step;
   if (step == void 0) {
     slider.step = ".01";
   } else {
     slider.step = `${step}`;
   }
-  slider.value = initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
   container.appendChild(slider);
   let valueDisplay = document.createElement("span");
   valueDisplay.classList.add("value-display");
   valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = slider.value;
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
   container.appendChild(valueDisplay);
   function updateDisplay() {
     callback(slider.value);
-    valueDisplay.textContent = slider.value;
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
     updateSliderColor(slider);
   }
   function updateSliderColor(sliderElement) {
@@ -10828,13 +10845,35 @@ var SmoothOpenPathBezierHandleCalculator = class {
 
 // src/parametric.ts
 var ParametricFunction = class extends MObject {
-  constructor(f, tmin, tmax, num_steps) {
+  constructor(f, tmin, tmax, num_steps, kwargs) {
     super();
     this.function = f;
     this.tmin = tmin;
     this.tmax = tmax;
     this.num_steps = num_steps;
     this.solver = new SmoothOpenPathBezierHandleCalculator(this.num_steps);
+    let mode = kwargs.mode;
+    if (mode == void 0) {
+      this.mode = "smooth";
+    } else {
+      this.mode = mode;
+    }
+    let stroke_width = kwargs.stroke_width;
+    if (stroke_width == void 0) {
+      this.stroke_width = 0.08;
+    } else {
+      this.stroke_width = stroke_width;
+    }
+    let stroke_color = kwargs.stroke_color;
+    if (stroke_color == void 0) {
+      this.stroke_color = `rgb(0, 0, 0)`;
+    } else {
+      this.stroke_color = stroke_color;
+    }
+  }
+  // Jagged doesn't use Bezier curves. It is faster to compute and render.
+  set_mode(mode) {
+    this.mode = mode;
   }
   set_function(new_f) {
     this.function = new_f;
@@ -10842,7 +10881,9 @@ var ParametricFunction = class extends MObject {
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.lineWidth = 1;
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
     let points = [np2.array(this.function(this.tmin))];
     for (let i = 1; i <= this.num_steps; i++) {
       points.push(
@@ -10854,28 +10895,41 @@ var ParametricFunction = class extends MObject {
       );
     }
     let anchors = np2.stack(points, 0);
-    let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
-    let h1_x, h1_y, h2_x, h2_y, a_x, a_y;
+    let a_x, a_y;
     [a_x, a_y] = scene.s2c(
       anchors.get([0, 0]),
       anchors.get([0, 1])
     );
     ctx.beginPath();
-    for (let i = 0; i < this.num_steps; i++) {
-      [h1_x, h1_y] = scene.s2c(
-        handles_1.get([i, 0]),
-        handles_1.get([i, 1])
-      );
-      [h2_x, h2_y] = scene.s2c(
-        handles_2.get([i, 0]),
-        handles_2.get([i, 1])
-      );
-      [a_x, a_y] = scene.s2c(
-        anchors.get([i + 1, 0]),
-        anchors.get([i + 1, 1])
-      );
-      ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
-      ctx.stroke();
+    ctx.moveTo(a_x, a_y);
+    if (this.mode == "jagged") {
+      for (let i = 0; i < this.num_steps; i++) {
+        [a_x, a_y] = scene.s2c(
+          anchors.get([i + 1, 0]),
+          anchors.get([i + 1, 1])
+        );
+        ctx.lineTo(a_x, a_y);
+        ctx.stroke();
+      }
+    } else {
+      let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
+      let h1_x, h1_y, h2_x, h2_y;
+      for (let i = 0; i < this.num_steps; i++) {
+        [h1_x, h1_y] = scene.s2c(
+          handles_1.get([i, 0]),
+          handles_1.get([i, 1])
+        );
+        [h2_x, h2_y] = scene.s2c(
+          handles_2.get([i, 0]),
+          handles_2.get([i, 1])
+        );
+        [a_x, a_y] = scene.s2c(
+          anchors.get([i + 1, 0]),
+          anchors.get([i + 1, 1])
+        );
+        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
+        ctx.stroke();
+      }
     }
   }
 };
@@ -10939,10 +10993,7 @@ var ParametricFunction = class extends MObject {
         });
         scene.draw();
       },
-      "0.5",
-      0,
-      1,
-      0.01
+      { initial_value: "0.5", min: 0, max: 1, step: 0.01 }
     );
     ecc_slider.width = 200;
   });

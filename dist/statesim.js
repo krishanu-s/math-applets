@@ -29,6 +29,14 @@ var Scene = class {
   add(name, mobj) {
     this.mobjects[name] = mobj;
   }
+  // Removes the mobject from the scene
+  remove(name) {
+    delete this.mobjects[name];
+  }
+  // Removes all mobjects from the scene
+  clear() {
+    this.mobjects = {};
+  }
   // Gets the mobject by name
   get_mobj(name) {
     let mobj = this.mobjects[name];
@@ -188,6 +196,8 @@ var TwoDimState = class {
     }
   }
   // (d/dx)^2, computed as f(x + 1) - 2f(x) + f(x - 1).
+  // At the boundaries, use a linear extrapolation.
+  // TODO Maybe better to assume zero outside of the array.
   l_x_entry(arr, x, y) {
     if (x == 0) {
       return 2 * arr[this.index(0, y)] - 5 * arr[this.index(1, y)] + 4 * arr[this.index(2, y)] - arr[this.index(3, y)];

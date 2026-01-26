@@ -6,10 +6,15 @@ var MObject = class {
   }
 };
 var Dot = class extends MObject {
-  constructor(center_x, center_y, radius) {
+  constructor(center_x, center_y, kwargs) {
     super();
     this.center = [center_x, center_y];
-    this.radius = radius;
+    let radius = kwargs["radius"];
+    if (radius == void 0) {
+      this.radius = 0.3;
+    } else {
+      this.radius = radius;
+    }
   }
   // Get the center coordinates
   get_center() {
@@ -104,6 +109,14 @@ var Scene = class {
   add(name, mobj) {
     this.mobjects[name] = mobj;
   }
+  // Removes the mobject from the scene
+  remove(name) {
+    delete this.mobjects[name];
+  }
+  // Removes all mobjects from the scene
+  clear() {
+    this.mobjects = {};
+  }
   // Gets the mobject by name
   get_mobj(name) {
     let mobj = this.mobjects[name];
@@ -124,36 +137,45 @@ var Scene = class {
 };
 
 // src/interactive.ts
-function Slider(container, callback, initial_value, min, max, step) {
+function Slider(container, callback, kwargs) {
   let slider = document.createElement("input");
   slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
+  }
+  let min = kwargs.min;
   if (min == void 0) {
     slider.min = "0";
   } else {
     slider.min = `${min}`;
   }
+  let max = kwargs.max;
   if (max == void 0) {
     slider.max = "10";
   } else {
     slider.max = `${max}`;
   }
+  let step = kwargs.step;
   if (step == void 0) {
     slider.step = ".01";
   } else {
     slider.step = `${step}`;
   }
-  slider.value = initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
   container.appendChild(slider);
   let valueDisplay = document.createElement("span");
   valueDisplay.classList.add("value-display");
   valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = slider.value;
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
   container.appendChild(valueDisplay);
   function updateDisplay() {
     callback(slider.value);
-    valueDisplay.textContent = slider.value;
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
     updateSliderColor(slider);
   }
   function updateSliderColor(sliderElement) {
@@ -297,10 +319,8 @@ var PendulumScene = class extends Scene {
       function(l) {
         scene.set_length(l);
       },
-      "6.0"
+      { initial_value: "6.0", min: 0, max: 8, step: 0.01 }
     );
-    length_slider.min = "0.0";
-    length_slider.max = "8.0";
     length_slider.width = 200;
     let angle_slider = Slider(
       document.getElementById("slider-energy-container"),

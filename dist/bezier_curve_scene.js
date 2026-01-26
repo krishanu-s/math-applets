@@ -10640,10 +10640,15 @@ var MObject = class {
   }
 };
 var Dot = class extends MObject {
-  constructor(center_x, center_y, radius) {
+  constructor(center_x, center_y, kwargs) {
     super();
     this.center = [center_x, center_y];
-    this.radius = radius;
+    let radius = kwargs["radius"];
+    if (radius == void 0) {
+      this.radius = 0.3;
+    } else {
+      this.radius = radius;
+    }
   }
   // Get the center coordinates
   get_center() {
@@ -10736,6 +10741,14 @@ var Scene = class {
   // Adds a mobject to the scene
   add(name, mobj) {
     this.mobjects[name] = mobj;
+  }
+  // Removes the mobject from the scene
+  remove(name) {
+    delete this.mobjects[name];
+  }
+  // Removes all mobjects from the scene
+  clear() {
+    this.mobjects = {};
   }
   // Gets the mobject by name
   get_mobj(name) {
