@@ -1,45 +1,60 @@
 export function Slider(
   container: HTMLElement,
   callback: Function,
-  initial_value: string,
-  min?: number,
-  max?: number,
-  step?: number,
+  kwargs: Record<string, any>,
+  // initial_value: string,
+  // min?: number,
+  // max?: number,
+  // step?: number,
 ): HTMLInputElement {
   // Make slider object
   let slider = document.createElement("input");
   slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+
+  // Default values
+  let name = kwargs.name;
+  if (name == undefined) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
+  }
+
+  let min = kwargs.min;
   if (min == undefined) {
     slider.min = "0";
   } else {
     slider.min = `${min}`;
   }
+
+  let max = kwargs.max;
   if (max == undefined) {
     slider.max = "10";
   } else {
     slider.max = `${max}`;
   }
+
+  let step = kwargs.step;
   if (step == undefined) {
     slider.step = ".01";
   } else {
     slider.step = `${step}`;
   }
-  slider.value = initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
   container.appendChild(slider);
 
   // Make value display
   let valueDisplay = document.createElement("span");
   valueDisplay.classList.add("value-display");
   valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = slider.value;
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
   container.appendChild(valueDisplay);
 
   // Update display with float value
   function updateDisplay() {
     callback(slider.value);
-    valueDisplay.textContent = slider.value;
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
     updateSliderColor(slider);
   }
 

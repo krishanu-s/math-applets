@@ -85,10 +85,7 @@ import { ParametricFunction } from "./parametric.js";
         });
         scene.draw();
       },
-      "0.5",
-      0,
-      1,
-      0.01,
+      { initial_value: "0.5", min: 0, max: 1, step: 0.01 },
     );
     ecc_slider.width = 200;
   });

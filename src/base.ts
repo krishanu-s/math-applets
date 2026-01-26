@@ -45,10 +45,15 @@ export class MObject {
 export class Dot extends MObject {
   center: [number, number];
   radius: number;
-  constructor(center_x: number, center_y: number, radius: number) {
+  constructor(center_x: number, center_y: number, kwargs: Record<string, any>) {
     super();
     this.center = [center_x, center_y];
-    this.radius = radius;
+    let radius = kwargs["radius"] as number;
+    if (radius == undefined) {
+      this.radius = 0.3;
+    } else {
+      this.radius = radius;
+    }
     // TODO Set color
   }
   // Get the center coordinates
@@ -218,6 +223,14 @@ export class Scene {
   // Adds a mobject to the scene
   add(name: string, mobj: MObject) {
     this.mobjects[name] = mobj;
+  }
+  // Removes the mobject from the scene
+  remove(name: string) {
+    delete this.mobjects[name];
+  }
+  // Removes all mobjects from the scene
+  clear() {
+    this.mobjects = {};
   }
   // Gets the mobject by name
   get_mobj(name: string): MObject {

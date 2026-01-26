@@ -181,10 +181,9 @@ class PendulumScene extends Scene {
       function (l: number) {
         scene.set_length(l);
       },
-      "6.0",
+
+      { initial_value: "6.0", min: 0.0, max: 8.0, step: 0.01 },
     );
-    length_slider.min = "0.0";
-    length_slider.max = "8.0";
     length_slider.width = 200;
 
     let angle_slider = Slider(

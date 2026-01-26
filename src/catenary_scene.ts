@@ -454,10 +454,7 @@ class CatenaryScene extends Scene {
         scene.set_dt(0.5 / k ** 2);
         scene.set_spring(k ** 2);
       },
-      "1.0",
-      0.1,
-      10.0,
-      0.01,
+      { initial_value: "1.0", min: 0.1, max: 10.0, step: 0.01 },
     );
     spring_slider.width = 200;
 

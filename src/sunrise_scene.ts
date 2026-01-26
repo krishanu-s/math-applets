@@ -227,10 +227,7 @@ class SunriseScene extends Scene {
         sunriseScene.set_latitude(l);
         sunriseScene.draw();
       },
-      `0`,
-      -90,
-      90,
-      0.01,
+      { initial_value: "0", min: -90, max: 90, step: 0.01 },
     );
     latitude_slider.width = 200;
   });
