@@ -29,20 +29,20 @@ export class ParametricFunction extends MObject {
     this.num_steps = num_steps;
     this.solver = new SmoothOpenPathBezierHandleCalculator(this.num_steps);
 
-    let mode = kwargs["mode"] as number;
+    let mode = kwargs.mode;
     if (mode == undefined) {
       this.mode = "smooth";
     } else {
       this.mode = mode;
     }
-    let stroke_width = kwargs["stroke_width"] as number;
+    let stroke_width = kwargs.stroke_width;
     if (stroke_width == undefined) {
       this.stroke_width = 0.08;
     } else {
       this.stroke_width = stroke_width;
     }
 
-    let stroke_color = kwargs["stroke_color"] as string;
+    let stroke_color = kwargs.stroke_color;
     if (stroke_color == undefined) {
       this.stroke_color = `rgb(0, 0, 0)`;
     } else {
@@ -51,7 +51,7 @@ export class ParametricFunction extends MObject {
   }
 
   // Jagged doesn't use Bezier curves. It is faster to compute and render.
-  change_mode(mode: "smooth" | "jagged") {
+  set_mode(mode: "smooth" | "jagged") {
     this.mode = mode;
   }
   set_function(new_f: (t: number) => Vec2D) {

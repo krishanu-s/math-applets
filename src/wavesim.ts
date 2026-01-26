@@ -2,6 +2,7 @@ import { MObject, Scene, Dot, Line, prepare_canvas } from "./base.js";
 import { Slider, Button } from "./interactive.js";
 import { Vec2D, clamp, sigmoid } from "./base.js";
 import { ParametricFunction } from "./parametric.js";
+import { OpenBezierCurve } from "./bezier.js";
 import { HeatMap } from "./heatmap.js";
 import {
   Simulator,
@@ -36,6 +37,176 @@ class PointSource {
 }
 
 // *** SIMULATORS ***
+
+// Wave equation simulation for a function R -> R, bounded at ends.
+export class WaveSimOneDim extends Simulator {
+  width: number;
+  wave_propagation_speed: number = 20.0; // Speed of wave propagation
+  constructor(width: number, dt: number) {
+    // Store position and velocity at each point.
+    super(2 * width, dt);
+    this.width = width;
+  }
+  get_uValues(): Array<number> {
+    return this._get_uValues(this.vals);
+  }
+  set_uValues(vals: Array<number>) {
+    for (let i = 0; i < this.width; i++) {
+      this.vals[i] = vals[i] as number;
+    }
+  }
+  _get_uValues(vals: Array<number>): Array<number> {
+    return vals.slice(0, this.width);
+  }
+  _get_vValues(vals: Array<number>): Array<number> {
+    return vals.slice(this.width, 2 * this.width);
+  }
+  laplacian_entry(vals: Array<number>, x: number): number {
+    if (x == 0) {
+      return 2 * this.laplacian_entry(vals, 1) - this.laplacian_entry(vals, 2);
+    } else if (x == this.width - 1) {
+      return (
+        2 * this.laplacian_entry(vals, this.width - 2) -
+        this.laplacian_entry(vals, this.width - 3)
+      );
+    } else {
+      return (
+        (vals[x - 1] as number) -
+        2 * (vals[x] as number) +
+        (vals[x + 1] as number)
+      );
+    }
+  }
+  // Constructs the time-derivative of the entire state array. Here is where
+  // the wave equation is used.
+  dot(vals: Array<number>, time: number): Array<number> {
+    let dS = new Array(this.state_size);
+    let u = this._get_uValues(vals);
+
+    // u dot
+    for (let ind = 0; ind < this.width; ind++) {
+      dS[ind] = vals[ind + this.width] as number;
+    }
+
+    // v dot TODO
+    for (let x = 0; x < this.width; x++) {
+      dS[x + this.width] =
+        this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x);
+    }
+
+    return dS;
+  }
+  add_boundary_conditions(vals: Array<number>) {
+    // Clamp to zero at the endpoints.
+    vals[0] = 0;
+    vals[this.width - 1] = 0;
+    vals[this.width] = 0;
+    vals[2 * this.width - 1] = 0;
+  }
+}
+
+// Drawer for the wave equation simulation, where displacement is orthogonal
+// to the line of dots.
+export class WaveSimOneDimScene extends InteractivePlayingScene {
+  mode: "curve" | "dots";
+  constructor(canvas: HTMLCanvasElement, width: number) {
+    let sim = new WaveSimOneDim(width, 0.01);
+    super(canvas, [sim]);
+    this.mode = "dots";
+    console.log("Initialized one-dimensional wave simulation scene");
+
+    let pos;
+
+    // Add boundary lines
+    let [ymin, ymax] = this.ylims;
+    pos = this.eq_position(1);
+    this.add(
+      "b0",
+      new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 }),
+    );
+
+    pos = this.eq_position(width);
+    this.add(
+      "b1",
+      new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 }),
+    );
+
+    // Add dots which track with uValues in simulator
+    for (let i = 0; i < width; i++) {
+      pos = this.eq_position(i + 1);
+      let dot = new Dot(pos[0], pos[1], { radius: 0.5 / Math.sqrt(width) });
+      this.add(`p_${i + 1}`, dot);
+    }
+
+    // Add a Bezier curve which tracks with uValues in simulator
+    let curve = new OpenBezierCurve(width - 1, { stroke_width: 0.04 });
+    this.add("curve", curve);
+  }
+  set_mode(mode: "curve" | "dots") {
+    this.mode = mode;
+  }
+  set_frame_lims(xlims: [number, number], ylims: [number, number]): void {
+    super.set_frame_lims(xlims, ylims);
+    // Reset positions of objects
+    let mobj, pos;
+    let [ymin, ymax] = this.ylims;
+
+    pos = this.eq_position(1);
+    mobj = this.get_mobj("b0") as Line;
+    mobj.move_start(pos[0], ymin / 2);
+    mobj.move_end(pos[0], ymax / 2);
+
+    pos = this.eq_position(this.width());
+    mobj = this.get_mobj("b1") as Line;
+    mobj.move_start(pos[0], ymin / 2);
+    mobj.move_end(pos[0], ymax / 2);
+
+    this.update_mobjects();
+  }
+  sim(): WaveSimOneDim {
+    return this.simulators[0] as WaveSimOneDim;
+  }
+  width(): number {
+    return this.sim().width;
+  }
+  // Returns the equilibrium position in the scene of the i-th dot.
+  eq_position(i: number): Vec2D {
+    return [
+      this.xlims[0] +
+        ((i - 0.5) * (this.xlims[1] - this.xlims[0])) / this.width(),
+      0,
+    ];
+  }
+  // Moves the dots and curve in the scene to the positions dictated by the wave simulation.
+  update_mobjects() {
+    let dot;
+    let sim = this.sim();
+    let u = sim.get_uValues();
+    let anchors: Vec2D[] = [];
+    for (let i = 0; i < this.width(); i++) {
+      let pos = this.eq_position(i + 1);
+      let disp = u[i] as number;
+      dot = this.get_mobj(`p_${i + 1}`) as Dot;
+      dot.move_to(pos[0], pos[1] + disp);
+      anchors.push([pos[0], pos[1] + disp]);
+    }
+    let curve = this.get_mobj("curve") as OpenBezierCurve;
+    curve.set_anchors(anchors);
+  }
+  draw_mobject(mobj: MObject) {
+    if (mobj instanceof OpenBezierCurve) {
+      if (this.mode == "curve") {
+        mobj.draw(this.canvas, this);
+      }
+    } else if (mobj instanceof Dot) {
+      if (this.mode == "dots") {
+        mobj.draw(this.canvas, this);
+      }
+    } else {
+      mobj.draw(this.canvas, this);
+    }
+  }
+}
 
 // Wave equation simulation for a function R^2 -> R
 // Ref: https://arxiv.org/pdf/1001.0319, equation (2.14).
@@ -696,7 +867,7 @@ export class WaveSimTwoDimDotsScene extends InteractivePlayingScene {
     for (let x = 0; x < w; x++) {
       for (let y = 0; y < h; y++) {
         [x_eq, y_eq] = this.eq_position(x, y);
-        this.add(`p_{${x}, ${y}}`, new Dot(x_eq, y_eq, 2 / w));
+        this.add(`p_{${x}, ${y}}`, new Dot(x_eq, y_eq, { radius: 2 / w }));
       }
     }
   }

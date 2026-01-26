@@ -228,6 +228,8 @@ export class TwoDimState {
     }
   }
   // (d/dx)^2, computed as f(x + 1) - 2f(x) + f(x - 1).
+  // At the boundaries, use a linear extrapolation.
+  // TODO Maybe better to assume zero outside of the array.
   l_x_entry(arr: Array<number>, x: number, y: number): number {
     if (x == 0) {
       return (

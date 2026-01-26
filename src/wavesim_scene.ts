@@ -1,10 +1,18 @@
 // Testing the direct feeding of a pixel array to the canvas
 import { MObject, Dot, Line, Scene, prepare_canvas } from "./base.js";
 import { Slider, Button } from "./interactive.js";
-import { Vec2D, clamp, sigmoid, vec_sum, vec_sum_list } from "./base.js";
+import {
+  Vec2D,
+  clamp,
+  sigmoid,
+  vec_sum,
+  vec_sum_list,
+  linspace,
+} from "./base.js";
 import { ParametricFunction } from "./parametric.js";
 import { HeatMap } from "./heatmap.js";
 import {
+  WaveSimOneDimScene,
   WaveSimTwoDim,
   WaveSimTwoDimPointSource,
   WaveSimTwoDimEllipticReflector,
@@ -276,7 +284,7 @@ import {} from "./statesim.js";
         scene.add("curve", conic.make_curve());
         // TODO Make these animated.
         for (let i = 0; i < num_trajectories; i++) {
-          let theta = thetas[i];
+          let theta = thetas[i] as number;
           let [l1, l2] = conic.make_trajectory(theta);
           scene.add(`l${i}_1`, l1);
           scene.add(`l${i}_2`, l2);
@@ -307,10 +315,153 @@ import {} from "./statesim.js";
       scene.draw();
     })();
 
-    // Shows a sequence of point masses connected by springs, oscillating
-    // according to Hooke's law.
-    (function point_mass_discrete_sequence() {
+    // Shows a single vibrating spring in two dimensions, obeying Hooke's law.
+    // Include both an interactive animation (with spring strength modifiable by slider)
+    // and a static visualization of the force diagram.
+    (function point_mass_spring() {
       // TODO
     });
+
+    // Shows a sequence of point masses connected by springs, oscillating
+    // according to Hooke's law.
+    // Include both an interactive animation (with spring strength modifiable by slider)
+    // and a static visualization of the force diagram.
+    (function point_mass_discrete_sequence(num_points: number) {
+      // Prepare the scene
+      let canvas = prepare_canvas(300, 300, "point-mass-discrete-sequence");
+      let scene = new WaveSimOneDimScene(canvas, num_points);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("dots");
+      let sim = scene.sim();
+
+      // Set the attributes of the simulator
+      sim.set_attr("wave_propagation_speed", 3.0);
+      // TODO Set a better initial condition
+      sim.set_uValues(linspace(0, 1, num_points));
+
+      // Button which pauses/unpauses the simulation
+      let pauseButton = Button(
+        document.getElementById(
+          "point-mass-discrete-sequence-pause-button",
+        ) as HTMLElement,
+        function () {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+
+      // Slider which controls the propagation speed
+      let w_slider = Slider(
+        document.getElementById(
+          "point-mass-discrete-sequence-stiffness-slider",
+        ) as HTMLElement,
+        function (w: number) {
+          scene.add_to_queue(
+            scene.set_simulator_attr.bind(
+              scene,
+              0,
+              "wave_propagation_speed",
+              w,
+            ),
+          );
+        },
+        {
+          name: "Wave propagation speed",
+          initial_value: "3.0",
+          min: 0,
+          max: 20,
+          step: 0.05,
+        },
+      );
+      w_slider.width = 200;
+
+      // Prepare the simulation
+      scene.draw();
+      scene.play(undefined);
+    })(10);
+
+    // Redraw the previous scene in a continuous-Bezier curve fashion,
+    // using a large number of tiny point masses.
+    // Include both an interactive animation (with spring strength modifiable by slider)
+    // and a static visualization of the force diagram.
+    (function point_mass_continuous_sequence(num_points: number) {
+      // Prepare the scene
+      let canvas = prepare_canvas(300, 300, "point-mass-continuous-sequence");
+      let scene = new WaveSimOneDimScene(canvas, num_points);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("curve");
+      let sim = scene.sim();
+
+      // Set the attributes of the simulator
+      sim.set_attr("wave_propagation_speed", 3.0);
+      // TODO Set a better initial condition
+      sim.set_uValues(linspace(0, 1, num_points));
+
+      // Slider which controls the propagation speed
+      let w_slider = Slider(
+        document.getElementById(
+          "point-mass-continuous-sequence-stiffness-slider",
+        ) as HTMLElement,
+        function (w: number) {
+          scene.add_to_queue(
+            scene.set_simulator_attr.bind(
+              scene,
+              0,
+              "wave_propagation_speed",
+              w,
+            ),
+          );
+        },
+        {
+          name: "Wave propagation speed",
+          initial_value: "3.0",
+          min: 0,
+          max: 20,
+          step: 0.05,
+        },
+      );
+      w_slider.width = 200;
+
+      // Button which pauses/unpauses the simulation
+      let pauseButton = Button(
+        document.getElementById(
+          "point-mass-continuous-sequence-pause-button",
+        ) as HTMLElement,
+        function () {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+
+      // Prepare the simulation
+      scene.draw();
+      scene.play(undefined);
+    })(50);
+
+    // Extend the 1D, finite-number-of-point-masses to 2D.
+    // Include both an interactive animation (with spring strength modifiable by slider)
+    // and a static visualization of the force diagram. Use color to indicate height.
+    (function point_mass_discrete_lattice() {
+      // TODO
+    });
+
+    // Some animation to depict reflective elements.
+    // Some animation to depict point sources and line sources.
   });
 })();

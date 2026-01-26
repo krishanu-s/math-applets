@@ -21,6 +21,11 @@ export function vec_sub(x: Vec2D, y: Vec2D): Vec2D {
   return [x[0] - y[0], x[1] - y[1]];
 }
 
+export function linspace(start: number, stop: number, num: number): number[] {
+  const step = (stop - start) / (num - 1);
+  return Array.from({ length: num }, (_, i) => start + i * step);
+}
+
 // *** FUNCTIONS ***
 
 // Clamps a number to the interval [xmin, xmax].

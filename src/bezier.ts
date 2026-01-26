@@ -1,4 +1,5 @@
 import * as np from "numpy-ts";
+import { MObject, Scene, Vec2D } from "./base.js";
 
 // TODO Make a smooth Bezier spline class
 
@@ -122,6 +123,79 @@ export class SmoothOpenPathBezierHandleCalculator {
     );
 
     return [h1, h2];
+  }
+}
+
+export class OpenBezierCurve extends MObject {
+  num_steps: number;
+  solver: SmoothOpenPathBezierHandleCalculator;
+  anchors: Vec2D[];
+  stroke_width: number;
+  stroke_color: string;
+  constructor(num_steps: number, kwargs: Record<string, any>) {
+    super();
+    this.num_steps = num_steps;
+    this.solver = new SmoothOpenPathBezierHandleCalculator(num_steps);
+    this.anchors = [];
+    for (let i = 0; i < num_steps + 1; i++) {
+      this.anchors.push([0, 0]);
+    }
+
+    let stroke_width = kwargs.stroke_width as number;
+    if (stroke_width == undefined) {
+      this.stroke_width = 0.08;
+    } else {
+      this.stroke_width = stroke_width;
+    }
+
+    let stroke_color = kwargs.stroke_color as string;
+    if (stroke_color == undefined) {
+      this.stroke_color = `rgb(0, 0, 0)`;
+    } else {
+      this.stroke_color = stroke_color;
+    }
+  }
+  set_anchors(new_anchors: Vec2D[]) {
+    this.anchors = new_anchors;
+  }
+  get_anchor(index: number): Vec2D {
+    return this.anchors[index] as Vec2D;
+  }
+  draw(canvas: HTMLCanvasElement, scene: Scene) {
+    super.draw(canvas, scene);
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+
+    let a_x, a_y, a;
+    a = this.get_anchor(0);
+    [a_x, a_y] = scene.s2c(a[0], a[1]);
+    ctx.beginPath();
+    ctx.moveTo(a_x, a_y);
+
+    // Generate handles
+    let [handles_1, handles_2] = this.solver.get_bezier_handles(
+      np.array(this.anchors),
+    );
+
+    // Draw
+    let h1_x, h1_y, h2_x, h2_y;
+    for (let i = 0; i < this.num_steps; i++) {
+      [h1_x, h1_y] = scene.s2c(
+        handles_1.get([i, 0]) as number,
+        handles_1.get([i, 1]) as number,
+      );
+      [h2_x, h2_y] = scene.s2c(
+        handles_2.get([i, 0]) as number,
+        handles_2.get([i, 1]) as number,
+      );
+      a = this.get_anchor(i + 1);
+      [a_x, a_y] = scene.s2c(a[0], a[1]);
+      ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
+      ctx.stroke();
+    }
   }
 }
 
