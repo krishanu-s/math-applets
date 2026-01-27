@@ -29,7 +29,6 @@ import {} from "./statesim.js";
       const xmax = 5;
       const ymin = -5;
       const ymax = 5;
-      const clamp_value = 10;
 
       // Prepare the canvas and scene
       let width = 200;
@@ -47,7 +46,7 @@ import {} from "./statesim.js";
       // Create ImageData object
       const imageData = ctx.createImageData(width, height);
 
-      let waveSim = new WaveSimTwoDimPointSource(width, height, dt);
+      let waveSim = new WaveSimTwoDimEllipticReflector(width, height, dt);
       waveSim.wave_propagation_speed = width / 10;
 
       // Set amplitude
