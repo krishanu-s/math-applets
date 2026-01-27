@@ -126,7 +126,7 @@ export class SmoothOpenPathBezierHandleCalculator {
   }
 }
 
-export class OpenBezierCurve extends MObject {
+export class BezierSpline extends MObject {
   num_steps: number;
   solver: SmoothOpenPathBezierHandleCalculator;
   anchors: Vec2D[];

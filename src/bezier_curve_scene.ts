@@ -1,7 +1,7 @@
 import * as np from "numpy-ts";
-import { Dot, BezierCurve, Scene } from "./base.js";
-import { Vec2D } from "./base.js";
-import { SmoothClosedPathBezierHandleCalculator } from "./bezier.js";
+import { Dot, BezierCurve, Scene } from "./lib/base.js";
+import { Vec2D } from "./lib/base.js";
+import { SmoothClosedPathBezierHandleCalculator } from "./lib/bezier.js";
 
 class ClosedCurveScene extends Scene {
   n: number;

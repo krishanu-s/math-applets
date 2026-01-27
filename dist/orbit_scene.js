@@ -1,4 +1,4 @@
-// src/base.ts
+// src/lib/base.ts
 var MObject = class {
   constructor() {
   }
@@ -9,7 +9,7 @@ var Dot = class extends MObject {
   constructor(center_x, center_y, kwargs) {
     super();
     this.center = [center_x, center_y];
-    let radius = kwargs["radius"];
+    let radius = kwargs.radius;
     if (radius == void 0) {
       this.radius = 0.3;
     } else {

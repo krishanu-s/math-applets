@@ -10632,7 +10632,7 @@ var require_numpy_ts_node = __commonJS({
 // src/bezier_curve_scene.ts
 var np2 = __toESM(require_numpy_ts_node(), 1);
 
-// src/base.ts
+// src/lib/base.ts
 var MObject = class {
   constructor() {
   }
@@ -10643,7 +10643,7 @@ var Dot = class extends MObject {
   constructor(center_x, center_y, kwargs) {
     super();
     this.center = [center_x, center_y];
-    let radius = kwargs["radius"];
+    let radius = kwargs.radius;
     if (radius == void 0) {
       this.radius = 0.3;
     } else {
@@ -10769,7 +10769,7 @@ var Scene = class {
   }
 };
 
-// src/bezier.ts
+// src/lib/bezier.ts
 var np = __toESM(require_numpy_ts_node(), 1);
 var SmoothClosedPathBezierHandleCalculator = class {
   constructor(n) {

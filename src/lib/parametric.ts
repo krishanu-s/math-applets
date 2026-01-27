@@ -1,7 +1,6 @@
 // TODO Graph of a parametric function
 import * as np from "numpy-ts";
-import { MObject, Scene } from "./base.js";
-import { Vec2D } from "./base.js";
+import { MObject, Scene, Vec2D } from "./base.js";
 import { SmoothOpenPathBezierHandleCalculator } from "./bezier.js";
 
 // Graph of a parametric function, drawn as a Bezier curve

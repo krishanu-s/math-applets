@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "esbuild src/*.ts --bundle --platform=node --outdir=dist --format=esm"
+    "build": "esbuild src/*_scene.ts --bundle --platform=node --outdir=dist --format=esm"
   },
   "type": "module",
   "keywords": [],

@@ -2,7 +2,7 @@ import { MObject, Scene, Dot, Line, prepare_canvas } from "./base.js";
 import { Slider, Button } from "./interactive.js";
 import { Vec2D, clamp, sigmoid } from "./base.js";
 import { ParametricFunction } from "./parametric.js";
-import { OpenBezierCurve } from "./bezier.js";
+import { BezierSpline } from "./bezier.js";
 import { HeatMap } from "./heatmap.js";
 import {
   Simulator,
@@ -36,8 +36,7 @@ class PointSource {
   }
 }
 
-// *** SIMULATORS ***
-
+// *** One dimensional ***
 // Wave equation simulation for a function R -> R, bounded at ends.
 export class WaveSimOneDim extends Simulator {
   width: number;
@@ -139,7 +138,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     }
 
     // Add a Bezier curve which tracks with uValues in simulator
-    let curve = new OpenBezierCurve(width - 1, { stroke_width: 0.04 });
+    let curve = new BezierSpline(width - 1, { stroke_width: 0.04 });
     this.add("curve", curve);
   }
   set_mode(mode: "curve" | "dots") {
@@ -190,11 +189,11 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       dot.move_to(pos[0], pos[1] + disp);
       anchors.push([pos[0], pos[1] + disp]);
     }
-    let curve = this.get_mobj("curve") as OpenBezierCurve;
+    let curve = this.get_mobj("curve") as BezierSpline;
     curve.set_anchors(anchors);
   }
   draw_mobject(mobj: MObject) {
-    if (mobj instanceof OpenBezierCurve) {
+    if (mobj instanceof BezierSpline) {
       if (this.mode == "curve") {
         mobj.draw(this.canvas, this);
       }
@@ -207,6 +206,8 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     }
   }
 }
+
+// *** Two dimensional ***
 
 // Wave equation simulation for a function R^2 -> R
 // Ref: https://arxiv.org/pdf/1001.0319, equation (2.14).

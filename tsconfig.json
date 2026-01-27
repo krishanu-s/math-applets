@@ -1,5 +1,5 @@
 {
-  "include": ["src/**/*.ts"],
+  "include": [],
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // "moduleResolution": "node", // or "nodenext"
@@ -42,6 +42,6 @@
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+  },
 }

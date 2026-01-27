@@ -1,7 +1,7 @@
 // TODO Graph of a parametric function
-import { MObject, Scene } from "./base.js";
-import { Slider } from "./interactive.js";
-import { ParametricFunction } from "./parametric.js";
+import { MObject, Scene } from "./lib/base.js";
+import { Slider } from "./lib/interactive.js";
+import { ParametricFunction } from "./lib/parametric.js";
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {

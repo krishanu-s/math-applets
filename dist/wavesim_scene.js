@@ -10629,7 +10629,7 @@ var require_numpy_ts_node = __commonJS({
   }
 });
 
-// src/base.ts
+// src/lib/base.ts
 function vec_sum(x, y) {
   return [x[0] + y[0], x[1] + y[1]];
 }
@@ -10656,7 +10656,7 @@ var Dot = class extends MObject {
   constructor(center_x, center_y, kwargs) {
     super();
     this.center = [center_x, center_y];
-    let radius = kwargs["radius"];
+    let radius = kwargs.radius;
     if (radius == void 0) {
       this.radius = 0.3;
     } else {
@@ -10691,13 +10691,13 @@ var Line = class extends MObject {
     super();
     this.start = start;
     this.end = end;
-    let stroke_width = kwargs["stroke_width"];
+    let stroke_width = kwargs.stroke_width;
     if (stroke_width == void 0) {
       this.stroke_width = 0.08;
     } else {
       this.stroke_width = stroke_width;
     }
-    let stroke_color = kwargs["stroke_color"];
+    let stroke_color = kwargs.stroke_color;
     if (stroke_color == void 0) {
       this.stroke_color = `rgb(0, 0, 0)`;
     } else {
@@ -10805,7 +10805,7 @@ function prepare_canvas(width, height, name) {
   return canvas;
 }
 
-// src/interactive.ts
+// src/lib/interactive.ts
 function Slider(container, callback, kwargs) {
   let slider = document.createElement("input");
   slider.type = "range";
@@ -10870,10 +10870,10 @@ function Button(container, callback) {
   return button;
 }
 
-// src/parametric.ts
+// src/lib/parametric.ts
 var np2 = __toESM(require_numpy_ts_node(), 1);
 
-// src/bezier.ts
+// src/lib/bezier.ts
 var np = __toESM(require_numpy_ts_node(), 1);
 var SmoothOpenPathBezierHandleCalculator = class {
   constructor(n) {
@@ -10968,7 +10968,7 @@ var SmoothOpenPathBezierHandleCalculator = class {
     return [h1, h2];
   }
 };
-var OpenBezierCurve = class extends MObject {
+var BezierSpline = class extends MObject {
   constructor(num_steps, kwargs) {
     super();
     this.num_steps = num_steps;
@@ -11029,7 +11029,7 @@ var OpenBezierCurve = class extends MObject {
   }
 };
 
-// src/parametric.ts
+// src/lib/parametric.ts
 var ParametricFunction = class extends MObject {
   constructor(f, tmin, tmax, num_steps, kwargs) {
     super();
@@ -11120,7 +11120,7 @@ var ParametricFunction = class extends MObject {
   }
 };
 
-// src/heatmap.ts
+// src/lib/heatmap.ts
 function rb_colormap(z) {
   const gray = sigmoid(z);
   if (gray < 0.5) {
@@ -11160,7 +11160,7 @@ var HeatMap = class extends MObject {
   }
 };
 
-// src/statesim.ts
+// src/lib/statesim.ts
 var Simulator = class {
   // Length of time in each simulation step
   constructor(state_size, dt) {
@@ -11406,7 +11406,7 @@ var InteractivePlayingScene = class extends Scene {
   }
 };
 
-// src/wavesim.ts
+// src/lib/wavesim.ts
 var PointSource = class {
   // Amplitude
   constructor(x, y, w, a) {
@@ -11501,7 +11501,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       let dot3 = new Dot(pos[0], pos[1], { radius: 0.5 / Math.sqrt(width) });
       this.add(`p_${i + 1}`, dot3);
     }
-    let curve = new OpenBezierCurve(width - 1, { stroke_width: 0.04 });
+    let curve = new BezierSpline(width - 1, { stroke_width: 0.04 });
     this.add("curve", curve);
   }
   set_mode(mode) {
@@ -11551,7 +11551,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     curve.set_anchors(anchors);
   }
   draw_mobject(mobj) {
-    if (mobj instanceof OpenBezierCurve) {
+    if (mobj instanceof BezierSpline) {
       if (this.mode == "curve") {
         mobj.draw(this.canvas, this);
       }

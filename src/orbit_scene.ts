@@ -1,4 +1,4 @@
-import { Dot, Scene } from "./base.js";
+import { Dot, Scene } from "./lib/base.js";
 // An orbiting body
 const GRAV_CONSTANT = 1.0;
 class OrbitScene extends Scene {

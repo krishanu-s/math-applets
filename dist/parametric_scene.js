@@ -10629,7 +10629,7 @@ var require_numpy_ts_node = __commonJS({
   }
 });
 
-// src/base.ts
+// src/lib/base.ts
 var MObject = class {
   constructor() {
   }
@@ -10693,7 +10693,7 @@ var Scene = class {
   }
 };
 
-// src/interactive.ts
+// src/lib/interactive.ts
 function Slider(container, callback, kwargs) {
   let slider = document.createElement("input");
   slider.type = "range";
@@ -10744,10 +10744,10 @@ function Slider(container, callback, kwargs) {
   return slider;
 }
 
-// src/parametric.ts
+// src/lib/parametric.ts
 var np2 = __toESM(require_numpy_ts_node(), 1);
 
-// src/bezier.ts
+// src/lib/bezier.ts
 var np = __toESM(require_numpy_ts_node(), 1);
 var SmoothOpenPathBezierHandleCalculator = class {
   constructor(n) {
@@ -10843,7 +10843,7 @@ var SmoothOpenPathBezierHandleCalculator = class {
   }
 };
 
-// src/parametric.ts
+// src/lib/parametric.ts
 var ParametricFunction = class extends MObject {
   constructor(f, tmin, tmax, num_steps, kwargs) {
     super();

@@ -1,4 +1,4 @@
-import { MObject, Scene, sigmoid } from "./base";
+import { MObject, Scene, sigmoid } from "./base.js";
 
 type ColorVal = [number, number, number, number];
 type ColorMap = (z: number) => ColorVal;

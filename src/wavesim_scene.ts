@@ -1,6 +1,6 @@
 // Testing the direct feeding of a pixel array to the canvas
-import { MObject, Dot, Line, Scene, prepare_canvas } from "./base.js";
-import { Slider, Button } from "./interactive.js";
+import { MObject, Dot, Line, Scene, prepare_canvas } from "./lib/base.js";
+import { Slider, Button } from "./lib/interactive.js";
 import {
   Vec2D,
   clamp,
@@ -8,9 +8,9 @@ import {
   vec_sum,
   vec_sum_list,
   linspace,
-} from "./base.js";
-import { ParametricFunction } from "./parametric.js";
-import { HeatMap } from "./heatmap.js";
+} from "./lib/base.js";
+import { ParametricFunction } from "./lib/parametric.js";
+import { HeatMap } from "./lib/heatmap.js";
 import {
   WaveSimOneDimScene,
   WaveSimTwoDim,
@@ -18,8 +18,8 @@ import {
   WaveSimTwoDimEllipticReflector,
   WaveSimTwoDimHeatMapScene,
   WaveSimTwoDimDotsScene,
-} from "./wavesim.js";
-import {} from "./statesim.js";
+} from "./lib/wavesim.js";
+import {} from "./lib/statesim.js";
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {

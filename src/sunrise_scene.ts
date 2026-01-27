@@ -1,5 +1,5 @@
-import { Line, Dot, BezierCurve, Scene, MObject } from "./base.js";
-import { Slider } from "./interactive.js";
+import { Line, Dot, BezierCurve, Scene, MObject } from "./lib/base.js";
+import { Slider } from "./lib/interactive.js";
 import {
   SphericalVec3D,
   Vec3D,
@@ -9,8 +9,8 @@ import {
   rot_x,
   cartesian_to_spherical,
   spherical_to_cartesian,
-} from "./matvec.js";
-import { HeatMap, TwoDimHeatMap } from "./heatmap.js";
+} from "./lib/matvec.js";
+import { HeatMap, TwoDimHeatMap } from "./lib/heatmap.js";
 
 const DEGREE = Math.PI / 180;
 const EARTH_TILT = 23 * DEGREE;

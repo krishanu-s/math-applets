@@ -1,4 +1,4 @@
-// src/base.ts
+// src/lib/base.ts
 var MObject = class {
   constructor() {
   }
@@ -10,13 +10,13 @@ var Line = class extends MObject {
     super();
     this.start = start;
     this.end = end;
-    let stroke_width = kwargs["stroke_width"];
+    let stroke_width = kwargs.stroke_width;
     if (stroke_width == void 0) {
       this.stroke_width = 0.08;
     } else {
       this.stroke_width = stroke_width;
     }
-    let stroke_color = kwargs["stroke_color"];
+    let stroke_color = kwargs.stroke_color;
     if (stroke_color == void 0) {
       this.stroke_color = `rgb(0, 0, 0)`;
     } else {
@@ -102,7 +102,7 @@ var Scene = class {
   }
 };
 
-// src/interactive.ts
+// src/lib/interactive.ts
 function Slider(container, callback, kwargs) {
   let slider = document.createElement("input");
   slider.type = "range";
@@ -153,7 +153,7 @@ function Slider(container, callback, kwargs) {
   return slider;
 }
 
-// src/matvec.ts
+// src/lib/matvec.ts
 function vecdot(v, w) {
   let result = 0;
   for (let i = 0; i < 3; i++) {
@@ -211,7 +211,7 @@ function rot_y(theta) {
   ];
 }
 
-// src/heatmap.ts
+// src/lib/heatmap.ts
 function spherical_colormap(theta, phi) {
   let a;
   if (phi < 0 || phi > 2 * Math.PI) {
