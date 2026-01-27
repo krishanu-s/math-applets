@@ -33,7 +33,7 @@ class State {
     return dS;
   }
   // Adding any boundary conditions which override the differential equation
-  add_boundary_conditions(arr: Array<number>, t: number): void {}
+  set_boundary_conditions(arr: Array<number>, t: number): void {}
   // Step the differential equation forward
   // TODO This part has to be moved outside, to the generic "DynamicScene" class.
   step(dt: number) {
@@ -46,7 +46,7 @@ class State {
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = (this.vals[i] as number) + (dS[i] as number);
     }
-    this.add_boundary_conditions(newS, this.time);
+    this.set_boundary_conditions(newS, this.time);
     return newS;
   }
   // Step the differential equation forward using Runge-Kutta
@@ -57,19 +57,19 @@ class State {
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = (this.vals[i] as number) + (dt / 2) * (dS_1[i] as number);
     }
-    this.add_boundary_conditions(newS, this.time + dt / 2);
+    this.set_boundary_conditions(newS, this.time + dt / 2);
 
     let dS_2 = this.dot(newS);
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = (this.vals[i] as number) + (dt / 2) * (dS_2[i] as number);
     }
-    this.add_boundary_conditions(newS, this.time + dt / 2);
+    this.set_boundary_conditions(newS, this.time + dt / 2);
 
     let dS_3 = this.dot(newS);
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = (this.vals[i] as number) + dt * (dS_3[i] as number);
     }
-    this.add_boundary_conditions(newS, this.time + dt);
+    this.set_boundary_conditions(newS, this.time + dt);
 
     let dS_4 = this.dot(newS);
     for (let i = 0; i < this.state_size; i++) {
@@ -80,7 +80,7 @@ class State {
         (dt / 3) * (dS_3[i] as number) +
         (dt / 6) * (dS_4[i] as number);
     }
-    this.add_boundary_conditions(newS, this.time + dt);
+    this.set_boundary_conditions(newS, this.time + dt);
     this.time += dt;
     return newS;
   }
@@ -834,19 +834,19 @@ class WaveEquationScene extends Scene {
     for (let i = 0; i < this.state_size(); i++) {
       s[i] = (this.state[i] as number) + (dt / 2) * (dS_1[i] as number);
     }
-    this.add_boundary_conditions(s, this.time + dt / 2);
+    this.set_boundary_conditions(s, this.time + dt / 2);
 
     let dS_2 = this.dot(s);
     for (let i = 0; i < this.state_size(); i++) {
       s[i] = (this.state[i] as number) + (dt / 2) * (dS_2[i] as number);
     }
-    this.add_boundary_conditions(s, this.time + dt / 2);
+    this.set_boundary_conditions(s, this.time + dt / 2);
 
     let dS_3 = this.dot(s);
     for (let i = 0; i < this.state_size(); i++) {
       s[i] = (this.state[i] as number) + dt * (dS_3[i] as number);
     }
-    this.add_boundary_conditions(s, this.time + dt);
+    this.set_boundary_conditions(s, this.time + dt);
 
     let dS_4 = this.dot(s);
 
@@ -859,10 +859,10 @@ class WaveEquationScene extends Scene {
         (dS_4[ind] as number) * (dt / 6);
     }
 
-    this.add_boundary_conditions(this.state, this.time + dt);
+    this.set_boundary_conditions(this.state, this.time + dt);
     this.time += dt;
   }
-  add_boundary_conditions(state: Array<number>, t: number): void {}
+  set_boundary_conditions(state: Array<number>, t: number): void {}
   // Draws the scene
   draw() {
     let ctx = this.canvas.getContext("2d");
@@ -881,7 +881,7 @@ class WaveEquationScene extends Scene {
   }
   // Initializes the first step
   init() {
-    this.add_boundary_conditions(this.state, this.time);
+    this.set_boundary_conditions(this.state, this.time);
   }
   // Starts animation
   play(until: number | undefined) {
@@ -937,7 +937,7 @@ class WaveEquationScenePointSource extends WaveEquationScene {
   move_point_source_y(y: number) {
     this.point_source[1] = y;
   }
-  add_boundary_conditions(state: Array<number>, t: number) {
+  set_boundary_conditions(state: Array<number>, t: number) {
     let [x, y] = this.s2c(this.point_source[0], this.point_source[1]);
     let ind = this.index(Math.floor(x), Math.floor(y));
     state[ind] = this.a * Math.sin(this.w * t);
@@ -1248,7 +1248,7 @@ class WaveEquationSceneParabolic extends WaveEquationSceneReflector {
     this.point_source[1] = y;
   }
   // *** Simulation methods ***
-  add_boundary_conditions(state: Array<number>, t: number) {
+  set_boundary_conditions(state: Array<number>, t: number) {
     if (this.point_source_on) {
       let [x, y] = this.s2c(this.point_source[0], this.point_source[1]);
       let ind = this.index(Math.floor(x), Math.floor(y));
@@ -1376,7 +1376,7 @@ class WaveEquationSceneElliptic extends WaveEquationSceneReflector {
     this.point_source_on = !this.point_source_on;
   }
   // *** Simulation methods ***
-  add_boundary_conditions(state: Array<number>, t: number) {
+  set_boundary_conditions(state: Array<number>, t: number) {
     if (this.point_source_on) {
       let [x, y] = this.s2c(this.foci[0][0], this.foci[0][1]);
       let ind = this.index(Math.floor(x), Math.floor(y));
@@ -1432,7 +1432,7 @@ class WaveEquationSceneDipole extends WaveEquationScene {
   set_w(w: number) {
     this.w = w;
   }
-  add_boundary_conditions(state: Array<number>, t: number) {
+  set_boundary_conditions(state: Array<number>, t: number) {
     // Positive point source
     let [x1, y1] = this.s2c(this.dipole[0], this.dipole[1]);
     let ind_1 = this.index(Math.floor(x1), Math.floor(y1));

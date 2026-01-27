@@ -26,7 +26,7 @@ export abstract class Simulator {
   reset() {
     this.vals = new Array(this.state_size).fill(0);
     this.time = 0;
-    this.add_boundary_conditions(this.vals, 0);
+    this.set_boundary_conditions(this.vals, 0);
   }
   // Generic setter.
   set_attr(name: string, val: any) {
@@ -47,7 +47,7 @@ export abstract class Simulator {
   }
   // Subroutine for adding any time-evolution calculation
   // which does not adhere to the differential equation. Used in step().
-  add_boundary_conditions(s: Array<number>, t: number): void {}
+  set_boundary_conditions(s: Array<number>, t: number): void {}
   // Advances the simulation using the differential equation with
   // s(t + dt) = s(t) + dt * s'(t)
   step_finite_diff() {
@@ -56,7 +56,7 @@ export abstract class Simulator {
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = (this.vals[i] as number) + this.dt * (dS[i] as number);
     }
-    this.add_boundary_conditions(newS, this.time + this.dt);
+    this.set_boundary_conditions(newS, this.time + this.dt);
     this.set_vals(newS);
     this.time += this.dt;
   }
@@ -68,19 +68,19 @@ export abstract class Simulator {
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = (this.vals[i] as number) + (this.dt / 2) * (dS_1[i] as number);
     }
-    this.add_boundary_conditions(newS, this.time + this.dt / 2);
+    this.set_boundary_conditions(newS, this.time + this.dt / 2);
 
     let dS_2 = this.dot(newS, this.time);
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = (this.vals[i] as number) + (this.dt / 2) * (dS_2[i] as number);
     }
-    this.add_boundary_conditions(newS, this.time + this.dt / 2);
+    this.set_boundary_conditions(newS, this.time + this.dt / 2);
 
     let dS_3 = this.dot(newS, this.time);
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = (this.vals[i] as number) + this.dt * (dS_3[i] as number);
     }
-    this.add_boundary_conditions(newS, this.time + this.dt);
+    this.set_boundary_conditions(newS, this.time + this.dt);
 
     let dS_4 = this.dot(newS, this.time);
     for (let i = 0; i < this.state_size; i++) {
@@ -91,7 +91,7 @@ export abstract class Simulator {
         (this.dt / 3) * (dS_3[i] as number) +
         (this.dt / 6) * (dS_4[i] as number);
     }
-    this.add_boundary_conditions(newS, this.time + this.dt);
+    this.set_boundary_conditions(newS, this.time + this.dt);
     this.set_vals(newS);
     this.time += this.dt;
   }

@@ -10636,15 +10636,15 @@ function vec_sum(x, y) {
 function vec_sum_list(xs) {
   return xs.reduce((acc, x) => vec_sum(acc, x), [0, 0]);
 }
-function linspace2(start, stop, num) {
-  const step = (stop - start) / (num - 1);
-  return Array.from({ length: num }, (_, i) => start + i * step);
-}
 function clamp(x, xmin, xmax) {
   return Math.min(xmax, Math.max(xmin, x));
 }
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
+}
+function funspace(func, start, stop, num) {
+  const step = (stop - start) / (num - 1);
+  return Array.from({ length: num }, (_, i) => func(start + i * step));
 }
 var MObject = class {
   constructor() {
@@ -11174,7 +11174,7 @@ var Simulator = class {
   reset() {
     this.vals = new Array(this.state_size).fill(0);
     this.time = 0;
-    this.add_boundary_conditions(this.vals, 0);
+    this.set_boundary_conditions(this.vals, 0);
   }
   // Generic setter.
   set_attr(name, val) {
@@ -11195,7 +11195,7 @@ var Simulator = class {
   }
   // Subroutine for adding any time-evolution calculation
   // which does not adhere to the differential equation. Used in step().
-  add_boundary_conditions(s, t) {
+  set_boundary_conditions(s, t) {
   }
   // Advances the simulation using the differential equation with
   // s(t + dt) = s(t) + dt * s'(t)
@@ -11205,7 +11205,7 @@ var Simulator = class {
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = this.vals[i] + this.dt * dS[i];
     }
-    this.add_boundary_conditions(newS, this.time + this.dt);
+    this.set_boundary_conditions(newS, this.time + this.dt);
     this.set_vals(newS);
     this.time += this.dt;
   }
@@ -11216,22 +11216,22 @@ var Simulator = class {
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = this.vals[i] + this.dt / 2 * dS_1[i];
     }
-    this.add_boundary_conditions(newS, this.time + this.dt / 2);
+    this.set_boundary_conditions(newS, this.time + this.dt / 2);
     let dS_2 = this.dot(newS, this.time);
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = this.vals[i] + this.dt / 2 * dS_2[i];
     }
-    this.add_boundary_conditions(newS, this.time + this.dt / 2);
+    this.set_boundary_conditions(newS, this.time + this.dt / 2);
     let dS_3 = this.dot(newS, this.time);
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = this.vals[i] + this.dt * dS_3[i];
     }
-    this.add_boundary_conditions(newS, this.time + this.dt);
+    this.set_boundary_conditions(newS, this.time + this.dt);
     let dS_4 = this.dot(newS, this.time);
     for (let i = 0; i < this.state_size; i++) {
       newS[i] = this.vals[i] + this.dt / 6 * dS_1[i] + this.dt / 3 * dS_2[i] + this.dt / 3 * dS_3[i] + this.dt / 6 * dS_4[i];
     }
-    this.add_boundary_conditions(newS, this.time + this.dt);
+    this.set_boundary_conditions(newS, this.time + this.dt);
     this.set_vals(newS);
     this.time += this.dt;
   }
@@ -11408,12 +11408,13 @@ var InteractivePlayingScene = class extends Scene {
 
 // src/lib/wavesim.ts
 var PointSource = class {
-  // Amplitude
-  constructor(x, y, w, a) {
+  // Phase
+  constructor(x, y, w, a, p) {
     this.x = x;
     this.y = y;
     this.w = w;
     this.a = a;
+    this.p = p;
   }
   set_x(x) {
     this.x = x;
@@ -11426,6 +11427,9 @@ var PointSource = class {
   }
   set_a(a) {
     this.a = a;
+  }
+  set_p(p) {
+    this.p = p;
   }
 };
 var WaveSimOneDim = class extends Simulator {
@@ -11461,17 +11465,14 @@ var WaveSimOneDim = class extends Simulator {
   // Constructs the time-derivative of the entire state array. Here is where
   // the wave equation is used.
   dot(vals, time) {
-    let dS = new Array(this.state_size);
     let u = this._get_uValues(vals);
-    for (let ind = 0; ind < this.width; ind++) {
-      dS[ind] = vals[ind + this.width];
-    }
+    let dS = vals.slice(this.width, 2 * this.width);
     for (let x = 0; x < this.width; x++) {
-      dS[x + this.width] = this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x);
+      dS.push(this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x));
     }
     return dS;
   }
-  add_boundary_conditions(vals) {
+  set_boundary_conditions(vals) {
     vals[0] = 0;
     vals[this.width - 1] = 0;
     vals[this.width] = 0;
@@ -11569,7 +11570,7 @@ var WaveSimTwoDim = class extends Simulator {
     super(4 * width * height, dt);
     this.pml_layers = {};
     this.wave_propagation_speed = 20;
-    this.point_sources = [];
+    this.point_sources = {};
     this.clamp_value = Infinity;
     this.width = width;
     this.height = height;
@@ -11588,7 +11589,14 @@ var WaveSimTwoDim = class extends Simulator {
       this.vals[i + 3 * this.size()] = 0;
     }
     this.time = 0;
-    this.add_boundary_conditions(this.vals, this.time);
+    this.set_boundary_conditions(this.vals, this.time);
+  }
+  add_point_source(source) {
+    let ind = Object.keys(this.point_sources).length;
+    this.point_sources[ind] = source;
+  }
+  remove_point_source(id) {
+    delete this.point_sources[id];
   }
   // *** HELPER FUNCTIONS ***
   // Size of the 2D grid
@@ -11619,6 +11627,9 @@ var WaveSimTwoDim = class extends Simulator {
   // grows as max(0, C(L - x))^2, where C is the pml_strength parameter, L is the pml_width parameter,
   // and x represents the ratio distance(point, border) / distance(center, border). That is, x = 1
   // at the center of the grid, and x = 0 at the border of the grid.
+  remove_pml_layers() {
+    this.pml_layers = { 0: [0, 0], 1: [0, 0], 2: [0, 0], 3: [0, 0] };
+  }
   set_pml_layer(x_direction, positive2, pml_width, pml_strength) {
     let ind;
     if (x_direction && positive2) {
@@ -11733,9 +11744,9 @@ var WaveSimTwoDim = class extends Simulator {
     return dS;
   }
   // Add point sources
-  add_boundary_conditions(s, t) {
+  set_boundary_conditions(s, t) {
     let ind;
-    this.point_sources.forEach((elem) => {
+    Object.entries(this.point_sources).forEach(([key, elem]) => {
       ind = this.index(elem.x, elem.y);
       s[ind] = elem.a * Math.sin(elem.w * t);
       s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * t);
@@ -11938,7 +11949,7 @@ var WaveSimTwoDimEllipticReflector = class extends WaveSimTwoDimReflector {
       ]
     ];
     let [x, y] = this.foci[0];
-    this.point_sources = [new PointSource(x, y, 5, 5)];
+    this.point_sources = [new PointSource(x, y, 5, 5, 0)];
   }
   _recalculate_foci() {
     let [focus_1_x, focus_1_y] = [
@@ -11953,7 +11964,7 @@ var WaveSimTwoDimEllipticReflector = class extends WaveSimTwoDimReflector {
       ),
       Math.floor(this.height / 2)
     ];
-    this.point_sources = [new PointSource(focus_1_x, focus_1_y, 5, 5)];
+    this.point_sources = [new PointSource(focus_1_x, focus_1_y, 5, 5, 0)];
     this.foci = [
       [focus_1_x, focus_1_y],
       [focus_2_x, focus_2_y]
@@ -12049,7 +12060,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       waveSim.set_pml_layer(true, false, 0.2, 200);
       waveSim.set_pml_layer(false, true, 0.2, 200);
       waveSim.set_pml_layer(false, false, 0.2, 200);
-      waveSim.add_boundary_conditions(waveSim.vals, 0);
+      waveSim.set_boundary_conditions(waveSim.vals, 0);
       let waveEquationScene = new WaveSimTwoDimHeatMapScene(
         canvas,
         waveSim,
@@ -12264,7 +12275,10 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       scene.set_mode("dots");
       let sim = scene.sim();
       sim.set_attr("wave_propagation_speed", 3);
-      sim.set_uValues(linspace2(0, 1, num_points));
+      function foo(x) {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
+      sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
       let pauseButton = Button(
         document.getElementById(
           "point-mass-discrete-sequence-pause-button"
@@ -12315,7 +12329,10 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       scene.set_mode("curve");
       let sim = scene.sim();
       sim.set_attr("wave_propagation_speed", 3);
-      sim.set_uValues(linspace2(0, 1, num_points));
+      function foo(x) {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
+      sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
       let w_slider = Slider(
         document.getElementById(
           "point-mass-continuous-sequence-stiffness-slider"
@@ -12359,7 +12376,24 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       scene.draw();
       scene.play(void 0);
     })(50);
-    (function point_mass_discrete_lattice() {
-    });
+    (function point_mass_discrete_lattice(width, height) {
+      let canvas = prepare_canvas(width, height, "point-mass-discrete-lattice");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+      let sim = new WaveSimTwoDim(width, height, 0.02);
+      sim.set_attr("wave_propagation_speed", 20);
+      let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      sim.set_attr("wave_propagation_speed", 20);
+      let w = 8;
+      let a = 8;
+      let [px, py] = scene.s2c(0, 0);
+      sim.add_point_source(new PointSource(px, py, w, a, 0));
+      scene.toggle_pause();
+      scene.play(void 0);
+    })(200, 200);
   });
 })();

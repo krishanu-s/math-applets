@@ -8,13 +8,14 @@ import {
   vec_sum,
   vec_sum_list,
   linspace,
+  funspace,
 } from "./lib/base.js";
 import { ParametricFunction } from "./lib/parametric.js";
 import { HeatMap } from "./lib/heatmap.js";
 import {
+  PointSource,
   WaveSimOneDimScene,
   WaveSimTwoDim,
-  WaveSimTwoDimPointSource,
   WaveSimTwoDimEllipticReflector,
   WaveSimTwoDimHeatMapScene,
   WaveSimTwoDimDotsScene,
@@ -60,7 +61,7 @@ import {} from "./lib/statesim.js";
       waveSim.set_pml_layer(false, false, 0.2, 200.0);
 
       // Set up the simulation
-      waveSim.add_boundary_conditions(waveSim.vals, 0);
+      waveSim.set_boundary_conditions(waveSim.vals, 0);
 
       // Initialize the scene
       let waveEquationScene = new WaveSimTwoDimHeatMapScene(
@@ -335,8 +336,10 @@ import {} from "./lib/statesim.js";
 
       // Set the attributes of the simulator
       sim.set_attr("wave_propagation_speed", 3.0);
-      // TODO Set a better initial condition
-      sim.set_uValues(linspace(0, 1, num_points));
+      function foo(x: number): number {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
+      sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
 
       // Button which pauses/unpauses the simulation
       let pauseButton = Button(
@@ -401,8 +404,10 @@ import {} from "./lib/statesim.js";
 
       // Set the attributes of the simulator
       sim.set_attr("wave_propagation_speed", 3.0);
-      // TODO Set a better initial condition
-      sim.set_uValues(linspace(0, 1, num_points));
+      function foo(x: number): number {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
+      sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
 
       // Slider which controls the propagation speed
       let w_slider = Slider(
@@ -456,9 +461,42 @@ import {} from "./lib/statesim.js";
     // Extend the 1D, finite-number-of-point-masses to 2D.
     // Include both an interactive animation (with spring strength modifiable by slider)
     // and a static visualization of the force diagram. Use color to indicate height.
-    (function point_mass_discrete_lattice() {
+    (function point_mass_discrete_lattice(width: number, height: number) {
       // TODO
-    });
+      // Prepare the canvas and context for drawing
+      let canvas = prepare_canvas(width, height, "point-mass-discrete-lattice");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+
+      // Prepare the simulator and scene
+      let sim = new WaveSimTwoDim(width, height, 0.02);
+      sim.set_attr("wave_propagation_speed", 20.0);
+      // sim.remove_pml_layers();
+
+      let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+
+      sim.set_attr("wave_propagation_speed", 20.0);
+      let w = 8.0;
+      let a = 8.0;
+      let [px, py] = scene.s2c(0, 0);
+      sim.add_point_source(new PointSource(px, py, w, a, 0.0));
+
+      // Add a single point source
+      // Add point sources to create a dipole
+      // let d = 0.5;
+      // let [px, py] = scene.s2c(0, d);
+      // sim.add_point_source(new PointSource(px, py, w, a * d, 0.0));
+      // [px, py] = scene.s2c(0, -d);
+      // sim.add_point_source(new PointSource(px, py, w, -a * d, 0.0));
+
+      // scene.set_mode("dots");
+      scene.toggle_pause();
+      scene.play(undefined);
+    })(200, 200);
 
     // Some animation to depict reflective elements.
     // Some animation to depict point sources and line sources.

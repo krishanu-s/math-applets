@@ -23,11 +23,6 @@ export function vec_sub(x: Vec2D, y: Vec2D): Vec2D {
   return [x[0] - y[0], x[1] - y[1]];
 }
 
-export function linspace(start: number, stop: number, num: number): number[] {
-  const step = (stop - start) / (num - 1);
-  return Array.from({ length: num }, (_, i) => start + i * step);
-}
-
 // *** FUNCTIONS ***
 
 // Clamps a number to the interval [xmin, xmax].
@@ -38,6 +33,23 @@ export function clamp(x: number, xmin: number, xmax: number): number {
 // The function 1 / (1 + e^{-x}). Used to map (-inf, inf) to (0, 1).
 export function sigmoid(x: number): number {
   return 1 / (1 + Math.exp(-x));
+}
+
+// Same as np.linspace. Generates an arithmetic sequence.
+export function linspace(start: number, stop: number, num: number): number[] {
+  const step = (stop - start) / (num - 1);
+  return Array.from({ length: num }, (_, i) => start + i * step);
+}
+
+// Generates an arithmetic sequence and then applies the function to each element.
+export function funspace(
+  func: (x: number) => number,
+  start: number,
+  stop: number,
+  num: number,
+): number[] {
+  const step = (stop - start) / (num - 1);
+  return Array.from({ length: num }, (_, i) => func(start + i * step));
 }
 
 // *** MATH OBJECTS ***
