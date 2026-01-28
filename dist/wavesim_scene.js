@@ -10869,6 +10869,24 @@ function Button(container, callback) {
   });
   return button;
 }
+function PauseButton(container, scene) {
+  const pauseButton = Button(
+    document.getElementById("line-source-heatmap-pause-button"),
+    function() {
+      scene.add_to_queue(scene.toggle_pause.bind(scene));
+      if (pauseButton.textContent == "Pause simulation") {
+        pauseButton.textContent = "Unpause simulation";
+      } else if (pauseButton.textContent == "Unpause simulation") {
+        pauseButton.textContent = "Pause simulation";
+      } else {
+        throw new Error();
+      }
+    }
+  );
+  pauseButton.textContent = "Unpause simulation";
+  pauseButton.style.padding = "15px";
+  return pauseButton;
+}
 
 // src/lib/parametric.ts
 var np2 = __toESM(require_numpy_ts_node(), 1);
@@ -11433,11 +11451,19 @@ var PointSource = class {
   }
 };
 var WaveSimOneDim = class extends Simulator {
-  // Speed of wave propagation
+  // Damping coefficient
   constructor(width, dt) {
     super(2 * width, dt);
     this.wave_propagation_speed = 20;
+    // Speed of wave propagation
+    this.damping = 0;
     this.width = width;
+  }
+  set_wave_propagation_speed(speed) {
+    this.wave_propagation_speed = speed;
+  }
+  set_damping(damping) {
+    this.damping = damping;
   }
   get_uValues() {
     return this._get_uValues(this.vals);
@@ -11468,7 +11494,9 @@ var WaveSimOneDim = class extends Simulator {
     let u = this._get_uValues(vals);
     let dS = vals.slice(this.width, 2 * this.width);
     for (let x = 0; x < this.width; x++) {
-      dS.push(this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x));
+      dS.push(
+        this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x) - this.damping * vals[x + this.width]
+      );
     }
     return dS;
   }
@@ -11748,8 +11776,8 @@ var WaveSimTwoDim = class extends Simulator {
     let ind;
     Object.entries(this.point_sources).forEach(([key, elem]) => {
       ind = this.index(elem.x, elem.y);
-      s[ind] = elem.a * Math.sin(elem.w * t);
-      s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * t);
+      s[ind] = elem.a * Math.sin(elem.w * (t - elem.p));
+      s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * (t - elem.p));
     });
     for (let ind2 = 0; ind2 < this.state_size; ind2++) {
       this.vals[ind2] = clamp(
@@ -12328,7 +12356,9 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("curve");
       let sim = scene.sim();
-      sim.set_attr("wave_propagation_speed", 3);
+      sim.set_attr("wave_propagation_speed", 10);
+      sim.set_attr("damping", 0.05);
+      sim.set_attr("dt", 0.05);
       function foo(x) {
         return Math.exp(-(5 * (x - 0.5) ** 2));
       }
@@ -12384,7 +12414,6 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       }
       const imageData = ctx.createImageData(width, height);
       let sim = new WaveSimTwoDim(width, height, 0.02);
-      sim.set_attr("wave_propagation_speed", 20);
       let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       sim.set_attr("wave_propagation_speed", 20);
@@ -12392,7 +12421,48 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       let a = 8;
       let [px, py] = scene.s2c(0, 0);
       sim.add_point_source(new PointSource(px, py, w, a, 0));
-      scene.toggle_pause();
+      let pauseButton = Button(
+        document.getElementById(
+          "point-mass-discrete-lattice-pause-button"
+        ),
+        function() {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+      scene.play(void 0);
+    })(200, 200);
+    (function line_source_heatmap(width, height) {
+      let canvas = prepare_canvas(width, height, "line-source-heatmap");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+      let sim = new WaveSimTwoDim(width, height, 0.02);
+      let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      sim.set_attr("wave_propagation_speed", 20);
+      let w = 8;
+      let a = 8;
+      sim.set_pml_layer(false, false, 0, 0);
+      for (let px = 0; px < width; px++) {
+        sim.add_point_source(new PointSource(px, height - 1, w, a, 0));
+      }
+      let pauseButton = PauseButton(
+        document.getElementById(
+          "line-source-heatmap-pause-button"
+        ),
+        scene
+      );
       scene.play(void 0);
     })(200, 200);
   });

@@ -17,7 +17,7 @@
             defer
             src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
         ></script>
-        <!--<script type="module" src="random_walk_scene.js"></script>-->
+        <script type="module" src="random_walk_scene.js"></script>
         <style>
             .applet-container {
                 display: flex;
@@ -45,7 +45,69 @@
 
     <body>
         <div style="text-align: center; margin: 10px auto">
-            <p>Simulation of random walk return time</p>
+            <p>TODO</p>
+
+            <br />
+            <div class="applet-container" id="scene-container"></div>
+            <br />
+            <h2>Proof of the theorem</h2>
+            <p>
+                Let $a_n$ denote the number of paths of length $n$ in
+                $\mathbb{Z}^D$ which begin and end at the origin. Let $b_n$
+                denote the number of such paths which never touch the origin
+                between the start and end points. Let $$A(t) = 1 + a_1t + a_2t^2
+                + \cdots \hskip 1in B(t) = b_1t + b_2t^2 + \cdots$$ be the
+                generating functions for $a_n$ and $b_n$, respectively. By
+                convention, let $a_0=1$ and $b_0=0$.
+            </p>
+            <p>
+                <b>First,</b> the probability that a random walk returns to the
+                origin after <i>exactly</i> $n$ steps is equal to $b_n(1/2D)^n$.
+                So the probability that a random walk returns to the origin
+                after a finite number of steps is equal to $B(1/2D)$.
+            </p>
+            <p>
+                <b>Second,</b> we have the identity $$A(t) = 1 + B(t) + B(t)^2 +
+                \ldots = \frac{1}{1-B(t)}$$ This follows from a combinatorial
+                argument. From this identity, it follows that $B(1/2D) = 1 -
+                \frac{1}{A(1/2D)}$.
+            </p>
+            <p>
+                <b>Third,</b> consider the generating function $$1 + (x_1 +
+                x_1^{-1} + \ldots + x_D + x_D^{-1})t + (x_1 + x_1^{-1} + \ldots
+                + x_D + x_D^{-1})^2t^2 + \ldots$$ $$=\frac{1}{1-(x_1 + x_1^{-1}
+                + \ldots + x_D + x_D^{-1})t}$$ The coefficient of
+                $x_1^{c_1}x_2^{c_2}\ldots x_d^{c_D}t^n$ in this generating
+                function is equal to the number of paths of length $n$ which end
+                at the point $(c_1, c_2, \ldots, c_D)$. It then follows that
+                $a_n$ is the coefficient of $x_1^0x_2^0\ldots x_d^0t^n$.
+            </p>
+            <p>
+                The coefficient of $z^0$ in a generating function $f(z)$ can be
+                computed using the complex contour integral $$[z^0]f(z) =
+                \frac{1}{2\pi i}\oint_{|z|=1}\frac{f(z)}{z}dz =
+                \frac{1}{2\pi}\int\limits_{0}^{2\pi}f(e^{i\theta})d\theta$$ The
+                second step above comes from the substitution $z=e^{i\theta}$.
+                We apply this for all of the $x_k$'s, letting
+                $x_k=e^{i\theta_k}$, and noting that $x_k + x_k^{-1} =
+                2\cos(\theta_k)$. We retrieve the entire function $A(t)$ as an
+                integral $$A(t) =
+                \left(\frac{1}{2\pi}\right)^D\int\limits_{[0,2\pi]^D}\frac{1}{1-2(\cos(\theta_1)
+                + \ldots + \cos(\theta_D))t}d\theta_1\ldots d\theta_D$$
+                Therefore, $$A(1/2D) =
+                \left(\frac{1}{2\pi}\right)^D\int\limits_{[0,2\pi]^D}\frac{1}{1-(\cos(\theta_1)
+                + \ldots + \cos(\theta_D))/D}d\theta_1\ldots d\theta_D$$
+            </p>
+            <p>
+                We claim that the above integral diverges when $D \le 2$
+                (implying that $1-\frac{1}{A(1/2D)} = 1$, and therefore any path
+                returns to the origin in finite time with probability 1) and
+                converges when $D > 2$ (implying that $1-\frac{1}{A(1/2D)} < 1$,
+                and therefore there is a nonzero probability that a path never
+                returns to the origin). Why is this claim true? (TODO
+                Visualization in 2D, and explanation in terms of Taylor
+                expansion of cosine.)
+            </p>
         </div>
         <a href="./index.html">back to main page</a>
     </body>

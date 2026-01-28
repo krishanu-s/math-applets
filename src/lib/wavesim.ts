@@ -46,10 +46,17 @@ export class PointSource {
 export class WaveSimOneDim extends Simulator {
   width: number;
   wave_propagation_speed: number = 20.0; // Speed of wave propagation
+  damping: number = 0.0; // Damping coefficient
   constructor(width: number, dt: number) {
     // Store position and velocity at each point.
     super(2 * width, dt);
     this.width = width;
+  }
+  set_wave_propagation_speed(speed: number) {
+    this.wave_propagation_speed = speed;
+  }
+  set_damping(damping: number) {
+    this.damping = damping;
   }
   get_uValues(): Array<number> {
     return this._get_uValues(this.vals);
@@ -91,7 +98,10 @@ export class WaveSimOneDim extends Simulator {
 
     // v dot
     for (let x = 0; x < this.width; x++) {
-      dS.push(this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x));
+      dS.push(
+        this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x) -
+          this.damping * (vals[x + this.width] as number),
+      );
     }
 
     return dS;
@@ -221,6 +231,8 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
 // where p = (p_x, p_y) is an auxiliary field introduced to handle PML at the boundaries.
 // When the functions \sigma_x and \sigma_y are both 0, we retrieve the undamped wave equation.
 // TODO Add friction terms to DE
+// TODO Add the capability to set the wave propagation constant
+// differently in different regions.
 export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
   width: number;
   height: number;
@@ -446,8 +458,8 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
     let ind;
     Object.entries(this.point_sources).forEach(([key, elem]) => {
       ind = this.index(elem.x, elem.y);
-      s[ind] = elem.a * Math.sin(elem.w * t);
-      s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * t);
+      s[ind] = elem.a * Math.sin(elem.w * (t - elem.p));
+      s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * (t - elem.p));
     });
     // Clamp for numerical stability
     for (let ind = 0; ind < this.state_size; ind++) {

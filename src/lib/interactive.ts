@@ -1,3 +1,5 @@
+import { InteractivePlayingScene } from "./statesim";
+
 export function Slider(
   container: HTMLElement,
   callback: Function,
@@ -91,4 +93,26 @@ export function Button(
   });
 
   return button;
+}
+
+export function PauseButton(
+  container: HTMLElement,
+  scene: InteractivePlayingScene,
+): HTMLButtonElement {
+  const pauseButton = Button(
+    document.getElementById("line-source-heatmap-pause-button") as HTMLElement,
+    function () {
+      scene.add_to_queue(scene.toggle_pause.bind(scene));
+      if (pauseButton.textContent == "Pause simulation") {
+        pauseButton.textContent = "Unpause simulation";
+      } else if (pauseButton.textContent == "Unpause simulation") {
+        pauseButton.textContent = "Pause simulation";
+      } else {
+        throw new Error();
+      }
+    },
+  );
+  pauseButton.textContent = "Unpause simulation";
+  pauseButton.style.padding = "15px";
+  return pauseButton;
 }

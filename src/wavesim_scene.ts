@@ -1,6 +1,6 @@
 // Testing the direct feeding of a pixel array to the canvas
 import { MObject, Dot, Line, Scene, prepare_canvas } from "./lib/base.js";
-import { Slider, Button } from "./lib/interactive.js";
+import { Slider, Button, PauseButton } from "./lib/interactive.js";
 import {
   Vec2D,
   clamp,
@@ -403,7 +403,9 @@ import {} from "./lib/statesim.js";
       let sim = scene.sim();
 
       // Set the attributes of the simulator
-      sim.set_attr("wave_propagation_speed", 3.0);
+      sim.set_attr("wave_propagation_speed", 10.0);
+      sim.set_attr("damping", 0.05);
+      sim.set_attr("dt", 0.05);
       function foo(x: number): number {
         return Math.exp(-(5 * (x - 0.5) ** 2));
       }
@@ -473,7 +475,6 @@ import {} from "./lib/statesim.js";
 
       // Prepare the simulator and scene
       let sim = new WaveSimTwoDim(width, height, 0.02);
-      sim.set_attr("wave_propagation_speed", 20.0);
       // sim.remove_pml_layers();
 
       let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
@@ -485,20 +486,65 @@ import {} from "./lib/statesim.js";
       let [px, py] = scene.s2c(0, 0);
       sim.add_point_source(new PointSource(px, py, w, a, 0.0));
 
-      // Add a single point source
-      // Add point sources to create a dipole
-      // let d = 0.5;
-      // let [px, py] = scene.s2c(0, d);
-      // sim.add_point_source(new PointSource(px, py, w, a * d, 0.0));
-      // [px, py] = scene.s2c(0, -d);
-      // sim.add_point_source(new PointSource(px, py, w, -a * d, 0.0));
+      // Button which pauses/unpauses the simulation
+      let pauseButton = Button(
+        document.getElementById(
+          "point-mass-discrete-lattice-pause-button",
+        ) as HTMLElement,
+        function () {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
 
-      // scene.set_mode("dots");
-      scene.toggle_pause();
       scene.play(undefined);
     })(200, 200);
 
     // Some animation to depict reflective elements.
     // Some animation to depict point sources and line sources.
+    (function line_source_heatmap(width: number, height: number) {
+      // Prepare the canvas and context for drawing
+      let canvas = prepare_canvas(width, height, "line-source-heatmap");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+
+      // Prepare the simulator and scene
+      let sim = new WaveSimTwoDim(width, height, 0.02);
+
+      let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+
+      sim.set_attr("wave_propagation_speed", 20.0);
+      let w = 8.0;
+      let a = 8.0;
+
+      // Set wave source at the bottom of the scene
+      sim.set_pml_layer(false, false, 0, 0);
+      for (let px = 0; px < width; px++) {
+        sim.add_point_source(new PointSource(px, height - 1, w, a, 0.0));
+      }
+
+      // Button which pauses/unpauses the simulation
+      let pauseButton = PauseButton(
+        document.getElementById(
+          "line-source-heatmap-pause-button",
+        ) as HTMLElement,
+        scene,
+      );
+
+      // Start playing
+      scene.play(undefined);
+    })(200, 200);
   });
 })();
