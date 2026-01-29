@@ -77,7 +77,7 @@ export class ParametricFunction extends MObject {
     let anchors = np.stack(points, 0);
 
     let a_x, a_y;
-    [a_x, a_y] = scene.s2c(
+    [a_x, a_y] = scene.v2c(
       anchors.get([0, 0]) as number,
       anchors.get([0, 1]) as number,
     );
@@ -86,7 +86,7 @@ export class ParametricFunction extends MObject {
 
     if (this.mode == "jagged") {
       for (let i = 0; i < this.num_steps; i++) {
-        [a_x, a_y] = scene.s2c(
+        [a_x, a_y] = scene.v2c(
           anchors.get([i + 1, 0]) as number,
           anchors.get([i + 1, 1]) as number,
         );
@@ -100,15 +100,15 @@ export class ParametricFunction extends MObject {
       // Draw
       let h1_x, h1_y, h2_x, h2_y;
       for (let i = 0; i < this.num_steps; i++) {
-        [h1_x, h1_y] = scene.s2c(
+        [h1_x, h1_y] = scene.v2c(
           handles_1.get([i, 0]) as number,
           handles_1.get([i, 1]) as number,
         );
-        [h2_x, h2_y] = scene.s2c(
+        [h2_x, h2_y] = scene.v2c(
           handles_2.get([i, 0]) as number,
           handles_2.get([i, 1]) as number,
         );
-        [a_x, a_y] = scene.s2c(
+        [a_x, a_y] = scene.v2c(
           anchors.get([i + 1, 0]) as number,
           anchors.get([i + 1, 1]) as number,
         );

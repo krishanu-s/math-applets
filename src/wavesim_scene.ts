@@ -1,6 +1,7 @@
 // Testing the direct feeding of a pixel array to the canvas
-import { MObject, Dot, Line, Scene, prepare_canvas } from "./lib/base.js";
+import { MObject, Scene, prepare_canvas } from "./lib/base.js";
 import { Slider, Button, PauseButton } from "./lib/interactive.js";
+import { Dot, Line } from "./lib/base_geom.js";
 import {
   Vec2D,
   clamp,
@@ -215,7 +216,7 @@ import {} from "./lib/statesim.js";
         }
         // Makes a conic section object
         // TODO Consider making the solver fixed.
-        make_curve(): ParametricFunction {
+        make_curve(): MObject {
           if (this.eccentricity < 1) {
             return new ParametricFunction(
               this.polar_function.bind(this),
@@ -240,7 +241,7 @@ import {} from "./lib/statesim.js";
         make_focus(): Dot {
           return new Dot(this.focus[0], this.focus[1], { radius: 0.2 });
         }
-        make_other_focus(): Dot {
+        make_other_focus(): MObject {
           if (this.eccentricity >= 1.0) {
             return new MObject();
           } else {
@@ -390,6 +391,33 @@ import {} from "./lib/statesim.js";
       scene.play(undefined);
     })(10);
 
+    (function point_mass_discrete_sequence_diagram(num_points: number) {
+      // Prepare the scene
+      let canvas = prepare_canvas(
+        300,
+        300,
+        "point-mass-discrete-sequence-diagram",
+      );
+      let scene = new WaveSimOneDimScene(canvas, num_points);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("dots");
+      let sim = scene.sim();
+
+      // TODO Add force arrows to the scene
+      // TODO Add spring elements to the scene
+      // TODO Add interactivity where points can be dragged
+
+      // Set the attributes of the simulator
+      sim.set_attr("wave_propagation_speed", 3.0);
+      function foo(x: number): number {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
+      sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
+
+      // Prepare the simulation
+      scene.draw();
+    })(5);
+
     // Redraw the previous scene in a continuous-Bezier curve fashion,
     // using a large number of tiny point masses.
     // Include both an interactive animation (with spring strength modifiable by slider)
@@ -483,7 +511,7 @@ import {} from "./lib/statesim.js";
       sim.set_attr("wave_propagation_speed", 20.0);
       let w = 8.0;
       let a = 8.0;
-      let [px, py] = scene.s2c(0, 0);
+      let [px, py] = scene.v2c(0, 0);
       sim.add_point_source(new PointSource(px, py, w, a, 0.0));
 
       // Button which pauses/unpauses the simulation
@@ -520,19 +548,56 @@ import {} from "./lib/statesim.js";
       const imageData = ctx.createImageData(width, height);
 
       // Prepare the simulator and scene
-      let sim = new WaveSimTwoDim(width, height, 0.02);
+      const ratio = 0.5;
+      class WaveSimTwoDimDiffraction extends WaveSimTwoDim {
+        // Has different wave propagation speed in two different media.
+        wps(x: number, y: number): number {
+          if (y < height / 2) {
+            return this.wave_propagation_speed * ratio;
+          } else {
+            return this.wave_propagation_speed;
+          }
+        }
+      }
+
+      let sim = new WaveSimTwoDimDiffraction(width, height, 0.01);
 
       let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
       scene.set_frame_lims([-5, 5], [-5, 5]);
 
+      const theta = Math.PI / 6; // Angle off vertical along which wave travels
+      let alpha = Math.asin(ratio * Math.sin(theta));
+      // Angle off vertical along which wave travels after refraction
       sim.set_attr("wave_propagation_speed", 20.0);
-      let w = 8.0;
-      let a = 8.0;
+      let w = 4.0;
+      let a = 5.0;
 
-      // Set wave source at the bottom of the scene
-      sim.set_pml_layer(false, false, 0, 0);
-      for (let px = 0; px < width; px++) {
-        sim.add_point_source(new PointSource(px, height - 1, w, a, 0.0));
+      // Turn off PML layers along the bottom and left of the scene
+      sim.remove_pml_layers();
+      sim.set_pml_layer(true, true, 0.2, 200.0);
+      sim.set_pml_layer(false, true, 0.2, 200.0);
+
+      // Set wave source at the bottom and left of the scene
+      // TODO Calculate correct amplitude based on angle of wave
+      let t;
+      for (let px = 0; px <= width - 10; px++) {
+        t = (px * Math.sin(theta)) / 20.0;
+        let p = new PointSource(px, height - 1, w, a, t);
+        p.set_turn_on_time(t);
+        sim.add_point_source(p);
+      }
+      for (let py = 10; py <= height; py++) {
+        if (py < height / 2) {
+          t = (py * Math.cos(theta)) / 20.0;
+        } else {
+          t =
+            ((height / 2) * Math.cos(theta) +
+              ((py - height / 2) * Math.cos(alpha)) / ratio) /
+            20.0;
+        }
+        let p = new PointSource(0, height - 1 - py, w, a, t);
+        p.set_turn_on_time(t);
+        sim.add_point_source(p);
       }
 
       // Button which pauses/unpauses the simulation

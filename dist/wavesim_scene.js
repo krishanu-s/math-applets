@@ -10647,83 +10647,14 @@ function funspace(func, start, stop, num) {
   return Array.from({ length: num }, (_, i) => func(start + i * step));
 }
 var MObject = class {
+  // Opacity for drawing
   constructor() {
+    this.alpha = 1;
+  }
+  set_alpha(alpha) {
+    this.alpha = alpha;
   }
   draw(canvas, scene, args) {
-  }
-};
-var Dot = class extends MObject {
-  constructor(center_x, center_y, kwargs) {
-    super();
-    this.center = [center_x, center_y];
-    let radius = kwargs.radius;
-    if (radius == void 0) {
-      this.radius = 0.3;
-    } else {
-      this.radius = radius;
-    }
-  }
-  // Get the center coordinates
-  get_center() {
-    return this.center;
-  }
-  // Move the center of the dot to a desired location
-  move_to(x, y) {
-    this.center = [x, y];
-  }
-  // Change the dot radius
-  set_radius(radius) {
-    this.radius = radius;
-  }
-  // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [x, y] = scene.s2c(this.center[0], this.center[1]);
-    let xr = scene.s2c(this.center[0] + this.radius, this.center[1])[0];
-    ctx.beginPath();
-    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
-    ctx.fill();
-  }
-};
-var Line = class extends MObject {
-  constructor(start, end, kwargs) {
-    super();
-    this.start = start;
-    this.end = end;
-    let stroke_width = kwargs.stroke_width;
-    if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-    let stroke_color = kwargs.stroke_color;
-    if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
-  }
-  // Moves the start and end points
-  move_start(x, y) {
-    this.start = [x, y];
-  }
-  move_end(x, y) {
-    this.end = [x, y];
-  }
-  // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [start_x, start_y] = scene.s2c(this.start[0], this.start[1]);
-    let [end_x, end_y] = scene.s2c(this.end[0], this.end[1]);
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(end_x, end_y);
-    ctx.stroke();
   }
 };
 var Scene = class {
@@ -10732,17 +10663,34 @@ var Scene = class {
     this.mobjects = {};
     this.xlims = [0, canvas.width];
     this.ylims = [0, canvas.height];
+    this.view_xlims = [0, canvas.width];
+    this.view_ylims = [0, canvas.height];
   }
-  // Sets the coordinates for the borders of the frame
+  // Sets the coordinates for the borders of the scene. This also resets
+  // the current viewing window to match the scene size.
   set_frame_lims(xlims, ylims) {
     this.xlims = xlims;
     this.ylims = ylims;
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
+  }
+  // Sets the current viewing window
+  set_view_lims(xlims, ylims) {
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [
       this.canvas.width * (x - this.xlims[0]) / (this.xlims[1] - this.xlims[0]),
       this.canvas.height * (this.ylims[1] - y) / (this.ylims[1] - this.ylims[0])
+    ];
+  }
+  // Converts viewing coordinates to canvas coordinates
+  v2c(x, y) {
+    return [
+      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -10888,6 +10836,84 @@ function PauseButton(container, scene) {
   return pauseButton;
 }
 
+// src/lib/base_geom.ts
+var Dot = class extends MObject {
+  constructor(center_x, center_y, kwargs) {
+    super();
+    this.center = [center_x, center_y];
+    let radius = kwargs.radius;
+    if (radius == void 0) {
+      this.radius = 0.3;
+    } else {
+      this.radius = radius;
+    }
+  }
+  // Get the center coordinates
+  get_center() {
+    return this.center;
+  }
+  // Move the center of the dot to a desired location
+  move_to(x, y) {
+    this.center = [x, y];
+  }
+  // Change the dot radius
+  set_radius(radius) {
+    this.radius = radius;
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [x, y] = scene.v2c(this.center[0], this.center[1]);
+    let xr = scene.v2c(this.center[0] + this.radius, this.center[1])[0];
+    ctx.beginPath();
+    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
+    ctx.fill();
+  }
+};
+var Line = class extends MObject {
+  constructor(start, end, kwargs) {
+    super();
+    this.start = start;
+    this.end = end;
+    let stroke_width = kwargs.stroke_width;
+    if (stroke_width == void 0) {
+      this.stroke_width = 0.08;
+    } else {
+      this.stroke_width = stroke_width;
+    }
+    let stroke_color = kwargs.stroke_color;
+    if (stroke_color == void 0) {
+      this.stroke_color = `rgb(0, 0, 0)`;
+    } else {
+      this.stroke_color = stroke_color;
+    }
+  }
+  // Moves the start and end points
+  move_start(x, y) {
+    this.start = [x, y];
+  }
+  move_end(x, y) {
+    this.end = [x, y];
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [start_x, start_y] = scene.v2c(this.start[0], this.start[1]);
+    let [end_x, end_y] = scene.v2c(this.end[0], this.end[1]);
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
+  }
+};
+
 // src/lib/parametric.ts
 var np2 = __toESM(require_numpy_ts_node(), 1);
 
@@ -11023,7 +11049,7 @@ var BezierSpline = class extends MObject {
     ctx.strokeStyle = this.stroke_color;
     let a_x, a_y, a;
     a = this.get_anchor(0);
-    [a_x, a_y] = scene.s2c(a[0], a[1]);
+    [a_x, a_y] = scene.v2c(a[0], a[1]);
     ctx.beginPath();
     ctx.moveTo(a_x, a_y);
     let [handles_1, handles_2] = this.solver.get_bezier_handles(
@@ -11031,16 +11057,16 @@ var BezierSpline = class extends MObject {
     );
     let h1_x, h1_y, h2_x, h2_y;
     for (let i = 0; i < this.num_steps; i++) {
-      [h1_x, h1_y] = scene.s2c(
+      [h1_x, h1_y] = scene.v2c(
         handles_1.get([i, 0]),
         handles_1.get([i, 1])
       );
-      [h2_x, h2_y] = scene.s2c(
+      [h2_x, h2_y] = scene.v2c(
         handles_2.get([i, 0]),
         handles_2.get([i, 1])
       );
       a = this.get_anchor(i + 1);
-      [a_x, a_y] = scene.s2c(a[0], a[1]);
+      [a_x, a_y] = scene.v2c(a[0], a[1]);
       ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
       ctx.stroke();
     }
@@ -11100,7 +11126,7 @@ var ParametricFunction = class extends MObject {
     }
     let anchors = np2.stack(points, 0);
     let a_x, a_y;
-    [a_x, a_y] = scene.s2c(
+    [a_x, a_y] = scene.v2c(
       anchors.get([0, 0]),
       anchors.get([0, 1])
     );
@@ -11108,7 +11134,7 @@ var ParametricFunction = class extends MObject {
     ctx.moveTo(a_x, a_y);
     if (this.mode == "jagged") {
       for (let i = 0; i < this.num_steps; i++) {
-        [a_x, a_y] = scene.s2c(
+        [a_x, a_y] = scene.v2c(
           anchors.get([i + 1, 0]),
           anchors.get([i + 1, 1])
         );
@@ -11119,15 +11145,15 @@ var ParametricFunction = class extends MObject {
       let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
       let h1_x, h1_y, h2_x, h2_y;
       for (let i = 0; i < this.num_steps; i++) {
-        [h1_x, h1_y] = scene.s2c(
+        [h1_x, h1_y] = scene.v2c(
           handles_1.get([i, 0]),
           handles_1.get([i, 1])
         );
-        [h2_x, h2_y] = scene.s2c(
+        [h2_x, h2_y] = scene.v2c(
           handles_2.get([i, 0]),
           handles_2.get([i, 1])
         );
-        [a_x, a_y] = scene.s2c(
+        [a_x, a_y] = scene.v2c(
           anchors.get([i + 1, 0]),
           anchors.get([i + 1, 1])
         );
@@ -11138,7 +11164,7 @@ var ParametricFunction = class extends MObject {
   }
 };
 
-// src/lib/heatmap.ts
+// src/lib/color.ts
 function rb_colormap(z) {
   const gray = sigmoid(z);
   if (gray < 0.5) {
@@ -11147,6 +11173,8 @@ function rb_colormap(z) {
     return [255, 512 * (1 - gray), 512 * (1 - gray), 255];
   }
 }
+
+// src/lib/heatmap.ts
 var HeatMap = class extends MObject {
   constructor(width, height, min_val, max_val, valArray) {
     super();
@@ -11174,6 +11202,7 @@ var HeatMap = class extends MObject {
     }
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
     ctx.putImageData(imageData, 0, 0);
   }
 };
@@ -11426,13 +11455,14 @@ var InteractivePlayingScene = class extends Scene {
 
 // src/lib/wavesim.ts
 var PointSource = class {
-  // Phase
+  // Time at which the source turns on
   constructor(x, y, w, a, p) {
     this.x = x;
     this.y = y;
     this.w = w;
     this.a = a;
     this.p = p;
+    this.turn_on_time = 0;
   }
   set_x(x) {
     this.x = x;
@@ -11448,6 +11478,9 @@ var PointSource = class {
   }
   set_p(p) {
     this.p = p;
+  }
+  set_turn_on_time(time) {
+    this.turn_on_time = time;
   }
 };
 var WaveSimOneDim = class extends Simulator {
@@ -11585,6 +11618,10 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
         mobj.draw(this.canvas, this);
       }
     } else if (mobj instanceof Dot) {
+      if (this.mode == "dots") {
+        mobj.draw(this.canvas, this);
+      }
+    } else if (mobj instanceof Line) {
       if (this.mode == "dots") {
         mobj.draw(this.canvas, this);
       }
@@ -11738,6 +11775,9 @@ var WaveSimTwoDim = class extends Simulator {
   laplacian_entry(vals, x, y) {
     return this.l_x_entry(vals, x, y) + this.l_y_entry(vals, x, y);
   }
+  wps(x, y) {
+    return this.wave_propagation_speed;
+  }
   // Constructs the time-derivative of the entire state array. Here is where
   // the wave equation is used.
   dot(vals, time) {
@@ -11752,21 +11792,21 @@ var WaveSimTwoDim = class extends Simulator {
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         ind = this.index(x, y);
-        dS[ind + this.size()] = this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x, y) + this.d_x_entry(px, x, y) + this.d_y_entry(py, x, y) - (this.sigma_x(x) + this.sigma_y(y)) * vals[ind + this.size()] - this.sigma_x(x) * this.sigma_y(y) * vals[ind];
+        dS[ind + this.size()] = this.wps(x, y) ** 2 * this.laplacian_entry(u, x, y) + this.d_x_entry(px, x, y) + this.d_y_entry(py, x, y) - (this.sigma_x(x) + this.sigma_y(y)) * vals[ind + this.size()] - this.sigma_x(x) * this.sigma_y(y) * vals[ind];
       }
     }
     for (let x = 0; x < this.width; x++) {
       sx = this.sigma_x(x);
       for (let y = 0; y < this.height; y++) {
         ind = this.index(x, y);
-        dS[ind + 2 * this.size()] = -sx * px[ind] + this.wave_propagation_speed ** 2 * (this.sigma_y(y) - sx) * this.d_x_entry(u, x, y);
+        dS[ind + 2 * this.size()] = -sx * px[ind] + this.wps(x, y) ** 2 * (this.sigma_y(y) - sx) * this.d_x_entry(u, x, y);
       }
     }
     for (let y = 0; y < this.height; y++) {
       sy = this.sigma_y(y);
       for (let x = 0; x < this.width; x++) {
         ind = this.index(x, y);
-        dS[ind + 3 * this.size()] = -sy * py[ind] + this.wave_propagation_speed ** 2 * (this.sigma_x(x) - sy) * this.d_y_entry(u, x, y);
+        dS[ind + 3 * this.size()] = -sy * py[ind] + this.wps(x, y) ** 2 * (this.sigma_x(x) - sy) * this.d_y_entry(u, x, y);
       }
     }
     return dS;
@@ -11775,9 +11815,11 @@ var WaveSimTwoDim = class extends Simulator {
   set_boundary_conditions(s, t) {
     let ind;
     Object.entries(this.point_sources).forEach(([key, elem]) => {
-      ind = this.index(elem.x, elem.y);
-      s[ind] = elem.a * Math.sin(elem.w * (t - elem.p));
-      s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * (t - elem.p));
+      if (t >= elem.turn_on_time) {
+        ind = this.index(elem.x, elem.y);
+        s[ind] = elem.a * Math.sin(elem.w * (t - elem.p));
+        s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * (t - elem.p));
+      }
     });
     for (let ind2 = 0; ind2 < this.state_size; ind2++) {
       this.vals[ind2] = clamp(
@@ -12350,6 +12392,23 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       scene.draw();
       scene.play(void 0);
     })(10);
+    (function point_mass_discrete_sequence_diagram(num_points) {
+      let canvas = prepare_canvas(
+        300,
+        300,
+        "point-mass-discrete-sequence-diagram"
+      );
+      let scene = new WaveSimOneDimScene(canvas, num_points);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("dots");
+      let sim = scene.sim();
+      sim.set_attr("wave_propagation_speed", 3);
+      function foo(x) {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
+      sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
+      scene.draw();
+    })(5);
     (function point_mass_continuous_sequence(num_points) {
       let canvas = prepare_canvas(300, 300, "point-mass-continuous-sequence");
       let scene = new WaveSimOneDimScene(canvas, num_points);
@@ -12419,7 +12478,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       sim.set_attr("wave_propagation_speed", 20);
       let w = 8;
       let a = 8;
-      let [px, py] = scene.s2c(0, 0);
+      let [px, py] = scene.v2c(0, 0);
       sim.add_point_source(new PointSource(px, py, w, a, 0));
       let pauseButton = Button(
         document.getElementById(
@@ -12447,15 +12506,44 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
         throw new Error("Failed to get 2D context");
       }
       const imageData = ctx.createImageData(width, height);
-      let sim = new WaveSimTwoDim(width, height, 0.02);
+      const ratio = 0.5;
+      class WaveSimTwoDimDiffraction extends WaveSimTwoDim {
+        // Has different wave propagation speed in two different media.
+        wps(x, y) {
+          if (y < height / 2) {
+            return this.wave_propagation_speed * ratio;
+          } else {
+            return this.wave_propagation_speed;
+          }
+        }
+      }
+      let sim = new WaveSimTwoDimDiffraction(width, height, 0.01);
       let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
       scene.set_frame_lims([-5, 5], [-5, 5]);
+      const theta = Math.PI / 6;
+      let alpha = Math.asin(ratio * Math.sin(theta));
       sim.set_attr("wave_propagation_speed", 20);
-      let w = 8;
-      let a = 8;
-      sim.set_pml_layer(false, false, 0, 0);
-      for (let px = 0; px < width; px++) {
-        sim.add_point_source(new PointSource(px, height - 1, w, a, 0));
+      let w = 4;
+      let a = 5;
+      sim.remove_pml_layers();
+      sim.set_pml_layer(true, true, 0.2, 200);
+      sim.set_pml_layer(false, true, 0.2, 200);
+      let t;
+      for (let px = 0; px <= width - 10; px++) {
+        t = px * Math.sin(theta) / 20;
+        let p = new PointSource(px, height - 1, w, a, t);
+        p.set_turn_on_time(t);
+        sim.add_point_source(p);
+      }
+      for (let py = 10; py <= height; py++) {
+        if (py < height / 2) {
+          t = py * Math.cos(theta) / 20;
+        } else {
+          t = (height / 2 * Math.cos(theta) + (py - height / 2) * Math.cos(alpha) / ratio) / 20;
+        }
+        let p = new PointSource(0, height - 1 - py, w, a, t);
+        p.set_turn_on_time(t);
+        sim.add_point_source(p);
       }
       let pauseButton = PauseButton(
         document.getElementById(

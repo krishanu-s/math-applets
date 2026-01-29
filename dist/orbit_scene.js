@@ -1,42 +1,13 @@
 // src/lib/base.ts
 var MObject = class {
+  // Opacity for drawing
   constructor() {
+    this.alpha = 1;
+  }
+  set_alpha(alpha) {
+    this.alpha = alpha;
   }
   draw(canvas, scene, args) {
-  }
-};
-var Dot = class extends MObject {
-  constructor(center_x, center_y, kwargs) {
-    super();
-    this.center = [center_x, center_y];
-    let radius = kwargs.radius;
-    if (radius == void 0) {
-      this.radius = 0.3;
-    } else {
-      this.radius = radius;
-    }
-  }
-  // Get the center coordinates
-  get_center() {
-    return this.center;
-  }
-  // Move the center of the dot to a desired location
-  move_to(x, y) {
-    this.center = [x, y];
-  }
-  // Change the dot radius
-  set_radius(radius) {
-    this.radius = radius;
-  }
-  // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [x, y] = scene.s2c(this.center[0], this.center[1]);
-    let xr = scene.s2c(this.center[0] + this.radius, this.center[1])[0];
-    ctx.beginPath();
-    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
-    ctx.fill();
   }
 };
 var Scene = class {
@@ -45,17 +16,34 @@ var Scene = class {
     this.mobjects = {};
     this.xlims = [0, canvas.width];
     this.ylims = [0, canvas.height];
+    this.view_xlims = [0, canvas.width];
+    this.view_ylims = [0, canvas.height];
   }
-  // Sets the coordinates for the borders of the frame
+  // Sets the coordinates for the borders of the scene. This also resets
+  // the current viewing window to match the scene size.
   set_frame_lims(xlims, ylims) {
     this.xlims = xlims;
     this.ylims = ylims;
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
+  }
+  // Sets the current viewing window
+  set_view_lims(xlims, ylims) {
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [
       this.canvas.width * (x - this.xlims[0]) / (this.xlims[1] - this.xlims[0]),
       this.canvas.height * (this.ylims[1] - y) / (this.ylims[1] - this.ylims[0])
+    ];
+  }
+  // Converts viewing coordinates to canvas coordinates
+  v2c(x, y) {
+    return [
+      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -93,6 +81,43 @@ var Scene = class {
       if (mobj == void 0) throw new Error(`${name} not found`);
       mobj.draw(this.canvas, this);
     });
+  }
+};
+
+// src/lib/base_geom.ts
+var Dot = class extends MObject {
+  constructor(center_x, center_y, kwargs) {
+    super();
+    this.center = [center_x, center_y];
+    let radius = kwargs.radius;
+    if (radius == void 0) {
+      this.radius = 0.3;
+    } else {
+      this.radius = radius;
+    }
+  }
+  // Get the center coordinates
+  get_center() {
+    return this.center;
+  }
+  // Move the center of the dot to a desired location
+  move_to(x, y) {
+    this.center = [x, y];
+  }
+  // Change the dot radius
+  set_radius(radius) {
+    this.radius = radius;
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [x, y] = scene.v2c(this.center[0], this.center[1]);
+    let xr = scene.v2c(this.center[0] + this.radius, this.center[1])[0];
+    ctx.beginPath();
+    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
+    ctx.fill();
   }
 };
 

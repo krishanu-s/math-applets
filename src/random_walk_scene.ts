@@ -36,7 +36,7 @@ import {
       scene.set_frame_lims([-30, 30], [-30, 30]);
 
       let [x, y] = [0, 0];
-      let [cx, cy] = scene.s2c(x, y);
+      let [cx, cy] = scene.v2c(x, y);
       ctx.beginPath();
       ctx.moveTo(cx, cy);
 
@@ -46,7 +46,7 @@ import {
         [dx, dy] = pick_random_step(2) as Vec2D;
         x += dx;
         y += dy;
-        [cx, cy] = scene.s2c(x, y);
+        [cx, cy] = scene.v2c(x, y);
         console.log(cx, cy);
         ctx.lineTo(cx, cy);
         ctx.stroke();

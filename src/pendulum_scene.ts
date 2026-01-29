@@ -1,5 +1,6 @@
-import { Line, Dot, Scene } from "./lib/base.js";
+import { Scene } from "./lib/base.js";
 import { Slider } from "./lib/interactive.js";
+import { Dot, Line } from "./lib/base_geom.js";
 
 // A pendulum
 const GRAV_CONSTANT = 1.0;
@@ -24,7 +25,7 @@ class PendulumScene extends Scene {
     );
 
     // TODO Radius is 0.3, but make it modifiable
-    this.add("bob", new Dot(top[0], top[1] - length, radius));
+    this.add("bob", new Dot(top[0], top[1] - length, { radius: radius }));
 
     // Position and velocity
     this.state = [0.0, 0.0];
@@ -166,8 +167,8 @@ class PendulumScene extends Scene {
     let scene = new PendulumScene(canvas, length, top, 0.05, 0.3);
 
     // Sets the initial parameters
-    scene.set_position(0.0);
-    scene.set_velocity(1.0);
+    scene.set_position(1.0);
+    scene.set_velocity(0.0);
 
     // Sets the coordinates for the scene
     let xlims: [number, number] = [-5.0, 5.0];
@@ -191,10 +192,8 @@ class PendulumScene extends Scene {
       function (t: number) {
         scene.set_max_angle(t);
       },
-      "0.2",
+      { initial_value: "0.2", min: 0.1, max: 1.5, step: 0.05 },
     );
-    angle_slider.min = "0.0";
-    angle_slider.max = "1.5";
     angle_slider.width = 200;
 
     // Start animations

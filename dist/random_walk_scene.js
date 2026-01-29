@@ -5,17 +5,34 @@ var Scene = class {
     this.mobjects = {};
     this.xlims = [0, canvas.width];
     this.ylims = [0, canvas.height];
+    this.view_xlims = [0, canvas.width];
+    this.view_ylims = [0, canvas.height];
   }
-  // Sets the coordinates for the borders of the frame
+  // Sets the coordinates for the borders of the scene. This also resets
+  // the current viewing window to match the scene size.
   set_frame_lims(xlims, ylims) {
     this.xlims = xlims;
     this.ylims = ylims;
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
+  }
+  // Sets the current viewing window
+  set_view_lims(xlims, ylims) {
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [
       this.canvas.width * (x - this.xlims[0]) / (this.xlims[1] - this.xlims[0]),
       this.canvas.height * (this.ylims[1] - y) / (this.ylims[1] - this.ylims[0])
+    ];
+  }
+  // Converts viewing coordinates to canvas coordinates
+  v2c(x, y) {
+    return [
+      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -104,7 +121,7 @@ function prepare_canvas(width, height, name) {
       let scene = new Scene(canvas);
       scene.set_frame_lims([-30, 30], [-30, 30]);
       let [x, y] = [0, 0];
-      let [cx, cy] = scene.s2c(x, y);
+      let [cx, cy] = scene.v2c(x, y);
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       let dx, dy;
@@ -112,7 +129,7 @@ function prepare_canvas(width, height, name) {
         [dx, dy] = pick_random_step(2);
         x += dx;
         y += dy;
-        [cx, cy] = scene.s2c(x, y);
+        [cx, cy] = scene.v2c(x, y);
         console.log(cx, cy);
         ctx.lineTo(cx, cy);
         ctx.stroke();

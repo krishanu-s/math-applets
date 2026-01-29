@@ -1,4 +1,5 @@
-import { MObject, Scene, Dot, Line, prepare_canvas } from "./base.js";
+import { MObject, Scene, prepare_canvas } from "./base.js";
+import { Dot, Line } from "./base_geom.js";
 import { Slider, Button } from "./interactive.js";
 import { Vec2D, clamp, sigmoid } from "./base.js";
 import { ParametricFunction } from "./parametric.js";
@@ -17,12 +18,14 @@ export class PointSource {
   w: number; // Frequency
   a: number; // Amplitude
   p: number; // Phase
+  turn_on_time: number; // Time at which the source turns on
   constructor(x: number, y: number, w: number, a: number, p: number) {
     this.x = x;
     this.y = y;
     this.w = w;
     this.a = a;
     this.p = p;
+    this.turn_on_time = 0.0;
   }
   set_x(x: number) {
     this.x = x;
@@ -38,6 +41,9 @@ export class PointSource {
   }
   set_p(p: number) {
     this.p = p;
+  }
+  set_turn_on_time(time: number) {
+    this.turn_on_time = time;
   }
 }
 
@@ -148,6 +154,9 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       this.add(`p_${i + 1}`, dot);
     }
 
+    // Add lines/springs which connect dots
+    // TODO
+
     // Add a Bezier curve which tracks with uValues in simulator
     let curve = new BezierSpline(width - 1, { stroke_width: 0.04 });
     this.add("curve", curve);
@@ -209,6 +218,10 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
         mobj.draw(this.canvas, this);
       }
     } else if (mobj instanceof Dot) {
+      if (this.mode == "dots") {
+        mobj.draw(this.canvas, this);
+      }
+    } else if (mobj instanceof Line) {
       if (this.mode == "dots") {
         mobj.draw(this.canvas, this);
       }
@@ -397,6 +410,9 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
   laplacian_entry(vals: Array<number>, x: number, y: number): number {
     return this.l_x_entry(vals, x, y) + this.l_y_entry(vals, x, y);
   }
+  wps(x: number, y: number): number {
+    return this.wave_propagation_speed;
+  }
   // Constructs the time-derivative of the entire state array. Here is where
   // the wave equation is used.
   dot(vals: Array<number>, time: number): Array<number> {
@@ -416,7 +432,7 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
       for (let x = 0; x < this.width; x++) {
         ind = this.index(x, y);
         dS[ind + this.size()] =
-          this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x, y) +
+          this.wps(x, y) ** 2 * this.laplacian_entry(u, x, y) +
           this.d_x_entry(px, x, y) +
           this.d_y_entry(py, x, y) -
           (this.sigma_x(x) + this.sigma_y(y)) *
@@ -432,7 +448,7 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
         ind = this.index(x, y);
         dS[ind + 2 * this.size()] =
           -sx * (px[ind] as number) +
-          this.wave_propagation_speed ** 2 *
+          this.wps(x, y) ** 2 *
             (this.sigma_y(y) - sx) *
             this.d_x_entry(u, x, y);
       }
@@ -445,7 +461,7 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
         ind = this.index(x, y);
         dS[ind + 3 * this.size()] =
           -sy * (py[ind] as number) +
-          this.wave_propagation_speed ** 2 *
+          this.wps(x, y) ** 2 *
             (this.sigma_x(x) - sy) *
             this.d_y_entry(u, x, y);
       }
@@ -457,9 +473,12 @@ export class WaveSimTwoDim extends Simulator implements TwoDimDrawable {
   set_boundary_conditions(s: Array<number>, t: number): void {
     let ind;
     Object.entries(this.point_sources).forEach(([key, elem]) => {
-      ind = this.index(elem.x, elem.y);
-      s[ind] = elem.a * Math.sin(elem.w * (t - elem.p));
-      s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * (t - elem.p));
+      if (t >= elem.turn_on_time) {
+        ind = this.index(elem.x, elem.y);
+        s[ind] = elem.a * Math.sin(elem.w * (t - elem.p));
+        s[ind + this.size()] =
+          elem.a * elem.w * Math.cos(elem.w * (t - elem.p));
+      }
     });
     // Clamp for numerical stability
     for (let ind = 0; ind < this.state_size; ind++) {

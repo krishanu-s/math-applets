@@ -1,7 +1,11 @@
 import * as np from "numpy-ts";
-import { Dot, BezierCurve, Scene } from "./lib/base.js";
+import { Scene } from "./lib/base.js";
+import { Dot } from "./lib/base_geom.js";
 import { Vec2D } from "./lib/base.js";
-import { SmoothClosedPathBezierHandleCalculator } from "./lib/bezier.js";
+import {
+  SmoothClosedPathBezierHandleCalculator,
+  BezierCurve,
+} from "./lib/bezier.js";
 
 class ClosedCurveScene extends Scene {
   n: number;
@@ -22,7 +26,7 @@ class ClosedCurveScene extends Scene {
     let a_list: np.NDArray[] = [];
     for (let i = 0; i < n; i++) {
       let p = this.calculate((i / n) * Math.PI * 2);
-      this.add(`p${i}`, new Dot(p[0], p[1], 0.02));
+      this.add(`p${i}`, new Dot(p[0], p[1], { radius: 0.02 }));
       a_list.push(np.array(p));
     }
     a_list.push(np.array(this.calculate(0)));

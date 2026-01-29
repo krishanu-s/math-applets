@@ -10631,7 +10631,12 @@ var require_numpy_ts_node = __commonJS({
 
 // src/lib/base.ts
 var MObject = class {
+  // Opacity for drawing
   constructor() {
+    this.alpha = 1;
+  }
+  set_alpha(alpha) {
+    this.alpha = alpha;
   }
   draw(canvas, scene, args) {
   }
@@ -10642,17 +10647,34 @@ var Scene = class {
     this.mobjects = {};
     this.xlims = [0, canvas.width];
     this.ylims = [0, canvas.height];
+    this.view_xlims = [0, canvas.width];
+    this.view_ylims = [0, canvas.height];
   }
-  // Sets the coordinates for the borders of the frame
+  // Sets the coordinates for the borders of the scene. This also resets
+  // the current viewing window to match the scene size.
   set_frame_lims(xlims, ylims) {
     this.xlims = xlims;
     this.ylims = ylims;
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
+  }
+  // Sets the current viewing window
+  set_view_lims(xlims, ylims) {
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [
       this.canvas.width * (x - this.xlims[0]) / (this.xlims[1] - this.xlims[0]),
       this.canvas.height * (this.ylims[1] - y) / (this.ylims[1] - this.ylims[0])
+    ];
+  }
+  // Converts viewing coordinates to canvas coordinates
+  v2c(x, y) {
+    return [
+      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -10896,7 +10918,7 @@ var ParametricFunction = class extends MObject {
     }
     let anchors = np2.stack(points, 0);
     let a_x, a_y;
-    [a_x, a_y] = scene.s2c(
+    [a_x, a_y] = scene.v2c(
       anchors.get([0, 0]),
       anchors.get([0, 1])
     );
@@ -10904,7 +10926,7 @@ var ParametricFunction = class extends MObject {
     ctx.moveTo(a_x, a_y);
     if (this.mode == "jagged") {
       for (let i = 0; i < this.num_steps; i++) {
-        [a_x, a_y] = scene.s2c(
+        [a_x, a_y] = scene.v2c(
           anchors.get([i + 1, 0]),
           anchors.get([i + 1, 1])
         );
@@ -10915,15 +10937,15 @@ var ParametricFunction = class extends MObject {
       let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
       let h1_x, h1_y, h2_x, h2_y;
       for (let i = 0; i < this.num_steps; i++) {
-        [h1_x, h1_y] = scene.s2c(
+        [h1_x, h1_y] = scene.v2c(
           handles_1.get([i, 0]),
           handles_1.get([i, 1])
         );
-        [h2_x, h2_y] = scene.s2c(
+        [h2_x, h2_y] = scene.v2c(
           handles_2.get([i, 0]),
           handles_2.get([i, 1])
         );
-        [a_x, a_y] = scene.s2c(
+        [a_x, a_y] = scene.v2c(
           anchors.get([i + 1, 0]),
           anchors.get([i + 1, 1])
         );

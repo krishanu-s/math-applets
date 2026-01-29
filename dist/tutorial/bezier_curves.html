@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Bezier curves</title>
+        <base href="." />
+        <script>
+            MathJax = {
+                tex: {
+                    inlineMath: { "[+]": [["$", "$"]] },
+                },
+            };
+        </script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
+        ></script>
+    </head>
+
+    <p>
+        Consider the following task. You have $n$ points $P_0, P_1, \ldots, P_n$
+        in the plane. Your goal is to draw a <b>smooth</b> curve which begins at
+        $P_0$ and ends at $P_n$, passing through all the points $P_1, P_2,
+        \ldots, P_{n-1}$ in order. <b>Smooth</b> means that the curve has no
+        sharp corners or cusps. How would you do it?
+    </p>
+    <p>
+        TODO Make a scene with n draggable points, and a button which generates
+        a Bezier curve passing through all the points.
+    </p>
+    <p>
+        TODO: We already know how to connect two points with a line segment, so
+        we can do a piecewise linear path, but this has kinks.
+    </p>
+    <p>
+        QUESTION: What does "smooth" mean? At minimum, direction going into and
+        out of each point must be the same. First derivative. IDEA: Put
+        "control" points between each pair of points, and use quadratic Bezier
+        curves to connect them. Define a quadratic Bezier curve.
+    </p>
+</html>

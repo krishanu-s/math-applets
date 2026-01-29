@@ -1,82 +1,13 @@
 // src/lib/base.ts
 var MObject = class {
+  // Opacity for drawing
   constructor() {
+    this.alpha = 1;
+  }
+  set_alpha(alpha) {
+    this.alpha = alpha;
   }
   draw(canvas, scene, args) {
-  }
-};
-var Dot = class extends MObject {
-  constructor(center_x, center_y, kwargs) {
-    super();
-    this.center = [center_x, center_y];
-    let radius = kwargs.radius;
-    if (radius == void 0) {
-      this.radius = 0.3;
-    } else {
-      this.radius = radius;
-    }
-  }
-  // Get the center coordinates
-  get_center() {
-    return this.center;
-  }
-  // Move the center of the dot to a desired location
-  move_to(x, y) {
-    this.center = [x, y];
-  }
-  // Change the dot radius
-  set_radius(radius) {
-    this.radius = radius;
-  }
-  // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [x, y] = scene.s2c(this.center[0], this.center[1]);
-    let xr = scene.s2c(this.center[0] + this.radius, this.center[1])[0];
-    ctx.beginPath();
-    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
-    ctx.fill();
-  }
-};
-var Line = class extends MObject {
-  constructor(start, end, kwargs) {
-    super();
-    this.start = start;
-    this.end = end;
-    let stroke_width = kwargs.stroke_width;
-    if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-    let stroke_color = kwargs.stroke_color;
-    if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
-  }
-  // Moves the start and end points
-  move_start(x, y) {
-    this.start = [x, y];
-  }
-  move_end(x, y) {
-    this.end = [x, y];
-  }
-  // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [start_x, start_y] = scene.s2c(this.start[0], this.start[1]);
-    let [end_x, end_y] = scene.s2c(this.end[0], this.end[1]);
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(end_x, end_y);
-    ctx.stroke();
   }
 };
 var Scene = class {
@@ -85,17 +16,34 @@ var Scene = class {
     this.mobjects = {};
     this.xlims = [0, canvas.width];
     this.ylims = [0, canvas.height];
+    this.view_xlims = [0, canvas.width];
+    this.view_ylims = [0, canvas.height];
   }
-  // Sets the coordinates for the borders of the frame
+  // Sets the coordinates for the borders of the scene. This also resets
+  // the current viewing window to match the scene size.
   set_frame_lims(xlims, ylims) {
     this.xlims = xlims;
     this.ylims = ylims;
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
+  }
+  // Sets the current viewing window
+  set_view_lims(xlims, ylims) {
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [
       this.canvas.width * (x - this.xlims[0]) / (this.xlims[1] - this.xlims[0]),
       this.canvas.height * (this.ylims[1] - y) / (this.ylims[1] - this.ylims[0])
+    ];
+  }
+  // Converts viewing coordinates to canvas coordinates
+  v2c(x, y) {
+    return [
+      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -187,6 +135,84 @@ function Slider(container, callback, kwargs) {
   return slider;
 }
 
+// src/lib/base_geom.ts
+var Dot = class extends MObject {
+  constructor(center_x, center_y, kwargs) {
+    super();
+    this.center = [center_x, center_y];
+    let radius = kwargs.radius;
+    if (radius == void 0) {
+      this.radius = 0.3;
+    } else {
+      this.radius = radius;
+    }
+  }
+  // Get the center coordinates
+  get_center() {
+    return this.center;
+  }
+  // Move the center of the dot to a desired location
+  move_to(x, y) {
+    this.center = [x, y];
+  }
+  // Change the dot radius
+  set_radius(radius) {
+    this.radius = radius;
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [x, y] = scene.v2c(this.center[0], this.center[1]);
+    let xr = scene.v2c(this.center[0] + this.radius, this.center[1])[0];
+    ctx.beginPath();
+    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
+    ctx.fill();
+  }
+};
+var Line = class extends MObject {
+  constructor(start, end, kwargs) {
+    super();
+    this.start = start;
+    this.end = end;
+    let stroke_width = kwargs.stroke_width;
+    if (stroke_width == void 0) {
+      this.stroke_width = 0.08;
+    } else {
+      this.stroke_width = stroke_width;
+    }
+    let stroke_color = kwargs.stroke_color;
+    if (stroke_color == void 0) {
+      this.stroke_color = `rgb(0, 0, 0)`;
+    } else {
+      this.stroke_color = stroke_color;
+    }
+  }
+  // Moves the start and end points
+  move_start(x, y) {
+    this.start = [x, y];
+  }
+  move_end(x, y) {
+    this.end = [x, y];
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [start_x, start_y] = scene.v2c(this.start[0], this.start[1]);
+    let [end_x, end_y] = scene.v2c(this.end[0], this.end[1]);
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
+  }
+};
+
 // src/pendulum_scene.ts
 var GRAV_CONSTANT = 1;
 var PendulumScene = class extends Scene {
@@ -199,7 +225,7 @@ var PendulumScene = class extends Scene {
       "string",
       new Line(top, [top[0], top[1] - length], { stroke_width })
     );
-    this.add("bob", new Dot(top[0], top[1] - length, radius));
+    this.add("bob", new Dot(top[0], top[1] - length, { radius }));
     this.state = [0, 0];
   }
   // Set the arc-length position. Used by the scene evolution engine and by user input.
@@ -309,8 +335,8 @@ var PendulumScene = class extends Scene {
     let length = 6;
     let top = [0, 4];
     let scene = new PendulumScene(canvas, length, top, 0.05, 0.3);
-    scene.set_position(0);
-    scene.set_velocity(1);
+    scene.set_position(1);
+    scene.set_velocity(0);
     let xlims = [-5, 5];
     let ylims = [-5, 5];
     scene.set_frame_lims(xlims, ylims);
@@ -327,10 +353,8 @@ var PendulumScene = class extends Scene {
       function(t) {
         scene.set_max_angle(t);
       },
-      "0.2"
+      { initial_value: "0.2", min: 0.1, max: 1.5, step: 0.05 }
     );
-    angle_slider.min = "0.0";
-    angle_slider.max = "1.5";
     angle_slider.width = 200;
     scene.draw();
     scene.start_playing();

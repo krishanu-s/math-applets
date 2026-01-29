@@ -10646,49 +10646,14 @@ function vec_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
 var MObject = class {
+  // Opacity for drawing
   constructor() {
+    this.alpha = 1;
+  }
+  set_alpha(alpha) {
+    this.alpha = alpha;
   }
   draw(canvas, scene, args) {
-  }
-};
-var Line = class extends MObject {
-  constructor(start, end, kwargs) {
-    super();
-    this.start = start;
-    this.end = end;
-    let stroke_width = kwargs.stroke_width;
-    if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-    let stroke_color = kwargs.stroke_color;
-    if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
-  }
-  // Moves the start and end points
-  move_start(x, y) {
-    this.start = [x, y];
-  }
-  move_end(x, y) {
-    this.end = [x, y];
-  }
-  // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [start_x, start_y] = scene.s2c(this.start[0], this.start[1]);
-    let [end_x, end_y] = scene.s2c(this.end[0], this.end[1]);
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(end_x, end_y);
-    ctx.stroke();
   }
 };
 var Scene = class {
@@ -10697,17 +10662,34 @@ var Scene = class {
     this.mobjects = {};
     this.xlims = [0, canvas.width];
     this.ylims = [0, canvas.height];
+    this.view_xlims = [0, canvas.width];
+    this.view_ylims = [0, canvas.height];
   }
-  // Sets the coordinates for the borders of the frame
+  // Sets the coordinates for the borders of the scene. This also resets
+  // the current viewing window to match the scene size.
   set_frame_lims(xlims, ylims) {
     this.xlims = xlims;
     this.ylims = ylims;
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
+  }
+  // Sets the current viewing window
+  set_view_lims(xlims, ylims) {
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [
       this.canvas.width * (x - this.xlims[0]) / (this.xlims[1] - this.xlims[0]),
       this.canvas.height * (this.ylims[1] - y) / (this.ylims[1] - this.ylims[0])
+    ];
+  }
+  // Converts viewing coordinates to canvas coordinates
+  v2c(x, y) {
+    return [
+      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -10745,6 +10727,49 @@ var Scene = class {
       if (mobj == void 0) throw new Error(`${name} not found`);
       mobj.draw(this.canvas, this);
     });
+  }
+};
+
+// src/lib/base_geom.ts
+var Line = class extends MObject {
+  constructor(start, end, kwargs) {
+    super();
+    this.start = start;
+    this.end = end;
+    let stroke_width = kwargs.stroke_width;
+    if (stroke_width == void 0) {
+      this.stroke_width = 0.08;
+    } else {
+      this.stroke_width = stroke_width;
+    }
+    let stroke_color = kwargs.stroke_color;
+    if (stroke_color == void 0) {
+      this.stroke_color = `rgb(0, 0, 0)`;
+    } else {
+      this.stroke_color = stroke_color;
+    }
+  }
+  // Moves the start and end points
+  move_start(x, y) {
+    this.start = [x, y];
+  }
+  move_end(x, y) {
+    this.end = [x, y];
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [start_x, start_y] = scene.v2c(this.start[0], this.start[1]);
+    let [end_x, end_y] = scene.v2c(this.end[0], this.end[1]);
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
   }
 };
 

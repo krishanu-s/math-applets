@@ -1,4 +1,6 @@
-import { Line, Dot, BezierCurve, Scene, MObject } from "./lib/base.js";
+import { Scene, MObject } from "./lib/base.js";
+import { Dot, Line } from "./lib/base_geom.js";
+import { BezierCurve } from "./lib/bezier.js";
 import { Slider } from "./lib/interactive.js";
 import {
   SphericalVec3D,

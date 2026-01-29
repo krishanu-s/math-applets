@@ -10634,82 +10634,14 @@ var np2 = __toESM(require_numpy_ts_node(), 1);
 
 // src/lib/base.ts
 var MObject = class {
+  // Opacity for drawing
   constructor() {
+    this.alpha = 1;
+  }
+  set_alpha(alpha) {
+    this.alpha = alpha;
   }
   draw(canvas, scene, args) {
-  }
-};
-var Dot = class extends MObject {
-  constructor(center_x, center_y, kwargs) {
-    super();
-    this.center = [center_x, center_y];
-    let radius = kwargs.radius;
-    if (radius == void 0) {
-      this.radius = 0.3;
-    } else {
-      this.radius = radius;
-    }
-  }
-  // Get the center coordinates
-  get_center() {
-    return this.center;
-  }
-  // Move the center of the dot to a desired location
-  move_to(x, y) {
-    this.center = [x, y];
-  }
-  // Change the dot radius
-  set_radius(radius) {
-    this.radius = radius;
-  }
-  // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [x, y] = scene.s2c(this.center[0], this.center[1]);
-    let xr = scene.s2c(this.center[0] + this.radius, this.center[1])[0];
-    ctx.beginPath();
-    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
-    ctx.fill();
-  }
-};
-var BezierCurve = class extends MObject {
-  constructor(start, h1, h2, end, width) {
-    super();
-    this.start = start;
-    this.h1 = h1;
-    this.h2 = h2;
-    this.end = end;
-    this.width = width;
-  }
-  // Moves the start and end points
-  move_start(x, y) {
-    this.start = [x, y];
-  }
-  move_end(x, y) {
-    this.end = [x, y];
-  }
-  // Moves the handles
-  move_h1(x, y) {
-    this.h1 = [x, y];
-  }
-  move_h2(x, y) {
-    this.h2 = [x, y];
-  }
-  // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [start_x, start_y] = scene.s2c(this.start[0], this.start[1]);
-    let [h1_x, h1_y] = scene.s2c(this.h1[0], this.h1[1]);
-    let [h2_x, h2_y] = scene.s2c(this.h2[0], this.h2[1]);
-    let [end_x, end_y] = scene.s2c(this.end[0], this.end[1]);
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.width * canvas.width / (xmax - xmin);
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, end_x, end_y);
-    ctx.stroke();
   }
 };
 var Scene = class {
@@ -10718,17 +10650,34 @@ var Scene = class {
     this.mobjects = {};
     this.xlims = [0, canvas.width];
     this.ylims = [0, canvas.height];
+    this.view_xlims = [0, canvas.width];
+    this.view_ylims = [0, canvas.height];
   }
-  // Sets the coordinates for the borders of the frame
+  // Sets the coordinates for the borders of the scene. This also resets
+  // the current viewing window to match the scene size.
   set_frame_lims(xlims, ylims) {
     this.xlims = xlims;
     this.ylims = ylims;
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
+  }
+  // Sets the current viewing window
+  set_view_lims(xlims, ylims) {
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [
       this.canvas.width * (x - this.xlims[0]) / (this.xlims[1] - this.xlims[0]),
       this.canvas.height * (this.ylims[1] - y) / (this.ylims[1] - this.ylims[0])
+    ];
+  }
+  // Converts viewing coordinates to canvas coordinates
+  v2c(x, y) {
+    return [
+      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -10769,8 +10718,85 @@ var Scene = class {
   }
 };
 
+// src/lib/base_geom.ts
+var Dot = class extends MObject {
+  constructor(center_x, center_y, kwargs) {
+    super();
+    this.center = [center_x, center_y];
+    let radius = kwargs.radius;
+    if (radius == void 0) {
+      this.radius = 0.3;
+    } else {
+      this.radius = radius;
+    }
+  }
+  // Get the center coordinates
+  get_center() {
+    return this.center;
+  }
+  // Move the center of the dot to a desired location
+  move_to(x, y) {
+    this.center = [x, y];
+  }
+  // Change the dot radius
+  set_radius(radius) {
+    this.radius = radius;
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [x, y] = scene.v2c(this.center[0], this.center[1]);
+    let xr = scene.v2c(this.center[0] + this.radius, this.center[1])[0];
+    ctx.beginPath();
+    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
+    ctx.fill();
+  }
+};
+
 // src/lib/bezier.ts
 var np = __toESM(require_numpy_ts_node(), 1);
+var BezierCurve = class extends MObject {
+  constructor(start, h1, h2, end, width) {
+    super();
+    this.start = start;
+    this.h1 = h1;
+    this.h2 = h2;
+    this.end = end;
+    this.width = width;
+  }
+  // Moves the start and end points
+  move_start(x, y) {
+    this.start = [x, y];
+  }
+  move_end(x, y) {
+    this.end = [x, y];
+  }
+  // Moves the handles
+  move_h1(x, y) {
+    this.h1 = [x, y];
+  }
+  move_h2(x, y) {
+    this.h2 = [x, y];
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [start_x, start_y] = scene.v2c(this.start[0], this.start[1]);
+    let [h1_x, h1_y] = scene.v2c(this.h1[0], this.h1[1]);
+    let [h2_x, h2_y] = scene.v2c(this.h2[0], this.h2[1]);
+    let [end_x, end_y] = scene.v2c(this.end[0], this.end[1]);
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.width * canvas.width / (xmax - xmin);
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, end_x, end_y);
+    ctx.stroke();
+  }
+};
 var SmoothClosedPathBezierHandleCalculator = class {
   constructor(n) {
     this.n = n;

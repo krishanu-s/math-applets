@@ -126,6 +126,60 @@ export class SmoothOpenPathBezierHandleCalculator {
   }
 }
 
+// A cubic function starting at one point and ending at another, defined by two control points.
+export class BezierCurve extends MObject {
+  start: [number, number];
+  end: [number, number];
+  h1: [number, number];
+  h2: [number, number];
+  width: number;
+  constructor(
+    start: [number, number],
+    h1: [number, number],
+    h2: [number, number],
+    end: [number, number],
+    width: number,
+  ) {
+    super();
+    this.start = start;
+    this.h1 = h1;
+    this.h2 = h2;
+    this.end = end;
+    this.width = width;
+  }
+  // Moves the start and end points
+  move_start(x: number, y: number) {
+    this.start = [x, y];
+  }
+  move_end(x: number, y: number) {
+    this.end = [x, y];
+  }
+  // Moves the handles
+  move_h1(x: number, y: number) {
+    this.h1 = [x, y];
+  }
+  move_h2(x: number, y: number) {
+    this.h2 = [x, y];
+  }
+  // Draws on the canvas
+  draw(canvas: HTMLCanvasElement, scene: Scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [start_x, start_y] = scene.v2c(this.start[0], this.start[1]);
+    let [h1_x, h1_y] = scene.v2c(this.h1[0], this.h1[1]);
+    let [h2_x, h2_y] = scene.v2c(this.h2[0], this.h2[1]);
+    let [end_x, end_y] = scene.v2c(this.end[0], this.end[1]);
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.width * canvas.width) / (xmax - xmin);
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, end_x, end_y);
+    ctx.stroke();
+  }
+}
+
+// A sequence of Bezier curves passing through a sequence of points P_0, P_1, ..., P_n.
 export class BezierSpline extends MObject {
   num_steps: number;
   solver: SmoothOpenPathBezierHandleCalculator;
@@ -171,7 +225,7 @@ export class BezierSpline extends MObject {
 
     let a_x, a_y, a;
     a = this.get_anchor(0);
-    [a_x, a_y] = scene.s2c(a[0], a[1]);
+    [a_x, a_y] = scene.v2c(a[0], a[1]);
     ctx.beginPath();
     ctx.moveTo(a_x, a_y);
 
@@ -183,16 +237,16 @@ export class BezierSpline extends MObject {
     // Draw
     let h1_x, h1_y, h2_x, h2_y;
     for (let i = 0; i < this.num_steps; i++) {
-      [h1_x, h1_y] = scene.s2c(
+      [h1_x, h1_y] = scene.v2c(
         handles_1.get([i, 0]) as number,
         handles_1.get([i, 1]) as number,
       );
-      [h2_x, h2_y] = scene.s2c(
+      [h2_x, h2_y] = scene.v2c(
         handles_2.get([i, 0]) as number,
         handles_2.get([i, 1]) as number,
       );
       a = this.get_anchor(i + 1);
-      [a_x, a_y] = scene.s2c(a[0], a[1]);
+      [a_x, a_y] = scene.v2c(a[0], a[1]);
       ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
       ctx.stroke();
     }

@@ -4,7 +4,7 @@
         <meta charset="UTF-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>tutorial</title>
+        <title>Math Applets</title>
         <!--Note that to run this, you would need to run
         python -m http.server 8000
         in one terminal, and go to localhost:8000 in your browser-->
@@ -13,12 +13,90 @@
     <body>
         <p>
             This is a place where I'm experimenting with interactive animations
-            and explanations of math ideas. The code for these animations is
-            written almost entirely in Typescript, and can be viewed
+            and explanations of math ideas. The hope is that visuals you can interact
+            with -- drag a slider, push a button, etc -- will help in initial learning.
+
+            The code for these animations is  written almost entirely in Typescript, and can be viewed
             <a href="https://github.com/krishanu-s/math-applets/tree/main/src"
                 >here</a
             >.
         </p>
+        <h2>Tutorial</h2>
+        <p>
+            The process of writing mathematical software is itself an excellent
+            way to learn mathematics. New mathematics arises as it's needed for
+            the task at hand, which is a great filter function for what concepts
+            are actually useful. Making the software work is a good test of
+            whether you've ironed out all of the details correctly. Writing this
+            software taught me a lot, even though I already have a math PhD and
+            have been studying math my whole life!
+        </p>
+        <p>
+            As such, I've written a <b>tutorial</b> for the animation software
+            I've used below. You will build up the software yourself from
+            scratch through a guided series of exercises. Assumed prerequisites
+            are a pen and paper, an appetite for learning, and access to a
+            computer and the internet if you wish to execute your code. I highly
+            recommend the last step, because it will keep you honest.
+        </p>
+        <p>
+            The software is implemented in Typescript, a superset of Javascript
+            that adds static typing and other features. I chose Typescript
+            because (1) it allowed me to put interactive features and easily put
+            the code onto the web, and (2) I wanted to learn the language itself.
+            But you could just as well pick another language, such as Python
+            (see, e.g. <a href="https://www.manim.community/">manim</a>,
+            which was an invaluable reference implementation for me and inspired many of
+            the abstractions I used).
+        </p>
+        <h3>
+            <b><a href="">Chapter 0: Setting up the software</a></b>
+        </h3>
+        <p><a href="">0.1: Your first Typescript program</a></p>
+        <p><a href="">0.2: Creating a Typescript project with Node</a></p>
+        <p><a href="">0.3: Web app versus Desktop app</a></p>
+        <h3>
+            <b><a href="">Chapter 1: Basic geometry</a></b>
+        </h3>
+        <p><a href="./tutorial/canvas_context.html">1.1: Canvas and Context</a></p>
+        <p><a href="./tutorial/lines.html">1.2: Lines, Dots, and polygons</a></p>
+        <p><a href="./tutorial/graphing.html">1.3: Graphing functions</a></p>
+        <p><a href="./tutorial/parametric.html">1.4: Parametric curves</a></p>
+        <p><a href="./tutorial/bezier_curves.html">1.5: Smooth shapes using Bezier curves</a></p>
+        <p><a href="./tutorial/mobject.html">1.6: The MObject class</a></p>
+        <!--<a href="">1.6: TODO</a>-->
+        <h3>
+            <b><a href="">Chapter 2: Animations</a></b>
+        </h3>
+        <p><a href="">2.1: Movement</a></p>
+        <p><a href="">2.2: Interaction: Buttons</a></p>
+        <p><a href="">2.2: Interaction: Sliders</a></p>
+        <p><a href="">2.3: The Scene class</a></p>
+        <h3>
+            <b><a href="">Chapter 3: (Interactive) Simulated systems</a></b>
+        </h3>
+        <p><a href="">3.1: Springs, pendulums, and orbits</a></p>
+        <p><a href="">3.2: Differential equations and how to solve them</a></p>
+        <p><a href="">3.3: The heat equation in one dimension</a></p>
+        <p><a href="">3.4: The wave equation in one dimension</a></p>
+        <h3>
+            <b><a href="">Chapter 4: Three-dimensional scenes</a></b>
+        </h3>
+        <p><a href="">4.1: Vectors, matrices, and dot products</a></p>
+        <p><a href="">4.2: Spherical coordinates</a></p>
+        <p><a href="">4.3: Rendering a 3D object</a></p>
+        <p><a href="">4.4: Rotating a 3D object</a></p>
+        <h3><b><a href="">Chapter 5: More complex simulations</a></b></h3>
+        <p><a href="">5.1: Heatmaps</a></p>
+        <p><a href="">5.2: Optics and the wave equation in two dimensions</a></p>
+        <p><a href="">5.3: Probability and Monte-Carlo simulations</a></body>p>
+        <p><a href=""
+            >5.4: Random walks, Markov chains, and the heat equation in higher
+            dimensions</a
+        ></p>
+        <!--<a href="">5.5: </a>-->
+
+        <h2>Miscellaneous/Uncategorized</h2>
         <p>
             <b><a href="./sunrise_scene.html">Sunlight equation</a>:</b> This
             page addresses the phenomenon of solar angle. I got inspired to

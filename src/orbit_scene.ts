@@ -1,4 +1,5 @@
-import { Dot, Scene } from "./lib/base.js";
+import { Scene } from "./lib/base.js";
+import { Dot } from "./lib/base_geom.js";
 // An orbiting body
 const GRAV_CONSTANT = 1.0;
 class OrbitScene extends Scene {
@@ -10,9 +11,9 @@ class OrbitScene extends Scene {
     super(canvas);
 
     this.center = center;
-    this.add("center", new Dot(center[0], center[1], 0.2));
+    this.add("center", new Dot(center[0], center[1], { radius: 0.2 }));
 
-    this.add("orbiter", new Dot(center[0], center[1], 0.1));
+    this.add("orbiter", new Dot(center[0], center[1], { radius: 0.1 }));
     this.state = [
       [center[0], center[1]],
       [0, 0],
