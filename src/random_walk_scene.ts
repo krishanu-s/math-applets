@@ -1,11 +1,5 @@
-import {
-  MObject,
-  Dot,
-  Line,
-  Vec2D,
-  Scene,
-  prepare_canvas,
-} from "./lib/base.js";
+import { MObject, Scene, prepare_canvas } from "./lib/base.js";
+import { Dot, Line, Vec2D } from "./lib/base_geom.js";
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {

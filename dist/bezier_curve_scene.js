@@ -10901,7 +10901,7 @@ var ClosedCurveScene = class extends Scene {
     let a_list = [];
     for (let i = 0; i < n; i++) {
       let p = this.calculate(i / n * Math.PI * 2);
-      this.add(`p${i}`, new Dot(p[0], p[1], 0.02));
+      this.add(`p${i}`, new Dot(p[0], p[1], { radius: 0.02 }));
       a_list.push(np2.array(p));
     }
     a_list.push(np2.array(this.calculate(0)));

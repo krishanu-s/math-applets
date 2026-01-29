@@ -1,28 +1,3 @@
-// *** TYPES ***
-
-// A point in 2D space.
-export type Vec2D = [number, number];
-
-export function vec_norm(x: Vec2D): number {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-
-export function vec_scale(x: Vec2D, factor: number): Vec2D {
-  return [x[0] * factor, x[1] * factor];
-}
-
-export function vec_sum(x: Vec2D, y: Vec2D): Vec2D {
-  return [x[0] + y[0], x[1] + y[1]];
-}
-
-export function vec_sum_list(xs: Vec2D[]): Vec2D {
-  return xs.reduce((acc, x) => vec_sum(acc, x), [0, 0]);
-}
-
-export function vec_sub(x: Vec2D, y: Vec2D): Vec2D {
-  return [x[0] - y[0], x[1] - y[1]];
-}
-
 // *** FUNCTIONS ***
 
 // Clamps a number to the interval [xmin, xmax].

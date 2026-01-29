@@ -127,8 +127,8 @@ var OrbitScene = class extends Scene {
   constructor(canvas, center) {
     super(canvas);
     this.center = center;
-    this.add("center", new Dot(center[0], center[1], 0.2));
-    this.add("orbiter", new Dot(center[0], center[1], 0.1));
+    this.add("center", new Dot(center[0], center[1], { radius: 0.2 }));
+    this.add("orbiter", new Dot(center[0], center[1], { radius: 0.1 }));
     this.state = [
       [center[0], center[1]],
       [0, 0]

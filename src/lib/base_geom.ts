@@ -1,6 +1,29 @@
 // Basic geometric mobjects and functions
 import { MObject, Scene } from "./base.js";
 
+// A point in 2D space.
+export type Vec2D = [number, number];
+
+export function vec_norm(x: Vec2D): number {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+
+export function vec_scale(x: Vec2D, factor: number): Vec2D {
+  return [x[0] * factor, x[1] * factor];
+}
+
+export function vec_sum(x: Vec2D, y: Vec2D): Vec2D {
+  return [x[0] + y[0], x[1] + y[1]];
+}
+
+export function vec_sum_list(xs: Vec2D[]): Vec2D {
+  return xs.reduce((acc, x) => vec_sum(acc, x), [0, 0]);
+}
+
+export function vec_sub(x: Vec2D, y: Vec2D): Vec2D {
+  return [x[0] - y[0], x[1] - y[1]];
+}
+
 // A filled circle.
 export class Dot extends MObject {
   center: [number, number];
@@ -30,7 +53,6 @@ export class Dot extends MObject {
   }
   // Draws on the canvas
   draw(canvas: HTMLCanvasElement, scene: Scene) {
-    // TODO Scale coordinates to pixels
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
@@ -38,6 +60,57 @@ export class Dot extends MObject {
     let xr = scene.v2c(this.center[0] + this.radius, this.center[1])[0];
     ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
+    ctx.fill();
+  }
+}
+
+// A rectangle specified by its center, width, and height
+export class Rectangle extends MObject {
+  center: Vec2D;
+  size_x: number;
+  size_y: number;
+  constructor(center: Vec2D, size_x: number, size_y: number) {
+    super();
+    this.center = center;
+    this.size_x = size_x;
+    this.size_y = size_y;
+  }
+  move_to(x: number, y: number) {
+    this.center = [x, y];
+  }
+  // Draws on the canvas
+  draw(canvas: HTMLCanvasElement, scene: Scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+
+    let [px, py] = scene.v2c(
+      this.center[0] - this.size_x / 2,
+      this.center[1] - this.size_y / 2,
+    );
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    [px, py] = scene.v2c(
+      this.center[0] + this.size_x / 2,
+      this.center[1] - this.size_y / 2,
+    );
+    ctx.lineTo(px, py);
+    [px, py] = scene.v2c(
+      this.center[0] + this.size_x / 2,
+      this.center[1] + this.size_y / 2,
+    );
+    ctx.lineTo(px, py);
+    [px, py] = scene.v2c(
+      this.center[0] - this.size_x / 2,
+      this.center[1] + this.size_y / 2,
+    );
+    ctx.lineTo(px, py);
+    [px, py] = scene.v2c(
+      this.center[0] - this.size_x / 2,
+      this.center[1] - this.size_y / 2,
+    );
+    ctx.lineTo(px, py);
+    ctx.closePath();
     ctx.fill();
   }
 }

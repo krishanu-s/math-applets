@@ -100,6 +100,30 @@ export abstract class Simulator {
   }
 }
 
+// Simulator for a simple vibrating spring with equilibrium position 0
+export class SpringSimulator extends Simulator {
+  stiffness: number;
+  friction: number = 0;
+  constructor(stiffness: number, dt: number) {
+    super(2, dt);
+    this.stiffness = stiffness;
+  }
+  set_stiffness(stiffness: number) {
+    this.stiffness = stiffness;
+  }
+  set_friction(friction: number) {
+    this.friction = friction;
+  }
+  // Time-derivative of a given state and time. Overwritten in subclasses.
+  dot(vals: Array<number>, time: number): Array<number> {
+    return [
+      vals[1] as number,
+      -this.stiffness * (vals[0] as number) -
+        this.friction * (vals[1] as number),
+    ];
+  }
+}
+
 // A simulator where a subset of the state can be drawn in one dimensions
 export interface OneDimDrawable {
   width: number;
@@ -279,7 +303,7 @@ export class TwoDimState {
   }
 }
 
-// Base class which controls interactive simulations
+// Base class which controls interactive simulations which evolve according to a differential equation
 export abstract class InteractivePlayingScene extends Scene {
   simulators: Record<number, Simulator>; // The internal simulator
   num_simulators: number;

@@ -10630,12 +10630,6 @@ var require_numpy_ts_node = __commonJS({
 });
 
 // src/lib/base.ts
-function vec_sum(x, y) {
-  return [x[0] + y[0], x[1] + y[1]];
-}
-function vec_sum_list(xs) {
-  return xs.reduce((acc, x) => vec_sum(acc, x), [0, 0]);
-}
 function clamp(x, xmin, xmax) {
   return Math.min(xmax, Math.max(xmin, x));
 }
@@ -10837,6 +10831,18 @@ function PauseButton(container, scene) {
 }
 
 // src/lib/base_geom.ts
+function vec_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
+function vec_sum_list(xs) {
+  return xs.reduce((acc, x) => vec_sum(acc, x), [0, 0]);
+}
+function vec_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
 var Dot = class extends MObject {
   constructor(center_x, center_y, kwargs) {
     super();
@@ -10869,6 +10875,51 @@ var Dot = class extends MObject {
     let xr = scene.v2c(this.center[0] + this.radius, this.center[1])[0];
     ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
+    ctx.fill();
+  }
+};
+var Rectangle = class extends MObject {
+  constructor(center, size_x, size_y) {
+    super();
+    this.center = center;
+    this.size_x = size_x;
+    this.size_y = size_y;
+  }
+  move_to(x, y) {
+    this.center = [x, y];
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [px, py] = scene.v2c(
+      this.center[0] - this.size_x / 2,
+      this.center[1] - this.size_y / 2
+    );
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    [px, py] = scene.v2c(
+      this.center[0] + this.size_x / 2,
+      this.center[1] - this.size_y / 2
+    );
+    ctx.lineTo(px, py);
+    [px, py] = scene.v2c(
+      this.center[0] + this.size_x / 2,
+      this.center[1] + this.size_y / 2
+    );
+    ctx.lineTo(px, py);
+    [px, py] = scene.v2c(
+      this.center[0] - this.size_x / 2,
+      this.center[1] + this.size_y / 2
+    );
+    ctx.lineTo(px, py);
+    [px, py] = scene.v2c(
+      this.center[0] - this.size_x / 2,
+      this.center[1] - this.size_y / 2
+    );
+    ctx.lineTo(px, py);
+    ctx.closePath();
     ctx.fill();
   }
 };
@@ -11165,6 +11216,9 @@ var ParametricFunction = class extends MObject {
 };
 
 // src/lib/color.ts
+function colorval_to_rgba(color) {
+  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
+}
 function rb_colormap(z) {
   const gray = sigmoid(z);
   if (gray < 0.5) {
@@ -11173,6 +11227,51 @@ function rb_colormap(z) {
     return [255, 512 * (1 - gray), 512 * (1 - gray), 255];
   }
 }
+function rb_colormap_2(z) {
+  const gray = sigmoid(z);
+  if (gray < 0.5) {
+    return [0, 0, 512 * (0.5 - gray), 255];
+  } else {
+    return [512 * (gray - 0.5), 0, 0, 255];
+  }
+}
+
+// src/lib/spring.ts
+var LineSpring = class extends Line {
+  constructor(start, end, kwargs) {
+    super(start, end, kwargs);
+    this.mode = "color";
+    this.eq_length = 2;
+  }
+  set_eq_length(length) {
+    this.eq_length = length;
+  }
+  length() {
+    let [start_x, start_y] = this.start;
+    let [end_x, end_y] = this.end;
+    return Math.sqrt((end_x - start_x) ** 2 + (end_y - start_y) ** 2);
+  }
+  // alpha_scaling(): number {
+  //   return Math.min(1.0, this.eq_length / this.length());
+  // }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [start_x, start_y] = scene.v2c(this.start[0], this.start[1]);
+    let [end_x, end_y] = scene.v2c(this.end[0], this.end[1]);
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = colorval_to_rgba(
+      rb_colormap_2(10 * Math.log(this.eq_length / this.length()))
+    );
+    ctx.globalAlpha = this.alpha;
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
+  }
+};
 
 // src/lib/heatmap.ts
 var HeatMap = class extends MObject {
@@ -11284,6 +11383,26 @@ var Simulator = class {
   }
   step() {
     return this.step_runge_kutta();
+  }
+};
+var SpringSimulator = class extends Simulator {
+  constructor(stiffness, dt) {
+    super(2, dt);
+    this.friction = 0;
+    this.stiffness = stiffness;
+  }
+  set_stiffness(stiffness) {
+    this.stiffness = stiffness;
+  }
+  set_friction(friction) {
+    this.friction = friction;
+  }
+  // Time-derivative of a given state and time. Overwritten in subclasses.
+  dot(vals, time) {
+    return [
+      vals[1],
+      -this.stiffness * vals[0] - this.friction * vals[1]
+    ];
   }
 };
 var TwoDimState = class {
@@ -11546,7 +11665,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     super(canvas, [sim]);
     this.mode = "dots";
     console.log("Initialized one-dimensional wave simulation scene");
-    let pos;
+    let pos, next_pos;
     let [ymin, ymax] = this.ylims;
     pos = this.eq_position(1);
     this.add(
@@ -11563,6 +11682,17 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       let dot3 = new Dot(pos[0], pos[1], { radius: 0.5 / Math.sqrt(width) });
       this.add(`p_${i + 1}`, dot3);
     }
+    let eq_length;
+    for (let i = 1; i < width; i++) {
+      pos = this.eq_position(i);
+      next_pos = this.eq_position(i + 1);
+      let line = new LineSpring(pos, next_pos, {
+        stroke_width: 0.2 / Math.sqrt(width)
+      });
+      eq_length = vec_norm(vec_sub(pos, next_pos));
+      line.set_eq_length(eq_length);
+      this.add(`l_${i}`, line);
+    }
     let curve = new BezierSpline(width - 1, { stroke_width: 0.04 });
     this.add("curve", curve);
   }
@@ -11571,7 +11701,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
   }
   set_frame_lims(xlims, ylims) {
     super.set_frame_lims(xlims, ylims);
-    let mobj, pos;
+    let mobj, pos, next_pos;
     let [ymin, ymax] = this.ylims;
     pos = this.eq_position(1);
     mobj = this.get_mobj("b0");
@@ -11582,6 +11712,14 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     mobj.move_start(pos[0], ymin / 2);
     mobj.move_end(pos[0], ymax / 2);
     this.update_mobjects();
+    let eq_length;
+    for (let i = 1; i < this.width(); i++) {
+      pos = this.eq_position(i);
+      next_pos = this.eq_position(i + 1);
+      let line = this.get_mobj(`l_${i}`);
+      eq_length = vec_norm(vec_sub(pos, next_pos));
+      line.set_eq_length(eq_length);
+    }
   }
   sim() {
     return this.simulators[0];
@@ -11598,16 +11736,25 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
   }
   // Moves the dots and curve in the scene to the positions dictated by the wave simulation.
   update_mobjects() {
-    let dot3;
+    let dot3, line;
+    let pos, next_pos;
+    let disp, next_disp;
     let sim = this.sim();
     let u = sim.get_uValues();
     let anchors = [];
     for (let i = 0; i < this.width(); i++) {
-      let pos = this.eq_position(i + 1);
-      let disp = u[i];
+      pos = this.eq_position(i + 1);
+      disp = u[i];
       dot3 = this.get_mobj(`p_${i + 1}`);
       dot3.move_to(pos[0], pos[1] + disp);
       anchors.push([pos[0], pos[1] + disp]);
+      if (i < this.width() - 1) {
+        next_pos = this.eq_position(i + 2);
+        next_disp = u[i + 1];
+        line = this.get_mobj(`l_${i + 1}`);
+        line.move_start(pos[0], pos[1] + disp);
+        line.move_end(next_pos[0], next_pos[1] + next_disp);
+      }
     }
     let curve = this.get_mobj("curve");
     curve.set_anchors(anchors);
@@ -11621,7 +11768,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       if (this.mode == "dots") {
         mobj.draw(this.canvas, this);
       }
-    } else if (mobj instanceof Line) {
+    } else if (mobj instanceof LineSpring) {
       if (this.mode == "dots") {
         mobj.draw(this.canvas, this);
       }
@@ -12337,7 +12484,79 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       scene.draw();
     })();
     (function point_mass_spring() {
-    });
+      let canvas = prepare_canvas(200, 200, "point-mass-spring");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      class SpringScene extends InteractivePlayingScene {
+        constructor(canvas2) {
+          super(canvas2, [new SpringSimulator(1, 0.01)]);
+          let spring = new LineSpring([-3, 0], [0, 0], { stroke_width: 0.08 });
+          spring.set_eq_length(3);
+          let anchor = new Line([-3, -2], [-3, 2], { stroke_width: 0.3 });
+          let mass = new Rectangle([0, 0], 0.6, 0.6);
+          this.add("spring", spring);
+          this.add("anchor", anchor);
+          this.add("mass", mass);
+        }
+        // Updates all mobjects to account for the new simulator state
+        update_mobjects() {
+          let [u, v] = this.get_simulator(0).get_vals();
+          let mass = this.get_mobj("mass");
+          mass.move_to(u, 0);
+          let spring = this.get_mobj("spring");
+          spring.move_end(u, 0);
+        }
+        draw_mobject(mobj) {
+          mobj.draw(this.canvas, this);
+        }
+      }
+      let scene = new SpringScene(canvas);
+      scene.set_simulator_attr(0, "stiffness", 5);
+      scene.set_simulator_attr(0, "dt", 0.01);
+      let sim = scene.get_simulator(0);
+      sim.set_vals([1, 0]);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      console.log("");
+      let w_slider = Slider(
+        document.getElementById(
+          "point-mass-spring-stiffness-slider"
+        ),
+        function(w) {
+          scene.add_to_queue(
+            scene.set_simulator_attr.bind(scene, 0, "stiffness", w)
+          );
+        },
+        {
+          name: "Spring stiffness",
+          initial_value: "3.0",
+          min: 0,
+          max: 20,
+          step: 0.05
+        }
+      );
+      w_slider.width = 200;
+      let pauseButton = Button(
+        document.getElementById(
+          "point-mass-spring-pause-button"
+        ),
+        function() {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+      scene.draw();
+      scene.play(void 0);
+    })();
     (function point_mass_discrete_sequence(num_points) {
       let canvas = prepare_canvas(300, 300, "point-mass-discrete-sequence");
       let scene = new WaveSimOneDimScene(canvas, num_points);

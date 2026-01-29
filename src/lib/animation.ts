@@ -1,5 +1,6 @@
 // Animations which can be played in a scene
-import { Vec2D, Scene, MObject, linspace } from "./base.js";
+import { Scene, MObject, linspace } from "./base.js";
+import { Vec2D } from "./base_geom.js";
 
 abstract class Anim {}
 

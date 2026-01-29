@@ -1,7 +1,9 @@
 import { MObject, Scene, prepare_canvas } from "./base.js";
 import { Dot, Line } from "./base_geom.js";
+import { LineSpring } from "./spring.js";
 import { Slider, Button } from "./interactive.js";
-import { Vec2D, clamp, sigmoid } from "./base.js";
+import { clamp, sigmoid } from "./base.js";
+import { Vec2D, vec_norm, vec_sub } from "./base_geom.js";
 import { ParametricFunction } from "./parametric.js";
 import { BezierSpline } from "./bezier.js";
 import { HeatMap } from "./heatmap.js";
@@ -131,7 +133,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     this.mode = "dots";
     console.log("Initialized one-dimensional wave simulation scene");
 
-    let pos;
+    let pos, next_pos;
 
     // Add boundary lines
     let [ymin, ymax] = this.ylims;
@@ -155,7 +157,17 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     }
 
     // Add lines/springs which connect dots
-    // TODO
+    let eq_length;
+    for (let i = 1; i < width; i++) {
+      pos = this.eq_position(i);
+      next_pos = this.eq_position(i + 1);
+      let line = new LineSpring(pos, next_pos, {
+        stroke_width: 0.2 / Math.sqrt(width),
+      });
+      eq_length = vec_norm(vec_sub(pos, next_pos));
+      line.set_eq_length(eq_length);
+      this.add(`l_${i}`, line);
+    }
 
     // Add a Bezier curve which tracks with uValues in simulator
     let curve = new BezierSpline(width - 1, { stroke_width: 0.04 });
@@ -167,7 +179,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
   set_frame_lims(xlims: [number, number], ylims: [number, number]): void {
     super.set_frame_lims(xlims, ylims);
     // Reset positions of objects
-    let mobj, pos;
+    let mobj, pos, next_pos;
     let [ymin, ymax] = this.ylims;
 
     pos = this.eq_position(1);
@@ -181,6 +193,15 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     mobj.move_end(pos[0], ymax / 2);
 
     this.update_mobjects();
+    // Reset equilibrium lengths of lines
+    let eq_length;
+    for (let i = 1; i < this.width(); i++) {
+      pos = this.eq_position(i);
+      next_pos = this.eq_position(i + 1);
+      let line = this.get_mobj(`l_${i}`) as LineSpring;
+      eq_length = vec_norm(vec_sub(pos, next_pos));
+      line.set_eq_length(eq_length);
+    }
   }
   sim(): WaveSimOneDim {
     return this.simulators[0] as WaveSimOneDim;
@@ -198,16 +219,25 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
   }
   // Moves the dots and curve in the scene to the positions dictated by the wave simulation.
   update_mobjects() {
-    let dot;
+    let dot, line;
+    let pos, next_pos;
+    let disp, next_disp;
     let sim = this.sim();
     let u = sim.get_uValues();
     let anchors: Vec2D[] = [];
     for (let i = 0; i < this.width(); i++) {
-      let pos = this.eq_position(i + 1);
-      let disp = u[i] as number;
+      pos = this.eq_position(i + 1);
+      disp = u[i] as number;
       dot = this.get_mobj(`p_${i + 1}`) as Dot;
       dot.move_to(pos[0], pos[1] + disp);
       anchors.push([pos[0], pos[1] + disp]);
+      if (i < this.width() - 1) {
+        next_pos = this.eq_position(i + 2);
+        next_disp = u[i + 1] as number;
+        line = this.get_mobj(`l_${i + 1}`) as LineSpring;
+        line.move_start(pos[0], pos[1] + disp);
+        line.move_end(next_pos[0], next_pos[1] + next_disp);
+      }
     }
     let curve = this.get_mobj("curve") as BezierSpline;
     curve.set_anchors(anchors);
@@ -221,7 +251,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       if (this.mode == "dots") {
         mobj.draw(this.canvas, this);
       }
-    } else if (mobj instanceof Line) {
+    } else if (mobj instanceof LineSpring) {
       if (this.mode == "dots") {
         mobj.draw(this.canvas, this);
       }

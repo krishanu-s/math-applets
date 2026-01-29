@@ -10,7 +10,7 @@ import {
   vec_sub,
   vec_norm,
   vec_sum_list,
-} from "./lib/base.js";
+} from "./lib/base_geom.js";
 
 // TODO Make a function F which, given vectors v1, v2, ..., vn,
 // converts to a sequence w1, w2, ..., wn such that
@@ -55,8 +55,8 @@ class OneSidedSpringScene extends Scene {
     this.spring_constant = 1.0;
     this.friction_constant = 0.2;
 
-    this.add("base", new Dot(0, 0, {radius: 0.2}));
-    this.add("mass", new Dot(0, 0, {radius: 0.2}));
+    this.add("base", new Dot(0, 0, { radius: 0.2 }));
+    this.add("mass", new Dot(0, 0, { radius: 0.2 }));
     this.add("spring", new Line([0, 0], [0, 0], { stroke_width: 0.08 }));
   }
   set_position(x: Vec2D) {

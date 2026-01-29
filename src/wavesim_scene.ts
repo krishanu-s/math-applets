@@ -1,16 +1,15 @@
 // Testing the direct feeding of a pixel array to the canvas
 import { MObject, Scene, prepare_canvas } from "./lib/base.js";
 import { Slider, Button, PauseButton } from "./lib/interactive.js";
-import { Dot, Line } from "./lib/base_geom.js";
 import {
+  Dot,
+  Rectangle,
+  Line,
   Vec2D,
-  clamp,
-  sigmoid,
   vec_sum,
   vec_sum_list,
-  linspace,
-  funspace,
-} from "./lib/base.js";
+} from "./lib/base_geom.js";
+import { clamp, sigmoid, linspace, funspace } from "./lib/base.js";
 import { ParametricFunction } from "./lib/parametric.js";
 import { HeatMap } from "./lib/heatmap.js";
 import {
@@ -21,7 +20,8 @@ import {
   WaveSimTwoDimHeatMapScene,
   WaveSimTwoDimDotsScene,
 } from "./lib/wavesim.js";
-import {} from "./lib/statesim.js";
+import { LineSpring } from "./lib/spring.js";
+import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
@@ -320,8 +320,95 @@ import {} from "./lib/statesim.js";
     // Include both an interactive animation (with spring strength modifiable by slider)
     // and a static visualization of the force diagram.
     (function point_mass_spring() {
-      // TODO
-    });
+      // Prepare the canvas
+      let canvas = prepare_canvas(200, 200, "point-mass-spring");
+
+      // Get the context for drawing
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+
+      class SpringScene extends InteractivePlayingScene {
+        constructor(canvas: HTMLCanvasElement) {
+          super(canvas, [new SpringSimulator(1.0, 0.01)]);
+          // TODO Set coordinates in terms of scene frame limits
+          let spring = new LineSpring([-3, 0], [0, 0], { stroke_width: 0.08 });
+          spring.set_eq_length(3.0);
+          let anchor = new Line([-3, -2], [-3, 2], { stroke_width: 0.3 });
+          let mass = new Rectangle([0, 0], 0.6, 0.6);
+          this.add("spring", spring);
+          this.add("anchor", anchor);
+          this.add("mass", mass);
+        }
+        // Updates all mobjects to account for the new simulator state
+        update_mobjects() {
+          let [u, v] = this.get_simulator(0).get_vals() as Vec2D;
+
+          let mass = this.get_mobj("mass") as Dot;
+          mass.move_to(u, 0);
+
+          let spring = this.get_mobj("spring") as Line;
+          spring.move_end(u, 0);
+        }
+        draw_mobject(mobj: MObject) {
+          mobj.draw(this.canvas, this);
+        }
+      }
+
+      // Make the scene
+      let scene = new SpringScene(canvas);
+      scene.set_simulator_attr(0, "stiffness", 5.0);
+      scene.set_simulator_attr(0, "dt", 0.01);
+      let sim = scene.get_simulator(0);
+      sim.set_vals([1, 0]);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+
+      console.log("");
+
+      // Slider which controls the propagation speed
+      let w_slider = Slider(
+        document.getElementById(
+          "point-mass-spring-stiffness-slider",
+        ) as HTMLElement,
+        function (w: number) {
+          scene.add_to_queue(
+            scene.set_simulator_attr.bind(scene, 0, "stiffness", w),
+          );
+        },
+        {
+          name: "Spring stiffness",
+          initial_value: "3.0",
+          min: 0,
+          max: 20,
+          step: 0.05,
+        },
+      );
+      w_slider.width = 200;
+
+      // Button which pauses/unpauses the simulation
+      let pauseButton = Button(
+        document.getElementById(
+          "point-mass-spring-pause-button",
+        ) as HTMLElement,
+        function () {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+
+      // Play the scene
+      scene.draw();
+      scene.play(undefined);
+    })();
 
     // Shows a sequence of point masses connected by springs, oscillating
     // according to Hooke's law.

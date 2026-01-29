@@ -5,14 +5,29 @@ export type ColorVal = [number, number, number, number];
 export type ColorMap = (z: number) => ColorVal;
 export type TwoDimColorMap = (z: number, w: number) => ColorVal;
 
+export function colorval_to_rgba(color: ColorVal): string {
+  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
+}
+
 // Given a value in (-inf, inf), produces a color from
-// red-to-blue where +inf is red and -inf is blue.
+// red-to-blue where +inf is red, -inf is blue, and 0 is white
 export function rb_colormap(z: number): ColorVal {
   const gray = sigmoid(z);
   if (gray < 0.5) {
     return [512 * gray, 512 * gray, 255, 255];
   } else {
     return [255, 512 * (1 - gray), 512 * (1 - gray), 255];
+  }
+}
+
+// Given a value in (-inf, inf), produces a color from
+// red-to-blue where +inf is red, -inf is blue, and 0 is black
+export function rb_colormap_2(z: number): ColorVal {
+  const gray = sigmoid(z);
+  if (gray < 0.5) {
+    return [0, 0, 512 * (0.5 - gray), 255];
+  } else {
+    return [512 * (gray - 0.5), 0, 0, 255];
   }
 }
 

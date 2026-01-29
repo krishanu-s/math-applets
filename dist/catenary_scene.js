@@ -10630,21 +10630,6 @@ var require_numpy_ts_node = __commonJS({
 });
 
 // src/lib/base.ts
-function vec_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-function vec_scale(x, factor) {
-  return [x[0] * factor, x[1] * factor];
-}
-function vec_sum(x, y) {
-  return [x[0] + y[0], x[1] + y[1]];
-}
-function vec_sum_list(xs) {
-  return xs.reduce((acc, x) => vec_sum(acc, x), [0, 0]);
-}
-function vec_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1]];
-}
 var MObject = class {
   // Opacity for drawing
   constructor() {
@@ -10731,6 +10716,21 @@ var Scene = class {
 };
 
 // src/lib/base_geom.ts
+function vec_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
+function vec_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
+function vec_sum_list(xs) {
+  return xs.reduce((acc, x) => vec_sum(acc, x), [0, 0]);
+}
+function vec_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
 var Line = class extends MObject {
   constructor(start, end, kwargs) {
     super();
