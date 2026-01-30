@@ -137,15 +137,11 @@ export class Rectangle extends MObject {
 
 // A line segment.
 export class Line extends MObject {
-  start: [number, number];
-  end: [number, number];
+  start: Vec2D;
+  end: Vec2D;
   stroke_width: number;
   stroke_color: string;
-  constructor(
-    start: [number, number],
-    end: [number, number],
-    kwargs: Record<string, any>,
-  ) {
+  constructor(start: Vec2D, end: Vec2D, kwargs: Record<string, any>) {
     super();
     this.start = start;
     this.end = end;

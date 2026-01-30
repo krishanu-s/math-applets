@@ -154,7 +154,7 @@ function vec3_sub(x, y) {
 }
 var ThreeDMObject = class extends MObject {
 };
-var Dot = class extends ThreeDMObject {
+var Dot3D = class extends ThreeDMObject {
   constructor(center, radius) {
     super();
     this.fill_color = "black";
@@ -166,7 +166,7 @@ var Dot = class extends ThreeDMObject {
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
-    let p = scene.perspective_view(this.center);
+    let p = scene.camera_view(this.center);
     if (p != null) {
       let [cx, cy] = scene.v2c(p);
       ctx.beginPath();
@@ -179,6 +179,39 @@ var Dot = class extends ThreeDMObject {
       );
       ctx.fill();
     }
+  }
+};
+var Line3D = class extends ThreeDMObject {
+  constructor(start, end) {
+    super();
+    this.stroke_width = 0.04;
+    this.stroke_color = "black";
+    this.start = start;
+    this.end = end;
+  }
+  // Moves the start and end points
+  move_start(v) {
+    this.start = v;
+  }
+  move_end(v) {
+    this.end = v;
+  }
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
   }
 };
 var Cube = class extends ThreeDMObject {
@@ -208,7 +241,7 @@ var Cube = class extends ThreeDMObject {
     ];
     const projected_vertices = [];
     for (let i = 0; i < vertices.length; i++) {
-      projected_vertices.push(scene.perspective_view(vertices[i]));
+      projected_vertices.push(scene.camera_view(vertices[i]));
     }
     let v;
     const canvas_vertices = [];
@@ -250,6 +283,7 @@ var ThreeDScene = class extends Scene {
       [0, 0, 1]
     ];
     this.camera_position = [0, 0, 0];
+    this.mode = "perspective";
   }
   // Set the camera position
   set_camera_position(position) {
@@ -294,6 +328,17 @@ var ThreeDScene = class extends Scene {
       this.camera_frame_inv,
       rot_matrix(axis, -angle)
     );
+  }
+  // Modes of viewing/drawing
+  set_view_mode(mode) {
+    this.mode = mode;
+  }
+  camera_view(p) {
+    if (this.mode == "perspective") {
+      return this.perspective_view(p);
+    } else {
+      return this.projection_view(p);
+    }
   }
   // Projects a 3D point onto the camera view plane. Does not include perspective.
   projection_view(p) {
@@ -452,118 +497,205 @@ function Button(container, callback) {
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-(function() {
+(async function() {
   document.addEventListener("DOMContentLoaded", async function() {
-    let width = 300;
-    let height = 300;
-    let canvas = prepare_canvas(width, height, "three-d-cube");
-    let zoom_ratio = 3.5;
-    let scene = new ThreeDScene(canvas);
-    scene.set_frame_lims([-5, 5], [-5, 5]);
-    scene.set_view_lims(
-      [-5 / zoom_ratio, 5 / zoom_ratio],
-      [-5 / zoom_ratio, 5 / zoom_ratio]
-    );
-    scene.add("cube", new Cube([0, 0, 0], 3));
-    scene.add("dot", new Dot([0, 0, 0], 0.05));
-    scene.rot_z(Math.PI / 4);
-    scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
-    scene.set_camera_position(
-      rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4)
-    );
-    scene.draw();
-    let drag = false;
-    let dragStart;
-    let dragEnd;
-    let dragDiff;
-    let mode = "Translate";
-    canvas.addEventListener("mousedown", function(event) {
-      dragStart = [
-        event.pageX - canvas.offsetLeft,
-        event.pageY - canvas.offsetTop
-      ];
-      drag = true;
-    });
-    canvas.addEventListener("mouseup", function(event) {
-      drag = false;
-    });
-    canvas.addEventListener("mousemove", function(event) {
-      if (drag) {
-        dragEnd = [
+    (async function three_d_cube(width, height) {
+      let canvas = prepare_canvas(width, height, "three-d-cube");
+      let zoom_ratio = 3.5;
+      let scene = new ThreeDScene(canvas);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_view_lims(
+        [-5 / zoom_ratio, 5 / zoom_ratio],
+        [-5 / zoom_ratio, 5 / zoom_ratio]
+      );
+      scene.rot_z(Math.PI / 4);
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
+      scene.set_camera_position(
+        rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4)
+      );
+      scene.add("cube", new Cube([0, 0, 0], 3));
+      scene.add("dot", new Dot3D([0, 0, 0], 0.05));
+      scene.draw();
+      let drag = false;
+      let dragStart;
+      let dragEnd;
+      let dragDiff;
+      let mode = "Translate";
+      canvas.addEventListener("mousedown", function(event) {
+        dragStart = [
           event.pageX - canvas.offsetLeft,
           event.pageY - canvas.offsetTop
         ];
-        dragDiff = vec_sub(
-          scene.c2s(dragStart[0], dragStart[1]),
-          scene.c2s(dragEnd[0], dragEnd[1])
-        );
-        if (mode == "Translate") {
-          let camera_frame = scene.get_camera_frame();
-          scene.translate(
-            vec3_sum(
-              vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
-              vec3_scale(get_column(camera_frame, 1), dragDiff[1])
-            )
+        drag = true;
+      });
+      canvas.addEventListener("mouseup", function(event) {
+        drag = false;
+      });
+      canvas.addEventListener("mousemove", function(event) {
+        if (drag) {
+          dragEnd = [
+            event.pageX - canvas.offsetLeft,
+            event.pageY - canvas.offsetTop
+          ];
+          dragDiff = vec_sub(
+            scene.c2s(dragStart[0], dragStart[1]),
+            scene.c2s(dragEnd[0], dragEnd[1])
           );
-        } else if (mode == "Rotate") {
-          let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
-          let camera_frame = scene.get_camera_frame();
-          let rot_axis = vec3_sum(
-            vec3_scale(get_column(camera_frame, 0), v[0]),
-            vec3_scale(get_column(camera_frame, 1), v[1])
+          if (mode == "Translate") {
+            let camera_frame = scene.get_camera_frame();
+            scene.translate(
+              vec3_sum(
+                vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
+                vec3_scale(get_column(camera_frame, 1), dragDiff[1])
+              )
+            );
+          } else if (mode == "Rotate") {
+            let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
+            let camera_frame = scene.get_camera_frame();
+            let rot_axis = vec3_sum(
+              vec3_scale(get_column(camera_frame, 0), v[0]),
+              vec3_scale(get_column(camera_frame, 1), v[1])
+            );
+            let n = vec_norm(dragDiff);
+            scene.rot(rot_axis, n);
+            scene.set_camera_position(rot(scene.camera_position, rot_axis, n));
+          }
+          scene.draw();
+          dragStart = dragEnd;
+        }
+      });
+      let playing = true;
+      let pauseButton = Button(
+        document.getElementById("three-d-cube-pause-button"),
+        function() {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Pause simulation";
+      pauseButton.style.padding = "15px";
+      let modeButton = Button(
+        document.getElementById("three-d-cube-mode-button"),
+        function() {
+          if (mode == "Translate") {
+            mode = "Rotate";
+          } else if (mode == "Rotate") {
+            mode = "Translate";
+          } else {
+            throw new Error();
+          }
+          modeButton.textContent = `Mode = ${mode}`;
+        }
+      );
+      modeButton.textContent = `Mode = ${mode}`;
+      modeButton.style.padding = "15px";
+      let axis = [1, 0, 0];
+      let perturb_angle = Math.PI / 200;
+      let perturb_axis = [0, 1, 0];
+      let perturb_axis_angle = Math.PI / 50;
+      while (true) {
+        if (playing) {
+          perturb_axis = rot(perturb_axis, axis, Math.random() * Math.PI * 2);
+          axis = rot(axis, perturb_axis, perturb_axis_angle);
+          scene.rot(axis, perturb_angle);
+          scene.camera_position = rot(
+            scene.camera_position,
+            axis,
+            perturb_angle
           );
-          let n = vec_norm(dragDiff);
-          scene.rot(rot_axis, n);
-          scene.set_camera_position(rot(scene.camera_position, rot_axis, n));
+          scene.draw();
         }
-        scene.draw();
-        dragStart = dragEnd;
+        await delay(10);
       }
-    });
-    let playing = true;
-    let pauseButton = Button(
-      document.getElementById("three-d-cube-pause-button"),
-      function() {
-        playing = !playing;
-        if (pauseButton.textContent == "Pause simulation") {
-          pauseButton.textContent = "Unpause simulation";
-        } else if (pauseButton.textContent == "Unpause simulation") {
-          pauseButton.textContent = "Pause simulation";
-        } else {
-          throw new Error();
+    })(300, 300);
+    (function three_d_graph(width, height) {
+      let canvas = prepare_canvas(width, height, "three-d-graph");
+      let zoom_ratio = 1;
+      let scene = new ThreeDScene(canvas);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_view_lims(
+        [-5 / zoom_ratio, 5 / zoom_ratio],
+        [-5 / zoom_ratio, 5 / zoom_ratio]
+      );
+      scene.set_view_mode("projection");
+      scene.rot_z(Math.PI / 4);
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
+      scene.set_camera_position(
+        rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4)
+      );
+      scene.add("x-axis", new Line3D([-5, 0, 0], [5, 0, 0]));
+      scene.add("y-axis", new Line3D([0, -5, 0], [0, 5, 0]));
+      scene.add("z-axis", new Line3D([0, 0, -5], [0, 0, 5]));
+      let drag = false;
+      let dragStart;
+      let dragEnd;
+      let dragDiff;
+      let mode = "Translate";
+      canvas.addEventListener("mousedown", function(event) {
+        dragStart = [
+          event.pageX - canvas.offsetLeft,
+          event.pageY - canvas.offsetTop
+        ];
+        drag = true;
+      });
+      canvas.addEventListener("mouseup", function(event) {
+        drag = false;
+      });
+      canvas.addEventListener("mousemove", function(event) {
+        if (drag) {
+          dragEnd = [
+            event.pageX - canvas.offsetLeft,
+            event.pageY - canvas.offsetTop
+          ];
+          dragDiff = vec_sub(
+            scene.c2s(dragStart[0], dragStart[1]),
+            scene.c2s(dragEnd[0], dragEnd[1])
+          );
+          if (mode == "Translate") {
+            let camera_frame = scene.get_camera_frame();
+            scene.translate(
+              vec3_sum(
+                vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
+                vec3_scale(get_column(camera_frame, 1), dragDiff[1])
+              )
+            );
+          } else if (mode == "Rotate") {
+            let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
+            let camera_frame = scene.get_camera_frame();
+            let rot_axis = vec3_sum(
+              vec3_scale(get_column(camera_frame, 0), v[0]),
+              vec3_scale(get_column(camera_frame, 1), v[1])
+            );
+            let n = vec_norm(dragDiff);
+            scene.rot(rot_axis, n);
+            scene.set_camera_position(rot(scene.camera_position, rot_axis, n));
+          }
+          scene.draw();
+          dragStart = dragEnd;
         }
-      }
-    );
-    pauseButton.textContent = "Pause simulation";
-    pauseButton.style.padding = "15px";
-    let modeButton = Button(
-      document.getElementById("three-d-cube-mode-button"),
-      function() {
-        if (mode == "Translate") {
-          mode = "Rotate";
-        } else if (mode == "Rotate") {
-          mode = "Translate";
-        } else {
-          throw new Error();
+      });
+      let modeButton = Button(
+        document.getElementById("three-d-graph-mode-button"),
+        function() {
+          if (mode == "Translate") {
+            mode = "Rotate";
+          } else if (mode == "Rotate") {
+            mode = "Translate";
+          } else {
+            throw new Error();
+          }
+          modeButton.textContent = `Mode = ${mode}`;
         }
-        modeButton.textContent = `Mode = ${mode}`;
-      }
-    );
-    modeButton.textContent = `Mode = ${mode}`;
-    modeButton.style.padding = "15px";
-    let axis = [1, 0, 0];
-    let perturb_angle = Math.PI / 200;
-    let perturb_axis = [0, 1, 0];
-    let perturb_axis_angle = Math.PI / 50;
-    while (true) {
-      if (playing) {
-        perturb_axis = rot(perturb_axis, axis, Math.random() * Math.PI * 2);
-        axis = rot(axis, perturb_axis, perturb_axis_angle);
-        scene.rot(axis, perturb_angle);
-        scene.camera_position = rot(scene.camera_position, axis, perturb_angle);
-        scene.draw();
-      }
-      await delay(10);
-    }
+      );
+      modeButton.textContent = `Mode = ${mode}`;
+      modeButton.style.padding = "15px";
+      scene.draw();
+    })(300, 300);
   });
 })();

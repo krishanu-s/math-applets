@@ -49,7 +49,7 @@ export function vec3_sub(x: Vec3D, y: Vec3D): Vec3D {
 export class ThreeDMObject extends MObject {}
 
 // A dot.
-export class Dot extends ThreeDMObject {
+export class Dot3D extends ThreeDMObject {
   center: Vec3D;
   radius: number;
   fill_color: string = "black";
@@ -64,7 +64,7 @@ export class Dot extends ThreeDMObject {
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
-    let p = scene.perspective_view(this.center);
+    let p = scene.camera_view(this.center);
     if (p != null) {
       let [cx, cy] = scene.v2c(p as Vec2D);
       ctx.beginPath();
@@ -78,6 +78,46 @@ export class Dot extends ThreeDMObject {
       );
       ctx.fill();
     }
+  }
+}
+
+// A line
+export class Line3D extends ThreeDMObject {
+  start: Vec3D;
+  end: Vec3D;
+  stroke_width: number = 0.04;
+  stroke_color: string = "black";
+  constructor(start: Vec3D, end: Vec3D) {
+    super();
+    this.start = start;
+    this.end = end;
+  }
+  // Moves the start and end points
+  move_start(v: Vec3D) {
+    this.start = v;
+  }
+  move_end(v: Vec3D) {
+    this.end = v;
+  }
+  draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
+
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
   }
 }
 
@@ -117,7 +157,7 @@ export class Cube extends ThreeDMObject {
     // Second, project the vertices of the cube onto the camera's view plane to get Vec2D's.
     const projected_vertices = [];
     for (let i = 0; i < vertices.length; i++) {
-      projected_vertices.push(scene.perspective_view(vertices[i] as Vec3D));
+      projected_vertices.push(scene.camera_view(vertices[i] as Vec3D));
     }
 
     // Third, convert these Vec2D's to canvas coordinates.
@@ -174,6 +214,7 @@ export class ThreeDScene extends Scene {
     [0, 0, 1],
   ];
   camera_position: Vec3D = [0, 0, 0];
+  mode: "perspective" | "projection" = "perspective";
   // Set the camera position
   set_camera_position(position: Vec3D) {
     this.camera_position = position;
@@ -217,6 +258,17 @@ export class ThreeDScene extends Scene {
       this.camera_frame_inv,
       rot_matrix(axis, -angle),
     );
+  }
+  // Modes of viewing/drawing
+  set_view_mode(mode: "perspective" | "projection") {
+    this.mode = mode;
+  }
+  camera_view(p: Vec3D): Vec2D | null {
+    if (this.mode == "perspective") {
+      return this.perspective_view(p);
+    } else {
+      return this.projection_view(p);
+    }
   }
   // Projects a 3D point onto the camera view plane. Does not include perspective.
   projection_view(p: Vec3D): Vec2D {
