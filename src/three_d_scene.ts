@@ -5,6 +5,8 @@ import {
   vec_scale,
   vec_sum_list,
   vec_sum,
+  vec_norm,
+  vec2_normalize,
 } from "./lib/base_geom.js";
 import { normalize, get_column, matmul_vec, rot } from "./lib/matvec";
 import {
@@ -55,6 +57,7 @@ function delay(ms: number) {
     let dragStart: Vec2D;
     let dragEnd: Vec2D;
     let dragDiff: Vec2D;
+    let mode: "Translate" | "Rotate" = "Translate";
     canvas.addEventListener("mousedown", function (event) {
       dragStart = [
         event.pageX - canvas.offsetLeft,
@@ -76,18 +79,36 @@ function delay(ms: number) {
           scene.c2s(dragStart[0], dragStart[1]),
           scene.c2s(dragEnd[0], dragEnd[1]),
         );
-        let camera_frame = scene.get_camera_frame();
-        scene.translate(
-          vec3_sum(
-            vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
-            vec3_scale(get_column(camera_frame, 1), dragDiff[1]),
-          ),
-        );
+        if (mode == "Translate") {
+          // Translation option
+          let camera_frame = scene.get_camera_frame();
+          scene.translate(
+            vec3_sum(
+              vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
+              vec3_scale(get_column(camera_frame, 1), dragDiff[1]),
+            ),
+          );
+        } else if (mode == "Rotate") {
+          // Rotation option
+          // Find the axis to rotate around based on the angle of dragDiff
+          let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
+          let camera_frame = scene.get_camera_frame();
+          let rot_axis = vec3_sum(
+            vec3_scale(get_column(camera_frame, 0), v[0]),
+            vec3_scale(get_column(camera_frame, 1), v[1]),
+          );
+
+          // Rotate the scene frame according to the norm, as well as the camera position,
+          let n = vec_norm(dragDiff);
+          scene.rot(rot_axis, n);
+          scene.set_camera_position(rot(scene.camera_position, rot_axis, n));
+        }
         scene.draw();
         dragStart = dragEnd;
       }
     });
 
+    // INTERACTIVE ROTATION
     // TODO Upgrade the above to an ArcBall
 
     // ANIMATION
@@ -106,9 +127,24 @@ function delay(ms: number) {
         }
       },
     );
-
     pauseButton.textContent = "Pause simulation";
     pauseButton.style.padding = "15px";
+
+    let modeButton = Button(
+      document.getElementById("three-d-cube-mode-button") as HTMLElement,
+      function () {
+        if (mode == "Translate") {
+          mode = "Rotate";
+        } else if (mode == "Rotate") {
+          mode = "Translate";
+        } else {
+          throw new Error();
+        }
+        modeButton.textContent = `Mode = ${mode}`;
+      },
+    );
+    modeButton.textContent = `Mode = ${mode}`;
+    modeButton.style.padding = "15px";
 
     let axis: Vec3D = [1, 0, 0];
     let perturb_angle = Math.PI / 200;

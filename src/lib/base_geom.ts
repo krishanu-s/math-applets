@@ -8,6 +8,15 @@ export function vec_norm(x: Vec2D): number {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
 
+export function vec2_normalize(x: Vec2D) {
+  let n = vec_norm(x);
+  if (n == 0) {
+    throw new Error("Can't normalize the zero vector");
+  } else {
+    return vec_scale(x, 1 / n);
+  }
+}
+
 export function vec_scale(x: Vec2D, factor: number): Vec2D {
   return [x[0] * factor, x[1] * factor];
 }

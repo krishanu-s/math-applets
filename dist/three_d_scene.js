@@ -114,6 +114,20 @@ function prepare_canvas(width, height, name) {
 }
 
 // src/lib/base_geom.ts
+function vec_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec2_normalize(x) {
+  let n = vec_norm(x);
+  if (n == 0) {
+    throw new Error("Can't normalize the zero vector");
+  } else {
+    return vec_scale(x, 1 / n);
+  }
+}
+function vec_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
 function vec_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
@@ -462,6 +476,7 @@ function delay(ms) {
     let dragStart;
     let dragEnd;
     let dragDiff;
+    let mode = "Translate";
     canvas.addEventListener("mousedown", function(event) {
       dragStart = [
         event.pageX - canvas.offsetLeft,
@@ -482,13 +497,25 @@ function delay(ms) {
           scene.c2s(dragStart[0], dragStart[1]),
           scene.c2s(dragEnd[0], dragEnd[1])
         );
-        let camera_frame = scene.get_camera_frame();
-        scene.translate(
-          vec3_sum(
-            vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
-            vec3_scale(get_column(camera_frame, 1), dragDiff[1])
-          )
-        );
+        if (mode == "Translate") {
+          let camera_frame = scene.get_camera_frame();
+          scene.translate(
+            vec3_sum(
+              vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
+              vec3_scale(get_column(camera_frame, 1), dragDiff[1])
+            )
+          );
+        } else if (mode == "Rotate") {
+          let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
+          let camera_frame = scene.get_camera_frame();
+          let rot_axis = vec3_sum(
+            vec3_scale(get_column(camera_frame, 0), v[0]),
+            vec3_scale(get_column(camera_frame, 1), v[1])
+          );
+          let n = vec_norm(dragDiff);
+          scene.rot(rot_axis, n);
+          scene.set_camera_position(rot(scene.camera_position, rot_axis, n));
+        }
         scene.draw();
         dragStart = dragEnd;
       }
@@ -509,6 +536,21 @@ function delay(ms) {
     );
     pauseButton.textContent = "Pause simulation";
     pauseButton.style.padding = "15px";
+    let modeButton = Button(
+      document.getElementById("three-d-cube-mode-button"),
+      function() {
+        if (mode == "Translate") {
+          mode = "Rotate";
+        } else if (mode == "Rotate") {
+          mode = "Translate";
+        } else {
+          throw new Error();
+        }
+        modeButton.textContent = `Mode = ${mode}`;
+      }
+    );
+    modeButton.textContent = `Mode = ${mode}`;
+    modeButton.style.padding = "15px";
     let axis = [1, 0, 0];
     let perturb_angle = Math.PI / 200;
     let perturb_axis = [0, 1, 0];
