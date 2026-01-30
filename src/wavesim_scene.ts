@@ -179,7 +179,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
         focus: Vec2D;
         eccentricity: number;
         scale: number;
-        other_focus: Vec2D;
+        other_focus: Vec2D | null;
         constructor(focus: Vec2D, eccentricity: number, scale: number) {
           this.focus = focus;
           this.eccentricity = eccentricity;
@@ -198,7 +198,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
           ];
         }
         // Calculates the other focus
-        calculate_other_focus(): Vec2D {
+        calculate_other_focus(): Vec2D | null {
           if (this.eccentricity == 1) {
             return null;
           } else {

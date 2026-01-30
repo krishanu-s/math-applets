@@ -11,7 +11,7 @@
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "esnext",
-    "target": "ES6",
+    "target": "ES2017",
     "types": [],
     // For nodejs:
     // "lib": ["esnext", "ES2015"],

@@ -199,7 +199,7 @@ function normalize(v) {
   if (n == 0) {
     throw new Error("Can't normalize the zero vector");
   } else {
-    return vec3_scale(v, n);
+    return vec3_scale(v, 1 / n);
   }
 }
 function cartesian_to_spherical(v) {
