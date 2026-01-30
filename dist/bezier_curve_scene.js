@@ -10687,6 +10687,13 @@ var Scene = class {
       this.ylims[1] - y * (this.ylims[1] - this.ylims[0]) / this.canvas.height
     ];
   }
+  // Converts canvas coordinates to viewing coordinates
+  c2v(x, y) {
+    return [
+      this.view_xlims[0] + x * (this.view_xlims[1] - this.view_xlims[0]) / this.canvas.width,
+      this.view_ylims[1] - y * (this.view_ylims[1] - this.view_ylims[0]) / this.canvas.height
+    ];
+  }
   // Adds a mobject to the scene
   add(name, mobj) {
     this.mobjects[name] = mobj;

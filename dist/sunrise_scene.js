@@ -53,6 +53,13 @@ var Scene = class {
       this.ylims[1] - y * (this.ylims[1] - this.ylims[0]) / this.canvas.height
     ];
   }
+  // Converts canvas coordinates to viewing coordinates
+  c2v(x, y) {
+    return [
+      this.view_xlims[0] + x * (this.view_xlims[1] - this.view_xlims[0]) / this.canvas.width,
+      this.view_ylims[1] - y * (this.view_ylims[1] - this.view_ylims[0]) / this.canvas.height
+    ];
+  }
   // Adds a mobject to the scene
   add(name, mobj) {
     this.mobjects[name] = mobj;
@@ -219,19 +226,25 @@ function matmul_vec(m, v) {
   }
   return result;
 }
-function rot_z(theta) {
+function rot_z_matrix(theta) {
   return [
     [Math.cos(theta), -Math.sin(theta), 0],
     [Math.sin(theta), Math.cos(theta), 0],
     [0, 0, 1]
   ];
 }
-function rot_y(theta) {
+function rot_z(v, theta) {
+  return matmul_vec(rot_z_matrix(theta), v);
+}
+function rot_y_matrix(theta) {
   return [
     [Math.cos(theta), 0, Math.sin(theta)],
     [0, 1, 0],
     [-Math.sin(theta), 0, Math.cos(theta)]
   ];
+}
+function rot_y(v, theta) {
+  return matmul_vec(rot_y_matrix(theta), v);
 }
 
 // src/lib/color.ts

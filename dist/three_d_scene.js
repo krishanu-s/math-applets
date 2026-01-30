@@ -53,6 +53,13 @@ var Scene = class {
       this.ylims[1] - y * (this.ylims[1] - this.ylims[0]) / this.canvas.height
     ];
   }
+  // Converts canvas coordinates to viewing coordinates
+  c2v(x, y) {
+    return [
+      this.view_xlims[0] + x * (this.view_xlims[1] - this.view_xlims[0]) / this.canvas.width,
+      this.view_ylims[1] - y * (this.view_ylims[1] - this.view_ylims[0]) / this.canvas.height
+    ];
+  }
   // Adds a mobject to the scene
   add(name, mobj) {
     this.mobjects[name] = mobj;
@@ -106,6 +113,11 @@ function prepare_canvas(width, height, name) {
   return canvas;
 }
 
+// src/lib/base_geom.ts
+function vec_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
+
 // src/lib/three_d.ts
 function vec3_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2);
@@ -123,7 +135,37 @@ function vec3_scale(x, factor) {
 function vec3_sum(x, y) {
   return [x[0] + y[0], x[1] + y[1], x[2] + y[2]];
 }
+function vec3_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
+}
 var ThreeDMObject = class extends MObject {
+};
+var Dot = class extends ThreeDMObject {
+  constructor(center, radius) {
+    super();
+    this.fill_color = "black";
+    this.center = center;
+    this.radius = radius;
+  }
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.fillStyle = this.fill_color;
+    ctx.globalAlpha = this.alpha;
+    let p = scene.perspective_view(this.center);
+    if (p != null) {
+      let [cx, cy] = scene.v2c(p);
+      ctx.beginPath();
+      ctx.arc(
+        cx,
+        cy,
+        this.radius * canvas.width / (scene.view_xlims[1] - scene.view_xlims[0]),
+        0,
+        2 * Math.PI
+      );
+      ctx.fill();
+    }
+  }
 };
 var Cube = class extends ThreeDMObject {
   constructor(center, size) {
@@ -152,58 +194,113 @@ var Cube = class extends ThreeDMObject {
     ];
     const projected_vertices = [];
     for (let i = 0; i < vertices.length; i++) {
-      projected_vertices.push(
-        scene.project_to_camera_view(vertices[i])
-      );
+      projected_vertices.push(scene.perspective_view(vertices[i]));
     }
+    let v;
     const canvas_vertices = [];
     for (let i = 0; i < vertices.length; i++) {
-      canvas_vertices.push(scene.v2c(projected_vertices[i]));
+      let v2 = projected_vertices[i];
+      if (v2 == null) {
+        canvas_vertices.push(v2);
+      } else {
+        canvas_vertices.push(scene.v2c(v2));
+      }
     }
     let start_x, start_y, end_x, end_y;
     for (let i = 0; i < 8; i++) {
       for (let j = 0; j < i; j++) {
         if ((i ^ j) == 1 || (i ^ j) == 2 || (i ^ j) == 4) {
-          [start_x, start_y] = canvas_vertices[i];
-          [end_x, end_y] = canvas_vertices[j];
-          ctx.beginPath();
-          ctx.moveTo(start_x, start_y);
-          ctx.lineTo(end_x, end_y);
-          ctx.stroke();
+          if (canvas_vertices[i] == null || canvas_vertices[j] == null) {
+            continue;
+          } else {
+            [start_x, start_y] = canvas_vertices[i];
+            [end_x, end_y] = canvas_vertices[j];
+            ctx.beginPath();
+            ctx.moveTo(start_x, start_y);
+            ctx.lineTo(end_x, end_y);
+            ctx.stroke();
+          }
         }
       }
     }
   }
 };
 var ThreeDScene = class extends Scene {
-  constructor(canvas) {
-    super(canvas);
-    this.camera_inv = [
+  constructor() {
+    super(...arguments);
+    // Inverse of the camera matrix
+    // TODO Also give the camera a position vector
+    this.camera_frame_inv = [
       [1, 0, 0],
       [0, 1, 0],
       [0, 0, 1]
     ];
+    this.camera_position = [0, 0, 0];
+  }
+  // Set the camera position
+  set_camera_position(position) {
+    this.camera_position = position;
+  }
+  // Translate the camera matrix by a given vector
+  translate(vec) {
+    this.camera_position = vec3_sum(this.camera_position, vec);
+  }
+  // Set the camera frame inverse
+  set_camera_frame_inv(frame_inv) {
+    this.camera_frame_inv = frame_inv;
+  }
+  // Get the camera frame matrix
+  get_camera_frame() {
+    return mat_inv(this.camera_frame_inv);
   }
   // Rotate the camera matrix around the z-axis.
   rot_z(angle) {
-    this.camera_inv = matmul_mat(this.camera_inv, rot_z(angle));
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_z_matrix(-angle)
+    );
   }
   // Rotate the camera matrix around the y-axis.
   rot_y(angle) {
-    this.camera_inv = matmul_mat(this.camera_inv, rot_y(angle));
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_y_matrix(-angle)
+    );
   }
   // Rotate the camera matrix around the x-axis.
   rot_x(angle) {
-    this.camera_inv = matmul_mat(this.camera_inv, rot_x(angle));
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_x_matrix(-angle)
+    );
   }
   // Rotate the camera matrix around a given axis
   rot(axis, angle) {
-    this.camera_inv = matmul_mat(this.camera_inv, rot(axis, angle));
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_matrix(axis, -angle)
+    );
   }
-  // Projects a 3D point onto the camera view plane.
-  project_to_camera_view(p) {
-    let [vx, vy, vz] = matmul_vec(this.camera_inv, p);
+  // Projects a 3D point onto the camera view plane. Does not include perspective.
+  projection_view(p) {
+    let [vx, vy, vz] = matmul_vec(
+      this.camera_frame_inv,
+      vec3_sub(p, this.camera_position)
+    );
     return [vx, vy];
+  }
+  // Projects a 3D point onto the camera view plane, and then divides by the third coordinate.
+  // Returns null if the third coordinate is nonpositive (i.e., the point is behind the camera).
+  perspective_view(p) {
+    let [vx, vy, vz] = matmul_vec(
+      this.camera_frame_inv,
+      vec3_sub(p, this.camera_position)
+    );
+    if (vz <= 0) {
+      return null;
+    } else {
+      return [vx / vz, vy / vz];
+    }
   }
   // Draw
 };
@@ -215,6 +312,33 @@ function transpose(m) {
     [m[0][1], m[1][1], m[2][1]],
     [m[0][2], m[1][2], m[2][2]]
   ];
+}
+function mat_inv(m) {
+  let det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  if (det == 0) {
+    throw new Error("Can't invert a singular matrix");
+  }
+  let inv_det = 1 / det;
+  return [
+    [
+      inv_det * (m[1][1] * m[2][2] - m[1][2] * m[2][1]),
+      inv_det * (m[0][2] * m[2][1] - m[0][1] * m[2][2]),
+      inv_det * (m[0][1] * m[1][2] - m[0][2] * m[1][1])
+    ],
+    [
+      inv_det * (m[1][2] * m[2][0] - m[1][0] * m[2][2]),
+      inv_det * (m[0][0] * m[2][2] - m[0][2] * m[2][0]),
+      inv_det * (m[0][2] * m[1][0] - m[0][0] * m[1][2])
+    ],
+    [
+      inv_det * (m[1][0] * m[2][1] - m[1][1] * m[2][0]),
+      inv_det * (m[0][1] * m[2][0] - m[0][0] * m[2][1]),
+      inv_det * (m[0][0] * m[1][1] - m[0][1] * m[1][0])
+    ]
+  ];
+}
+function get_column(m, i) {
+  return [m[0][i], m[1][i], m[2][i]];
 }
 function normalize(v) {
   let n = vec3_norm(v);
@@ -238,39 +362,59 @@ function matmul_mat(m1, m2) {
   }
   return transpose(result);
 }
-function rot_z(theta) {
+function rot_z_matrix(theta) {
   return [
     [Math.cos(theta), -Math.sin(theta), 0],
     [Math.sin(theta), Math.cos(theta), 0],
     [0, 0, 1]
   ];
 }
-function rot_y(theta) {
+function rot_z(v, theta) {
+  return matmul_vec(rot_z_matrix(theta), v);
+}
+function rot_y_matrix(theta) {
   return [
     [Math.cos(theta), 0, Math.sin(theta)],
     [0, 1, 0],
     [-Math.sin(theta), 0, Math.cos(theta)]
   ];
 }
-function rot_x(theta) {
+function rot_y(v, theta) {
+  return matmul_vec(rot_y_matrix(theta), v);
+}
+function rot_x_matrix(theta) {
   return [
     [1, 0, 0],
     [0, Math.cos(theta), -Math.sin(theta)],
     [0, Math.sin(theta), Math.cos(theta)]
   ];
 }
-function rot(axis, angle) {
+function rot_matrix(axis, angle) {
   let [x, y, z] = normalize(axis);
   let theta = Math.acos(z);
   let phi = Math.acos(x / Math.sin(theta));
   if (y / Math.sin(theta) < 0) {
     phi = 2 * Math.PI - phi;
   }
-  let result = rot_z(-phi);
-  result = matmul_mat(rot_y(-theta), result);
-  result = matmul_mat(rot_z(angle), result);
-  result = matmul_mat(rot_y(theta), result);
-  result = matmul_mat(rot_z(phi), result);
+  let result = rot_z_matrix(-phi);
+  result = matmul_mat(rot_y_matrix(-theta), result);
+  result = matmul_mat(rot_z_matrix(angle), result);
+  result = matmul_mat(rot_y_matrix(theta), result);
+  result = matmul_mat(rot_z_matrix(phi), result);
+  return result;
+}
+function rot(v, axis, angle) {
+  let [x, y, z] = normalize(axis);
+  let theta = Math.acos(z);
+  let phi = Math.acos(x / Math.sin(theta));
+  if (y / Math.sin(theta) < 0) {
+    phi = 2 * Math.PI - phi;
+  }
+  let result = rot_z(v, -phi);
+  result = rot_y(result, -theta);
+  result = rot_z(result, angle);
+  result = rot_y(result, theta);
+  result = rot_z(result, phi);
   return result;
 }
 
@@ -283,25 +427,67 @@ function delay(ms) {
     let width = 300;
     let height = 300;
     let canvas = prepare_canvas(width, height, "three-d-cube");
+    let zoom_ratio = 3.5;
     let scene = new ThreeDScene(canvas);
     scene.set_frame_lims([-5, 5], [-5, 5]);
-    scene.add("cube", new Cube([0, 0, 0], 2));
+    scene.set_view_lims(
+      [-5 / zoom_ratio, 5 / zoom_ratio],
+      [-5 / zoom_ratio, 5 / zoom_ratio]
+    );
+    scene.add("cube", new Cube([0, 0, 0], 3));
+    scene.add("dot", new Dot([0, 0, 0], 0.05));
     scene.rot_z(Math.PI / 4);
     scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
+    scene.set_camera_position(
+      rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4)
+    );
     scene.draw();
+    let drag = false;
+    let dragStart;
+    let dragEnd;
+    let dragDiff;
+    canvas.addEventListener("mousedown", function(event) {
+      dragStart = [
+        event.pageX - canvas.offsetLeft,
+        event.pageY - canvas.offsetTop
+      ];
+      drag = true;
+    });
+    canvas.addEventListener("mouseup", function(event) {
+      drag = false;
+    });
+    canvas.addEventListener("mousemove", function(event) {
+      if (drag) {
+        dragEnd = [
+          event.pageX - canvas.offsetLeft,
+          event.pageY - canvas.offsetTop
+        ];
+        dragDiff = vec_sub(
+          scene.c2s(dragEnd[0], dragEnd[1]),
+          scene.c2s(dragStart[0], dragStart[1])
+        );
+        let camera_frame = scene.get_camera_frame();
+        scene.translate(
+          vec3_sum(
+            vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
+            vec3_scale(get_column(camera_frame, 1), dragDiff[1])
+          )
+        );
+        scene.draw();
+        dragStart = dragEnd;
+      }
+    });
     let axis = [1, 0, 0];
+    let perturb_angle = Math.PI / 200;
     let perturb_axis = [0, 1, 0];
     let perturb_axis_angle = Math.PI / 50;
-    let perturb_angle = Math.PI / 100;
     for (let step = 0; step < 1e3; step++) {
-      perturb_axis = matmul_vec(
-        rot(axis, Math.random() * Math.PI * 2),
-        perturb_axis
-      );
-      axis = matmul_vec(rot(perturb_axis, perturb_axis_angle), axis);
+      perturb_axis = rot(perturb_axis, axis, Math.random() * Math.PI * 2);
+      axis = rot(axis, perturb_axis, perturb_axis_angle);
       scene.rot(axis, perturb_angle);
+      scene.camera_position = rot(scene.camera_position, axis, perturb_angle);
       scene.draw();
-      await delay(30);
+      await delay(10);
     }
   });
 })();
