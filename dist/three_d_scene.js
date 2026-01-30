@@ -507,7 +507,7 @@ function delay(ms) {
         }
       }
     );
-    pauseButton.textContent = "Unpause simulation";
+    pauseButton.textContent = "Pause simulation";
     pauseButton.style.padding = "15px";
     let axis = [1, 0, 0];
     let perturb_angle = Math.PI / 200;

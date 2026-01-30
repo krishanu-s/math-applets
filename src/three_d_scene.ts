@@ -107,7 +107,7 @@ function delay(ms: number) {
       },
     );
 
-    pauseButton.textContent = "Unpause simulation";
+    pauseButton.textContent = "Pause simulation";
     pauseButton.style.padding = "15px";
 
     let axis: Vec3D = [1, 0, 0];
