@@ -73,8 +73,8 @@ function delay(ms: number) {
           event.pageY - canvas.offsetTop,
         ];
         dragDiff = vec_sub(
-          scene.c2s(dragEnd[0], dragEnd[1]),
           scene.c2s(dragStart[0], dragStart[1]),
+          scene.c2s(dragEnd[0], dragEnd[1]),
         );
         let camera_frame = scene.get_camera_frame();
         scene.translate(
@@ -92,24 +92,44 @@ function delay(ms: number) {
 
     // ANIMATION
     // Vary an axis continuously, and rotate the camera angle by little kicks around this axis
+    let playing = true;
+    let pauseButton = Button(
+      document.getElementById("three-d-cube-pause-button") as HTMLElement,
+      function () {
+        playing = !playing;
+        if (pauseButton.textContent == "Pause simulation") {
+          pauseButton.textContent = "Unpause simulation";
+        } else if (pauseButton.textContent == "Unpause simulation") {
+          pauseButton.textContent = "Pause simulation";
+        } else {
+          throw new Error();
+        }
+      },
+    );
+
+    pauseButton.textContent = "Unpause simulation";
+    pauseButton.style.padding = "15px";
+
     let axis: Vec3D = [1, 0, 0];
     let perturb_angle = Math.PI / 200;
     let perturb_axis: Vec3D = [0, 1, 0];
     let perturb_axis_angle = Math.PI / 50;
-    for (let step = 0; step < 1000; step++) {
-      // Make the perturbation axis into a randomly chosen vector orthogonal
-      // to the axis, by rotating by a random angle around the axis
-      perturb_axis = rot(perturb_axis, axis, Math.random() * Math.PI * 2);
+    while (true) {
+      if (playing) {
+        // Make the perturbation axis into a randomly chosen vector orthogonal
+        // to the axis, by rotating by a random angle around the axis
+        perturb_axis = rot(perturb_axis, axis, Math.random() * Math.PI * 2);
 
-      // Rotate the axis around this random perturb axis to perturb it slightly
-      axis = rot(axis, perturb_axis, perturb_axis_angle);
+        // Rotate the axis around this random perturb axis to perturb it slightly
+        axis = rot(axis, perturb_axis, perturb_axis_angle);
 
-      // Rotate the camera frame and position around this new axis
-      scene.rot(axis, perturb_angle);
-      scene.camera_position = rot(scene.camera_position, axis, perturb_angle);
+        // Rotate the camera frame and position around this new axis
+        scene.rot(axis, perturb_angle);
+        scene.camera_position = rot(scene.camera_position, axis, perturb_angle);
 
-      // Redraw the scene
-      scene.draw();
+        // Redraw the scene
+        scene.draw();
+      }
       await delay(10);
     }
   });

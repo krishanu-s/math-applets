@@ -418,6 +418,22 @@ function rot(v, axis, angle) {
   return result;
 }
 
+// src/lib/interactive.ts
+function Button(container, callback) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "interactiveButton";
+  container.appendChild(button);
+  button.addEventListener("click", (event) => {
+    callback();
+    button.style.transform = "scale(0.95)";
+    setTimeout(() => {
+      button.style.transform = "scale(1)";
+    }, 100);
+  });
+  return button;
+}
+
 // src/three_d_scene.ts
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -463,8 +479,8 @@ function delay(ms) {
           event.pageY - canvas.offsetTop
         ];
         dragDiff = vec_sub(
-          scene.c2s(dragEnd[0], dragEnd[1]),
-          scene.c2s(dragStart[0], dragStart[1])
+          scene.c2s(dragStart[0], dragStart[1]),
+          scene.c2s(dragEnd[0], dragEnd[1])
         );
         let camera_frame = scene.get_camera_frame();
         scene.translate(
@@ -477,16 +493,34 @@ function delay(ms) {
         dragStart = dragEnd;
       }
     });
+    let playing = true;
+    let pauseButton = Button(
+      document.getElementById("three-d-cube-pause-button"),
+      function() {
+        playing = !playing;
+        if (pauseButton.textContent == "Pause simulation") {
+          pauseButton.textContent = "Unpause simulation";
+        } else if (pauseButton.textContent == "Unpause simulation") {
+          pauseButton.textContent = "Pause simulation";
+        } else {
+          throw new Error();
+        }
+      }
+    );
+    pauseButton.textContent = "Unpause simulation";
+    pauseButton.style.padding = "15px";
     let axis = [1, 0, 0];
     let perturb_angle = Math.PI / 200;
     let perturb_axis = [0, 1, 0];
     let perturb_axis_angle = Math.PI / 50;
-    for (let step = 0; step < 1e3; step++) {
-      perturb_axis = rot(perturb_axis, axis, Math.random() * Math.PI * 2);
-      axis = rot(axis, perturb_axis, perturb_axis_angle);
-      scene.rot(axis, perturb_angle);
-      scene.camera_position = rot(scene.camera_position, axis, perturb_angle);
-      scene.draw();
+    while (true) {
+      if (playing) {
+        perturb_axis = rot(perturb_axis, axis, Math.random() * Math.PI * 2);
+        axis = rot(axis, perturb_axis, perturb_axis_angle);
+        scene.rot(axis, perturb_angle);
+        scene.camera_position = rot(scene.camera_position, axis, perturb_angle);
+        scene.draw();
+      }
       await delay(10);
     }
   });
