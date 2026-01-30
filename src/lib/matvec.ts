@@ -1,36 +1,17 @@
 // 3D and 4D matrix operations
 
-export type Vec3D = [number, number, number];
+import { Vec3D, vec3_dot, vec3_norm, vec3_scale } from "./three_d.js";
+
 export type SphericalVec3D = [number, number];
 export type Mat3by3 = [Vec3D, Vec3D, Vec3D];
 
-export function vecdot(v: Vec3D, w: Vec3D): number {
-  let result = 0;
-  for (let i = 0; i < 3; i++) {
-    result += (v[i] as number) * (w[i] as number);
-  }
-  return result;
-}
-
-export function vecnorm(v: Vec3D): number {
-  let result = 0;
-  for (let i = 0; i < 3; i++) {
-    result += (v[i] as number) ** 2;
-  }
-  return result;
-}
-
-export function vecscale(v: Vec3D, c: number): Vec3D {
-  return [c * v[0], c * v[1], c * v[2]];
-}
-
 // Projects a nonzero 3D vector to the unit sphere
 export function normalize(v: Vec3D): Vec3D {
-  let n = vecnorm(v);
+  let n = vec3_norm(v);
   if (n == 0) {
     throw new Error("Can't normalize the zero vector");
   } else {
-    return vecscale(v, n);
+    return vec3_scale(v, n);
   }
 }
 
@@ -59,7 +40,7 @@ export function cartesian_to_spherical(v: Vec3D): SphericalVec3D {
 export function matmul_vec(m: Mat3by3, v: Vec3D): Vec3D {
   let result: Vec3D = [0, 0, 0];
   for (let i = 0; i < 3; i++) {
-    result[i] = vecdot(m[i] as Vec3D, v);
+    result[i] = vec3_dot(m[i] as Vec3D, v);
   }
   return result;
 }

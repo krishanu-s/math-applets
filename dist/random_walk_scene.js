@@ -29,10 +29,10 @@ var Scene = class {
     ];
   }
   // Converts viewing coordinates to canvas coordinates
-  v2c(x, y) {
+  v2c(v) {
     return [
-      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
-      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
+      this.canvas.width * (v[0] - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - v[1]) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -121,7 +121,7 @@ function prepare_canvas(width, height, name) {
       let scene = new Scene(canvas);
       scene.set_frame_lims([-30, 30], [-30, 30]);
       let [x, y] = [0, 0];
-      let [cx, cy] = scene.v2c(x, y);
+      let [cx, cy] = scene.v2c([x, y]);
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       let dx, dy;
@@ -129,7 +129,7 @@ function prepare_canvas(width, height, name) {
         [dx, dy] = pick_random_step(2);
         x += dx;
         y += dy;
-        [cx, cy] = scene.v2c(x, y);
+        [cx, cy] = scene.v2c([x, y]);
         console.log(cx, cy);
         ctx.lineTo(cx, cy);
         ctx.stroke();

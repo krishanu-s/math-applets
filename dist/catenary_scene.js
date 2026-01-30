@@ -10671,10 +10671,10 @@ var Scene = class {
     ];
   }
   // Converts viewing coordinates to canvas coordinates
-  v2c(x, y) {
+  v2c(v) {
     return [
-      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
-      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
+      this.canvas.width * (v[0] - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - v[1]) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -10760,8 +10760,8 @@ var Line = class extends MObject {
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    let [start_x, start_y] = scene.v2c(this.start[0], this.start[1]);
-    let [end_x, end_y] = scene.v2c(this.end[0], this.end[1]);
+    let [start_x, start_y] = scene.v2c(this.start);
+    let [end_x, end_y] = scene.v2c(this.end);
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;

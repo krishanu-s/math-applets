@@ -78,19 +78,16 @@ export class ParametricFunction extends MObject {
     let anchors = np.stack(points, 0);
 
     let a_x, a_y;
-    [a_x, a_y] = scene.v2c(
-      anchors.get([0, 0]) as number,
-      anchors.get([0, 1]) as number,
-    );
+    [a_x, a_y] = scene.v2c([anchors.get([0, 0]), anchors.get([0, 1])] as Vec2D);
     ctx.beginPath();
     ctx.moveTo(a_x, a_y);
 
     if (this.mode == "jagged") {
       for (let i = 0; i < this.num_steps; i++) {
-        [a_x, a_y] = scene.v2c(
-          anchors.get([i + 1, 0]) as number,
-          anchors.get([i + 1, 1]) as number,
-        );
+        [a_x, a_y] = scene.v2c([
+          anchors.get([i + 1, 0]),
+          anchors.get([i + 1, 1]),
+        ] as Vec2D);
         ctx.lineTo(a_x, a_y);
         ctx.stroke();
       }
@@ -101,18 +98,18 @@ export class ParametricFunction extends MObject {
       // Draw
       let h1_x, h1_y, h2_x, h2_y;
       for (let i = 0; i < this.num_steps; i++) {
-        [h1_x, h1_y] = scene.v2c(
-          handles_1.get([i, 0]) as number,
-          handles_1.get([i, 1]) as number,
-        );
-        [h2_x, h2_y] = scene.v2c(
-          handles_2.get([i, 0]) as number,
-          handles_2.get([i, 1]) as number,
-        );
-        [a_x, a_y] = scene.v2c(
-          anchors.get([i + 1, 0]) as number,
-          anchors.get([i + 1, 1]) as number,
-        );
+        [h1_x, h1_y] = scene.v2c([
+          handles_1.get([i, 0]),
+          handles_1.get([i, 1]),
+        ] as Vec2D);
+        [h2_x, h2_y] = scene.v2c([
+          handles_2.get([i, 0]),
+          handles_2.get([i, 1]),
+        ] as Vec2D);
+        [a_x, a_y] = scene.v2c([
+          anchors.get([i + 1, 0]),
+          anchors.get([i + 1, 1]),
+        ] as Vec2D);
         ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
         ctx.stroke();
       }

@@ -30,7 +30,7 @@ import { Dot, Line, Vec2D } from "./lib/base_geom.js";
       scene.set_frame_lims([-30, 30], [-30, 30]);
 
       let [x, y] = [0, 0];
-      let [cx, cy] = scene.v2c(x, y);
+      let [cx, cy] = scene.v2c([x, y]);
       ctx.beginPath();
       ctx.moveTo(cx, cy);
 
@@ -40,7 +40,7 @@ import { Dot, Line, Vec2D } from "./lib/base_geom.js";
         [dx, dy] = pick_random_step(2) as Vec2D;
         x += dx;
         y += dy;
-        [cx, cy] = scene.v2c(x, y);
+        [cx, cy] = scene.v2c([x, y]);
         console.log(cx, cy);
         ctx.lineTo(cx, cy);
         ctx.stroke();

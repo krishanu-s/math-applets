@@ -10671,10 +10671,10 @@ var Scene = class {
     ];
   }
   // Converts viewing coordinates to canvas coordinates
-  v2c(x, y) {
+  v2c(v) {
     return [
-      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
-      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
+      this.canvas.width * (v[0] - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - v[1]) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -10918,18 +10918,15 @@ var ParametricFunction = class extends MObject {
     }
     let anchors = np2.stack(points, 0);
     let a_x, a_y;
-    [a_x, a_y] = scene.v2c(
-      anchors.get([0, 0]),
-      anchors.get([0, 1])
-    );
+    [a_x, a_y] = scene.v2c([anchors.get([0, 0]), anchors.get([0, 1])]);
     ctx.beginPath();
     ctx.moveTo(a_x, a_y);
     if (this.mode == "jagged") {
       for (let i = 0; i < this.num_steps; i++) {
-        [a_x, a_y] = scene.v2c(
+        [a_x, a_y] = scene.v2c([
           anchors.get([i + 1, 0]),
           anchors.get([i + 1, 1])
-        );
+        ]);
         ctx.lineTo(a_x, a_y);
         ctx.stroke();
       }
@@ -10937,18 +10934,18 @@ var ParametricFunction = class extends MObject {
       let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
       let h1_x, h1_y, h2_x, h2_y;
       for (let i = 0; i < this.num_steps; i++) {
-        [h1_x, h1_y] = scene.v2c(
+        [h1_x, h1_y] = scene.v2c([
           handles_1.get([i, 0]),
           handles_1.get([i, 1])
-        );
-        [h2_x, h2_y] = scene.v2c(
+        ]);
+        [h2_x, h2_y] = scene.v2c([
           handles_2.get([i, 0]),
           handles_2.get([i, 1])
-        );
-        [a_x, a_y] = scene.v2c(
+        ]);
+        [a_x, a_y] = scene.v2c([
           anchors.get([i + 1, 0]),
           anchors.get([i + 1, 1])
-        );
+        ]);
         ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
         ctx.stroke();
       }

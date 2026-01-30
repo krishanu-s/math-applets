@@ -1,5 +1,5 @@
 import { MObject, Scene, prepare_canvas } from "./base.js";
-import { Dot, Line } from "./base_geom.js";
+import { Dot, Line, Arrow } from "./base_geom.js";
 import { LineSpring } from "./spring.js";
 import { Slider, Button } from "./interactive.js";
 import { clamp, sigmoid } from "./base.js";
@@ -149,13 +149,6 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 }),
     );
 
-    // Add dots which track with uValues in simulator
-    for (let i = 0; i < width; i++) {
-      pos = this.eq_position(i + 1);
-      let dot = new Dot(pos[0], pos[1], { radius: 0.5 / Math.sqrt(width) });
-      this.add(`p_${i + 1}`, dot);
-    }
-
     // Add lines/springs which connect dots
     let eq_length;
     for (let i = 1; i < width; i++) {
@@ -167,6 +160,24 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       eq_length = vec_norm(vec_sub(pos, next_pos));
       line.set_eq_length(eq_length);
       this.add(`l_${i}`, line);
+    }
+
+    // Add force arrows
+    for (let i = 0; i < width; i++) {
+      pos = this.eq_position(i + 1);
+      let arrow = new Arrow([pos[0], pos[1]], [pos[0], pos[1]], {
+        stroke_width: 0.05,
+        stroke_color: "red",
+        stroke_opacity: 0.5,
+      });
+      this.add(`arr${i + 1}`, arrow);
+    }
+
+    // Add dots which track with uValues in simulator
+    for (let i = 0; i < width; i++) {
+      pos = this.eq_position(i + 1);
+      let dot = new Dot(pos[0], pos[1], { radius: 0.5 / Math.sqrt(width) });
+      this.add(`p_${i + 1}`, dot);
     }
 
     // Add a Bezier curve which tracks with uValues in simulator
@@ -219,18 +230,30 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
   }
   // Moves the dots and curve in the scene to the positions dictated by the wave simulation.
   update_mobjects() {
-    let dot, line;
+    let dot, line, arrow;
     let pos, next_pos;
     let disp, next_disp;
     let sim = this.sim();
     let u = sim.get_uValues();
+
+    let deriv = sim._get_vValues(sim.dot(sim.vals, sim.time));
+
     let anchors: Vec2D[] = [];
     for (let i = 0; i < this.width(); i++) {
       pos = this.eq_position(i + 1);
       disp = u[i] as number;
+
+      // Update dots
       dot = this.get_mobj(`p_${i + 1}`) as Dot;
       dot.move_to(pos[0], pos[1] + disp);
+
+      // Update arrows
+      arrow = this.get_mobj(`arr${i + 1}`) as Arrow;
+      arrow.move_start(pos[0], pos[1] + disp);
+      arrow.move_end(pos[0], pos[1] + disp + (deriv[i] as number) / 5);
+
       anchors.push([pos[0], pos[1] + disp]);
+      // Update connecting lines
       if (i < this.width() - 1) {
         next_pos = this.eq_position(i + 2);
         next_disp = u[i + 1] as number;
@@ -239,6 +262,8 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
         line.move_end(next_pos[0], next_pos[1] + next_disp);
       }
     }
+
+    // Update curve
     let curve = this.get_mobj("curve") as BezierSpline;
     curve.set_anchors(anchors);
   }

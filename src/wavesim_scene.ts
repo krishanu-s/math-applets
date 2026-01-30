@@ -598,7 +598,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       sim.set_attr("wave_propagation_speed", 20.0);
       let w = 8.0;
       let a = 8.0;
-      let [px, py] = scene.v2c(0, 0);
+      let [px, py] = scene.v2c([0, 0]);
       sim.add_point_source(new PointSource(px, py, w, a, 0.0));
 
       // Button which pauses/unpauses the simulation

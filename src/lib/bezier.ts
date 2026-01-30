@@ -167,10 +167,10 @@ export class BezierCurve extends MObject {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    let [start_x, start_y] = scene.v2c(this.start[0], this.start[1]);
-    let [h1_x, h1_y] = scene.v2c(this.h1[0], this.h1[1]);
-    let [h2_x, h2_y] = scene.v2c(this.h2[0], this.h2[1]);
-    let [end_x, end_y] = scene.v2c(this.end[0], this.end[1]);
+    let [start_x, start_y] = scene.v2c(this.start);
+    let [h1_x, h1_y] = scene.v2c(this.h1);
+    let [h2_x, h2_y] = scene.v2c(this.h2);
+    let [end_x, end_y] = scene.v2c(this.end);
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = (this.width * canvas.width) / (xmax - xmin);
     ctx.beginPath();
@@ -226,7 +226,7 @@ export class BezierSpline extends MObject {
 
     let a_x, a_y, a;
     a = this.get_anchor(0);
-    [a_x, a_y] = scene.v2c(a[0], a[1]);
+    [a_x, a_y] = scene.v2c(a);
     ctx.beginPath();
     ctx.moveTo(a_x, a_y);
 
@@ -238,16 +238,16 @@ export class BezierSpline extends MObject {
     // Draw
     let h1_x, h1_y, h2_x, h2_y;
     for (let i = 0; i < this.num_steps; i++) {
-      [h1_x, h1_y] = scene.v2c(
-        handles_1.get([i, 0]) as number,
-        handles_1.get([i, 1]) as number,
-      );
-      [h2_x, h2_y] = scene.v2c(
-        handles_2.get([i, 0]) as number,
-        handles_2.get([i, 1]) as number,
-      );
+      [h1_x, h1_y] = scene.v2c([
+        handles_1.get([i, 0]),
+        handles_1.get([i, 1]),
+      ] as Vec2D);
+      [h2_x, h2_y] = scene.v2c([
+        handles_2.get([i, 0]),
+        handles_2.get([i, 1]),
+      ] as Vec2D);
       a = this.get_anchor(i + 1);
-      [a_x, a_y] = scene.v2c(a[0], a[1]);
+      [a_x, a_y] = scene.v2c(a);
       ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
       ctx.stroke();
     }

@@ -40,10 +40,10 @@ var Scene = class {
     ];
   }
   // Converts viewing coordinates to canvas coordinates
-  v2c(x, y) {
+  v2c(v) {
     return [
-      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
-      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
+      this.canvas.width * (v[0] - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - v[1]) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -114,8 +114,8 @@ var Line = class extends MObject {
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    let [start_x, start_y] = scene.v2c(this.start[0], this.start[1]);
-    let [end_x, end_y] = scene.v2c(this.end[0], this.end[1]);
+    let [start_x, start_y] = scene.v2c(this.start);
+    let [end_x, end_y] = scene.v2c(this.end);
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
@@ -178,30 +178,28 @@ function Slider(container, callback, kwargs) {
   return slider;
 }
 
-// src/lib/matvec.ts
-function vecdot(v, w) {
+// src/lib/three_d.ts
+function vec3_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2);
+}
+function vec3_dot(v, w) {
   let result = 0;
   for (let i = 0; i < 3; i++) {
     result += v[i] * w[i];
   }
   return result;
 }
-function vecnorm(v) {
-  let result = 0;
-  for (let i = 0; i < 3; i++) {
-    result += v[i] ** 2;
-  }
-  return result;
+function vec3_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor, x[2] * factor];
 }
-function vecscale(v, c) {
-  return [c * v[0], c * v[1], c * v[2]];
-}
+
+// src/lib/matvec.ts
 function normalize(v) {
-  let n = vecnorm(v);
+  let n = vec3_norm(v);
   if (n == 0) {
     throw new Error("Can't normalize the zero vector");
   } else {
-    return vecscale(v, n);
+    return vec3_scale(v, n);
   }
 }
 function cartesian_to_spherical(v) {
@@ -217,7 +215,7 @@ function cartesian_to_spherical(v) {
 function matmul_vec(m, v) {
   let result = [0, 0, 0];
   for (let i = 0; i < 3; i++) {
-    result[i] = vecdot(m[i], v);
+    result[i] = vec3_dot(m[i], v);
   }
   return result;
 }

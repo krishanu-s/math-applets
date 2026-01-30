@@ -1,3 +1,5 @@
+import { Vec2D } from "./base_geom";
+
 // *** FUNCTIONS ***
 
 // Clamps a number to the interval [xmin, xmax].
@@ -85,11 +87,11 @@ export class Scene {
     ];
   }
   // Converts viewing coordinates to canvas coordinates
-  v2c(x: number, y: number): [number, number] {
+  v2c(v: Vec2D): Vec2D {
     return [
-      (this.canvas.width * (x - this.view_xlims[0])) /
+      (this.canvas.width * (v[0] - this.view_xlims[0])) /
         (this.view_xlims[1] - this.view_xlims[0]),
-      (this.canvas.height * (this.view_ylims[1] - y)) /
+      (this.canvas.height * (this.view_ylims[1] - v[1])) /
         (this.view_ylims[1] - this.view_ylims[0]),
     ];
   }

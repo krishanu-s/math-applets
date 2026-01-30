@@ -40,10 +40,10 @@ var Scene = class {
     ];
   }
   // Converts viewing coordinates to canvas coordinates
-  v2c(x, y) {
+  v2c(v) {
     return [
-      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
-      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
+      this.canvas.width * (v[0] - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - v[1]) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -88,6 +88,7 @@ var Scene = class {
 var Dot = class extends MObject {
   constructor(center_x, center_y, kwargs) {
     super();
+    this.fill_color = "black";
     this.center = [center_x, center_y];
     let radius = kwargs.radius;
     if (radius == void 0) {
@@ -112,9 +113,10 @@ var Dot = class extends MObject {
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
-    let [x, y] = scene.v2c(this.center[0], this.center[1]);
-    let xr = scene.v2c(this.center[0] + this.radius, this.center[1])[0];
+    let [x, y] = scene.v2c(this.center);
+    let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
     ctx.fill();

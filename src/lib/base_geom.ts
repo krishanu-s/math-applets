@@ -24,10 +24,18 @@ export function vec_sub(x: Vec2D, y: Vec2D): Vec2D {
   return [x[0] - y[0], x[1] - y[1]];
 }
 
+export function vec_rot(v: Vec2D, angle: number): Vec2D {
+  const [x, y] = v;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return [x * cos - y * sin, x * sin + y * cos];
+}
+
 // A filled circle.
 export class Dot extends MObject {
   center: [number, number];
   radius: number;
+  fill_color: string = "black";
   constructor(center_x: number, center_y: number, kwargs: Record<string, any>) {
     super();
     this.center = [center_x, center_y];
@@ -55,9 +63,10 @@ export class Dot extends MObject {
   draw(canvas: HTMLCanvasElement, scene: Scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
-    let [x, y] = scene.v2c(this.center[0], this.center[1]);
-    let xr = scene.v2c(this.center[0] + this.radius, this.center[1])[0];
+    let [x, y] = scene.v2c(this.center);
+    let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
     ctx.fill();
@@ -69,6 +78,7 @@ export class Rectangle extends MObject {
   center: Vec2D;
   size_x: number;
   size_y: number;
+  fill_color: string = "black";
   constructor(center: Vec2D, size_x: number, size_y: number) {
     super();
     this.center = center;
@@ -82,33 +92,34 @@ export class Rectangle extends MObject {
   draw(canvas: HTMLCanvasElement, scene: Scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
 
-    let [px, py] = scene.v2c(
+    let [px, py] = scene.v2c([
       this.center[0] - this.size_x / 2,
       this.center[1] - this.size_y / 2,
-    );
+    ]);
     ctx.beginPath();
     ctx.moveTo(px, py);
-    [px, py] = scene.v2c(
+    [px, py] = scene.v2c([
       this.center[0] + this.size_x / 2,
       this.center[1] - this.size_y / 2,
-    );
+    ]);
     ctx.lineTo(px, py);
-    [px, py] = scene.v2c(
+    [px, py] = scene.v2c([
       this.center[0] + this.size_x / 2,
       this.center[1] + this.size_y / 2,
-    );
+    ]);
     ctx.lineTo(px, py);
-    [px, py] = scene.v2c(
+    [px, py] = scene.v2c([
       this.center[0] - this.size_x / 2,
       this.center[1] + this.size_y / 2,
-    );
+    ]);
     ctx.lineTo(px, py);
-    [px, py] = scene.v2c(
+    [px, py] = scene.v2c([
       this.center[0] - this.size_x / 2,
       this.center[1] - this.size_y / 2,
-    );
+    ]);
     ctx.lineTo(px, py);
     ctx.closePath();
     ctx.fill();
@@ -155,8 +166,8 @@ export class Line extends MObject {
   draw(canvas: HTMLCanvasElement, scene: Scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    let [start_x, start_y] = scene.v2c(this.start[0], this.start[1]);
-    let [end_x, end_y] = scene.v2c(this.end[0], this.end[1]);
+    let [start_x, start_y] = scene.v2c(this.start);
+    let [end_x, end_y] = scene.v2c(this.end);
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
@@ -165,5 +176,38 @@ export class Line extends MObject {
     ctx.moveTo(start_x, start_y);
     ctx.lineTo(end_x, end_y);
     ctx.stroke();
+  }
+}
+
+// An arrow
+export class Arrow extends Line {
+  arrow_size: number = 0.3;
+  set_arrow_size(size: number) {
+    this.arrow_size = size;
+  }
+  // Draws on the canvas
+  draw(canvas: HTMLCanvasElement, scene: Scene) {
+    super.draw(canvas, scene);
+
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.fillStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+
+    let [end_x, end_y] = scene.v2c(this.end);
+
+    let v = vec_scale(vec_sub(this.start, this.end), this.arrow_size);
+    let [ax, ay] = scene.v2c(vec_sum(this.end, vec_rot(v, Math.PI / 6)));
+    let [bx, by] = scene.v2c(vec_sum(this.end, vec_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+
+    ctx.moveTo(end_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
   }
 }

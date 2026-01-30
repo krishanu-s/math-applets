@@ -10681,10 +10681,10 @@ var Scene = class {
     ];
   }
   // Converts viewing coordinates to canvas coordinates
-  v2c(x, y) {
+  v2c(v) {
     return [
-      this.canvas.width * (x - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
-      this.canvas.height * (this.view_ylims[1] - y) / (this.view_ylims[1] - this.view_ylims[0])
+      this.canvas.width * (v[0] - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - v[1]) / (this.view_ylims[1] - this.view_ylims[0])
     ];
   }
   // Converts canvas coordinates to scene coordinates
@@ -10834,6 +10834,9 @@ function PauseButton(container, scene) {
 function vec_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
+function vec_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
 function vec_sum(x, y) {
   return [x[0] + y[0], x[1] + y[1]];
 }
@@ -10843,9 +10846,16 @@ function vec_sum_list(xs) {
 function vec_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
+function vec_rot(v, angle2) {
+  const [x, y] = v;
+  const cos2 = Math.cos(angle2);
+  const sin2 = Math.sin(angle2);
+  return [x * cos2 - y * sin2, x * sin2 + y * cos2];
+}
 var Dot = class extends MObject {
   constructor(center_x, center_y, kwargs) {
     super();
+    this.fill_color = "black";
     this.center = [center_x, center_y];
     let radius = kwargs.radius;
     if (radius == void 0) {
@@ -10870,9 +10880,10 @@ var Dot = class extends MObject {
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
-    let [x, y] = scene.v2c(this.center[0], this.center[1]);
-    let xr = scene.v2c(this.center[0] + this.radius, this.center[1])[0];
+    let [x, y] = scene.v2c(this.center);
+    let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
     ctx.fill();
@@ -10881,6 +10892,7 @@ var Dot = class extends MObject {
 var Rectangle = class extends MObject {
   constructor(center, size_x, size_y) {
     super();
+    this.fill_color = "black";
     this.center = center;
     this.size_x = size_x;
     this.size_y = size_y;
@@ -10892,32 +10904,33 @@ var Rectangle = class extends MObject {
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
-    let [px, py] = scene.v2c(
+    let [px, py] = scene.v2c([
       this.center[0] - this.size_x / 2,
       this.center[1] - this.size_y / 2
-    );
+    ]);
     ctx.beginPath();
     ctx.moveTo(px, py);
-    [px, py] = scene.v2c(
+    [px, py] = scene.v2c([
       this.center[0] + this.size_x / 2,
       this.center[1] - this.size_y / 2
-    );
+    ]);
     ctx.lineTo(px, py);
-    [px, py] = scene.v2c(
+    [px, py] = scene.v2c([
       this.center[0] + this.size_x / 2,
       this.center[1] + this.size_y / 2
-    );
+    ]);
     ctx.lineTo(px, py);
-    [px, py] = scene.v2c(
+    [px, py] = scene.v2c([
       this.center[0] - this.size_x / 2,
       this.center[1] + this.size_y / 2
-    );
+    ]);
     ctx.lineTo(px, py);
-    [px, py] = scene.v2c(
+    [px, py] = scene.v2c([
       this.center[0] - this.size_x / 2,
       this.center[1] - this.size_y / 2
-    );
+    ]);
     ctx.lineTo(px, py);
     ctx.closePath();
     ctx.fill();
@@ -10952,8 +10965,8 @@ var Line = class extends MObject {
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    let [start_x, start_y] = scene.v2c(this.start[0], this.start[1]);
-    let [end_x, end_y] = scene.v2c(this.end[0], this.end[1]);
+    let [start_x, start_y] = scene.v2c(this.start);
+    let [end_x, end_y] = scene.v2c(this.end);
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
@@ -10962,6 +10975,36 @@ var Line = class extends MObject {
     ctx.moveTo(start_x, start_y);
     ctx.lineTo(end_x, end_y);
     ctx.stroke();
+  }
+};
+var Arrow = class extends Line {
+  constructor() {
+    super(...arguments);
+    this.arrow_size = 0.3;
+  }
+  set_arrow_size(size2) {
+    this.arrow_size = size2;
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    super.draw(canvas, scene);
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.fillStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+    let [end_x, end_y] = scene.v2c(this.end);
+    let v = vec_scale(vec_sub(this.start, this.end), this.arrow_size);
+    let [ax, ay] = scene.v2c(vec_sum(this.end, vec_rot(v, Math.PI / 6)));
+    let [bx, by] = scene.v2c(vec_sum(this.end, vec_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(end_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
   }
 };
 
@@ -11100,7 +11143,7 @@ var BezierSpline = class extends MObject {
     ctx.strokeStyle = this.stroke_color;
     let a_x, a_y, a;
     a = this.get_anchor(0);
-    [a_x, a_y] = scene.v2c(a[0], a[1]);
+    [a_x, a_y] = scene.v2c(a);
     ctx.beginPath();
     ctx.moveTo(a_x, a_y);
     let [handles_1, handles_2] = this.solver.get_bezier_handles(
@@ -11108,16 +11151,16 @@ var BezierSpline = class extends MObject {
     );
     let h1_x, h1_y, h2_x, h2_y;
     for (let i = 0; i < this.num_steps; i++) {
-      [h1_x, h1_y] = scene.v2c(
+      [h1_x, h1_y] = scene.v2c([
         handles_1.get([i, 0]),
         handles_1.get([i, 1])
-      );
-      [h2_x, h2_y] = scene.v2c(
+      ]);
+      [h2_x, h2_y] = scene.v2c([
         handles_2.get([i, 0]),
         handles_2.get([i, 1])
-      );
+      ]);
       a = this.get_anchor(i + 1);
-      [a_x, a_y] = scene.v2c(a[0], a[1]);
+      [a_x, a_y] = scene.v2c(a);
       ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
       ctx.stroke();
     }
@@ -11177,18 +11220,15 @@ var ParametricFunction = class extends MObject {
     }
     let anchors = np2.stack(points, 0);
     let a_x, a_y;
-    [a_x, a_y] = scene.v2c(
-      anchors.get([0, 0]),
-      anchors.get([0, 1])
-    );
+    [a_x, a_y] = scene.v2c([anchors.get([0, 0]), anchors.get([0, 1])]);
     ctx.beginPath();
     ctx.moveTo(a_x, a_y);
     if (this.mode == "jagged") {
       for (let i = 0; i < this.num_steps; i++) {
-        [a_x, a_y] = scene.v2c(
+        [a_x, a_y] = scene.v2c([
           anchors.get([i + 1, 0]),
           anchors.get([i + 1, 1])
-        );
+        ]);
         ctx.lineTo(a_x, a_y);
         ctx.stroke();
       }
@@ -11196,18 +11236,18 @@ var ParametricFunction = class extends MObject {
       let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
       let h1_x, h1_y, h2_x, h2_y;
       for (let i = 0; i < this.num_steps; i++) {
-        [h1_x, h1_y] = scene.v2c(
+        [h1_x, h1_y] = scene.v2c([
           handles_1.get([i, 0]),
           handles_1.get([i, 1])
-        );
-        [h2_x, h2_y] = scene.v2c(
+        ]);
+        [h2_x, h2_y] = scene.v2c([
           handles_2.get([i, 0]),
           handles_2.get([i, 1])
-        );
-        [a_x, a_y] = scene.v2c(
+        ]);
+        [a_x, a_y] = scene.v2c([
           anchors.get([i + 1, 0]),
           anchors.get([i + 1, 1])
-        );
+        ]);
         ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
         ctx.stroke();
       }
@@ -11258,8 +11298,8 @@ var LineSpring = class extends Line {
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    let [start_x, start_y] = scene.v2c(this.start[0], this.start[1]);
-    let [end_x, end_y] = scene.v2c(this.end[0], this.end[1]);
+    let [start_x, start_y] = scene.v2c(this.start);
+    let [end_x, end_y] = scene.v2c(this.end);
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = colorval_to_rgba(
@@ -11677,11 +11717,6 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       "b1",
       new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 })
     );
-    for (let i = 0; i < width; i++) {
-      pos = this.eq_position(i + 1);
-      let dot3 = new Dot(pos[0], pos[1], { radius: 0.5 / Math.sqrt(width) });
-      this.add(`p_${i + 1}`, dot3);
-    }
     let eq_length;
     for (let i = 1; i < width; i++) {
       pos = this.eq_position(i);
@@ -11692,6 +11727,20 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       eq_length = vec_norm(vec_sub(pos, next_pos));
       line.set_eq_length(eq_length);
       this.add(`l_${i}`, line);
+    }
+    for (let i = 0; i < width; i++) {
+      pos = this.eq_position(i + 1);
+      let arrow = new Arrow([pos[0], pos[1]], [pos[0], pos[1]], {
+        stroke_width: 0.05,
+        stroke_color: "red",
+        stroke_opacity: 0.5
+      });
+      this.add(`arr${i + 1}`, arrow);
+    }
+    for (let i = 0; i < width; i++) {
+      pos = this.eq_position(i + 1);
+      let dot3 = new Dot(pos[0], pos[1], { radius: 0.5 / Math.sqrt(width) });
+      this.add(`p_${i + 1}`, dot3);
     }
     let curve = new BezierSpline(width - 1, { stroke_width: 0.04 });
     this.add("curve", curve);
@@ -11736,17 +11785,21 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
   }
   // Moves the dots and curve in the scene to the positions dictated by the wave simulation.
   update_mobjects() {
-    let dot3, line;
+    let dot3, line, arrow;
     let pos, next_pos;
     let disp, next_disp;
     let sim = this.sim();
     let u = sim.get_uValues();
+    let deriv = sim._get_vValues(sim.dot(sim.vals, sim.time));
     let anchors = [];
     for (let i = 0; i < this.width(); i++) {
       pos = this.eq_position(i + 1);
       disp = u[i];
       dot3 = this.get_mobj(`p_${i + 1}`);
       dot3.move_to(pos[0], pos[1] + disp);
+      arrow = this.get_mobj(`arr${i + 1}`);
+      arrow.move_start(pos[0], pos[1] + disp);
+      arrow.move_end(pos[0], pos[1] + disp + deriv[i] / 5);
       anchors.push([pos[0], pos[1] + disp]);
       if (i < this.width() - 1) {
         next_pos = this.eq_position(i + 2);
@@ -12697,7 +12750,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       sim.set_attr("wave_propagation_speed", 20);
       let w = 8;
       let a = 8;
-      let [px, py] = scene.v2c(0, 0);
+      let [px, py] = scene.v2c([0, 0]);
       sim.add_point_source(new PointSource(px, py, w, a, 0));
       let pauseButton = Button(
         document.getElementById(
