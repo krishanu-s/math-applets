@@ -19,6 +19,8 @@ import {
   Cube,
   Dot3D,
   Line3D,
+  Arrow3D,
+  TwoHeadedArrow3D,
 } from "./lib/three_d.js";
 import { Slider, Button, PauseButton } from "./lib/interactive.js";
 import { Arcball } from "./lib/arcball.js";
@@ -137,10 +139,9 @@ function delay(ms: number) {
       );
 
       // Add graph lines
-      // TODO Use double-sided arrows
-      scene.add("x-axis", new Line3D([-5, 0, 0], [5, 0, 0]));
-      scene.add("y-axis", new Line3D([0, -5, 0], [0, 5, 0]));
-      scene.add("z-axis", new Line3D([0, 0, -5], [0, 0, 5]));
+      scene.add("x-axis", new TwoHeadedArrow3D([-5, 0, 0], [5, 0, 0]));
+      scene.add("y-axis", new TwoHeadedArrow3D([0, -5, 0], [0, 5, 0]));
+      scene.add("z-axis", new TwoHeadedArrow3D([0, 0, -5], [0, 0, 5]));
 
       // TODO Add ticks
 

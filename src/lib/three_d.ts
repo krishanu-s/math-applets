@@ -3,7 +3,7 @@
 // Three-dimensional objects are specified by points in 3D space.
 
 import { MObject, Scene } from "./base.js";
-import { Vec2D } from "./base_geom.js";
+import { vec2_norm, Vec2D } from "./base_geom.js";
 import {
   Mat3by3,
   matmul_vec,
@@ -14,6 +14,7 @@ import {
   rot_matrix,
   mat_inv,
 } from "./matvec.js";
+import { vec2_sum, vec2_sub, vec2_scale, vec2_rot } from "./base_geom.js";
 
 export type Vec3D = [number, number, number];
 
@@ -121,6 +122,96 @@ export class Line3D extends ThreeDMObject {
   }
 }
 
+// An arrow
+export class Arrow3D extends Line3D {
+  arrow_size: number = 0.3;
+  set_arrow_size(size: number) {
+    this.arrow_size = size;
+  }
+  draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
+    super.draw(canvas, scene);
+
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+
+    // TODO This can surely be refactored with Line3D.
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+
+    let [end_x, end_y] = scene.v2c(e);
+
+    let length = vec2_norm(vec2_sub(s, e));
+    let v = vec2_scale(vec2_sub(s, e), this.arrow_size / length);
+    let [ax, ay] = scene.v2c(vec2_sum(e, vec2_rot(v, Math.PI / 6)));
+    let [bx, by] = scene.v2c(vec2_sum(e, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+
+    ctx.moveTo(end_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+// A double-headed arrow
+export class TwoHeadedArrow3D extends Line3D {
+  arrow_size: number = 0.3;
+  set_arrow_size(size: number) {
+    this.arrow_size = size;
+  }
+  draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
+    super.draw(canvas, scene);
+
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+
+    // TODO This can surely be refactored with Line3D.
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+
+    let [end_x, end_y] = scene.v2c(e);
+    let [start_x, start_y] = scene.v2c(s);
+
+    // Arrow head
+    let length = vec2_norm(vec2_sub(s, e));
+    let v = vec2_scale(vec2_sub(s, e), this.arrow_size / length);
+    let [ax, ay] = scene.v2c(vec2_sum(e, vec2_rot(v, Math.PI / 6)));
+    let [bx, by] = scene.v2c(vec2_sum(e, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+
+    ctx.moveTo(end_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Arrow tail
+    v = vec2_scale(vec2_sub(e, s), this.arrow_size / length);
+    [ax, ay] = scene.v2c(vec2_sum(s, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(s, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(start_x, start_y);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
 // A cube.
 export class Cube extends ThreeDMObject {
   center: Vec3D;
@@ -155,14 +246,14 @@ export class Cube extends ThreeDMObject {
     ];
 
     // Second, project the vertices of the cube onto the camera's view plane to get Vec2D's.
-    const projected_vertices = [];
+    const projected_vertices: (Vec2D | null)[] = [];
     for (let i = 0; i < vertices.length; i++) {
       projected_vertices.push(scene.camera_view(vertices[i] as Vec3D));
     }
 
     // Third, convert these Vec2D's to canvas coordinates.
     let v;
-    const canvas_vertices = [];
+    const canvas_vertices: (Vec2D | null)[] = [];
     for (let i = 0; i < vertices.length; i++) {
       let v = projected_vertices[i];
       if (v == null) {
@@ -174,7 +265,10 @@ export class Cube extends ThreeDMObject {
 
     // TODO Finally, draw all of the edges.
     // i and j in {0, 1, ..., 6, 7} are connected if i ^ j has a single 1, i.e. is 1, 2, or 4.
-    let start_x, start_y, end_x, end_y;
+    let start_x: number;
+    let start_y: number;
+    let end_x: number;
+    let end_y: number;
     for (let i = 0; i < 8; i++) {
       for (let j = 0; j < i; j++) {
         if ((i ^ j) == 1 || (i ^ j) == 2 || (i ^ j) == 4) {

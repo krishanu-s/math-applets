@@ -82,7 +82,7 @@ export class Dot extends MObject {
   }
 }
 
-// A rectangle specified by its center, width, and height
+// A filled rectangle specified by its center, width, and height
 export class Rectangle extends MObject {
   center: Vec2D;
   size_x: number;
@@ -212,6 +212,58 @@ export class Arrow extends Line {
     ctx.lineTo(ax, ay);
     ctx.lineTo(bx, by);
     ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+// A double-sided arrow
+export class TwoHeadedArrow extends Line {
+  arrow_size: number = 0.3;
+  set_arrow_size(size: number) {
+    this.arrow_size = size;
+  }
+  // Draws on the canvas
+  draw(canvas: HTMLCanvasElement, scene: Scene) {
+    super.draw(canvas, scene);
+
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.fillStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+
+    let [end_x, end_y] = scene.v2c(this.end);
+    let [start_x, start_y] = scene.v2c(this.start);
+
+    let v: Vec2D;
+    let ax: number;
+    let ay: number;
+    let bx: number;
+    let by: number;
+
+    // Arrow head
+    v = vec2_scale(vec2_sub(this.start, this.end), this.arrow_size);
+    [ax, ay] = scene.v2c(vec2_sum(this.end, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(this.end, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(end_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Arrow tail
+    v = vec2_scale(vec2_sub(this.end, this.start), this.arrow_size);
+    [ax, ay] = scene.v2c(vec2_sum(this.start, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(this.start, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(start_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(start_x, start_y);
     ctx.closePath();
     ctx.fill();
   }

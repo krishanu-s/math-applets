@@ -90,7 +90,7 @@ export function matmul_vec(m: Mat3by3, v: Vec3D): Vec3D {
 
 // Multiplies a 3x3 matrix by another 3x3 matrix
 export function matmul_mat(m1: Mat3by3, m2: Mat3by3): Mat3by3 {
-  let result = [];
+  let result: Vec3D[] = [];
   for (let i = 0; i < 3; i++) {
     result.push(matmul_vec(m1, [m2[0][i], m2[1][i], m2[2][i]] as Vec3D));
   }

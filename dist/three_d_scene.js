@@ -113,6 +113,34 @@ function prepare_canvas(width, height, name) {
   return canvas;
 }
 
+// src/lib/base_geom.ts
+function vec2_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec2_normalize(x) {
+  let n = vec2_norm(x);
+  if (n == 0) {
+    throw new Error("Can't normalize the zero vector");
+  } else {
+    return vec2_scale(x, 1 / n);
+  }
+}
+function vec2_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
+function vec2_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
+function vec2_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
+function vec2_rot(v, angle) {
+  const [x, y] = v;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return [x * cos - y * sin, x * sin + y * cos];
+}
+
 // src/lib/three_d.ts
 function vec3_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2);
@@ -195,6 +223,50 @@ var Line3D = class extends ThreeDMObject {
     ctx.stroke();
   }
 };
+var TwoHeadedArrow3D = class extends Line3D {
+  constructor() {
+    super(...arguments);
+    this.arrow_size = 0.3;
+  }
+  set_arrow_size(size) {
+    this.arrow_size = size;
+  }
+  draw(canvas, scene) {
+    super.draw(canvas, scene);
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [end_x, end_y] = scene.v2c(e);
+    let [start_x, start_y] = scene.v2c(s);
+    let length = vec2_norm(vec2_sub(s, e));
+    let v = vec2_scale(vec2_sub(s, e), this.arrow_size / length);
+    let [ax, ay] = scene.v2c(vec2_sum(e, vec2_rot(v, Math.PI / 6)));
+    let [bx, by] = scene.v2c(vec2_sum(e, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(end_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
+    v = vec2_scale(vec2_sub(e, s), this.arrow_size / length);
+    [ax, ay] = scene.v2c(vec2_sum(s, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(s, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(start_x, start_y);
+    ctx.closePath();
+    ctx.fill();
+  }
+};
 var Cube = class extends ThreeDMObject {
   constructor(center, size) {
     super();
@@ -234,7 +306,10 @@ var Cube = class extends ThreeDMObject {
         canvas_vertices.push(scene.v2c(v2));
       }
     }
-    let start_x, start_y, end_x, end_y;
+    let start_x;
+    let start_y;
+    let end_x;
+    let end_y;
     for (let i = 0; i < 8; i++) {
       for (let j = 0; j < i; j++) {
         if ((i ^ j) == 1 || (i ^ j) == 2 || (i ^ j) == 4) {
@@ -474,25 +549,6 @@ function Button(container, callback) {
   return button;
 }
 
-// src/lib/base_geom.ts
-function vec2_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-function vec2_normalize(x) {
-  let n = vec2_norm(x);
-  if (n == 0) {
-    throw new Error("Can't normalize the zero vector");
-  } else {
-    return vec2_scale(x, 1 / n);
-  }
-}
-function vec2_scale(x, factor) {
-  return [x[0] * factor, x[1] * factor];
-}
-function vec2_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1]];
-}
-
 // src/lib/arcball.ts
 var Arcball = class {
   constructor(scene) {
@@ -659,9 +715,9 @@ function delay(ms) {
       scene.set_camera_position(
         rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4)
       );
-      scene.add("x-axis", new Line3D([-5, 0, 0], [5, 0, 0]));
-      scene.add("y-axis", new Line3D([0, -5, 0], [0, 5, 0]));
-      scene.add("z-axis", new Line3D([0, 0, -5], [0, 0, 5]));
+      scene.add("x-axis", new TwoHeadedArrow3D([-5, 0, 0], [5, 0, 0]));
+      scene.add("y-axis", new TwoHeadedArrow3D([0, -5, 0], [0, 5, 0]));
+      scene.add("z-axis", new TwoHeadedArrow3D([0, 0, -5], [0, 0, 5]));
       let arcball = new Arcball(scene);
       arcball.add();
       let modeButton = Button(
