@@ -113,25 +113,6 @@ function prepare_canvas(width, height, name) {
   return canvas;
 }
 
-// src/lib/base_geom.ts
-function vec_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-function vec2_normalize(x) {
-  let n = vec_norm(x);
-  if (n == 0) {
-    throw new Error("Can't normalize the zero vector");
-  } else {
-    return vec_scale(x, 1 / n);
-  }
-}
-function vec_scale(x, factor) {
-  return [x[0] * factor, x[1] * factor];
-}
-function vec_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1]];
-}
-
 // src/lib/three_d.ts
 function vec3_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2);
@@ -493,6 +474,107 @@ function Button(container, callback) {
   return button;
 }
 
+// src/lib/base_geom.ts
+function vec_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec2_normalize(x) {
+  let n = vec_norm(x);
+  if (n == 0) {
+    throw new Error("Can't normalize the zero vector");
+  } else {
+    return vec_scale(x, 1 / n);
+  }
+}
+function vec_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
+function vec_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
+
+// src/lib/arcball.ts
+var Arcball = class {
+  constructor(scene) {
+    this.drag = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.dragDiff = [0, 0];
+    this.mode = "Translate";
+    this.scene = scene;
+  }
+  set_mode(mode) {
+    this.mode = mode;
+  }
+  switch_mode() {
+    this.mode = this.mode == "Translate" ? "Rotate" : "Translate";
+  }
+  click(event) {
+    this.dragStart = [
+      event.pageX - this.scene.canvas.offsetLeft,
+      event.pageY - this.scene.canvas.offsetTop
+    ];
+    this.drag = true;
+  }
+  unclick(event) {
+    this.drag = false;
+  }
+  drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.pageX - this.scene.canvas.offsetLeft,
+        event.pageY - this.scene.canvas.offsetTop
+      ];
+      this.dragDiff = vec_sub(
+        this.scene.c2s(this.dragStart[0], this.dragStart[1]),
+        this.scene.c2s(this.dragEnd[0], this.dragEnd[1])
+      );
+      if (this.dragDiff[0] == 0 && this.dragDiff[1] == 0) {
+        return;
+      }
+      if (this.mode == "Translate") {
+        let camera_frame = this.scene.get_camera_frame();
+        this.scene.translate(
+          vec3_sum(
+            vec3_scale(get_column(camera_frame, 0), this.dragDiff[0]),
+            vec3_scale(get_column(camera_frame, 1), this.dragDiff[1])
+          )
+        );
+      } else if (this.mode == "Rotate") {
+        let v = vec2_normalize([this.dragDiff[1], -this.dragDiff[0]]);
+        let camera_frame = this.scene.get_camera_frame();
+        let rot_axis = vec3_sum(
+          vec3_scale(get_column(camera_frame, 0), v[0]),
+          vec3_scale(get_column(camera_frame, 1), v[1])
+        );
+        let n = vec_norm(this.dragDiff);
+        this.scene.rot(rot_axis, n);
+        this.scene.set_camera_position(
+          rot(this.scene.camera_position, rot_axis, n)
+        );
+      }
+      this.scene.draw();
+      this.dragStart = this.dragEnd;
+    }
+  }
+  add() {
+    let self = this;
+    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.addEventListener(
+      "mousemove",
+      self.drag_cursor.bind(self)
+    );
+    console.log("Arcball added");
+  }
+  remove() {
+    let self = this;
+    this.scene.canvas.removeEventListener("mousedown", self.click);
+    this.scene.canvas.removeEventListener("mouseup", self.unclick);
+    this.scene.canvas.removeEventListener("mousemove", self.drag_cursor);
+  }
+};
+
 // src/three_d_scene.ts
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -516,54 +598,8 @@ function delay(ms) {
       scene.add("cube", new Cube([0, 0, 0], 3));
       scene.add("dot", new Dot3D([0, 0, 0], 0.05));
       scene.draw();
-      let drag = false;
-      let dragStart;
-      let dragEnd;
-      let dragDiff;
-      let mode = "Translate";
-      canvas.addEventListener("mousedown", function(event) {
-        dragStart = [
-          event.pageX - canvas.offsetLeft,
-          event.pageY - canvas.offsetTop
-        ];
-        drag = true;
-      });
-      canvas.addEventListener("mouseup", function(event) {
-        drag = false;
-      });
-      canvas.addEventListener("mousemove", function(event) {
-        if (drag) {
-          dragEnd = [
-            event.pageX - canvas.offsetLeft,
-            event.pageY - canvas.offsetTop
-          ];
-          dragDiff = vec_sub(
-            scene.c2s(dragStart[0], dragStart[1]),
-            scene.c2s(dragEnd[0], dragEnd[1])
-          );
-          if (mode == "Translate") {
-            let camera_frame = scene.get_camera_frame();
-            scene.translate(
-              vec3_sum(
-                vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
-                vec3_scale(get_column(camera_frame, 1), dragDiff[1])
-              )
-            );
-          } else if (mode == "Rotate") {
-            let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
-            let camera_frame = scene.get_camera_frame();
-            let rot_axis = vec3_sum(
-              vec3_scale(get_column(camera_frame, 0), v[0]),
-              vec3_scale(get_column(camera_frame, 1), v[1])
-            );
-            let n = vec_norm(dragDiff);
-            scene.rot(rot_axis, n);
-            scene.set_camera_position(rot(scene.camera_position, rot_axis, n));
-          }
-          scene.draw();
-          dragStart = dragEnd;
-        }
-      });
+      let arcball = new Arcball(scene);
+      arcball.add();
       let playing = true;
       let pauseButton = Button(
         document.getElementById("three-d-cube-pause-button"),
@@ -583,17 +619,17 @@ function delay(ms) {
       let modeButton = Button(
         document.getElementById("three-d-cube-mode-button"),
         function() {
-          if (mode == "Translate") {
-            mode = "Rotate";
-          } else if (mode == "Rotate") {
-            mode = "Translate";
+          if (arcball.mode == "Translate") {
+            arcball.mode = "Rotate";
+          } else if (arcball.mode == "Rotate") {
+            arcball.mode = "Translate";
           } else {
             throw new Error();
           }
-          modeButton.textContent = `Mode = ${mode}`;
+          modeButton.textContent = `Mode = ${arcball.mode}`;
         }
       );
-      modeButton.textContent = `Mode = ${mode}`;
+      modeButton.textContent = `Mode = ${arcball.mode}`;
       modeButton.style.padding = "15px";
       let axis = [1, 0, 0];
       let perturb_angle = Math.PI / 200;
@@ -632,68 +668,16 @@ function delay(ms) {
       scene.add("x-axis", new Line3D([-5, 0, 0], [5, 0, 0]));
       scene.add("y-axis", new Line3D([0, -5, 0], [0, 5, 0]));
       scene.add("z-axis", new Line3D([0, 0, -5], [0, 0, 5]));
-      let drag = false;
-      let dragStart;
-      let dragEnd;
-      let dragDiff;
-      let mode = "Translate";
-      canvas.addEventListener("mousedown", function(event) {
-        dragStart = [
-          event.pageX - canvas.offsetLeft,
-          event.pageY - canvas.offsetTop
-        ];
-        drag = true;
-      });
-      canvas.addEventListener("mouseup", function(event) {
-        drag = false;
-      });
-      canvas.addEventListener("mousemove", function(event) {
-        if (drag) {
-          dragEnd = [
-            event.pageX - canvas.offsetLeft,
-            event.pageY - canvas.offsetTop
-          ];
-          dragDiff = vec_sub(
-            scene.c2s(dragStart[0], dragStart[1]),
-            scene.c2s(dragEnd[0], dragEnd[1])
-          );
-          if (mode == "Translate") {
-            let camera_frame = scene.get_camera_frame();
-            scene.translate(
-              vec3_sum(
-                vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
-                vec3_scale(get_column(camera_frame, 1), dragDiff[1])
-              )
-            );
-          } else if (mode == "Rotate") {
-            let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
-            let camera_frame = scene.get_camera_frame();
-            let rot_axis = vec3_sum(
-              vec3_scale(get_column(camera_frame, 0), v[0]),
-              vec3_scale(get_column(camera_frame, 1), v[1])
-            );
-            let n = vec_norm(dragDiff);
-            scene.rot(rot_axis, n);
-            scene.set_camera_position(rot(scene.camera_position, rot_axis, n));
-          }
-          scene.draw();
-          dragStart = dragEnd;
-        }
-      });
+      let arcball = new Arcball(scene);
+      arcball.add();
       let modeButton = Button(
         document.getElementById("three-d-graph-mode-button"),
         function() {
-          if (mode == "Translate") {
-            mode = "Rotate";
-          } else if (mode == "Rotate") {
-            mode = "Translate";
-          } else {
-            throw new Error();
-          }
-          modeButton.textContent = `Mode = ${mode}`;
+          arcball.switch_mode();
+          modeButton.textContent = `Mode = ${arcball.mode}`;
         }
       );
-      modeButton.textContent = `Mode = ${mode}`;
+      modeButton.textContent = `Mode = ${arcball.mode}`;
       modeButton.style.padding = "15px";
       scene.draw();
     })(300, 300);

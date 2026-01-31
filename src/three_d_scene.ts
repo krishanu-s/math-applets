@@ -21,6 +21,7 @@ import {
   Line3D,
 } from "./lib/three_d.js";
 import { Slider, Button, PauseButton } from "./lib/interactive.js";
+import { Arcball } from "./lib/arcball.js";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -50,65 +51,11 @@ function delay(ms: number) {
       // Add cube and dot to the scene
       scene.add("cube", new Cube([0, 0, 0], 3));
       scene.add("dot", new Dot3D([0, 0, 0], 0.05));
-
       scene.draw();
 
-      // INTERACTIVITY
-      // Adding draggability to the canvas
-      let drag: boolean = false;
-      let dragStart: Vec2D;
-      let dragEnd: Vec2D;
-      let dragDiff: Vec2D;
-      let mode: "Translate" | "Rotate" = "Translate";
-      canvas.addEventListener("mousedown", function (event) {
-        dragStart = [
-          event.pageX - canvas.offsetLeft,
-          event.pageY - canvas.offsetTop,
-        ];
-
-        drag = true;
-      });
-      canvas.addEventListener("mouseup", function (event) {
-        drag = false;
-      });
-      canvas.addEventListener("mousemove", function (event) {
-        if (drag) {
-          dragEnd = [
-            event.pageX - canvas.offsetLeft,
-            event.pageY - canvas.offsetTop,
-          ];
-          dragDiff = vec_sub(
-            scene.c2s(dragStart[0], dragStart[1]),
-            scene.c2s(dragEnd[0], dragEnd[1]),
-          );
-          if (mode == "Translate") {
-            // Translation option
-            let camera_frame = scene.get_camera_frame();
-            scene.translate(
-              vec3_sum(
-                vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
-                vec3_scale(get_column(camera_frame, 1), dragDiff[1]),
-              ),
-            );
-          } else if (mode == "Rotate") {
-            // Rotation option
-            // Find the axis to rotate around based on the angle of dragDiff
-            let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
-            let camera_frame = scene.get_camera_frame();
-            let rot_axis = vec3_sum(
-              vec3_scale(get_column(camera_frame, 0), v[0]),
-              vec3_scale(get_column(camera_frame, 1), v[1]),
-            );
-
-            // Rotate the scene frame according to the norm, as well as the camera position,
-            let n = vec_norm(dragDiff);
-            scene.rot(rot_axis, n);
-            scene.set_camera_position(rot(scene.camera_position, rot_axis, n));
-          }
-          scene.draw();
-          dragStart = dragEnd;
-        }
-      });
+      // Adding click-and-drag interactivity to the canvas
+      let arcball = new Arcball(scene);
+      arcball.add();
 
       // ANIMATION
       // Vary an axis continuously, and rotate the camera angle by little kicks around this axis
@@ -132,17 +79,11 @@ function delay(ms: number) {
       let modeButton = Button(
         document.getElementById("three-d-cube-mode-button") as HTMLElement,
         function () {
-          if (mode == "Translate") {
-            mode = "Rotate";
-          } else if (mode == "Rotate") {
-            mode = "Translate";
-          } else {
-            throw new Error();
-          }
-          modeButton.textContent = `Mode = ${mode}`;
+          arcball.switch_mode();
+          modeButton.textContent = `Mode = ${arcball.mode}`;
         },
       );
-      modeButton.textContent = `Mode = ${mode}`;
+      modeButton.textContent = `Mode = ${arcball.mode}`;
       modeButton.style.padding = "15px";
 
       let axis: Vec3D = [1, 0, 0];
@@ -196,82 +137,26 @@ function delay(ms: number) {
       );
 
       // Add graph lines
+      // TODO Use double-sided arrows
       scene.add("x-axis", new Line3D([-5, 0, 0], [5, 0, 0]));
       scene.add("y-axis", new Line3D([0, -5, 0], [0, 5, 0]));
       scene.add("z-axis", new Line3D([0, 0, -5], [0, 0, 5]));
 
-      // INTERACTIVITY
-      // Adding draggability to the canvas
-      let drag: boolean = false;
-      let dragStart: Vec2D;
-      let dragEnd: Vec2D;
-      let dragDiff: Vec2D;
-      let mode: "Translate" | "Rotate" = "Translate";
-      canvas.addEventListener("mousedown", function (event) {
-        dragStart = [
-          event.pageX - canvas.offsetLeft,
-          event.pageY - canvas.offsetTop,
-        ];
+      // TODO Add ticks
 
-        drag = true;
-      });
-      canvas.addEventListener("mouseup", function (event) {
-        drag = false;
-      });
-      canvas.addEventListener("mousemove", function (event) {
-        if (drag) {
-          dragEnd = [
-            event.pageX - canvas.offsetLeft,
-            event.pageY - canvas.offsetTop,
-          ];
-          dragDiff = vec_sub(
-            scene.c2s(dragStart[0], dragStart[1]),
-            scene.c2s(dragEnd[0], dragEnd[1]),
-          );
-          if (mode == "Translate") {
-            // Translation option
-            let camera_frame = scene.get_camera_frame();
-            scene.translate(
-              vec3_sum(
-                vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
-                vec3_scale(get_column(camera_frame, 1), dragDiff[1]),
-              ),
-            );
-          } else if (mode == "Rotate") {
-            // Rotation option
-            // Find the axis to rotate around based on the angle of dragDiff
-            let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
-            let camera_frame = scene.get_camera_frame();
-            let rot_axis = vec3_sum(
-              vec3_scale(get_column(camera_frame, 0), v[0]),
-              vec3_scale(get_column(camera_frame, 1), v[1]),
-            );
-
-            // Rotate the scene frame according to the norm, as well as the camera position,
-            let n = vec_norm(dragDiff);
-            scene.rot(rot_axis, n);
-            scene.set_camera_position(rot(scene.camera_position, rot_axis, n));
-          }
-          scene.draw();
-          dragStart = dragEnd;
-        }
-      });
+      // Adding click-and-drag interactivity to the canvas
+      let arcball = new Arcball(scene);
+      arcball.add();
 
       // Add a button to toggle between translation and rotation modes
       let modeButton = Button(
         document.getElementById("three-d-graph-mode-button") as HTMLElement,
         function () {
-          if (mode == "Translate") {
-            mode = "Rotate";
-          } else if (mode == "Rotate") {
-            mode = "Translate";
-          } else {
-            throw new Error();
-          }
-          modeButton.textContent = `Mode = ${mode}`;
+          arcball.switch_mode();
+          modeButton.textContent = `Mode = ${arcball.mode}`;
         },
       );
-      modeButton.textContent = `Mode = ${mode}`;
+      modeButton.textContent = `Mode = ${arcball.mode}`;
       modeButton.style.padding = "15px";
 
       scene.draw();
