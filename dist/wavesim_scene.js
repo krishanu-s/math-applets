@@ -10838,22 +10838,22 @@ function PauseButton(container, scene) {
 }
 
 // src/lib/base_geom.ts
-function vec_norm(x) {
+function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
-function vec_scale(x, factor) {
+function vec2_scale(x, factor) {
   return [x[0] * factor, x[1] * factor];
 }
-function vec_sum(x, y) {
+function vec2_sum(x, y) {
   return [x[0] + y[0], x[1] + y[1]];
 }
-function vec_sum_list(xs) {
-  return xs.reduce((acc, x) => vec_sum(acc, x), [0, 0]);
+function vec2_sum_list(xs) {
+  return xs.reduce((acc, x) => vec2_sum(acc, x), [0, 0]);
 }
-function vec_sub(x, y) {
+function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
-function vec_rot(v, angle2) {
+function vec2_rot(v, angle2) {
   const [x, y] = v;
   const cos2 = Math.cos(angle2);
   const sin2 = Math.sin(angle2);
@@ -11002,9 +11002,9 @@ var Arrow = class extends Line {
     ctx.fillStyle = this.stroke_color;
     ctx.globalAlpha = this.alpha;
     let [end_x, end_y] = scene.v2c(this.end);
-    let v = vec_scale(vec_sub(this.start, this.end), this.arrow_size);
-    let [ax, ay] = scene.v2c(vec_sum(this.end, vec_rot(v, Math.PI / 6)));
-    let [bx, by] = scene.v2c(vec_sum(this.end, vec_rot(v, -Math.PI / 6)));
+    let v = vec2_scale(vec2_sub(this.start, this.end), this.arrow_size);
+    let [ax, ay] = scene.v2c(vec2_sum(this.end, vec2_rot(v, Math.PI / 6)));
+    let [bx, by] = scene.v2c(vec2_sum(this.end, vec2_rot(v, -Math.PI / 6)));
     ctx.beginPath();
     ctx.moveTo(end_x, end_y);
     ctx.lineTo(ax, ay);
@@ -11731,7 +11731,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       let line = new LineSpring(pos, next_pos, {
         stroke_width: 0.2 / Math.sqrt(width)
       });
-      eq_length = vec_norm(vec_sub(pos, next_pos));
+      eq_length = vec2_norm(vec2_sub(pos, next_pos));
       line.set_eq_length(eq_length);
       this.add(`l_${i}`, line);
     }
@@ -11773,7 +11773,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       pos = this.eq_position(i);
       next_pos = this.eq_position(i + 1);
       let line = this.get_mobj(`l_${i}`);
-      eq_length = vec_norm(vec_sub(pos, next_pos));
+      eq_length = vec2_norm(vec2_sub(pos, next_pos));
       line.set_eq_length(eq_length);
     }
   }
@@ -12442,7 +12442,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
           if (this.eccentricity == 1) {
             return null;
           } else {
-            return vec_sum_list([
+            return vec2_sum_list([
               [-this.focus[0], -this.focus[1]],
               this.polar_function(0),
               this.polar_function(Math.PI)

@@ -1,7 +1,7 @@
 // An interface for user click-and-drag interaction with a 3D object.
 // Ref: https://graphicsinterface.org/wp-content/uploads/gi1992-18.pdf
 
-import { Vec2D, vec2_normalize, vec_sub, vec_norm } from "./base_geom.js";
+import { Vec2D, vec2_normalize, vec2_sub, vec2_norm } from "./base_geom.js";
 import { vec3_sum, vec3_scale, ThreeDScene } from "./three_d.js";
 import { normalize, get_column, matmul_vec, rot } from "./matvec";
 
@@ -37,7 +37,7 @@ export class Arcball {
         event.pageX - this.scene.canvas.offsetLeft,
         event.pageY - this.scene.canvas.offsetTop,
       ];
-      this.dragDiff = vec_sub(
+      this.dragDiff = vec2_sub(
         this.scene.c2s(this.dragStart[0], this.dragStart[1]),
         this.scene.c2s(this.dragEnd[0], this.dragEnd[1]),
       );
@@ -68,7 +68,7 @@ export class Arcball {
         );
 
         // Rotate the scene frame according to the norm, as well as the camera position,
-        let n = vec_norm(this.dragDiff);
+        let n = vec2_norm(this.dragDiff);
         this.scene.rot(rot_axis, n);
         this.scene.set_camera_position(
           rot(this.scene.camera_position, rot_axis, n),

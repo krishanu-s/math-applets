@@ -10723,19 +10723,19 @@ var Scene = class {
 };
 
 // src/lib/base_geom.ts
-function vec_norm(x) {
+function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
-function vec_scale(x, factor) {
+function vec2_scale(x, factor) {
   return [x[0] * factor, x[1] * factor];
 }
-function vec_sum(x, y) {
+function vec2_sum(x, y) {
   return [x[0] + y[0], x[1] + y[1]];
 }
-function vec_sum_list(xs) {
-  return xs.reduce((acc, x) => vec_sum(acc, x), [0, 0]);
+function vec2_sum_list(xs) {
+  return xs.reduce((acc, x) => vec2_sum(acc, x), [0, 0]);
 }
-function vec_sub(x, y) {
+function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
 var Line = class extends MObject {
@@ -10935,10 +10935,10 @@ function zero_state() {
   ];
 }
 function state_scale(x, factor) {
-  return [vec_scale(x[0], factor), vec_scale(x[1], factor)];
+  return [vec2_scale(x[0], factor), vec2_scale(x[1], factor)];
 }
 function state_sum(x, y) {
-  return [vec_sum(x[0], y[0]), vec_sum(x[1], y[1])];
+  return [vec2_sum(x[0], y[0]), vec2_sum(x[1], y[1])];
 }
 var CatenaryScene = class extends Scene {
   constructor(canvas, p0, p1, length, num_segments) {
@@ -11031,27 +11031,27 @@ var CatenaryScene = class extends Scene {
   }
   d2x(index, state) {
     let rel_pos, disp;
-    rel_pos = vec_sub(
+    rel_pos = vec2_sub(
       state[index][0],
       state[index - 1][0]
     );
-    disp = vec_norm(rel_pos);
-    let spring_term_1 = vec_scale(
+    disp = vec2_norm(rel_pos);
+    let spring_term_1 = vec2_scale(
       rel_pos,
       -this.spring_constant * Math.max(disp - this.length / this.num_segments, 0) / disp
     );
-    rel_pos = vec_sub(
+    rel_pos = vec2_sub(
       state[index][0],
       state[index + 1][0]
     );
-    disp = vec_norm(rel_pos);
-    let spring_term_2 = vec_scale(
+    disp = vec2_norm(rel_pos);
+    let spring_term_2 = vec2_scale(
       rel_pos,
       -this.spring_constant * Math.max(disp - this.length / this.num_segments, 0) / disp
     );
-    return vec_sum_list([
+    return vec2_sum_list([
       [0, -this.gravity / this.num_segments],
-      vec_scale(this._get_velocity(index, state), -this.friction_constant),
+      vec2_scale(this._get_velocity(index, state), -this.friction_constant),
       spring_term_1,
       spring_term_2
     ]);
@@ -11107,22 +11107,22 @@ var CatenaryScene = class extends Scene {
     for (let i = 1; i < this.num_segments; i++) {
       this.set_position(
         i,
-        vec_sum_list([
+        vec2_sum_list([
           this.get_position(i),
-          vec_scale(this._get_position(i, k1), dt / 6),
-          vec_scale(this._get_position(i, k2), dt / 3),
-          vec_scale(this._get_position(i, k3), dt / 3),
-          vec_scale(this._get_position(i, k4), dt / 6)
+          vec2_scale(this._get_position(i, k1), dt / 6),
+          vec2_scale(this._get_position(i, k2), dt / 3),
+          vec2_scale(this._get_position(i, k3), dt / 3),
+          vec2_scale(this._get_position(i, k4), dt / 6)
         ])
       );
       this.set_velocity(
         i,
-        vec_sum_list([
+        vec2_sum_list([
           this.get_velocity(i),
-          vec_scale(this._get_velocity(i, k1), dt / 6),
-          vec_scale(this._get_velocity(i, k2), dt / 3),
-          vec_scale(this._get_velocity(i, k3), dt / 3),
-          vec_scale(this._get_velocity(i, k4), dt / 6)
+          vec2_scale(this._get_velocity(i, k1), dt / 6),
+          vec2_scale(this._get_velocity(i, k2), dt / 3),
+          vec2_scale(this._get_velocity(i, k3), dt / 3),
+          vec2_scale(this._get_velocity(i, k4), dt / 6)
         ])
       );
     }

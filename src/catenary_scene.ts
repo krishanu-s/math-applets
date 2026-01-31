@@ -5,11 +5,11 @@ import { Slider } from "./lib/interactive.js";
 import { SmoothOpenPathBezierHandleCalculator } from "./lib/bezier.js";
 import {
   Vec2D,
-  vec_scale,
-  vec_sum,
-  vec_sub,
-  vec_norm,
-  vec_sum_list,
+  vec2_scale,
+  vec2_sum,
+  vec2_sub,
+  vec2_norm,
+  vec2_sum_list,
 } from "./lib/base_geom.js";
 
 // TODO Make a function F which, given vectors v1, v2, ..., vn,
@@ -27,11 +27,11 @@ function zero_state(): State2D {
   ];
 }
 function state_scale(x: State2D, factor: number): State2D {
-  return [vec_scale(x[0], factor), vec_scale(x[1], factor)];
+  return [vec2_scale(x[0], factor), vec2_scale(x[1], factor)];
 }
 
 function state_sum(x: State2D, y: State2D): State2D {
-  return [vec_sum(x[0], y[0]), vec_sum(x[1], y[1])];
+  return [vec2_sum(x[0], y[0]), vec2_sum(x[1], y[1])];
 }
 
 let GRAVITATIONAL_CONSTANT = 1.0;
@@ -76,15 +76,15 @@ class OneSidedSpringScene extends Scene {
     return this.state[1];
   }
   spring_term(state: State2D): Vec2D {
-    let rel_pos = vec_sub(state[0], [0, 0]);
-    let disp = vec_norm(rel_pos);
-    return vec_scale(
+    let rel_pos = vec2_sub(state[0], [0, 0]);
+    let disp = vec2_norm(rel_pos);
+    return vec2_scale(
       rel_pos,
       (-this.spring_constant * Math.max(disp - this.length, 0)) / disp,
     );
   }
   friction_term(state: State2D): Vec2D {
-    return vec_scale(state[1], -this.friction_constant);
+    return vec2_scale(state[1], -this.friction_constant);
   }
   gravity_term(): Vec2D {
     return [0, GRAVITATIONAL_CONSTANT];
@@ -94,7 +94,7 @@ class OneSidedSpringScene extends Scene {
     let spring_term = this.spring_term(state);
     let friction_term = this.friction_term(state);
     let gravity_term = this.gravity_term();
-    return vec_sum_list([spring_term, friction_term, gravity_term]);
+    return vec2_sum_list([spring_term, friction_term, gravity_term]);
   }
   // Evolves the simulation forward by time dt
   step(dt: number) {
@@ -274,33 +274,33 @@ class CatenaryScene extends Scene {
   d2x(index: number, state: Array<State2D>): Vec2D {
     let rel_pos, disp;
 
-    rel_pos = vec_sub(
+    rel_pos = vec2_sub(
       (state[index] as State2D)[0],
       (state[index - 1] as State2D)[0],
     );
-    disp = vec_norm(rel_pos);
-    let spring_term_1 = vec_scale(
+    disp = vec2_norm(rel_pos);
+    let spring_term_1 = vec2_scale(
       rel_pos,
       (-this.spring_constant *
         Math.max(disp - this.length / this.num_segments, 0)) /
         disp,
     );
 
-    rel_pos = vec_sub(
+    rel_pos = vec2_sub(
       (state[index] as State2D)[0],
       (state[index + 1] as State2D)[0],
     );
-    disp = vec_norm(rel_pos);
-    let spring_term_2 = vec_scale(
+    disp = vec2_norm(rel_pos);
+    let spring_term_2 = vec2_scale(
       rel_pos,
       (-this.spring_constant *
         Math.max(disp - this.length / this.num_segments, 0)) /
         disp,
     );
 
-    return vec_sum_list([
+    return vec2_sum_list([
       [0, -this.gravity / this.num_segments],
-      vec_scale(this._get_velocity(index, state), -this.friction_constant),
+      vec2_scale(this._get_velocity(index, state), -this.friction_constant),
       spring_term_1,
       spring_term_2,
     ]);
@@ -363,22 +363,22 @@ class CatenaryScene extends Scene {
     for (let i = 1; i < this.num_segments; i++) {
       this.set_position(
         i,
-        vec_sum_list([
+        vec2_sum_list([
           this.get_position(i),
-          vec_scale(this._get_position(i, k1), dt / 6),
-          vec_scale(this._get_position(i, k2), dt / 3),
-          vec_scale(this._get_position(i, k3), dt / 3),
-          vec_scale(this._get_position(i, k4), dt / 6),
+          vec2_scale(this._get_position(i, k1), dt / 6),
+          vec2_scale(this._get_position(i, k2), dt / 3),
+          vec2_scale(this._get_position(i, k3), dt / 3),
+          vec2_scale(this._get_position(i, k4), dt / 6),
         ]),
       );
       this.set_velocity(
         i,
-        vec_sum_list([
+        vec2_sum_list([
           this.get_velocity(i),
-          vec_scale(this._get_velocity(i, k1), dt / 6),
-          vec_scale(this._get_velocity(i, k2), dt / 3),
-          vec_scale(this._get_velocity(i, k3), dt / 3),
-          vec_scale(this._get_velocity(i, k4), dt / 6),
+          vec2_scale(this._get_velocity(i, k1), dt / 6),
+          vec2_scale(this._get_velocity(i, k2), dt / 3),
+          vec2_scale(this._get_velocity(i, k3), dt / 3),
+          vec2_scale(this._get_velocity(i, k4), dt / 6),
         ]),
       );
     }

@@ -6,8 +6,8 @@ import {
   Rectangle,
   Line,
   Vec2D,
-  vec_sum,
-  vec_sum_list,
+  vec2_sum,
+  vec2_sum_list,
 } from "./lib/base_geom.js";
 import { clamp, sigmoid, linspace, funspace } from "./lib/base.js";
 import { ParametricFunction } from "./lib/parametric.js";
@@ -202,7 +202,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
           if (this.eccentricity == 1) {
             return null;
           } else {
-            return vec_sum_list([
+            return vec2_sum_list([
               [-this.focus[0], -this.focus[1]],
               this.polar_function(0),
               this.polar_function(Math.PI),

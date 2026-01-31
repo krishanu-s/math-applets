@@ -1,11 +1,11 @@
 import { prepare_canvas } from "./lib/base";
 import {
   Vec2D,
-  vec_sub,
-  vec_scale,
-  vec_sum_list,
-  vec_sum,
-  vec_norm,
+  vec2_sub,
+  vec2_scale,
+  vec2_sum_list,
+  vec2_sum,
+  vec2_norm,
   vec2_normalize,
 } from "./lib/base_geom.js";
 import { normalize, get_column, matmul_vec, rot } from "./lib/matvec";

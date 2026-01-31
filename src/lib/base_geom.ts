@@ -4,36 +4,36 @@ import { MObject, Scene } from "./base.js";
 // A point in 2D space.
 export type Vec2D = [number, number];
 
-export function vec_norm(x: Vec2D): number {
+export function vec2_norm(x: Vec2D): number {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
 
 export function vec2_normalize(x: Vec2D) {
-  let n = vec_norm(x);
+  let n = vec2_norm(x);
   if (n == 0) {
     throw new Error("Can't normalize the zero vector");
   } else {
-    return vec_scale(x, 1 / n);
+    return vec2_scale(x, 1 / n);
   }
 }
 
-export function vec_scale(x: Vec2D, factor: number): Vec2D {
+export function vec2_scale(x: Vec2D, factor: number): Vec2D {
   return [x[0] * factor, x[1] * factor];
 }
 
-export function vec_sum(x: Vec2D, y: Vec2D): Vec2D {
+export function vec2_sum(x: Vec2D, y: Vec2D): Vec2D {
   return [x[0] + y[0], x[1] + y[1]];
 }
 
-export function vec_sum_list(xs: Vec2D[]): Vec2D {
-  return xs.reduce((acc, x) => vec_sum(acc, x), [0, 0]);
+export function vec2_sum_list(xs: Vec2D[]): Vec2D {
+  return xs.reduce((acc, x) => vec2_sum(acc, x), [0, 0]);
 }
 
-export function vec_sub(x: Vec2D, y: Vec2D): Vec2D {
+export function vec2_sub(x: Vec2D, y: Vec2D): Vec2D {
   return [x[0] - y[0], x[1] - y[1]];
 }
 
-export function vec_rot(v: Vec2D, angle: number): Vec2D {
+export function vec2_rot(v: Vec2D, angle: number): Vec2D {
   const [x, y] = v;
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
@@ -203,9 +203,9 @@ export class Arrow extends Line {
 
     let [end_x, end_y] = scene.v2c(this.end);
 
-    let v = vec_scale(vec_sub(this.start, this.end), this.arrow_size);
-    let [ax, ay] = scene.v2c(vec_sum(this.end, vec_rot(v, Math.PI / 6)));
-    let [bx, by] = scene.v2c(vec_sum(this.end, vec_rot(v, -Math.PI / 6)));
+    let v = vec2_scale(vec2_sub(this.start, this.end), this.arrow_size);
+    let [ax, ay] = scene.v2c(vec2_sum(this.end, vec2_rot(v, Math.PI / 6)));
+    let [bx, by] = scene.v2c(vec2_sum(this.end, vec2_rot(v, -Math.PI / 6)));
     ctx.beginPath();
 
     ctx.moveTo(end_x, end_y);

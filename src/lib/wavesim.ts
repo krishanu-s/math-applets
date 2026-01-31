@@ -3,7 +3,7 @@ import { Dot, Line, Arrow } from "./base_geom.js";
 import { LineSpring } from "./spring.js";
 import { Slider, Button } from "./interactive.js";
 import { clamp, sigmoid } from "./base.js";
-import { Vec2D, vec_norm, vec_sub } from "./base_geom.js";
+import { Vec2D, vec2_norm, vec2_sub } from "./base_geom.js";
 import { ParametricFunction } from "./parametric.js";
 import { BezierSpline } from "./bezier.js";
 import { HeatMap } from "./heatmap.js";
@@ -157,7 +157,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       let line = new LineSpring(pos, next_pos, {
         stroke_width: 0.2 / Math.sqrt(width),
       });
-      eq_length = vec_norm(vec_sub(pos, next_pos));
+      eq_length = vec2_norm(vec2_sub(pos, next_pos));
       line.set_eq_length(eq_length);
       this.add(`l_${i}`, line);
     }
@@ -210,7 +210,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       pos = this.eq_position(i);
       next_pos = this.eq_position(i + 1);
       let line = this.get_mobj(`l_${i}`) as LineSpring;
-      eq_length = vec_norm(vec_sub(pos, next_pos));
+      eq_length = vec2_norm(vec2_sub(pos, next_pos));
       line.set_eq_length(eq_length);
     }
   }

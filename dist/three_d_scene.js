@@ -475,21 +475,21 @@ function Button(container, callback) {
 }
 
 // src/lib/base_geom.ts
-function vec_norm(x) {
+function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
 function vec2_normalize(x) {
-  let n = vec_norm(x);
+  let n = vec2_norm(x);
   if (n == 0) {
     throw new Error("Can't normalize the zero vector");
   } else {
-    return vec_scale(x, 1 / n);
+    return vec2_scale(x, 1 / n);
   }
 }
-function vec_scale(x, factor) {
+function vec2_scale(x, factor) {
   return [x[0] * factor, x[1] * factor];
 }
-function vec_sub(x, y) {
+function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
 
@@ -525,7 +525,7 @@ var Arcball = class {
         event.pageX - this.scene.canvas.offsetLeft,
         event.pageY - this.scene.canvas.offsetTop
       ];
-      this.dragDiff = vec_sub(
+      this.dragDiff = vec2_sub(
         this.scene.c2s(this.dragStart[0], this.dragStart[1]),
         this.scene.c2s(this.dragEnd[0], this.dragEnd[1])
       );
@@ -547,7 +547,7 @@ var Arcball = class {
           vec3_scale(get_column(camera_frame, 0), v[0]),
           vec3_scale(get_column(camera_frame, 1), v[1])
         );
-        let n = vec_norm(this.dragDiff);
+        let n = vec2_norm(this.dragDiff);
         this.scene.rot(rot_axis, n);
         this.scene.set_camera_position(
           rot(this.scene.camera_position, rot_axis, n)
@@ -619,13 +619,7 @@ function delay(ms) {
       let modeButton = Button(
         document.getElementById("three-d-cube-mode-button"),
         function() {
-          if (arcball.mode == "Translate") {
-            arcball.mode = "Rotate";
-          } else if (arcball.mode == "Rotate") {
-            arcball.mode = "Translate";
-          } else {
-            throw new Error();
-          }
+          arcball.switch_mode();
           modeButton.textContent = `Mode = ${arcball.mode}`;
         }
       );
