@@ -289,6 +289,67 @@ export class Cube extends ThreeDMObject {
   }
 }
 
+// A parametrized curve
+export class ParametrizedCurve3D extends ThreeDMObject {
+  function: (t: number) => Vec3D;
+  tmin: number;
+  tmax: number;
+  num_steps: number;
+  mode: "smooth" | "jagged" = "jagged";
+  stroke_width: number = 0.04;
+  stroke_color: string = "black";
+  constructor(
+    f: (t: number) => Vec3D,
+    tmin: number,
+    tmax: number,
+    num_steps: number,
+    kwargs: Record<string, any>,
+  ) {
+    super();
+    this.function = f;
+    this.tmin = tmin;
+    this.tmax = tmax;
+    this.num_steps = num_steps;
+    this.mode = kwargs.mode || this.mode;
+    this.stroke_width = kwargs.stroke_width || this.stroke_width;
+    this.stroke_color = kwargs.stroke_color || this.stroke_color;
+  }
+  // Jagged doesn't use Bezier curves. It is faster to compute and render.
+  set_mode(mode: "smooth" | "jagged") {
+    this.mode = mode;
+  }
+  set_function(new_f: (t: number) => Vec3D) {
+    this.function = new_f;
+  }
+  draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+
+    // Generate points to draw
+    let points: Vec3D[] = [this.function(this.tmin)];
+    for (let i = 1; i <= this.num_steps; i++) {
+      points.push(
+        this.function(
+          this.tmin + (i / this.num_steps) * (this.tmax - this.tmin),
+        ),
+      );
+    }
+    let [px, py] = scene.v2c(scene.camera_view(points[0]) as Vec2D);
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+
+    for (let i = 1; i <= this.num_steps; i++) {
+      [px, py] = scene.v2c(scene.camera_view(points[i]) as Vec2D);
+      ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+}
+
 // Rendering three-dimensional scenes.
 // Drawing three-dimensional objects begins with projecting them onto
 // the two-dimensional plane orthogonal to the camera's view direction.

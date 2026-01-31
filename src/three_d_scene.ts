@@ -21,6 +21,7 @@ import {
   Line3D,
   Arrow3D,
   TwoHeadedArrow3D,
+  ParametrizedCurve3D,
 } from "./lib/three_d.js";
 import { Slider, Button, PauseButton } from "./lib/interactive.js";
 import { Arcball } from "./lib/arcball.js";
@@ -118,17 +119,16 @@ function delay(ms: number) {
 
     (function three_d_graph(width: number, height: number) {
       // Graphing a function
-
       let canvas = prepare_canvas(width, height, "three-d-graph");
+      let [xmin, xmax] = [-5, 5];
+      let [ymin, ymax] = [-5, 5];
+      let [zmin, zmax] = [-5, 5];
 
       // Initialize three-dimensional scene, zoomed in
       let zoom_ratio = 1.0;
       let scene = new ThreeDScene(canvas);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
-      scene.set_view_lims(
-        [-5 / zoom_ratio, 5 / zoom_ratio],
-        [-5 / zoom_ratio, 5 / zoom_ratio],
-      );
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.set_zoom(zoom_ratio);
       scene.set_view_mode("projection");
 
       // Rotate the camera angle and set the camera position
@@ -138,12 +138,51 @@ function delay(ms: number) {
         rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4),
       );
 
-      // Add graph lines
-      scene.add("x-axis", new TwoHeadedArrow3D([-5, 0, 0], [5, 0, 0]));
-      scene.add("y-axis", new TwoHeadedArrow3D([0, -5, 0], [0, 5, 0]));
-      scene.add("z-axis", new TwoHeadedArrow3D([0, 0, -5], [0, 0, 5]));
+      // Add graph lines with ticks
+      let tick_size = 0.1;
+      scene.add("x-axis", new TwoHeadedArrow3D([xmin, 0, 0], [xmax, 0, 0]));
+      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
+        if (x == 0) {
+          continue;
+        }
+        scene.add(
+          `x-tick-(${x})`,
+          new Line3D([x, 0, -tick_size], [x, 0, tick_size]),
+        );
+      }
 
-      // TODO Add ticks
+      scene.add("y-axis", new TwoHeadedArrow3D([0, ymin, 0], [0, ymax, 0]));
+      for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
+        if (y == 0) {
+          continue;
+        }
+        scene.add(
+          `y-tick-(${y})`,
+          new Line3D([-tick_size, y, 0], [tick_size, y, 0]),
+        );
+      }
+
+      scene.add("z-axis", new TwoHeadedArrow3D([0, 0, zmin], [0, 0, zmax]));
+      for (let z = Math.floor(zmin) + 1; z <= Math.ceil(zmax) - 1; z++) {
+        if (z == 0) {
+          continue;
+        }
+        scene.add(
+          `z-tick-(${z})`,
+          new Line3D([0, -tick_size, z], [0, tick_size, z]),
+        );
+      }
+
+      // Add the graph of some function.
+      let curve = new ParametrizedCurve3D(
+        (t) => [Math.cos(t), Math.sin(t), t / Math.PI],
+        -3 * Math.PI,
+        3 * Math.PI,
+        100,
+        { stroke_color: "red", stroke_width: 0.04 },
+      );
+      curve.set_alpha(0.5);
+      scene.add("curve", curve);
 
       // Adding click-and-drag interactivity to the canvas
       let arcball = new Arcball(scene);
@@ -159,6 +198,25 @@ function delay(ms: number) {
       );
       modeButton.textContent = `Mode = ${arcball.mode}`;
       modeButton.style.padding = "15px";
+
+      // Add a slider to control the zoom level
+      let zoomSlider = Slider(
+        document.getElementById("three-d-graph-zoom-slider") as HTMLElement,
+        function (value: number) {
+          zoom_ratio = value;
+          console.log(`Zoom ratio: ${zoom_ratio}`);
+          scene.set_zoom(value);
+          scene.draw();
+        },
+        {
+          name: "Zoom",
+          initialValue: `${zoom_ratio}`,
+          min: 0.5,
+          max: 5,
+          step: 0.05,
+        },
+      );
+      zoomSlider.value = `1.0`;
 
       scene.draw();
     })(300, 300);

@@ -135,6 +135,8 @@ export class Rectangle extends MObject {
   }
 }
 
+// TODO Make "Linelike" for objects with stroke_width and stroke_color properties.
+
 // A line segment.
 export class Line extends MObject {
   start: Vec2D;
@@ -167,6 +169,9 @@ export class Line extends MObject {
   move_end(x: number, y: number) {
     this.end = [x, y];
   }
+  length(): number {
+    return vec2_norm(vec2_sub(this.start, this.end));
+  }
   // Draws on the canvas
   draw(canvas: HTMLCanvasElement, scene: Scene) {
     let ctx = canvas.getContext("2d");
@@ -185,8 +190,9 @@ export class Line extends MObject {
 }
 
 // An arrow
+// TODO
 export class Arrow extends Line {
-  arrow_size: number = 0.3;
+  arrow_size: number = 0.1;
   set_arrow_size(size: number) {
     this.arrow_size = size;
   }
@@ -203,7 +209,10 @@ export class Arrow extends Line {
 
     let [end_x, end_y] = scene.v2c(this.end);
 
-    let v = vec2_scale(vec2_sub(this.start, this.end), this.arrow_size);
+    let v = vec2_scale(
+      vec2_sub(this.start, this.end),
+      this.arrow_size / this.length(),
+    );
     let [ax, ay] = scene.v2c(vec2_sum(this.end, vec2_rot(v, Math.PI / 6)));
     let [bx, by] = scene.v2c(vec2_sum(this.end, vec2_rot(v, -Math.PI / 6)));
     ctx.beginPath();
@@ -244,7 +253,10 @@ export class TwoHeadedArrow extends Line {
     let by: number;
 
     // Arrow head
-    v = vec2_scale(vec2_sub(this.start, this.end), this.arrow_size);
+    v = vec2_scale(
+      vec2_sub(this.start, this.end),
+      this.arrow_size / this.length(),
+    );
     [ax, ay] = scene.v2c(vec2_sum(this.end, vec2_rot(v, Math.PI / 6)));
     [bx, by] = scene.v2c(vec2_sum(this.end, vec2_rot(v, -Math.PI / 6)));
     ctx.beginPath();
@@ -256,7 +268,10 @@ export class TwoHeadedArrow extends Line {
     ctx.fill();
 
     // Arrow tail
-    v = vec2_scale(vec2_sub(this.end, this.start), this.arrow_size);
+    v = vec2_scale(
+      vec2_sub(this.end, this.start),
+      this.arrow_size / this.length(),
+    );
     [ax, ay] = scene.v2c(vec2_sum(this.start, vec2_rot(v, Math.PI / 6)));
     [bx, by] = scene.v2c(vec2_sum(this.start, vec2_rot(v, -Math.PI / 6)));
     ctx.beginPath();

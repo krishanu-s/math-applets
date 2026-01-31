@@ -45,7 +45,16 @@ export class MObject {
 
 // *** SCENES ***
 
-// An animated scene where all objects evolve according to some notion of time.
+// A Scene is an abstract class which houses mathematical objects defined by some set of parameters.
+// It includes frameworks for
+// - drawing to a canvas, or multiple separate canvases (TODO, in this case it may be better to have separate linked scenes)
+// - making available to the user interactive elements, such as buttons or sliders, which change parameters
+// - running autonomous simulations which evolve these mathematical objects
+// - running user-defined animations
+// TODO Incorporate the ability to add interactive elements to the scene.
+// - Sliders
+// - Buttons
+// -
 export class Scene {
   canvas: HTMLCanvasElement;
   mobjects: Record<string, MObject>; // TODO make this easier to look up?
@@ -76,6 +85,11 @@ export class Scene {
   set_view_lims(xlims: [number, number], ylims: [number, number]) {
     this.view_xlims = xlims;
     this.view_ylims = ylims;
+  }
+  // Sets the current zoom level
+  set_zoom(value: number) {
+    this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
+    this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x: number, y: number): [number, number] {

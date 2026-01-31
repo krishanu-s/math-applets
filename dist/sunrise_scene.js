@@ -32,6 +32,11 @@ var Scene = class {
     this.view_xlims = xlims;
     this.view_ylims = ylims;
   }
+  // Sets the current zoom level
+  set_zoom(value) {
+    this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
+    this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
+  }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [
@@ -92,6 +97,12 @@ var Scene = class {
 };
 
 // src/lib/base_geom.ts
+function vec2_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec2_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
 var Line = class extends MObject {
   constructor(start, end, kwargs) {
     super();
@@ -116,6 +127,9 @@ var Line = class extends MObject {
   }
   move_end(x, y) {
     this.end = [x, y];
+  }
+  length() {
+    return vec2_norm(vec2_sub(this.start, this.end));
   }
   // Draws on the canvas
   draw(canvas, scene) {

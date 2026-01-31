@@ -32,6 +32,11 @@ var Scene = class {
     this.view_xlims = xlims;
     this.view_ylims = ylims;
   }
+  // Sets the current zoom level
+  set_zoom(value) {
+    this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
+    this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
+  }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [
@@ -328,6 +333,52 @@ var Cube = class extends ThreeDMObject {
     }
   }
 };
+var ParametrizedCurve3D = class extends ThreeDMObject {
+  constructor(f, tmin, tmax, num_steps, kwargs) {
+    super();
+    this.mode = "jagged";
+    this.stroke_width = 0.04;
+    this.stroke_color = "black";
+    this.function = f;
+    this.tmin = tmin;
+    this.tmax = tmax;
+    this.num_steps = num_steps;
+    this.mode = kwargs.mode || this.mode;
+    this.stroke_width = kwargs.stroke_width || this.stroke_width;
+    this.stroke_color = kwargs.stroke_color || this.stroke_color;
+  }
+  // Jagged doesn't use Bezier curves. It is faster to compute and render.
+  set_mode(mode) {
+    this.mode = mode;
+  }
+  set_function(new_f) {
+    this.function = new_f;
+  }
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+    let points = [this.function(this.tmin)];
+    for (let i = 1; i <= this.num_steps; i++) {
+      points.push(
+        this.function(
+          this.tmin + i / this.num_steps * (this.tmax - this.tmin)
+        )
+      );
+    }
+    let [px, py] = scene.v2c(scene.camera_view(points[0]));
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    for (let i = 1; i <= this.num_steps; i++) {
+      [px, py] = scene.v2c(scene.camera_view(points[i]));
+      ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+};
 var ThreeDScene = class extends Scene {
   constructor() {
     super(...arguments);
@@ -534,6 +585,55 @@ function rot(v, axis, angle) {
 }
 
 // src/lib/interactive.ts
+function Slider(container, callback, kwargs) {
+  let slider = document.createElement("input");
+  slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
+  }
+  let min = kwargs.min;
+  if (min == void 0) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min}`;
+  }
+  let max = kwargs.max;
+  if (max == void 0) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max}`;
+  }
+  let step = kwargs.step;
+  if (step == void 0) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
+  }
+  container.appendChild(slider);
+  let valueDisplay = document.createElement("span");
+  valueDisplay.classList.add("value-display");
+  valueDisplay.id = "sliderValue";
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+  container.appendChild(valueDisplay);
+  function updateDisplay() {
+    callback(slider.value);
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+    updateSliderColor(slider);
+  }
+  function updateSliderColor(sliderElement) {
+    const value = 100 * parseFloat(sliderElement.value);
+    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
+  }
+  updateDisplay();
+  slider.addEventListener("input", updateDisplay);
+  return slider;
+}
 function Button(container, callback) {
   const button = document.createElement("button");
   button.type = "button";
@@ -702,22 +802,59 @@ function delay(ms) {
     })(300, 300);
     (function three_d_graph(width, height) {
       let canvas = prepare_canvas(width, height, "three-d-graph");
+      let [xmin, xmax] = [-5, 5];
+      let [ymin, ymax] = [-5, 5];
+      let [zmin, zmax] = [-5, 5];
       let zoom_ratio = 1;
       let scene = new ThreeDScene(canvas);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
-      scene.set_view_lims(
-        [-5 / zoom_ratio, 5 / zoom_ratio],
-        [-5 / zoom_ratio, 5 / zoom_ratio]
-      );
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.set_zoom(zoom_ratio);
       scene.set_view_mode("projection");
       scene.rot_z(Math.PI / 4);
       scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
       scene.set_camera_position(
         rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4)
       );
-      scene.add("x-axis", new TwoHeadedArrow3D([-5, 0, 0], [5, 0, 0]));
-      scene.add("y-axis", new TwoHeadedArrow3D([0, -5, 0], [0, 5, 0]));
-      scene.add("z-axis", new TwoHeadedArrow3D([0, 0, -5], [0, 0, 5]));
+      let tick_size = 0.1;
+      scene.add("x-axis", new TwoHeadedArrow3D([xmin, 0, 0], [xmax, 0, 0]));
+      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
+        if (x == 0) {
+          continue;
+        }
+        scene.add(
+          `x-tick-(${x})`,
+          new Line3D([x, 0, -tick_size], [x, 0, tick_size])
+        );
+      }
+      scene.add("y-axis", new TwoHeadedArrow3D([0, ymin, 0], [0, ymax, 0]));
+      for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
+        if (y == 0) {
+          continue;
+        }
+        scene.add(
+          `y-tick-(${y})`,
+          new Line3D([-tick_size, y, 0], [tick_size, y, 0])
+        );
+      }
+      scene.add("z-axis", new TwoHeadedArrow3D([0, 0, zmin], [0, 0, zmax]));
+      for (let z = Math.floor(zmin) + 1; z <= Math.ceil(zmax) - 1; z++) {
+        if (z == 0) {
+          continue;
+        }
+        scene.add(
+          `z-tick-(${z})`,
+          new Line3D([0, -tick_size, z], [0, tick_size, z])
+        );
+      }
+      let curve = new ParametrizedCurve3D(
+        (t) => [Math.cos(t), Math.sin(t), t / Math.PI],
+        -3 * Math.PI,
+        3 * Math.PI,
+        100,
+        { stroke_color: "red", stroke_width: 0.04 }
+      );
+      curve.set_alpha(0.5);
+      scene.add("curve", curve);
       let arcball = new Arcball(scene);
       arcball.add();
       let modeButton = Button(
@@ -729,6 +866,23 @@ function delay(ms) {
       );
       modeButton.textContent = `Mode = ${arcball.mode}`;
       modeButton.style.padding = "15px";
+      let zoomSlider = Slider(
+        document.getElementById("three-d-graph-zoom-slider"),
+        function(value) {
+          zoom_ratio = value;
+          console.log(`Zoom ratio: ${zoom_ratio}`);
+          scene.set_zoom(value);
+          scene.draw();
+        },
+        {
+          name: "Zoom",
+          initialValue: `${zoom_ratio}`,
+          min: 0.5,
+          max: 5,
+          step: 0.05
+        }
+      );
+      zoomSlider.value = `1.0`;
       scene.draw();
     })(300, 300);
   });

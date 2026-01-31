@@ -21,6 +21,11 @@ var Scene = class {
     this.view_xlims = xlims;
     this.view_ylims = ylims;
   }
+  // Sets the current zoom level
+  set_zoom(value) {
+    this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
+    this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
+  }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [

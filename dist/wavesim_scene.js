@@ -10673,6 +10673,11 @@ var Scene = class {
     this.view_xlims = xlims;
     this.view_ylims = ylims;
   }
+  // Sets the current zoom level
+  set_zoom(value) {
+    this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
+    this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
+  }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [
@@ -10968,6 +10973,9 @@ var Line = class extends MObject {
   move_end(x, y) {
     this.end = [x, y];
   }
+  length() {
+    return vec2_norm(vec2_sub(this.start, this.end));
+  }
   // Draws on the canvas
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
@@ -10987,7 +10995,7 @@ var Line = class extends MObject {
 var Arrow = class extends Line {
   constructor() {
     super(...arguments);
-    this.arrow_size = 0.3;
+    this.arrow_size = 0.1;
   }
   set_arrow_size(size2) {
     this.arrow_size = size2;
@@ -11002,7 +11010,10 @@ var Arrow = class extends Line {
     ctx.fillStyle = this.stroke_color;
     ctx.globalAlpha = this.alpha;
     let [end_x, end_y] = scene.v2c(this.end);
-    let v = vec2_scale(vec2_sub(this.start, this.end), this.arrow_size);
+    let v = vec2_scale(
+      vec2_sub(this.start, this.end),
+      this.arrow_size / this.length()
+    );
     let [ax, ay] = scene.v2c(vec2_sum(this.end, vec2_rot(v, Math.PI / 6)));
     let [bx, by] = scene.v2c(vec2_sum(this.end, vec2_rot(v, -Math.PI / 6)));
     ctx.beginPath();
