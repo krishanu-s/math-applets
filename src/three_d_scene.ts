@@ -1,4 +1,4 @@
-import { prepare_canvas } from "./lib/base";
+import { prepare_canvas, delay } from "./lib/base";
 import {
   Vec2D,
   vec2_sub,
@@ -25,10 +25,6 @@ import {
 } from "./lib/three_d.js";
 import { Slider, Button, PauseButton } from "./lib/interactive.js";
 import { Arcball } from "./lib/arcball.js";
-
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 (async function () {
   document.addEventListener("DOMContentLoaded", async function () {

@@ -13,6 +13,7 @@ import {
   rot_x_matrix,
   rot_matrix,
   mat_inv,
+  get_column,
 } from "./matvec.js";
 import { vec2_sum, vec2_sub, vec2_scale, vec2_rot } from "./base_geom.js";
 
@@ -47,7 +48,12 @@ export function vec3_sub(x: Vec3D, y: Vec3D): Vec3D {
 }
 
 // Three-dimensional objects.
-export class ThreeDMObject extends MObject {}
+export class ThreeDMObject extends MObject {
+  // Return the depth of the object in the scene. Used for sorting.
+  depth(scene: ThreeDScene): number {
+    return 0;
+  }
+}
 
 // A dot.
 export class Dot3D extends ThreeDMObject {
@@ -59,7 +65,9 @@ export class Dot3D extends ThreeDMObject {
     this.center = center;
     this.radius = radius;
   }
-
+  depth(scene: ThreeDScene): number {
+    return scene.depth(this.center);
+  }
   draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
@@ -99,6 +107,9 @@ export class Line3D extends ThreeDMObject {
   }
   move_end(v: Vec3D) {
     this.end = v;
+  }
+  depth(scene: ThreeDScene): number {
+    return scene.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
   }
   draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
     let ctx = canvas.getContext("2d");
@@ -224,6 +235,9 @@ export class Cube extends ThreeDMObject {
     this.size = size;
     this.stroke_width = 0.05;
     this.stroke_color = "black";
+  }
+  depth(scene: ThreeDScene): number {
+    return scene.depth(this.center);
   }
   draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
     let ctx = canvas.getContext("2d");
@@ -361,6 +375,7 @@ export class ParametrizedCurve3D extends ThreeDMObject {
 // Rendering a point v first consists of computing A^{-1}(v - v0). Then the first two coordinates
 // of Av are the 2D coordinates of the rendering, while the third coordinate is the depth.
 export class ThreeDScene extends Scene {
+  mobjects: Record<string, ThreeDMObject>;
   // Inverse of the camera matrix
   // TODO Also give the camera a position vector
   camera_frame_inv: Mat3by3 = [
@@ -425,6 +440,12 @@ export class ThreeDScene extends Scene {
       return this.projection_view(p);
     }
   }
+  depth(p: Vec3D): number {
+    return matmul_vec(
+      this.camera_frame_inv,
+      vec3_sub(p, this.camera_position),
+    )[2];
+  }
   // Projects a 3D point onto the camera view plane. Does not include perspective.
   projection_view(p: Vec3D): Vec2D {
     let [vx, vy, vz] = matmul_vec(
@@ -447,4 +468,23 @@ export class ThreeDScene extends Scene {
     }
   }
   // Draw
+  draw(args?: any) {
+    let ctx = this.canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // First order the objects by depth
+    let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
+      let depth_a = this.mobjects[a].depth(this);
+      let depth_b = this.mobjects[b].depth(this);
+      return depth_a - depth_b;
+    });
+
+    // Then draw them in order
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == undefined) throw new Error(`${name} not found`);
+      mobj.draw(this.canvas, this);
+    }
+  }
 }

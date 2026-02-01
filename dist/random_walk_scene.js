@@ -1,4 +1,18 @@
 // src/lib/base.ts
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+var MObject = class {
+  // Opacity for drawing
+  constructor() {
+    this.alpha = 1;
+  }
+  set_alpha(alpha) {
+    this.alpha = alpha;
+  }
+  draw(canvas, scene, args) {
+  }
+};
 var Scene = class {
   constructor(canvas) {
     this.canvas = canvas;
@@ -107,53 +121,154 @@ function prepare_canvas(width, height, name) {
   return canvas;
 }
 
+// src/lib/base_geom.ts
+var Rectangle = class extends MObject {
+  constructor(center, size_x, size_y) {
+    super();
+    this.fill_color = "black";
+    this.center = center;
+    this.size_x = size_x;
+    this.size_y = size_y;
+  }
+  move_to(x, y) {
+    this.center = [x, y];
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.fillStyle = this.fill_color;
+    ctx.globalAlpha = this.alpha;
+    let [px, py] = scene.v2c([
+      this.center[0] - this.size_x / 2,
+      this.center[1] - this.size_y / 2
+    ]);
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    [px, py] = scene.v2c([
+      this.center[0] + this.size_x / 2,
+      this.center[1] - this.size_y / 2
+    ]);
+    ctx.lineTo(px, py);
+    [px, py] = scene.v2c([
+      this.center[0] + this.size_x / 2,
+      this.center[1] + this.size_y / 2
+    ]);
+    ctx.lineTo(px, py);
+    [px, py] = scene.v2c([
+      this.center[0] - this.size_x / 2,
+      this.center[1] + this.size_y / 2
+    ]);
+    ctx.lineTo(px, py);
+    [px, py] = scene.v2c([
+      this.center[0] - this.size_x / 2,
+      this.center[1] - this.size_y / 2
+    ]);
+    ctx.lineTo(px, py);
+    ctx.closePath();
+    ctx.fill();
+  }
+};
+
 // src/random_walk_scene.ts
-(function() {
+(async function() {
   document.addEventListener("DOMContentLoaded", async function() {
     function pick_random_step(dim) {
       const x = 2 * dim * Math.random();
       let output = new Array(dim).fill(0);
       for (let i = 0; i < dim; i++) {
-        if (x < 2 * i) {
+        if (x < 2 * i + 1) {
           output[i] = 1;
           return output;
-        } else if (x < 2 * i + 1) {
+        } else if (x < 2 * i + 2) {
           output[i] = -1;
           return output;
         }
       }
       throw new Error("Invalid dimension");
     }
-    (function animate_random_walk_2d(num_steps) {
+    class Histogram extends MObject {
+      constructor() {
+        super(...arguments);
+        this.hist = {};
+        this.fill_color = "black";
+        // Min/max bin values
+        this.bin_min = 0;
+        this.bin_max = 100;
+        // Min/max counts
+        this.count_min = 0;
+        this.count_max = 100;
+      }
+      set_count_limits(min, max) {
+        this.count_min = min;
+        this.count_max = max;
+      }
+      set_bin_limits(min, max) {
+        this.bin_min = min;
+        this.bin_max = max;
+      }
+      set_hist(hist) {
+        this.hist = hist;
+      }
+      // Create a bunch of rectangles
+      draw(canvas, scene) {
+        let [xmin, xmax] = scene.xlims;
+        let [ymin, ymax] = scene.ylims;
+        let bin_width = (xmax - xmin) / (this.bin_max - this.bin_min);
+        let ct_height = (ymax - ymin) / (this.count_max - this.count_min);
+        let bin;
+        let rect_center, rect_height, rect_width;
+        for (let i = 0; i < Object.keys(this.hist).length; i++) {
+          bin = Object.keys(this.hist)[i];
+          rect_center = [
+            xmin + (bin - this.bin_min + 0.5) * bin_width,
+            ymin + this.hist[bin] * 0.5 * ct_height
+          ];
+          rect_height = this.hist[bin] * ct_height;
+          rect_width = bin_width;
+          new Rectangle(rect_center, rect_width, rect_height).draw(
+            canvas,
+            scene
+          );
+        }
+      }
+    }
+    (async function graph_random_walk_2d(num_walks, num_steps) {
       let canvas = prepare_canvas(300, 300, "scene-container");
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         throw new Error("Failed to get 2D context");
       }
       let scene = new Scene(canvas);
-      scene.set_frame_lims([-30, 30], [-30, 30]);
-      let [x, y] = [0, 0];
-      let [cx, cy] = scene.v2c([x, y]);
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      let dx, dy;
-      for (let i = 0; i < num_steps; i++) {
-        [dx, dy] = pick_random_step(2);
-        x += dx;
-        y += dy;
-        [cx, cy] = scene.v2c([x, y]);
-        console.log(cx, cy);
-        ctx.lineTo(cx, cy);
-        ctx.stroke();
+      let histogram = new Histogram();
+      histogram.set_count_limits(0, num_walks);
+      histogram.set_bin_limits(0, 100);
+      scene.add("histogram", histogram);
+      let points = [];
+      for (let i = 0; i < num_walks; i++) {
+        points.push([0, 0, 0]);
       }
-    })(100);
-    (function graph_random_walk_2d(num_walks, num_steps) {
-      let canvas = prepare_canvas(300, 300, "scene-container");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context");
+      let x, y, z;
+      let dx, dy, dz;
+      let dist;
+      let hist_data = {};
+      for (let step = 0; step < num_steps; step++) {
+        let hist_data2 = {};
+        for (let i = 0; i < num_walks; i++) {
+          [x, y, z] = points[i];
+          if (x == 0 && y == 0 && z == 0 && step > 0) {
+            hist_data2[0] = hist_data2[0] ? hist_data2[0] + 1 : 1;
+          } else {
+            [dx, dy, dz] = pick_random_step(3);
+            points[i] = [x + dx, y + dy, z + dz];
+            dist = Math.abs(x + dx) + Math.abs(y + dy) + Math.abs(z + dz);
+            hist_data2[dist] = hist_data2[dist] ? hist_data2[dist] + 1 : 1;
+          }
+        }
+        scene.get_mobj("histogram").set_hist(hist_data2);
+        scene.draw();
+        await delay(10);
       }
-      let scene = new Scene(canvas);
-    })(100, 100);
+    })(5e4, 1e3);
   });
 })();

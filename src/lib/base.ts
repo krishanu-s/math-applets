@@ -29,6 +29,11 @@ export function funspace(
   return Array.from({ length: num }, (_, i) => func(start + i * step));
 }
 
+// Delays for the given number of milliseconds. Useful for visibility in test animations.
+export function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // *** MATH OBJECTS ***
 
 // Base class for mathematical objects
@@ -57,7 +62,7 @@ export class MObject {
 // -
 export class Scene {
   canvas: HTMLCanvasElement;
-  mobjects: Record<string, MObject>; // TODO make this easier to look up?
+  mobjects: Record<string, MObject>;
   // Scene size
   xlims: [number, number];
   ylims: [number, number];

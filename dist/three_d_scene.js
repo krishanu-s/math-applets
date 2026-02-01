@@ -1,4 +1,7 @@
 // src/lib/base.ts
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 var MObject = class {
   // Opacity for drawing
   constructor() {
@@ -167,6 +170,10 @@ function vec3_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
 }
 var ThreeDMObject = class extends MObject {
+  // Return the depth of the object in the scene. Used for sorting.
+  depth(scene) {
+    return 0;
+  }
 };
 var Dot3D = class extends ThreeDMObject {
   constructor(center, radius) {
@@ -174,6 +181,9 @@ var Dot3D = class extends ThreeDMObject {
     this.fill_color = "black";
     this.center = center;
     this.radius = radius;
+  }
+  depth(scene) {
+    return scene.depth(this.center);
   }
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
@@ -209,6 +219,9 @@ var Line3D = class extends ThreeDMObject {
   }
   move_end(v) {
     this.end = v;
+  }
+  depth(scene) {
+    return scene.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
   }
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
@@ -279,6 +292,9 @@ var Cube = class extends ThreeDMObject {
     this.size = size;
     this.stroke_width = 0.05;
     this.stroke_color = "black";
+  }
+  depth(scene) {
+    return scene.depth(this.center);
   }
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
@@ -447,6 +463,12 @@ var ThreeDScene = class extends Scene {
       return this.projection_view(p);
     }
   }
+  depth(p) {
+    return matmul_vec(
+      this.camera_frame_inv,
+      vec3_sub(p, this.camera_position)
+    )[2];
+  }
   // Projects a 3D point onto the camera view plane. Does not include perspective.
   projection_view(p) {
     let [vx, vy, vz] = matmul_vec(
@@ -469,6 +491,21 @@ var ThreeDScene = class extends Scene {
     }
   }
   // Draw
+  draw(args) {
+    let ctx = this.canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
+      let depth_a = this.mobjects[a].depth(this);
+      let depth_b = this.mobjects[b].depth(this);
+      return depth_a - depth_b;
+    });
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      mobj.draw(this.canvas, this);
+    }
+  }
 };
 
 // src/lib/matvec.ts
@@ -503,7 +540,7 @@ function mat_inv(m) {
     ]
   ];
 }
-function get_column(m, i) {
+function get_column2(m, i) {
   return [m[0][i], m[1][i], m[2][i]];
 }
 function normalize(v) {
@@ -692,16 +729,16 @@ var Arcball = class {
         let camera_frame = this.scene.get_camera_frame();
         this.scene.translate(
           vec3_sum(
-            vec3_scale(get_column(camera_frame, 0), this.dragDiff[0]),
-            vec3_scale(get_column(camera_frame, 1), this.dragDiff[1])
+            vec3_scale(get_column2(camera_frame, 0), this.dragDiff[0]),
+            vec3_scale(get_column2(camera_frame, 1), this.dragDiff[1])
           )
         );
       } else if (this.mode == "Rotate") {
         let v = vec2_normalize([this.dragDiff[1], -this.dragDiff[0]]);
         let camera_frame = this.scene.get_camera_frame();
         let rot_axis = vec3_sum(
-          vec3_scale(get_column(camera_frame, 0), v[0]),
-          vec3_scale(get_column(camera_frame, 1), v[1])
+          vec3_scale(get_column2(camera_frame, 0), v[0]),
+          vec3_scale(get_column2(camera_frame, 1), v[1])
         );
         let n = vec2_norm(this.dragDiff);
         this.scene.rot(rot_axis, n);
@@ -732,9 +769,6 @@ var Arcball = class {
 };
 
 // src/three_d_scene.ts
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 (async function() {
   document.addEventListener("DOMContentLoaded", async function() {
     (async function three_d_cube(width, height) {
