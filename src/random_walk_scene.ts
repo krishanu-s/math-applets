@@ -274,6 +274,7 @@ export function pick_random_step(dim: number): number[] {
         dx = gaussianRandom(0, sqrt_dt);
         dy = gaussianRandom(0, sqrt_dt);
         dz = gaussianRandom(0, sqrt_dt);
+        // TODO Turn this into a LineSequence3D for speed.
         let line = new Line3D([x, y, z], [x + dx, y + dy, z + dz]);
         line.set_color("red");
         line.set_width(0.02);

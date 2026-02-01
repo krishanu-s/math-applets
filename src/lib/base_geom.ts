@@ -189,6 +189,10 @@ export class Line extends MObject {
   }
 }
 
+// A sequence of line segments with joined endpoints.
+// TODO
+export class LineSequence extends MObject {}
+
 // An arrow
 // TODO
 export class Arrow extends Line {

@@ -145,6 +145,10 @@ export class Line3D extends ThreeDMObject {
   }
 }
 
+// A sequence of line segments with joined endpoints.
+// TODO
+export class LineSequence3D extends ThreeDMObject {}
+
 // An arrow
 export class Arrow3D extends Line3D {
   arrow_size: number = 0.3;
@@ -213,7 +217,6 @@ export class TwoHeadedArrow3D extends Line3D {
     let [ax, ay] = scene.v2c(vec2_sum(e, vec2_rot(v, Math.PI / 6)));
     let [bx, by] = scene.v2c(vec2_sum(e, vec2_rot(v, -Math.PI / 6)));
     ctx.beginPath();
-
     ctx.moveTo(end_x, end_y);
     ctx.lineTo(ax, ay);
     ctx.lineTo(bx, by);
