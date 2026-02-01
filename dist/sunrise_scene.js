@@ -88,14 +88,14 @@ var Scene = class {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.mobjects[name];
       if (mobj == void 0) throw new Error(`${name} not found`);
       mobj.draw(this.canvas, this);
     });
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
 
@@ -433,6 +433,9 @@ var SunriseScene = class extends Scene {
         mobj2.draw(this.canvas, this);
       }
     });
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
 (function() {

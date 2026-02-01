@@ -392,17 +392,17 @@ export abstract class InteractivePlayingScene extends Scene {
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Draw a border around the canvas
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
-
     this.update_mobjects();
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.get_mobj(name);
       if (mobj == undefined) throw new Error(`${name} not found`);
       this.draw_mobject(mobj);
     });
+
+    // Draw a border around the canvas
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
   // Add drawing instructions in the subclass.
   draw_mobject(mobj: MObject) {}

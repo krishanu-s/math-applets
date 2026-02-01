@@ -79,10 +79,10 @@ import { Arcball } from "./lib/arcball.js";
         document.getElementById("three-d-cube-mode-button") as HTMLElement,
         function () {
           arcball.switch_mode();
-          modeButton.textContent = `Mode = ${arcball.mode}`;
+          modeButton.textContent = `Mode: ${arcball.mode}`;
         },
       );
-      modeButton.textContent = `Mode = ${arcball.mode}`;
+      modeButton.textContent = `Mode: ${arcball.mode}`;
       modeButton.style.padding = "15px";
 
       let axis: Vec3D = [1, 0, 0];
