@@ -176,6 +176,7 @@ export function pick_random_step(dim: number): number[] {
       ctx.stroke();
 
       ctx.strokeStyle = "red";
+      ctx.lineWidth = 0.3;
       ctx.globalAlpha = 1.0;
       let [x, y] = [0, 0];
       let [cx, cy] = scene.v2c([x, y]);

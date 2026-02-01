@@ -812,6 +812,7 @@ function pick_random_step(dim) {
       ctx.lineTo(canvas.width / 2, canvas.height);
       ctx.stroke();
       ctx.strokeStyle = "red";
+      ctx.lineWidth = 0.3;
       ctx.globalAlpha = 1;
       let [x, y] = [0, 0];
       let [cx, cy] = scene.v2c([x, y]);
