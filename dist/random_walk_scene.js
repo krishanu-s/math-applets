@@ -312,12 +312,17 @@ var Line3D = class extends ThreeDMObject {
   }
 };
 var TwoHeadedArrow3D = class extends Line3D {
-  constructor() {
-    super(...arguments);
+  constructor(start, end) {
+    super(start, end);
     this.arrow_size = 0.3;
+    this.fill_color = this.stroke_color;
   }
   set_arrow_size(size) {
     this.arrow_size = size;
+  }
+  set_color(color) {
+    super.set_color(color);
+    this.fill_color = this.stroke_color;
   }
   draw(canvas, scene) {
     super.draw(canvas, scene);
@@ -326,6 +331,7 @@ var TwoHeadedArrow3D = class extends Line3D {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
     let s = scene.camera_view(this.start);
     let e = scene.camera_view(this.end);
@@ -878,7 +884,7 @@ function pick_random_step(dim) {
       arcball.add();
       let [x, y, z] = [0, 0, 0];
       let p = new Dot3D([x, y, z], 0.05);
-      p.set_color("red");
+      p.set_color("blue");
       scene.add("point", p);
       let dx, dy, dz;
       let dt = 0.01;

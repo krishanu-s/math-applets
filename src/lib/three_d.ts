@@ -152,8 +152,17 @@ export class LineSequence3D extends ThreeDMObject {}
 // An arrow
 export class Arrow3D extends Line3D {
   arrow_size: number = 0.3;
+  fill_color: string;
+  constructor(start: Vec3D, end: Vec3D) {
+    super(start, end);
+    this.fill_color = this.stroke_color;
+  }
   set_arrow_size(size: number) {
     this.arrow_size = size;
+  }
+  set_color(color: string): void {
+    super.set_color(color);
+    this.fill_color = this.stroke_color;
   }
   draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
     super.draw(canvas, scene);
@@ -163,6 +172,7 @@ export class Arrow3D extends Line3D {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
 
     // TODO This can surely be refactored with Line3D.
@@ -190,8 +200,17 @@ export class Arrow3D extends Line3D {
 // A double-headed arrow
 export class TwoHeadedArrow3D extends Line3D {
   arrow_size: number = 0.3;
+  fill_color: string;
+  constructor(start: Vec3D, end: Vec3D) {
+    super(start, end);
+    this.fill_color = this.stroke_color;
+  }
   set_arrow_size(size: number) {
     this.arrow_size = size;
+  }
+  set_color(color: string): void {
+    super.set_color(color);
+    this.fill_color = this.stroke_color;
   }
   draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
     super.draw(canvas, scene);
@@ -201,6 +220,7 @@ export class TwoHeadedArrow3D extends Line3D {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
 
     // TODO This can surely be refactored with Line3D.
