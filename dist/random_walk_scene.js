@@ -91,6 +91,9 @@ var Scene = class {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.mobjects[name];
       if (mobj == void 0) throw new Error(`${name} not found`);
@@ -233,41 +236,67 @@ var Rectangle = class extends MObject {
         }
       }
     }
-    (async function graph_random_walk_2d(num_walks, num_steps) {
-      let canvas = prepare_canvas(300, 300, "scene-container");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context");
-      }
-      let scene = new Scene(canvas);
-      let histogram = new Histogram();
-      histogram.set_count_limits(0, num_walks);
-      histogram.set_bin_limits(0, 100);
-      scene.add("histogram", histogram);
-      let points = [];
+    (async function graph_random_walk(num_walks, num_steps) {
+      let canvas2 = prepare_canvas(300, 300, "histogram-dim-two");
+      let canvas3 = prepare_canvas(300, 300, "histogram-dim-three");
+      let scene2 = new Scene(canvas2);
+      let histogram2 = new Histogram();
+      histogram2.set_count_limits(0, num_walks);
+      histogram2.set_bin_limits(0, 100);
+      scene2.add("histogram", histogram2);
+      let scene3 = new Scene(canvas3);
+      let histogram3 = new Histogram();
+      histogram3.set_count_limits(0, num_walks);
+      histogram3.set_bin_limits(0, 100);
+      scene3.add("histogram", histogram3);
+      let points2 = [];
       for (let i = 0; i < num_walks; i++) {
-        points.push([0, 0, 0]);
+        points2.push([0, 0]);
+      }
+      let points3 = [];
+      for (let i = 0; i < num_walks; i++) {
+        points3.push([0, 0, 0]);
       }
       let x, y, z;
       let dx, dy, dz;
       let dist;
-      let hist_data = {};
+      let hist_data2 = {};
+      let hist_data3 = {};
       for (let step = 0; step < num_steps; step++) {
-        let hist_data2 = {};
+        hist_data2 = { 0: num_walks };
+        hist_data3 = { 0: num_walks };
         for (let i = 0; i < num_walks; i++) {
-          [x, y, z] = points[i];
+          [x, y, z] = points3[i];
           if (x == 0 && y == 0 && z == 0 && step > 0) {
-            hist_data2[0] = hist_data2[0] ? hist_data2[0] + 1 : 1;
+            continue;
           } else {
             [dx, dy, dz] = pick_random_step(3);
-            points[i] = [x + dx, y + dy, z + dz];
+            points3[i] = [x + dx, y + dy, z + dz];
             dist = Math.abs(x + dx) + Math.abs(y + dy) + Math.abs(z + dz);
-            hist_data2[dist] = hist_data2[dist] ? hist_data2[dist] + 1 : 1;
+            hist_data3[dist] = hist_data3[dist] ? hist_data3[dist] + 1 : 1;
+            hist_data3[0] = hist_data3[0] - 1;
           }
         }
-        scene.get_mobj("histogram").set_hist(hist_data2);
-        scene.draw();
-        await delay(10);
+        for (let i = 0; i < num_walks; i++) {
+          [x, y] = points2[i];
+          if (x == 0 && y == 0 && step > 0) {
+            continue;
+          } else {
+            [dx, dy] = pick_random_step(2);
+            points2[i] = [x + dx, y + dy];
+            dist = Math.abs(x + dx) + Math.abs(y + dy);
+            hist_data2[dist] = hist_data2[dist] ? hist_data2[dist] + 1 : 1;
+            hist_data2[0] = hist_data2[0] - 1;
+          }
+        }
+        if (step % 2 === 0) {
+          scene2.get_mobj("histogram").set_hist(hist_data2);
+          scene2.draw();
+          scene3.get_mobj("histogram").set_hist(hist_data3);
+          scene3.draw();
+          await delay(1);
+        }
+        console.log("Step", step);
       }
     })(5e4, 1e3);
   });

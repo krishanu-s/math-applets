@@ -10729,6 +10729,9 @@ var Scene = class {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.mobjects[name];
       if (mobj == void 0) throw new Error(`${name} not found`);
@@ -11360,7 +11363,7 @@ var HeatMap = class extends MObject {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    ctx.putImageData(imageData, 0, 0);
+    ctx.putImageData(imageData, 2, 2);
   }
 };
 
@@ -11618,6 +11621,9 @@ var InteractivePlayingScene = class extends Scene {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
     this.update_mobjects();
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.get_mobj(name);
@@ -12335,7 +12341,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       let width = 200;
       let height = 200;
       const dt = 0.01;
-      let canvas = prepare_canvas(width, height, "scene-container");
+      let canvas = prepare_canvas(width + 4, height + 4, "scene-container");
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         throw new Error("Failed to get 2D context");
@@ -12424,6 +12430,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       );
       clearButton.textContent = "Clear";
       clearButton.style.padding = "15px";
+      waveEquationScene.draw();
       waveEquationScene.play(void 0);
     })();
     (function conic_rays() {
@@ -12756,7 +12763,11 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       scene.play(void 0);
     })(50);
     (function point_mass_discrete_lattice(width, height) {
-      let canvas = prepare_canvas(width, height, "point-mass-discrete-lattice");
+      let canvas = prepare_canvas(
+        width + 4,
+        height + 4,
+        "point-mass-discrete-lattice"
+      );
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         throw new Error("Failed to get 2D context");
@@ -12787,10 +12798,11 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       );
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
+      scene.draw();
       scene.play(void 0);
     })(200, 200);
     (function line_source_heatmap(width, height) {
-      let canvas = prepare_canvas(width, height, "line-source-heatmap");
+      let canvas = prepare_canvas(width + 4, height + 4, "line-source-heatmap");
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         throw new Error("Failed to get 2D context");
@@ -12841,6 +12853,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
         ),
         scene
       );
+      scene.draw();
       scene.play(void 0);
     })(200, 200);
   });

@@ -49,7 +49,9 @@ export class HeatMap extends MObject {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    ctx.putImageData(imageData, 0, 0);
+    // Put the image data with an offset of 2 pixels in both x and y directions
+    // to leave space for a border
+    ctx.putImageData(imageData, 2, 2);
   }
 }
 

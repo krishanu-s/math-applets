@@ -37,7 +37,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       let height = 200;
       const dt = 0.01;
 
-      let canvas = prepare_canvas(width, height, "scene-container");
+      let canvas = prepare_canvas(width + 4, height + 4, "scene-container");
 
       // Get the context for drawing
       const ctx = canvas.getContext("2d");
@@ -152,6 +152,8 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       );
       clearButton.textContent = "Clear";
       clearButton.style.padding = "15px";
+
+      waveEquationScene.draw();
 
       // Start the simulation when unpaused
       waveEquationScene.play(undefined);
@@ -581,7 +583,11 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
     (function point_mass_discrete_lattice(width: number, height: number) {
       // TODO
       // Prepare the canvas and context for drawing
-      let canvas = prepare_canvas(width, height, "point-mass-discrete-lattice");
+      let canvas = prepare_canvas(
+        width + 4,
+        height + 4,
+        "point-mass-discrete-lattice",
+      );
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         throw new Error("Failed to get 2D context");
@@ -620,6 +626,8 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
 
+      scene.draw();
+
       scene.play(undefined);
     })(200, 200);
 
@@ -627,7 +635,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
     // Some animation to depict point sources and line sources.
     (function line_source_heatmap(width: number, height: number) {
       // Prepare the canvas and context for drawing
-      let canvas = prepare_canvas(width, height, "line-source-heatmap");
+      let canvas = prepare_canvas(width + 4, height + 4, "line-source-heatmap");
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         throw new Error("Failed to get 2D context");
@@ -694,6 +702,8 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
         ) as HTMLElement,
         scene,
       );
+
+      scene.draw();
 
       // Start playing
       scene.play(undefined);

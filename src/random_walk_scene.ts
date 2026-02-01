@@ -48,6 +48,7 @@ import { Vec3D } from "./lib/three_d.js";
     //   }
     // })(100);
 
+    // TODO Make space for the axes.
     class Histogram extends MObject {
       hist: Record<number, number> = {};
       fill_color: string = "black";
@@ -94,54 +95,81 @@ import { Vec3D } from "./lib/three_d.js";
     }
 
     // Makes a graph over time of how many random walks have not returned to the origin.
-    (async function graph_random_walk_2d(num_walks: number, num_steps: number) {
-      let canvas = prepare_canvas(300, 300, "scene-container");
+    (async function graph_random_walk(num_walks: number, num_steps: number) {
+      let canvas2 = prepare_canvas(300, 300, "histogram-dim-two");
+      let canvas3 = prepare_canvas(300, 300, "histogram-dim-three");
 
-      // Get the context for drawing
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context");
+      let scene2 = new Scene(canvas2);
+      let histogram2 = new Histogram();
+      histogram2.set_count_limits(0, num_walks);
+      histogram2.set_bin_limits(0, 100);
+      scene2.add("histogram", histogram2);
+
+      let scene3 = new Scene(canvas3);
+      let histogram3 = new Histogram();
+      histogram3.set_count_limits(0, num_walks);
+      histogram3.set_bin_limits(0, 100);
+      scene3.add("histogram", histogram3);
+
+      // Set up the simulations
+      let points2: Vec2D[] = [];
+      for (let i = 0; i < num_walks; i++) {
+        points2.push([0, 0]);
       }
 
-      let scene = new Scene(canvas);
-      let histogram = new Histogram();
-      histogram.set_count_limits(0, num_walks);
-      histogram.set_bin_limits(0, 100);
-      scene.add("histogram", histogram);
-
-      // Set up the simulation
-      let points: Vec3D[] = [];
+      let points3: Vec3D[] = [];
       for (let i = 0; i < num_walks; i++) {
-        points.push([0, 0, 0]);
+        points3.push([0, 0, 0]);
       }
 
       let x: number, y: number, z: number;
       let dx: number, dy: number, dz: number;
       let dist: number;
-      let hist_data: Record<number, number> = {};
+      let hist_data2: Record<number, number> = {};
+      let hist_data3: Record<number, number> = {};
 
-      // Simulate the random walks
+      // Simulate the random walks simultaneously
       for (let step = 0; step < num_steps; step++) {
-        let hist_data = {};
+        hist_data2 = { 0: num_walks };
+        hist_data3 = { 0: num_walks };
 
         // Do one step and record histogram of distances
         for (let i = 0; i < num_walks; i++) {
-          [x, y, z] = points[i];
+          [x, y, z] = points3[i];
           // Continue if the point is at the origin and we're past the first step
           if (x == 0 && y == 0 && z == 0 && step > 0) {
-            hist_data[0] = hist_data[0] ? hist_data[0] + 1 : 1;
+            continue;
           } else {
             [dx, dy, dz] = pick_random_step(3) as Vec3D;
-            points[i] = [x + dx, y + dy, z + dz];
+            points3[i] = [x + dx, y + dy, z + dz];
             dist = Math.abs(x + dx) + Math.abs(y + dy) + Math.abs(z + dz);
-            hist_data[dist] = hist_data[dist] ? hist_data[dist] + 1 : 1;
+            hist_data3[dist] = hist_data3[dist] ? hist_data3[dist] + 1 : 1;
+            hist_data3[0] = hist_data3[0] - 1;
+          }
+        }
+        for (let i = 0; i < num_walks; i++) {
+          [x, y] = points2[i];
+          // Continue if the point is at the origin and we're past the first step
+          if (x == 0 && y == 0 && step > 0) {
+            continue;
+          } else {
+            [dx, dy] = pick_random_step(2) as Vec2D;
+            points2[i] = [x + dx, y + dy];
+            dist = Math.abs(x + dx) + Math.abs(y + dy);
+            hist_data2[dist] = hist_data2[dist] ? hist_data2[dist] + 1 : 1;
+            hist_data2[0] = hist_data2[0] - 1;
           }
         }
 
-        // Plot the histogram of distances
-        (scene.get_mobj("histogram") as Histogram).set_hist(hist_data);
-        scene.draw();
-        await delay(10);
+        // Plot the histogram of distances at even timesteps
+        if (step % 2 === 0) {
+          (scene2.get_mobj("histogram") as Histogram).set_hist(hist_data2);
+          scene2.draw();
+          (scene3.get_mobj("histogram") as Histogram).set_hist(hist_data3);
+          scene3.draw();
+          await delay(1);
+        }
+        console.log("Step", step);
       }
     })(50000, 1000);
   });
