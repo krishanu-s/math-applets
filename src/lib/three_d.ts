@@ -68,6 +68,12 @@ export class Dot3D extends ThreeDMObject {
   depth(scene: ThreeDScene): number {
     return scene.depth(this.center);
   }
+  set_color(color: string) {
+    this.fill_color = color;
+  }
+  move_to(new_center: Vec3D) {
+    this.center = new_center;
+  }
   draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
@@ -107,6 +113,12 @@ export class Line3D extends ThreeDMObject {
   }
   move_end(v: Vec3D) {
     this.end = v;
+  }
+  set_color(color: string) {
+    this.stroke_color = color;
+  }
+  set_width(width: number) {
+    this.stroke_width = width;
   }
   depth(scene: ThreeDScene): number {
     return scene.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
@@ -488,8 +500,8 @@ export class ThreeDScene extends Scene {
     }
 
     // Draw a border around the canvas
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = this.border_color;
+    ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }

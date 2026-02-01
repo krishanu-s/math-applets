@@ -25,6 +25,7 @@ import {
 } from "./lib/three_d.js";
 import { Slider, Button, PauseButton } from "./lib/interactive.js";
 import { Arcball } from "./lib/arcball.js";
+import { pick_random_step } from "./random_walk_scene.js";
 
 (async function () {
   document.addEventListener("DOMContentLoaded", async function () {
@@ -215,6 +216,89 @@ import { Arcball } from "./lib/arcball.js";
       zoomSlider.value = `1.0`;
 
       scene.draw();
+    })(300, 300);
+
+    (async function three_d_random_walk(width: number, height: number) {
+      // Graphing a function
+      let canvas = prepare_canvas(width, height, "three-d-random-walk");
+      let [xmin, xmax] = [-5, 5];
+      let [ymin, ymax] = [-5, 5];
+      let [zmin, zmax] = [-5, 5];
+
+      // Initialize three-dimensional scene, zoomed in
+      let zoom_ratio = 1.0;
+      let scene = new ThreeDScene(canvas);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.set_zoom(zoom_ratio);
+      scene.set_view_mode("projection");
+
+      // Rotate the camera angle and set the camera position
+      scene.rot_z(Math.PI / 4);
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
+      scene.set_camera_position(
+        rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4),
+      );
+
+      // Add graph lines with ticks
+      let tick_size = 0.1;
+      scene.add("x-axis", new TwoHeadedArrow3D([xmin, 0, 0], [xmax, 0, 0]));
+      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
+        if (x == 0) {
+          continue;
+        }
+        scene.add(
+          `x-tick-(${x})`,
+          new Line3D([x, 0, -tick_size], [x, 0, tick_size]),
+        );
+      }
+
+      scene.add("y-axis", new TwoHeadedArrow3D([0, ymin, 0], [0, ymax, 0]));
+      for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
+        if (y == 0) {
+          continue;
+        }
+        scene.add(
+          `y-tick-(${y})`,
+          new Line3D([-tick_size, y, 0], [tick_size, y, 0]),
+        );
+      }
+
+      scene.add("z-axis", new TwoHeadedArrow3D([0, 0, zmin], [0, 0, zmax]));
+      for (let z = Math.floor(zmin) + 1; z <= Math.ceil(zmax) - 1; z++) {
+        if (z == 0) {
+          continue;
+        }
+        scene.add(
+          `z-tick-(${z})`,
+          new Line3D([0, -tick_size, z], [0, tick_size, z]),
+        );
+      }
+
+      scene.draw();
+
+      // Animate progress of taking steps
+      // TODO Rotate scene at the same time to help visibility.
+      // This will then require redrawing the progress.
+      let ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Failed to get 2D context");
+
+      let [x, y, z] = [0, 0, 0];
+      let dx: number, dy: number, dz: number;
+      let [cx, cy] = scene.v2c(scene.projection_view([x, y, z]));
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 2;
+      for (let step = 0; step < 100; step++) {
+        [dx, dy, dz] = pick_random_step(3) as Vec3D;
+        x += dx;
+        y += dy;
+        z += dz;
+        [cx, cy] = scene.v2c(scene.projection_view([x, y, z]));
+        ctx.lineTo(cx, cy);
+        ctx.stroke();
+        await delay(1000);
+      }
     })(300, 300);
   });
 })();

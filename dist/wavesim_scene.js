@@ -10653,6 +10653,8 @@ var MObject = class {
 };
 var Scene = class {
   constructor(canvas) {
+    this.border_thickness = 4;
+    this.border_color = "black";
     this.canvas = canvas;
     this.mobjects = {};
     this.xlims = [0, canvas.width];
@@ -10734,8 +10736,8 @@ var Scene = class {
       if (mobj == void 0) throw new Error(`${name} not found`);
       mobj.draw(this.canvas, this);
     });
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = this.border_color;
+    ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
@@ -11627,8 +11629,8 @@ var InteractivePlayingScene = class extends Scene {
       if (mobj == void 0) throw new Error(`${name} not found`);
       this.draw_mobject(mobj);
     });
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = this.border_color;
+    ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
   // Add drawing instructions in the subclass.

@@ -165,8 +165,8 @@ class SunriseScene extends Scene {
     });
 
     // Draw a border around the canvas
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = this.border_color;
+    ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }

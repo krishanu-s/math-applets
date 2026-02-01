@@ -1,4 +1,10 @@
 // src/lib/base.ts
+function gaussianRandom(mean, stdev) {
+  const u = 1 - Math.random();
+  const v = Math.random();
+  const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  return z * stdev + mean;
+}
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -15,6 +21,8 @@ var MObject = class {
 };
 var Scene = class {
   constructor(canvas) {
+    this.border_thickness = 4;
+    this.border_color = "black";
     this.canvas = canvas;
     this.mobjects = {};
     this.xlims = [0, canvas.width];
@@ -96,8 +104,8 @@ var Scene = class {
       if (mobj == void 0) throw new Error(`${name} not found`);
       mobj.draw(this.canvas, this);
     });
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = this.border_color;
+    ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
@@ -151,6 +159,53 @@ function vec2_rot(v, angle) {
   const sin = Math.sin(angle);
   return [x * cos - y * sin, x * sin + y * cos];
 }
+var Rectangle = class extends MObject {
+  constructor(center, size_x, size_y) {
+    super();
+    this.fill_color = "black";
+    this.center = center;
+    this.size_x = size_x;
+    this.size_y = size_y;
+  }
+  move_to(x, y) {
+    this.center = [x, y];
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.fillStyle = this.fill_color;
+    ctx.globalAlpha = this.alpha;
+    let [px, py] = scene.v2c([
+      this.center[0] - this.size_x / 2,
+      this.center[1] - this.size_y / 2
+    ]);
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    [px, py] = scene.v2c([
+      this.center[0] + this.size_x / 2,
+      this.center[1] - this.size_y / 2
+    ]);
+    ctx.lineTo(px, py);
+    [px, py] = scene.v2c([
+      this.center[0] + this.size_x / 2,
+      this.center[1] + this.size_y / 2
+    ]);
+    ctx.lineTo(px, py);
+    [px, py] = scene.v2c([
+      this.center[0] - this.size_x / 2,
+      this.center[1] + this.size_y / 2
+    ]);
+    ctx.lineTo(px, py);
+    [px, py] = scene.v2c([
+      this.center[0] - this.size_x / 2,
+      this.center[1] - this.size_y / 2
+    ]);
+    ctx.lineTo(px, py);
+    ctx.closePath();
+    ctx.fill();
+  }
+};
 
 // src/lib/three_d.ts
 function vec3_norm(x) {
@@ -188,6 +243,12 @@ var Dot3D = class extends ThreeDMObject {
   depth(scene) {
     return scene.depth(this.center);
   }
+  set_color(color) {
+    this.fill_color = color;
+  }
+  move_to(new_center) {
+    this.center = new_center;
+  }
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
@@ -222,6 +283,12 @@ var Line3D = class extends ThreeDMObject {
   }
   move_end(v) {
     this.end = v;
+  }
+  set_color(color) {
+    this.stroke_color = color;
+  }
+  set_width(width) {
+    this.stroke_width = width;
   }
   depth(scene) {
     return scene.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
@@ -508,8 +575,8 @@ var ThreeDScene = class extends Scene {
       if (mobj == void 0) throw new Error(`${name} not found`);
       mobj.draw(this.canvas, this);
     }
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = this.border_color;
+    ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
@@ -774,6 +841,241 @@ var Arcball = class {
   }
 };
 
+// src/random_walk_scene.ts
+function pick_random_step(dim) {
+  const x = 2 * dim * Math.random();
+  let output = new Array(dim).fill(0);
+  for (let i = 0; i < dim; i++) {
+    if (x < 2 * i + 1) {
+      output[i] = 1;
+      return output;
+    } else if (x < 2 * i + 2) {
+      output[i] = -1;
+      return output;
+    }
+  }
+  throw new Error("Invalid dimension");
+}
+(async function() {
+  document.addEventListener("DOMContentLoaded", async function() {
+    class Histogram extends MObject {
+      constructor() {
+        super(...arguments);
+        this.hist = {};
+        this.fill_color = "red";
+        // Min/max bin values
+        this.bin_min = 0;
+        this.bin_max = 100;
+        // Min/max counts
+        this.count_min = 0;
+        this.count_max = 100;
+      }
+      set_count_limits(min, max) {
+        this.count_min = min;
+        this.count_max = max;
+      }
+      set_bin_limits(min, max) {
+        this.bin_min = min;
+        this.bin_max = max;
+      }
+      set_hist(hist) {
+        this.hist = hist;
+      }
+      // Create a bunch of rectangles
+      draw(canvas, scene) {
+        let [xmin, xmax] = scene.xlims;
+        let [ymin, ymax] = scene.ylims;
+        let bin_width = (xmax - xmin) / (this.bin_max - this.bin_min);
+        let ct_height = (ymax - ymin) / (this.count_max - this.count_min);
+        let bin;
+        let rect_center, rect_height, rect_width;
+        for (let i = 0; i < Object.keys(this.hist).length; i++) {
+          bin = Object.keys(this.hist)[i];
+          rect_center = [
+            xmin + (bin - this.bin_min + 0.5) * bin_width,
+            ymin + this.hist[bin] * 0.5 * ct_height
+          ];
+          rect_height = this.hist[bin] * ct_height;
+          rect_width = bin_width;
+          let rect = new Rectangle(rect_center, rect_width, rect_height);
+          rect.fill_color = this.fill_color;
+          rect.draw(canvas, scene);
+        }
+      }
+    }
+    (async function graph_random_walk(num_walks, num_steps) {
+      let canvas2 = prepare_canvas(300, 300, "histogram-dim-two");
+      let canvas3 = prepare_canvas(300, 300, "histogram-dim-three");
+      let scene2 = new Scene(canvas2);
+      let histogram2 = new Histogram();
+      histogram2.set_count_limits(0, num_walks);
+      histogram2.set_bin_limits(0, 100);
+      scene2.add("histogram", histogram2);
+      let scene3 = new Scene(canvas3);
+      let histogram3 = new Histogram();
+      histogram3.set_count_limits(0, num_walks);
+      histogram3.set_bin_limits(0, 100);
+      scene3.add("histogram", histogram3);
+      let points2 = [];
+      for (let i = 0; i < num_walks; i++) {
+        points2.push([0, 0]);
+      }
+      let points3 = [];
+      for (let i = 0; i < num_walks; i++) {
+        points3.push([0, 0, 0]);
+      }
+      let x, y, z;
+      let dx, dy, dz;
+      let dist;
+      let hist_data2 = {};
+      let hist_data3 = {};
+      for (let step = 0; step < num_steps; step++) {
+        hist_data2 = { 0: num_walks };
+        hist_data3 = { 0: num_walks };
+        for (let i = 0; i < num_walks; i++) {
+          [x, y, z] = points3[i];
+          if (x == 0 && y == 0 && z == 0 && step > 0) {
+            continue;
+          } else {
+            [dx, dy, dz] = pick_random_step(3);
+            points3[i] = [x + dx, y + dy, z + dz];
+            dist = Math.abs(x + dx) + Math.abs(y + dy) + Math.abs(z + dz);
+            hist_data3[dist] = hist_data3[dist] ? hist_data3[dist] + 1 : 1;
+            hist_data3[0] = hist_data3[0] - 1;
+          }
+        }
+        for (let i = 0; i < num_walks; i++) {
+          [x, y] = points2[i];
+          if (x == 0 && y == 0 && step > 0) {
+            continue;
+          } else {
+            [dx, dy] = pick_random_step(2);
+            points2[i] = [x + dx, y + dy];
+            dist = Math.abs(x + dx) + Math.abs(y + dy);
+            hist_data2[dist] = hist_data2[dist] ? hist_data2[dist] + 1 : 1;
+            hist_data2[0] = hist_data2[0] - 1;
+          }
+        }
+        if (step % 2 === 0) {
+          scene2.get_mobj("histogram").set_hist(hist_data2);
+          scene2.draw();
+          scene3.get_mobj("histogram").set_hist(hist_data3);
+          scene3.draw();
+          await delay(1);
+        }
+      }
+    })(5e4, 1e3);
+    (async function brownian_motion_2d() {
+      let canvas = prepare_canvas(300, 300, "brownian-motion-2d");
+      let ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Failed to get 2D context");
+      let scene = new Scene(canvas);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height / 2);
+      ctx.lineTo(canvas.width, canvas.height / 2);
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(canvas.width / 2, canvas.height);
+      ctx.stroke();
+      ctx.strokeStyle = "red";
+      ctx.globalAlpha = 1;
+      let [x, y] = [0, 0];
+      let [cx, cy] = scene.v2c([x, y]);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      let dx, dy;
+      let dt = 0.01;
+      let sqrt_dt = Math.sqrt(dt);
+      for (let step = 0; step < 1e3; step++) {
+        dx = gaussianRandom(0, sqrt_dt);
+        dy = gaussianRandom(0, sqrt_dt);
+        [x, y] = [x + dx, y + dy];
+        [cx, cy] = scene.v2c([x, y]);
+        ctx.lineTo(cx, cy);
+        ctx.stroke();
+        await delay(0.1);
+      }
+    })();
+    (async function brownian_motion_3d() {
+      let canvas = prepare_canvas(300, 300, "brownian-motion-3d");
+      let ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Failed to get 2D context");
+      let [xmin, xmax] = [-5, 5];
+      let [ymin, ymax] = [-5, 5];
+      let [zmin, zmax] = [-5, 5];
+      let zoom_ratio = 1;
+      let scene = new ThreeDScene(canvas);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.set_zoom(zoom_ratio);
+      scene.set_view_mode("projection");
+      scene.rot_z(Math.PI / 4);
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
+      scene.set_camera_position(
+        rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4)
+      );
+      let tick_size = 0.1;
+      scene.add("x-axis", new TwoHeadedArrow3D([xmin, 0, 0], [xmax, 0, 0]));
+      for (let x2 = Math.floor(xmin) + 1; x2 <= Math.ceil(xmax) - 1; x2++) {
+        if (x2 == 0) {
+          continue;
+        }
+        scene.add(
+          `x-tick-(${x2})`,
+          new Line3D([x2, 0, -tick_size], [x2, 0, tick_size])
+        );
+      }
+      scene.add("y-axis", new TwoHeadedArrow3D([0, ymin, 0], [0, ymax, 0]));
+      for (let y2 = Math.floor(ymin) + 1; y2 <= Math.ceil(ymax) - 1; y2++) {
+        if (y2 == 0) {
+          continue;
+        }
+        scene.add(
+          `y-tick-(${y2})`,
+          new Line3D([-tick_size, y2, 0], [tick_size, y2, 0])
+        );
+      }
+      scene.add("z-axis", new TwoHeadedArrow3D([0, 0, zmin], [0, 0, zmax]));
+      for (let z2 = Math.floor(zmin) + 1; z2 <= Math.ceil(zmax) - 1; z2++) {
+        if (z2 == 0) {
+          continue;
+        }
+        scene.add(
+          `z-tick-(${z2})`,
+          new Line3D([0, -tick_size, z2], [0, tick_size, z2])
+        );
+      }
+      scene.draw();
+      let arcball = new Arcball(scene);
+      arcball.set_mode("Rotate");
+      arcball.add();
+      let [x, y, z] = [0, 0, 0];
+      let p = new Dot3D([x, y, z], 0.05);
+      p.set_color("red");
+      scene.add("point", p);
+      let dx, dy, dz;
+      let dt = 0.01;
+      let sqrt_dt = Math.sqrt(dt);
+      for (let step = 0; step < 1e3; step++) {
+        dx = gaussianRandom(0, sqrt_dt);
+        dy = gaussianRandom(0, sqrt_dt);
+        dz = gaussianRandom(0, sqrt_dt);
+        let line = new Line3D([x, y, z], [x + dx, y + dy, z + dz]);
+        line.set_color("red");
+        line.set_width(0.02);
+        scene.add(`line_${step}`, line);
+        [x, y, z] = [x + dx, y + dy, z + dz];
+        let p2 = scene.get_mobj("point");
+        p2.move_to([x, y, z]);
+        scene.draw();
+        await delay(0.1);
+      }
+    })();
+  });
+})();
+
 // src/three_d_scene.ts
 (async function() {
   document.addEventListener("DOMContentLoaded", async function() {
@@ -816,10 +1118,10 @@ var Arcball = class {
         document.getElementById("three-d-cube-mode-button"),
         function() {
           arcball.switch_mode();
-          modeButton.textContent = `Mode = ${arcball.mode}`;
+          modeButton.textContent = `Mode: ${arcball.mode}`;
         }
       );
-      modeButton.textContent = `Mode = ${arcball.mode}`;
+      modeButton.textContent = `Mode: ${arcball.mode}`;
       modeButton.style.padding = "15px";
       let axis = [1, 0, 0];
       let perturb_angle = Math.PI / 200;
@@ -924,6 +1226,73 @@ var Arcball = class {
       );
       zoomSlider.value = `1.0`;
       scene.draw();
+    })(300, 300);
+    (async function three_d_random_walk(width, height) {
+      let canvas = prepare_canvas(width, height, "three-d-random-walk");
+      let [xmin, xmax] = [-5, 5];
+      let [ymin, ymax] = [-5, 5];
+      let [zmin, zmax] = [-5, 5];
+      let zoom_ratio = 1;
+      let scene = new ThreeDScene(canvas);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.set_zoom(zoom_ratio);
+      scene.set_view_mode("projection");
+      scene.rot_z(Math.PI / 4);
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
+      scene.set_camera_position(
+        rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4)
+      );
+      let tick_size = 0.1;
+      scene.add("x-axis", new TwoHeadedArrow3D([xmin, 0, 0], [xmax, 0, 0]));
+      for (let x2 = Math.floor(xmin) + 1; x2 <= Math.ceil(xmax) - 1; x2++) {
+        if (x2 == 0) {
+          continue;
+        }
+        scene.add(
+          `x-tick-(${x2})`,
+          new Line3D([x2, 0, -tick_size], [x2, 0, tick_size])
+        );
+      }
+      scene.add("y-axis", new TwoHeadedArrow3D([0, ymin, 0], [0, ymax, 0]));
+      for (let y2 = Math.floor(ymin) + 1; y2 <= Math.ceil(ymax) - 1; y2++) {
+        if (y2 == 0) {
+          continue;
+        }
+        scene.add(
+          `y-tick-(${y2})`,
+          new Line3D([-tick_size, y2, 0], [tick_size, y2, 0])
+        );
+      }
+      scene.add("z-axis", new TwoHeadedArrow3D([0, 0, zmin], [0, 0, zmax]));
+      for (let z2 = Math.floor(zmin) + 1; z2 <= Math.ceil(zmax) - 1; z2++) {
+        if (z2 == 0) {
+          continue;
+        }
+        scene.add(
+          `z-tick-(${z2})`,
+          new Line3D([0, -tick_size, z2], [0, tick_size, z2])
+        );
+      }
+      scene.draw();
+      let ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Failed to get 2D context");
+      let [x, y, z] = [0, 0, 0];
+      let dx, dy, dz;
+      let [cx, cy] = scene.v2c(scene.projection_view([x, y, z]));
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 2;
+      for (let step = 0; step < 100; step++) {
+        [dx, dy, dz] = pick_random_step(3);
+        x += dx;
+        y += dy;
+        z += dz;
+        [cx, cy] = scene.v2c(scene.projection_view([x, y, z]));
+        ctx.lineTo(cx, cy);
+        ctx.stroke();
+        await delay(1e3);
+      }
     })(300, 300);
   });
 })();

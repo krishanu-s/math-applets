@@ -44,8 +44,21 @@
     </head>
     <body>
         <div style="text-align: center; margin: 10px auto">
-            <p>This page showcases some three-dimensional scenes.</p>
+            <p>
+                As I'm building out the capability to render three-dimensional
+                images and animations, this page showcases some of the
+                test-scenes.
+            </p>
             <h3>Rotating cube</h3>
+            <p>
+                Below is a cube and its center. The camera rotates at a
+                continuous rate around an axis passing through the center, where
+                this axis itself varies in the space of all possible axes
+                (equivalent to $\mathbf{RP}^2$, the real projective plane) at a
+                continuous speed and along a differentiable path. The user can
+                click-and-drag to move the camera around, either by translation
+                or rotation (toggled via the button below).
+            </p>
             <br />
             <div class="applet-container" id="three-d-cube"></div>
             <br />
@@ -55,12 +68,20 @@
             <br />
 
             <h3>3D parametric function</h3>
+            <p>A set of axes, and a graphed parametric function.</p>
             <br />
             <div class="applet-container" id="three-d-graph"></div>
             <br />
             <div class="button" id="three-d-graph-zoom-slider"></div>
             <br />
             <div class="button" id="three-d-graph-mode-button"></div>
+            <br />
+
+            <h3>3D random walk</h3>
+            <br />
+            <div class="applet-container" id="three-d-random-walk"></div>
+            <br />
+            <div class="slider" id="three-d-random-walk-progress-slider"></div>
             <br />
         </div>
 

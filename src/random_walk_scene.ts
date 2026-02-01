@@ -1,57 +1,42 @@
-import { MObject, Scene, prepare_canvas, delay } from "./lib/base.js";
+import {
+  MObject,
+  Scene,
+  prepare_canvas,
+  delay,
+  gaussianRandom,
+} from "./lib/base.js";
 import { Dot, Line, Vec2D, Rectangle } from "./lib/base_geom.js";
-import { Vec3D } from "./lib/three_d.js";
+import { rot } from "./lib/matvec.js";
+import {
+  Vec3D,
+  ThreeDScene,
+  Dot3D,
+  Line3D,
+  TwoHeadedArrow3D,
+} from "./lib/three_d.js";
+import { Arcball } from "./lib/arcball.js";
+
+export function pick_random_step(dim: number): number[] {
+  const x = 2 * dim * Math.random();
+  let output = new Array(dim).fill(0);
+  for (let i = 0; i < dim; i++) {
+    if (x < 2 * i + 1) {
+      output[i] = 1;
+      return output;
+    } else if (x < 2 * i + 2) {
+      output[i] = -1;
+      return output;
+    }
+  }
+  throw new Error("Invalid dimension");
+}
 
 (async function () {
   document.addEventListener("DOMContentLoaded", async function () {
-    function pick_random_step(dim: number): number[] {
-      const x = 2 * dim * Math.random();
-      let output = new Array(dim).fill(0);
-      for (let i = 0; i < dim; i++) {
-        if (x < 2 * i + 1) {
-          output[i] = 1;
-          return output;
-        } else if (x < 2 * i + 2) {
-          output[i] = -1;
-          return output;
-        }
-      }
-      throw new Error("Invalid dimension");
-    }
-    // (function animate_random_walk_2d(num_steps: number) {
-    //   let canvas = prepare_canvas(300, 300, "scene-container");
-
-    //   // Get the context for drawing
-    //   const ctx = canvas.getContext("2d");
-    //   if (!ctx) {
-    //     throw new Error("Failed to get 2D context");
-    //   }
-
-    //   let scene = new Scene(canvas);
-    //   scene.set_frame_lims([-30, 30], [-30, 30]);
-
-    //   let [x, y] = [0, 0];
-    //   let [cx, cy] = scene.v2c([x, y]);
-    //   ctx.beginPath();
-    //   ctx.moveTo(cx, cy);
-
-    //   // TODO Turn this into the behavior of TwoDimRandomWalk
-    //   let dx, dy;
-    //   for (let i = 0; i < num_steps; i++) {
-    //     [dx, dy] = pick_random_step(2) as Vec2D;
-    //     x += dx;
-    //     y += dy;
-    //     [cx, cy] = scene.v2c([x, y]);
-    //     console.log(cx, cy);
-    //     ctx.lineTo(cx, cy);
-    //     ctx.stroke();
-    //   }
-    // })(100);
-
     // TODO Make space for the axes.
     class Histogram extends MObject {
       hist: Record<number, number> = {};
-      fill_color: string = "black";
+      fill_color: string = "red";
       // Min/max bin values
       bin_min: number = 0;
       bin_max: number = 100;
@@ -86,10 +71,9 @@ import { Vec3D } from "./lib/three_d.js";
           ];
           rect_height = this.hist[bin] * ct_height;
           rect_width = bin_width;
-          new Rectangle(rect_center, rect_width, rect_height).draw(
-            canvas,
-            scene,
-          );
+          let rect = new Rectangle(rect_center, rect_width, rect_height);
+          rect.fill_color = this.fill_color;
+          rect.draw(canvas, scene);
         }
       }
     }
@@ -169,8 +153,139 @@ import { Vec3D } from "./lib/three_d.js";
           scene3.draw();
           await delay(1);
         }
-        console.log("Step", step);
       }
     })(50000, 1000);
+
+    // Brownian motion in 2D
+    (async function brownian_motion_2d() {
+      let canvas = prepare_canvas(300, 300, "brownian-motion-2d");
+      let ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Failed to get 2D context");
+      let scene = new Scene(canvas);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+
+      // Draw axes
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height / 2);
+      ctx.lineTo(canvas.width, canvas.height / 2);
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(canvas.width / 2, canvas.height);
+      ctx.stroke();
+
+      ctx.strokeStyle = "red";
+      ctx.globalAlpha = 1.0;
+      let [x, y] = [0, 0];
+      let [cx, cy] = scene.v2c([x, y]);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+
+      let dx: number, dy: number;
+      let dt = 0.01;
+      let sqrt_dt = Math.sqrt(dt);
+
+      for (let step = 0; step < 1000; step++) {
+        dx = gaussianRandom(0, sqrt_dt);
+        dy = gaussianRandom(0, sqrt_dt);
+        [x, y] = [x + dx, y + dy];
+        [cx, cy] = scene.v2c([x, y]);
+        ctx.lineTo(cx, cy);
+        ctx.stroke();
+        await delay(0.1);
+      }
+    })();
+
+    // Brownian motion in 3D
+    (async function brownian_motion_3d() {
+      let canvas = prepare_canvas(300, 300, "brownian-motion-3d");
+      let ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Failed to get 2D context");
+
+      // Initialize 3D scene
+      let [xmin, xmax] = [-5, 5];
+      let [ymin, ymax] = [-5, 5];
+      let [zmin, zmax] = [-5, 5];
+      let zoom_ratio = 1.0;
+      let scene = new ThreeDScene(canvas);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.set_zoom(zoom_ratio);
+      scene.set_view_mode("projection");
+
+      // Rotate the camera angle and set the camera position
+      scene.rot_z(Math.PI / 4);
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
+      scene.set_camera_position(
+        rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4),
+      );
+
+      // Add graph lines with ticks
+      let tick_size = 0.1;
+      scene.add("x-axis", new TwoHeadedArrow3D([xmin, 0, 0], [xmax, 0, 0]));
+      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
+        if (x == 0) {
+          continue;
+        }
+        scene.add(
+          `x-tick-(${x})`,
+          new Line3D([x, 0, -tick_size], [x, 0, tick_size]),
+        );
+      }
+
+      scene.add("y-axis", new TwoHeadedArrow3D([0, ymin, 0], [0, ymax, 0]));
+      for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
+        if (y == 0) {
+          continue;
+        }
+        scene.add(
+          `y-tick-(${y})`,
+          new Line3D([-tick_size, y, 0], [tick_size, y, 0]),
+        );
+      }
+
+      scene.add("z-axis", new TwoHeadedArrow3D([0, 0, zmin], [0, 0, zmax]));
+      for (let z = Math.floor(zmin) + 1; z <= Math.ceil(zmax) - 1; z++) {
+        if (z == 0) {
+          continue;
+        }
+        scene.add(
+          `z-tick-(${z})`,
+          new Line3D([0, -tick_size, z], [0, tick_size, z]),
+        );
+      }
+      scene.draw();
+
+      // Adding click-and-drag interactivity to the canvas
+      let arcball = new Arcball(scene);
+      arcball.set_mode("Rotate");
+      arcball.add();
+
+      let [x, y, z] = [0, 0, 0];
+      let p = new Dot3D([x, y, z], 0.05);
+      p.set_color("red");
+      scene.add("point", p);
+
+      let dx: number, dy: number, dz: number;
+      let dt = 0.01;
+      let sqrt_dt = Math.sqrt(dt);
+
+      for (let step = 0; step < 1000; step++) {
+        dx = gaussianRandom(0, sqrt_dt);
+        dy = gaussianRandom(0, sqrt_dt);
+        dz = gaussianRandom(0, sqrt_dt);
+        let line = new Line3D([x, y, z], [x + dx, y + dy, z + dz]);
+        line.set_color("red");
+        line.set_width(0.02);
+        scene.add(`line_${step}`, line);
+
+        [x, y, z] = [x + dx, y + dy, z + dz];
+        let p = scene.get_mobj("point") as Dot3D;
+        p.move_to([x, y, z]);
+        scene.draw();
+
+        await delay(0.1);
+      }
+    })();
   });
 })();

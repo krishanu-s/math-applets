@@ -29,6 +29,15 @@ export function funspace(
   return Array.from({ length: num }, (_, i) => func(start + i * step));
 }
 
+// Generate a single number according to a Gaussian distribution
+export function gaussianRandom(mean: number, stdev: number) {
+  const u = 1 - Math.random(); // Converting [0,1) to (0,1]
+  const v = Math.random();
+  const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  // Transform to the desired mean and standard deviation:
+  return z * stdev + mean;
+}
+
 // Delays for the given number of milliseconds. Useful for visibility in test animations.
 export function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -62,6 +71,8 @@ export class MObject {
 // -
 export class Scene {
   canvas: HTMLCanvasElement;
+  border_thickness: number = 4;
+  border_color: string = "black";
   mobjects: Record<string, MObject>;
   // Scene size
   xlims: [number, number];
@@ -163,8 +174,8 @@ export class Scene {
     });
 
     // Draw a border around the canvas
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = this.border_color;
+    ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }
