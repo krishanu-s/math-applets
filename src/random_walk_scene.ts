@@ -263,7 +263,7 @@ export function pick_random_step(dim: number): number[] {
 
       let [x, y, z] = [0, 0, 0];
       let p = new Dot3D([x, y, z], 0.05);
-      p.set_color("red");
+      p.set_color("blue");
       scene.add("point", p);
 
       let dx: number, dy: number, dz: number;
