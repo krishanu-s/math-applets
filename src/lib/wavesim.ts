@@ -983,7 +983,7 @@ export class WaveSimTwoDimDotsScene extends InteractivePlayingScene {
         dot = this.get_mobj(`p_{${x}, ${y}}`) as Dot;
         ind = sim_0.index(x, y);
         [x_eq, y_eq] = this.eq_position(x, y);
-        dot.move_to(x_eq + (u_0[ind] as number), y_eq + (u_1[ind] as number));
+        dot.move_to([x_eq + (u_0[ind] as number), y_eq + (u_1[ind] as number)]);
       }
     }
   }

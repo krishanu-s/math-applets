@@ -268,7 +268,7 @@ export class TwoHeadedArrow3D extends Line3D {
   set_arrow_size(size: number) {
     this.arrow_size = size;
   }
-  set_color(color: string): void {
+  set_color(color: string) {
     super.set_color(color);
     this.fill_color = this.stroke_color;
   }
