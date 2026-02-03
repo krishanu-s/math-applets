@@ -147,7 +147,67 @@ export class Line3D extends ThreeDMObject {
 
 // A sequence of line segments with joined endpoints.
 // TODO
-export class LineSequence3D extends ThreeDMObject {}
+export class LineSequence3D extends ThreeDMObject {
+  points: Vec3D[];
+  stroke_width: number = 0.04;
+  stroke_color: string = "black";
+  constructor(points: Vec3D[]) {
+    super();
+    this.points = points;
+  }
+  set_color(color: string) {
+    this.stroke_color = color;
+  }
+  set_width(width: number) {
+    this.stroke_width = width;
+  }
+  add_point(point: Vec3D) {
+    this.points.push(point);
+  }
+  move_point(i: number, new_point: Vec3D) {
+    this.points[i] = new_point;
+  }
+  get_point(i: number): Vec3D {
+    return this.points[i];
+  }
+  depth(scene: ThreeDScene): number {
+    return scene.depth(
+      vec3_scale(vec3_sum(this.points[0], this.points[1]), 0.5),
+    );
+    // return scene.depth(
+    //   vec3_scale(vec3_sum_list(this.points), 1 / this.points.length),
+    // );
+  }
+  draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+
+    ctx.beginPath();
+
+    let in_frame: boolean = false;
+    let p: Vec2D | null;
+    let x: number, y: number;
+    for (let i = 0; i < this.points.length; i++) {
+      p = scene.camera_view(this.points[i]);
+      if (p == null) {
+        in_frame = false;
+      } else {
+        [x, y] = scene.v2c(p);
+        if (in_frame) {
+          ctx.lineTo(x, y);
+        } else {
+          ctx.moveTo(x, y);
+        }
+        in_frame = true;
+      }
+    }
+    ctx.stroke();
+  }
+}
 
 // An arrow
 export class Arrow3D extends Line3D {

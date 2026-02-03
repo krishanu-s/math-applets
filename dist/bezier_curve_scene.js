@@ -10760,6 +10760,10 @@ var Dot = class extends MObject {
   set_radius(radius) {
     this.radius = radius;
   }
+  // Change the dot color
+  set_color(color) {
+    this.fill_color = color;
+  }
   // Draws on the canvas
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");

@@ -159,6 +159,47 @@ function vec2_rot(v, angle) {
   const sin = Math.sin(angle);
   return [x * cos - y * sin, x * sin + y * cos];
 }
+var Dot = class extends MObject {
+  constructor(center_x, center_y, kwargs) {
+    super();
+    this.fill_color = "black";
+    this.center = [center_x, center_y];
+    let radius = kwargs.radius;
+    if (radius == void 0) {
+      this.radius = 0.3;
+    } else {
+      this.radius = radius;
+    }
+  }
+  // Get the center coordinates
+  get_center() {
+    return this.center;
+  }
+  // Move the center of the dot to a desired location
+  move_to(x, y) {
+    this.center = [x, y];
+  }
+  // Change the dot radius
+  set_radius(radius) {
+    this.radius = radius;
+  }
+  // Change the dot color
+  set_color(color) {
+    this.fill_color = color;
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.fillStyle = this.fill_color;
+    ctx.globalAlpha = this.alpha;
+    let [x, y] = scene.v2c(this.center);
+    let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
+    ctx.beginPath();
+    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
+    ctx.fill();
+  }
+};
 var Rectangle = class extends MObject {
   constructor(center, size_x, size_y) {
     super();
@@ -202,6 +243,152 @@ var Rectangle = class extends MObject {
       this.center[1] - this.size_y / 2
     ]);
     ctx.lineTo(px, py);
+    ctx.closePath();
+    ctx.fill();
+  }
+};
+var Line = class extends MObject {
+  constructor(start, end, kwargs) {
+    super();
+    this.start = start;
+    this.end = end;
+    let stroke_width = kwargs.stroke_width;
+    if (stroke_width == void 0) {
+      this.stroke_width = 0.08;
+    } else {
+      this.stroke_width = stroke_width;
+    }
+    let stroke_color = kwargs.stroke_color;
+    if (stroke_color == void 0) {
+      this.stroke_color = `rgb(0, 0, 0)`;
+    } else {
+      this.stroke_color = stroke_color;
+    }
+  }
+  // Moves the start and end points
+  move_start(x, y) {
+    this.start = [x, y];
+  }
+  move_end(x, y) {
+    this.end = [x, y];
+  }
+  length() {
+    return vec2_norm(vec2_sub(this.start, this.end));
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+    let [start_x, start_y] = scene.v2c(this.start);
+    let [end_x, end_y] = scene.v2c(this.end);
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
+  }
+};
+var LineSequence = class extends MObject {
+  constructor(points, kwargs) {
+    super();
+    this.points = points;
+    let stroke_width = kwargs.stroke_width;
+    if (stroke_width == void 0) {
+      this.stroke_width = 0.08;
+    } else {
+      this.stroke_width = stroke_width;
+    }
+    let stroke_color = kwargs.stroke_color;
+    if (stroke_color == void 0) {
+      this.stroke_color = `rgb(0, 0, 0)`;
+    } else {
+      this.stroke_color = stroke_color;
+    }
+  }
+  add_point(point) {
+    this.points.push(point);
+  }
+  move_point(i, new_point) {
+    this.points[i] = new_point;
+  }
+  get_point(i) {
+    return this.points[i];
+  }
+  set_color(color) {
+    this.stroke_color = color;
+  }
+  set_width(width) {
+    this.stroke_width = width;
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+    let [x, y] = scene.v2c(this.points[0]);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let i = 1; i < this.points.length; i++) {
+      [x, y] = scene.v2c(this.points[i]);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+  }
+};
+var TwoHeadedArrow = class extends Line {
+  constructor() {
+    super(...arguments);
+    this.arrow_size = 0.3;
+  }
+  set_arrow_size(size) {
+    this.arrow_size = size;
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    super.draw(canvas, scene);
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.fillStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+    let [end_x, end_y] = scene.v2c(this.end);
+    let [start_x, start_y] = scene.v2c(this.start);
+    let v;
+    let ax;
+    let ay;
+    let bx;
+    let by;
+    v = vec2_scale(
+      vec2_sub(this.start, this.end),
+      this.arrow_size / this.length()
+    );
+    [ax, ay] = scene.v2c(vec2_sum(this.end, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(this.end, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(end_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
+    v = vec2_scale(
+      vec2_sub(this.end, this.start),
+      this.arrow_size / this.length()
+    );
+    [ax, ay] = scene.v2c(vec2_sum(this.start, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(this.start, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(start_x, start_y);
     ctx.closePath();
     ctx.fill();
   }
@@ -308,6 +495,61 @@ var Line3D = class extends ThreeDMObject {
     ctx.beginPath();
     ctx.moveTo(start_x, start_y);
     ctx.lineTo(end_x, end_y);
+    ctx.stroke();
+  }
+};
+var LineSequence3D = class extends ThreeDMObject {
+  constructor(points) {
+    super();
+    this.stroke_width = 0.04;
+    this.stroke_color = "black";
+    this.points = points;
+  }
+  set_color(color) {
+    this.stroke_color = color;
+  }
+  set_width(width) {
+    this.stroke_width = width;
+  }
+  add_point(point) {
+    this.points.push(point);
+  }
+  move_point(i, new_point) {
+    this.points[i] = new_point;
+  }
+  get_point(i) {
+    return this.points[i];
+  }
+  depth(scene) {
+    return scene.depth(
+      vec3_scale(vec3_sum(this.points[0], this.points[1]), 0.5)
+    );
+  }
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+    ctx.beginPath();
+    let in_frame = false;
+    let p;
+    let x, y;
+    for (let i = 0; i < this.points.length; i++) {
+      p = scene.camera_view(this.points[i]);
+      if (p == null) {
+        in_frame = false;
+      } else {
+        [x, y] = scene.v2c(p);
+        if (in_frame) {
+          ctx.lineTo(x, y);
+        } else {
+          ctx.moveTo(x, y);
+        }
+        in_frame = true;
+      }
+    }
     ctx.stroke();
   }
 };
@@ -930,45 +1172,67 @@ function pick_random_step(dim) {
       for (let i = 0; i < num_walks; i++) {
         points3.push([0, 0, 0]);
       }
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById("random-walk-pause-button"),
+        function() {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Pause simulation";
+      pauseButton.style.padding = "15px";
       let x, y, z;
       let dx, dy, dz;
       let dist;
       let hist_data2 = {};
       let hist_data3 = {};
-      for (let step = 0; step < num_steps; step++) {
-        hist_data2 = { 0: num_walks };
-        hist_data3 = { 0: num_walks };
-        for (let i = 0; i < num_walks; i++) {
-          [x, y, z] = points3[i];
-          if (x == 0 && y == 0 && z == 0 && step > 0) {
-            continue;
-          } else {
-            [dx, dy, dz] = pick_random_step(3);
-            points3[i] = [x + dx, y + dy, z + dz];
-            dist = Math.abs(x + dx) + Math.abs(y + dy) + Math.abs(z + dz);
-            hist_data3[dist] = hist_data3[dist] ? hist_data3[dist] + 1 : 1;
-            hist_data3[0] = hist_data3[0] - 1;
+      let step = 0;
+      scene2.draw();
+      scene3.draw();
+      while (step < num_steps) {
+        if (playing) {
+          hist_data2 = { 0: num_walks };
+          hist_data3 = { 0: num_walks };
+          for (let i = 0; i < num_walks; i++) {
+            [x, y, z] = points3[i];
+            if (x == 0 && y == 0 && z == 0 && step > 0) {
+              continue;
+            } else {
+              [dx, dy, dz] = pick_random_step(3);
+              points3[i] = [x + dx, y + dy, z + dz];
+              dist = Math.abs(x + dx) + Math.abs(y + dy) + Math.abs(z + dz);
+              hist_data3[dist] = hist_data3[dist] ? hist_data3[dist] + 1 : 1;
+              hist_data3[0] = hist_data3[0] - 1;
+            }
           }
-        }
-        for (let i = 0; i < num_walks; i++) {
-          [x, y] = points2[i];
-          if (x == 0 && y == 0 && step > 0) {
-            continue;
-          } else {
-            [dx, dy] = pick_random_step(2);
-            points2[i] = [x + dx, y + dy];
-            dist = Math.abs(x + dx) + Math.abs(y + dy);
-            hist_data2[dist] = hist_data2[dist] ? hist_data2[dist] + 1 : 1;
-            hist_data2[0] = hist_data2[0] - 1;
+          for (let i = 0; i < num_walks; i++) {
+            [x, y] = points2[i];
+            if (x == 0 && y == 0 && step > 0) {
+              continue;
+            } else {
+              [dx, dy] = pick_random_step(2);
+              points2[i] = [x + dx, y + dy];
+              dist = Math.abs(x + dx) + Math.abs(y + dy);
+              hist_data2[dist] = hist_data2[dist] ? hist_data2[dist] + 1 : 1;
+              hist_data2[0] = hist_data2[0] - 1;
+            }
           }
+          if (step % 2 === 0) {
+            scene2.get_mobj("histogram").set_hist(hist_data2);
+            scene2.draw();
+            scene3.get_mobj("histogram").set_hist(hist_data3);
+            scene3.draw();
+          }
+          step += 1;
         }
-        if (step % 2 === 0) {
-          scene2.get_mobj("histogram").set_hist(hist_data2);
-          scene2.draw();
-          scene3.get_mobj("histogram").set_hist(hist_data3);
-          scene3.draw();
-          await delay(1);
-        }
+        await delay(1);
       }
     })(5e4, 1e3);
     (async function brownian_motion_2d() {
@@ -976,34 +1240,79 @@ function pick_random_step(dim) {
       let ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Failed to get 2D context");
       let scene = new Scene(canvas);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
-      ctx.globalAlpha = 0.5;
-      ctx.strokeStyle = "black";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(0, canvas.height / 2);
-      ctx.lineTo(canvas.width, canvas.height / 2);
-      ctx.moveTo(canvas.width / 2, 0);
-      ctx.lineTo(canvas.width / 2, canvas.height);
-      ctx.stroke();
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 0.3;
-      ctx.globalAlpha = 1;
+      let [xmin, xmax] = [-5, 5];
+      let [ymin, ymax] = [-5, 5];
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      let tick_size = 0.1;
+      scene.add(
+        "x-axis",
+        new TwoHeadedArrow([xmin, 0], [xmax, 0], { stroke_width: 0.02 })
+      );
+      for (let x2 = Math.floor(xmin) + 1; x2 <= Math.ceil(xmax) - 1; x2++) {
+        if (x2 == 0) {
+          continue;
+        }
+        scene.add(
+          `x-tick-(${x2})`,
+          new Line([x2, -tick_size], [x2, tick_size], { stroke_width: 0.02 })
+        );
+      }
+      scene.add(
+        "y-axis",
+        new TwoHeadedArrow([0, ymin], [0, ymax], { stroke_width: 0.02 })
+      );
+      for (let y2 = Math.floor(ymin) + 1; y2 <= Math.ceil(ymax) - 1; y2++) {
+        if (y2 == 0) {
+          continue;
+        }
+        scene.add(
+          `y-tick-(${y2})`,
+          new Line([-tick_size, y2], [tick_size, y2], { stroke_width: 0.02 })
+        );
+      }
+      scene.draw();
       let [x, y] = [0, 0];
-      let [cx, cy] = scene.v2c([x, y]);
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
+      let p = new Dot(x, y, { radius: 0.05 });
+      p.set_color("blue");
+      scene.add("point", p);
+      let line = new LineSequence([[x, y]], {});
+      line.set_color("red");
+      line.set_alpha(0.5);
+      line.set_width(0.01);
+      scene.add("line", line);
       let dx, dy;
       let dt = 0.01;
       let sqrt_dt = Math.sqrt(dt);
-      for (let step = 0; step < 1e3; step++) {
-        dx = gaussianRandom(0, sqrt_dt);
-        dy = gaussianRandom(0, sqrt_dt);
-        [x, y] = [x + dx, y + dy];
-        [cx, cy] = scene.v2c([x, y]);
-        ctx.lineTo(cx, cy);
-        ctx.stroke();
-        await delay(0.1);
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById(
+          "brownian-motion-2d-pause-button"
+        ),
+        function() {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Pause simulation";
+      pauseButton.style.padding = "15px";
+      while (true) {
+        if (playing) {
+          dx = gaussianRandom(0, sqrt_dt);
+          dy = gaussianRandom(0, sqrt_dt);
+          [x, y] = [x + dx, y + dy];
+          line = scene.get_mobj("line");
+          line.add_point([x, y]);
+          p = scene.get_mobj("point");
+          p.move_to(x, y);
+          scene.draw();
+        }
+        await delay(1);
       }
     })();
     (async function brownian_motion_3d() {
@@ -1019,9 +1328,12 @@ function pick_random_step(dim) {
       scene.set_zoom(zoom_ratio);
       scene.set_view_mode("projection");
       scene.rot_z(Math.PI / 4);
-      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
-      scene.set_camera_position(
-        rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4)
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 3);
+      scene.set_camera_position([0, 0, -8]);
+      scene.camera_position = rot(
+        scene.camera_position,
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        Math.PI / 3
       );
       let tick_size = 0.1;
       scene.add("x-axis", new TwoHeadedArrow3D([xmin, 0, 0], [xmax, 0, 0]));
@@ -1062,22 +1374,47 @@ function pick_random_step(dim) {
       let p = new Dot3D([x, y, z], 0.05);
       p.set_color("blue");
       scene.add("point", p);
+      let line = new LineSequence3D([[x, y, z]]);
+      line.set_color("red");
+      line.set_width(0.02);
+      scene.add("line", line);
       let dx, dy, dz;
       let dt = 0.01;
       let sqrt_dt = Math.sqrt(dt);
-      for (let step = 0; step < 1e3; step++) {
-        dx = gaussianRandom(0, sqrt_dt);
-        dy = gaussianRandom(0, sqrt_dt);
-        dz = gaussianRandom(0, sqrt_dt);
-        let line = new Line3D([x, y, z], [x + dx, y + dy, z + dz]);
-        line.set_color("red");
-        line.set_width(0.02);
-        scene.add(`line_${step}`, line);
-        [x, y, z] = [x + dx, y + dy, z + dz];
-        let p2 = scene.get_mobj("point");
-        p2.move_to([x, y, z]);
-        scene.draw();
-        await delay(0.1);
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById(
+          "brownian-motion-3d-pause-button"
+        ),
+        function() {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Pause simulation";
+      pauseButton.style.padding = "15px";
+      while (true) {
+        if (playing) {
+          dx = gaussianRandom(0, sqrt_dt);
+          dy = gaussianRandom(0, sqrt_dt);
+          dz = gaussianRandom(0, sqrt_dt);
+          [x, y, z] = [x + dx, y + dy, z + dz];
+          line = scene.get_mobj("line");
+          line.get_point(5);
+          line.add_point([x, y, z]);
+          p = scene.get_mobj("point");
+          p.move_to([x, y, z]);
+          scene.rot_z(Math.PI / 1e3);
+          scene.camera_position = rot_z(scene.camera_position, Math.PI / 1e3);
+          scene.draw();
+        }
+        await delay(10);
       }
     })();
   });

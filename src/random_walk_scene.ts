@@ -5,13 +5,22 @@ import {
   delay,
   gaussianRandom,
 } from "./lib/base.js";
-import { Dot, Line, Vec2D, Rectangle } from "./lib/base_geom.js";
-import { rot } from "./lib/matvec.js";
+import { Button, Slider } from "./lib/interactive.js";
+import {
+  Dot,
+  Line,
+  TwoHeadedArrow,
+  Vec2D,
+  Rectangle,
+  LineSequence,
+} from "./lib/base_geom.js";
+import { rot, rot_z } from "./lib/matvec.js";
 import {
   Vec3D,
   ThreeDScene,
   Dot3D,
   Line3D,
+  LineSequence3D,
   TwoHeadedArrow3D,
 } from "./lib/three_d.js";
 import { Arcball } from "./lib/arcball.js";
@@ -106,6 +115,24 @@ export function pick_random_step(dim: number): number[] {
         points3.push([0, 0, 0]);
       }
 
+      // Make a pause button
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById("random-walk-pause-button") as HTMLElement,
+        function () {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Pause simulation";
+      pauseButton.style.padding = "15px";
+
       let x: number, y: number, z: number;
       let dx: number, dy: number, dz: number;
       let dist: number;
@@ -113,46 +140,52 @@ export function pick_random_step(dim: number): number[] {
       let hist_data3: Record<number, number> = {};
 
       // Simulate the random walks simultaneously
-      for (let step = 0; step < num_steps; step++) {
-        hist_data2 = { 0: num_walks };
-        hist_data3 = { 0: num_walks };
+      let step = 0;
+      scene2.draw();
+      scene3.draw();
+      while (step < num_steps) {
+        if (playing) {
+          hist_data2 = { 0: num_walks };
+          hist_data3 = { 0: num_walks };
 
-        // Do one step and record histogram of distances
-        for (let i = 0; i < num_walks; i++) {
-          [x, y, z] = points3[i];
-          // Continue if the point is at the origin and we're past the first step
-          if (x == 0 && y == 0 && z == 0 && step > 0) {
-            continue;
-          } else {
-            [dx, dy, dz] = pick_random_step(3) as Vec3D;
-            points3[i] = [x + dx, y + dy, z + dz];
-            dist = Math.abs(x + dx) + Math.abs(y + dy) + Math.abs(z + dz);
-            hist_data3[dist] = hist_data3[dist] ? hist_data3[dist] + 1 : 1;
-            hist_data3[0] = hist_data3[0] - 1;
+          // Do one step and record histogram of distances
+          for (let i = 0; i < num_walks; i++) {
+            [x, y, z] = points3[i];
+            // Continue if the point is at the origin and we're past the first step
+            if (x == 0 && y == 0 && z == 0 && step > 0) {
+              continue;
+            } else {
+              [dx, dy, dz] = pick_random_step(3) as Vec3D;
+              points3[i] = [x + dx, y + dy, z + dz];
+              dist = Math.abs(x + dx) + Math.abs(y + dy) + Math.abs(z + dz);
+              hist_data3[dist] = hist_data3[dist] ? hist_data3[dist] + 1 : 1;
+              hist_data3[0] = hist_data3[0] - 1;
+            }
           }
-        }
-        for (let i = 0; i < num_walks; i++) {
-          [x, y] = points2[i];
-          // Continue if the point is at the origin and we're past the first step
-          if (x == 0 && y == 0 && step > 0) {
-            continue;
-          } else {
-            [dx, dy] = pick_random_step(2) as Vec2D;
-            points2[i] = [x + dx, y + dy];
-            dist = Math.abs(x + dx) + Math.abs(y + dy);
-            hist_data2[dist] = hist_data2[dist] ? hist_data2[dist] + 1 : 1;
-            hist_data2[0] = hist_data2[0] - 1;
+          for (let i = 0; i < num_walks; i++) {
+            [x, y] = points2[i];
+            // Continue if the point is at the origin and we're past the first step
+            if (x == 0 && y == 0 && step > 0) {
+              continue;
+            } else {
+              [dx, dy] = pick_random_step(2) as Vec2D;
+              points2[i] = [x + dx, y + dy];
+              dist = Math.abs(x + dx) + Math.abs(y + dy);
+              hist_data2[dist] = hist_data2[dist] ? hist_data2[dist] + 1 : 1;
+              hist_data2[0] = hist_data2[0] - 1;
+            }
           }
-        }
 
-        // Plot the histogram of distances at even timesteps
-        if (step % 2 === 0) {
-          (scene2.get_mobj("histogram") as Histogram).set_hist(hist_data2);
-          scene2.draw();
-          (scene3.get_mobj("histogram") as Histogram).set_hist(hist_data3);
-          scene3.draw();
-          await delay(1);
+          // Plot the histogram of distances at even timesteps
+          if (step % 2 === 0) {
+            (scene2.get_mobj("histogram") as Histogram).set_hist(hist_data2);
+            scene2.draw();
+            (scene3.get_mobj("histogram") as Histogram).set_hist(hist_data3);
+            scene3.draw();
+          }
+          step += 1;
         }
+        await delay(1);
       }
     })(50000, 1000);
 
@@ -162,39 +195,97 @@ export function pick_random_step(dim: number): number[] {
       let ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Failed to get 2D context");
       let scene = new Scene(canvas);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
+      let [xmin, xmax] = [-5, 5];
+      let [ymin, ymax] = [-5, 5];
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
 
-      // Draw axes
-      ctx.globalAlpha = 0.5;
-      ctx.strokeStyle = "black";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(0, canvas.height / 2);
-      ctx.lineTo(canvas.width, canvas.height / 2);
-      ctx.moveTo(canvas.width / 2, 0);
-      ctx.lineTo(canvas.width / 2, canvas.height);
-      ctx.stroke();
+      // Add graph lines with ticks
+      let tick_size = 0.1;
+      scene.add(
+        "x-axis",
+        new TwoHeadedArrow([xmin, 0], [xmax, 0], { stroke_width: 0.02 }),
+      );
+      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
+        if (x == 0) {
+          continue;
+        }
+        scene.add(
+          `x-tick-(${x})`,
+          new Line([x, -tick_size], [x, tick_size], { stroke_width: 0.02 }),
+        );
+      }
 
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 0.3;
-      ctx.globalAlpha = 1.0;
+      scene.add(
+        "y-axis",
+        new TwoHeadedArrow([0, ymin], [0, ymax], { stroke_width: 0.02 }),
+      );
+      for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
+        if (y == 0) {
+          continue;
+        }
+        scene.add(
+          `y-tick-(${y})`,
+          new Line([-tick_size, y], [tick_size, y], { stroke_width: 0.02 }),
+        );
+      }
+      scene.draw();
+
       let [x, y] = [0, 0];
-      let [cx, cy] = scene.v2c([x, y]);
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
+
+      // Add the path current point
+      let p = new Dot(x, y, { radius: 0.05 });
+      p.set_color("blue");
+      scene.add("point", p);
+
+      // Add the path line sequence
+      let line = new LineSequence([[x, y]], {});
+      line.set_color("red");
+      line.set_alpha(0.5);
+      line.set_width(0.01);
+      scene.add("line", line);
 
       let dx: number, dy: number;
       let dt = 0.01;
       let sqrt_dt = Math.sqrt(dt);
 
-      for (let step = 0; step < 1000; step++) {
-        dx = gaussianRandom(0, sqrt_dt);
-        dy = gaussianRandom(0, sqrt_dt);
-        [x, y] = [x + dx, y + dy];
-        [cx, cy] = scene.v2c([x, y]);
-        ctx.lineTo(cx, cy);
-        ctx.stroke();
-        await delay(0.1);
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById(
+          "brownian-motion-2d-pause-button",
+        ) as HTMLElement,
+        function () {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Pause simulation";
+      pauseButton.style.padding = "15px";
+
+      while (true) {
+        if (playing) {
+          // Generate a random step
+          dx = gaussianRandom(0, sqrt_dt);
+          dy = gaussianRandom(0, sqrt_dt);
+          [x, y] = [x + dx, y + dy];
+
+          // Extend the line sequence
+          line = scene.get_mobj("line") as LineSequence;
+          line.add_point([x, y]);
+
+          // Move the endpoint
+          p = scene.get_mobj("point") as Dot;
+          p.move_to(x, y);
+
+          // Draw
+          scene.draw();
+        }
+        await delay(1);
       }
     })();
 
@@ -216,9 +307,12 @@ export function pick_random_step(dim: number): number[] {
 
       // Rotate the camera angle and set the camera position
       scene.rot_z(Math.PI / 4);
-      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
-      scene.set_camera_position(
-        rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4),
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 3);
+      scene.set_camera_position([0, 0, -8]);
+      scene.camera_position = rot(
+        scene.camera_position,
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        Math.PI / 3,
       );
 
       // Add graph lines with ticks
@@ -263,30 +357,67 @@ export function pick_random_step(dim: number): number[] {
       arcball.add();
 
       let [x, y, z] = [0, 0, 0];
+
+      // Add the path current point
       let p = new Dot3D([x, y, z], 0.05);
       p.set_color("blue");
       scene.add("point", p);
+
+      // Add the path line sequence
+      let line = new LineSequence3D([[x, y, z]]);
+      line.set_color("red");
+      line.set_width(0.02);
+      scene.add("line", line);
 
       let dx: number, dy: number, dz: number;
       let dt = 0.01;
       let sqrt_dt = Math.sqrt(dt);
 
-      for (let step = 0; step < 1000; step++) {
-        dx = gaussianRandom(0, sqrt_dt);
-        dy = gaussianRandom(0, sqrt_dt);
-        dz = gaussianRandom(0, sqrt_dt);
-        // TODO Turn this into a LineSequence3D for speed.
-        let line = new Line3D([x, y, z], [x + dx, y + dy, z + dz]);
-        line.set_color("red");
-        line.set_width(0.02);
-        scene.add(`line_${step}`, line);
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById(
+          "brownian-motion-3d-pause-button",
+        ) as HTMLElement,
+        function () {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Pause simulation";
+      pauseButton.style.padding = "15px";
 
-        [x, y, z] = [x + dx, y + dy, z + dz];
-        let p = scene.get_mobj("point") as Dot3D;
-        p.move_to([x, y, z]);
-        scene.draw();
+      while (true) {
+        if (playing) {
+          // Generate a random step
+          dx = gaussianRandom(0, sqrt_dt);
+          dy = gaussianRandom(0, sqrt_dt);
+          dz = gaussianRandom(0, sqrt_dt);
 
-        await delay(0.1);
+          [x, y, z] = [x + dx, y + dy, z + dz];
+
+          // Extend the line sequence
+          line = scene.get_mobj("line") as LineSequence3D;
+          line.get_point(5);
+          line.add_point([x, y, z]);
+
+          // Move the endpoint
+          p = scene.get_mobj("point") as Dot3D;
+          p.move_to([x, y, z]);
+
+          // Rotate the camera angle and set the camera position
+          scene.rot_z(Math.PI / 1000);
+          scene.camera_position = rot_z(scene.camera_position, Math.PI / 1000);
+
+          // Draw
+          scene.draw();
+        }
+        await delay(10);
       }
     })();
   });

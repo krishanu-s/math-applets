@@ -42,7 +42,7 @@ export function vec2_rot(v: Vec2D, angle: number): Vec2D {
 
 // A filled circle.
 export class Dot extends MObject {
-  center: [number, number];
+  center: Vec2D;
   radius: number;
   fill_color: string = "black";
   constructor(center_x: number, center_y: number, kwargs: Record<string, any>) {
@@ -57,7 +57,7 @@ export class Dot extends MObject {
     // TODO Set color
   }
   // Get the center coordinates
-  get_center(): [number, number] {
+  get_center(): Vec2D {
     return this.center;
   }
   // Move the center of the dot to a desired location
@@ -67,6 +67,10 @@ export class Dot extends MObject {
   // Change the dot radius
   set_radius(radius: number) {
     this.radius = radius;
+  }
+  // Change the dot color
+  set_color(color: string) {
+    this.fill_color = color;
   }
   // Draws on the canvas
   draw(canvas: HTMLCanvasElement, scene: Scene) {
@@ -176,12 +180,12 @@ export class Line extends MObject {
   draw(canvas: HTMLCanvasElement, scene: Scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    let [start_x, start_y] = scene.v2c(this.start);
-    let [end_x, end_y] = scene.v2c(this.end);
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
     ctx.globalAlpha = this.alpha;
+    let [start_x, start_y] = scene.v2c(this.start);
+    let [end_x, end_y] = scene.v2c(this.end);
     ctx.beginPath();
     ctx.moveTo(start_x, start_y);
     ctx.lineTo(end_x, end_y);
@@ -191,7 +195,61 @@ export class Line extends MObject {
 
 // A sequence of line segments with joined endpoints.
 // TODO
-export class LineSequence extends MObject {}
+export class LineSequence extends MObject {
+  points: Vec2D[];
+  stroke_width: number;
+  stroke_color: string;
+  constructor(points: Vec2D[], kwargs: Record<string, any>) {
+    super();
+    this.points = points;
+
+    let stroke_width = kwargs.stroke_width as number;
+    if (stroke_width == undefined) {
+      this.stroke_width = 0.08;
+    } else {
+      this.stroke_width = stroke_width;
+    }
+
+    let stroke_color = kwargs.stroke_color as string;
+    if (stroke_color == undefined) {
+      this.stroke_color = `rgb(0, 0, 0)`;
+    } else {
+      this.stroke_color = stroke_color;
+    }
+  }
+  add_point(point: Vec2D) {
+    this.points.push(point);
+  }
+  move_point(i: number, new_point: Vec2D) {
+    this.points[i] = new_point;
+  }
+  get_point(i: number): Vec2D {
+    return this.points[i];
+  }
+  set_color(color: string) {
+    this.stroke_color = color;
+  }
+  set_width(width: number) {
+    this.stroke_width = width;
+  }
+  // Draws on the canvas
+  draw(canvas: HTMLCanvasElement, scene: Scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.globalAlpha = this.alpha;
+    let [x, y] = scene.v2c(this.points[0]);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let i = 1; i < this.points.length; i++) {
+      [x, y] = scene.v2c(this.points[i]);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+  }
+}
 
 // An arrow
 // TODO
@@ -279,7 +337,7 @@ export class TwoHeadedArrow extends Line {
     [ax, ay] = scene.v2c(vec2_sum(this.start, vec2_rot(v, Math.PI / 6)));
     [bx, by] = scene.v2c(vec2_sum(this.start, vec2_rot(v, -Math.PI / 6)));
     ctx.beginPath();
-    ctx.moveTo(start_x, end_y);
+    ctx.moveTo(start_x, start_y);
     ctx.lineTo(ax, ay);
     ctx.lineTo(bx, by);
     ctx.lineTo(start_x, start_y);

@@ -183,6 +183,10 @@ var Dot = class extends MObject {
   set_radius(radius) {
     this.radius = radius;
   }
+  // Change the dot color
+  set_color(color) {
+    this.fill_color = color;
+  }
   // Draws on the canvas
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
@@ -228,12 +232,12 @@ var Line = class extends MObject {
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    let [start_x, start_y] = scene.v2c(this.start);
-    let [end_x, end_y] = scene.v2c(this.end);
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
     ctx.globalAlpha = this.alpha;
+    let [start_x, start_y] = scene.v2c(this.start);
+    let [end_x, end_y] = scene.v2c(this.end);
     ctx.beginPath();
     ctx.moveTo(start_x, start_y);
     ctx.lineTo(end_x, end_y);
