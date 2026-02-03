@@ -20,7 +20,7 @@ class OrbitScene extends Scene {
   set_position(x: [number, number]) {
     this.state[0] = x;
     let orbiter = this.get_mobj("orbiter") as Dot;
-    orbiter.move_to(x[0], x[1]);
+    orbiter.move_to(x);
   }
   get_position(): [number, number] {
     return this.state[0];

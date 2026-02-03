@@ -10641,6 +10641,8 @@ var MObject = class {
   set_alpha(alpha) {
     this.alpha = alpha;
   }
+  add(scene) {
+  }
   draw(canvas, scene, args) {
   }
 };
@@ -10704,6 +10706,8 @@ var Scene = class {
   // Adds a mobject to the scene
   add(name, mobj) {
     this.mobjects[name] = mobj;
+    let self = this;
+    mobj.add(self);
   }
   // Removes the mobject from the scene
   remove(name) {
@@ -10753,8 +10757,12 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-  move_to(center) {
-    this.center = center;
+  move_to(p) {
+    this.center = p;
+  }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
   }
   // Change the dot radius
   set_radius(radius) {
@@ -10790,11 +10798,11 @@ var BezierCurve = class extends MObject {
     this.width = width;
   }
   // Moves the start and end points
-  move_start(x, y) {
-    this.start = [x, y];
+  move_start(p) {
+    this.start = p;
   }
-  move_end(x, y) {
-    this.end = [x, y];
+  move_end(p) {
+    this.end = p;
   }
   // Moves the handles
   move_h1(x, y) {
@@ -10943,7 +10951,7 @@ var ClosedCurveScene = class extends Scene {
     for (let i = 0; i < this.n; i++) {
       let p = this.calculate(i / this.n * Math.PI * 2);
       let pt = this.get_mobj(`p${i}`);
-      pt.move_to(p[0], p[1]);
+      pt.move_to(p);
     }
   }
   _move_handles() {
@@ -10958,7 +10966,7 @@ var ClosedCurveScene = class extends Scene {
       let p = this.calculate(i / this.n * Math.PI * 2);
       let q = this.calculate((i + 1) / this.n * Math.PI * 2);
       let curve = this.get_mobj(`c${i}`);
-      curve.move_start(a.get([i, 0]), a.get([i, 1]));
+      curve.move_start([a.get([i, 0]), a.get([i, 1])]);
       curve.move_h1(
         handles_1.get([i, 0]),
         handles_1.get([i, 1])
@@ -10967,7 +10975,10 @@ var ClosedCurveScene = class extends Scene {
         handles_2.get([i, 0]),
         handles_2.get([i, 1])
       );
-      curve.move_end(a.get([i + 1, 0]), a.get([i + 1, 1]));
+      curve.move_end([
+        a.get([i + 1, 0]),
+        a.get([i + 1, 1])
+      ]);
     }
   }
   // 0 < t < 2*pi

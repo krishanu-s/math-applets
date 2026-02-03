@@ -65,8 +65,12 @@ export class Dot extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-  move_to(center: Vec2D) {
-    this.center = center;
+  move_to(p: Vec2D) {
+    this.center = p;
+  }
+  move_by(p: Vec2D) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
   }
   // Change the dot radius
   set_radius(radius: number) {
@@ -141,6 +145,68 @@ export class Sector extends MObject {
     ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), this.start_angle, this.end_angle);
     ctx.fill();
+  }
+}
+// A filled circle which can be clicked-and-dragged
+export class DraggableDot extends Dot {
+  isClicked: boolean = false;
+  dragStart: Vec2D = [0, 0];
+  dragEnd: Vec2D = [0, 0];
+  dragDiff: Vec2D = [0, 0];
+  callbacks: (() => void)[] = [];
+  // Tests whether a chosen vector lies inside the dot.
+  is_inside_dot(p: Vec2D) {
+    return vec2_norm(vec2_sub(p, this.center)) < this.radius;
+  }
+  // Adds a callback which triggers when the dot is dragged
+  add_callback(callback: () => void) {
+    this.callbacks.push(callback);
+  }
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
+  }
+  // Triggers when the canvas is clicked.
+  click(scene: Scene, event: MouseEvent) {
+    this.dragStart = [
+      event.pageX - scene.canvas.offsetLeft,
+      event.pageY - scene.canvas.offsetTop,
+    ];
+    this.isClicked = this.is_inside_dot(
+      scene.c2s(this.dragStart[0], this.dragStart[1]),
+    );
+  }
+  // Triggers when the canvas is unclicked.
+  unclick(scene: Scene, event: MouseEvent) {
+    this.isClicked = false;
+  }
+  // Triggers when the mouse is dragged over the canvas.
+  drag_cursor(scene: Scene, event: MouseEvent) {
+    if (this.isClicked) {
+      this.dragEnd = [
+        event.pageX - scene.canvas.offsetLeft,
+        event.pageY - scene.canvas.offsetTop,
+      ];
+      this.dragDiff = vec2_sub(
+        scene.c2s(this.dragEnd[0], this.dragEnd[1]),
+        scene.c2s(this.dragStart[0], this.dragStart[1]),
+      );
+      this.move_by(this.dragDiff);
+      this.dragStart = this.dragEnd;
+      // Perform any other MObject updates necessary.
+      this.do_callbacks();
+      scene.draw();
+    }
+  }
+  add(scene: Scene) {
+    let self = this;
+    scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
+    scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
+    scene.canvas.addEventListener(
+      "mousemove",
+      self.drag_cursor.bind(self, scene),
+    );
   }
 }
 
@@ -225,11 +291,11 @@ export class Line extends MObject {
     }
   }
   // Moves the start and end points
-  move_start(x: number, y: number) {
-    this.start = [x, y];
+  move_start(p: Vec2D) {
+    this.start = p;
   }
-  move_end(x: number, y: number) {
-    this.end = [x, y];
+  move_end(p: Vec2D) {
+    this.end = p;
   }
   length(): number {
     return vec2_norm(vec2_sub(this.start, this.end));
@@ -252,7 +318,6 @@ export class Line extends MObject {
 }
 
 // A sequence of line segments with joined endpoints.
-// TODO
 export class LineSequence extends MObject {
   points: Vec2D[];
   stroke_width: number;
@@ -310,7 +375,6 @@ export class LineSequence extends MObject {
 }
 
 // An arrow
-// TODO
 export class Arrow extends Line {
   arrow_size: number = 0.1;
   set_arrow_size(size: number) {

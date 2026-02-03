@@ -45,7 +45,7 @@ class ClosedCurveScene extends Scene {
     for (let i = 0; i < this.n; i++) {
       let p = this.calculate((i / this.n) * Math.PI * 2);
       let pt = this.get_mobj(`p${i}`) as Dot;
-      pt.move_to(p[0], p[1]);
+      pt.move_to(p);
     }
   }
   _move_handles() {
@@ -60,7 +60,7 @@ class ClosedCurveScene extends Scene {
       let p = this.calculate((i / this.n) * Math.PI * 2);
       let q = this.calculate(((i + 1) / this.n) * Math.PI * 2);
       let curve = this.get_mobj(`c${i}`) as BezierCurve;
-      curve.move_start(a.get([i, 0]) as number, a.get([i, 1]) as number);
+      curve.move_start([a.get([i, 0]) as number, a.get([i, 1]) as number]);
       curve.move_h1(
         handles_1.get([i, 0]) as number,
         handles_1.get([i, 1]) as number,
@@ -69,7 +69,10 @@ class ClosedCurveScene extends Scene {
         handles_2.get([i, 0]) as number,
         handles_2.get([i, 1]) as number,
       );
-      curve.move_end(a.get([i + 1, 0]) as number, a.get([i + 1, 1]) as number);
+      curve.move_end([
+        a.get([i + 1, 0]) as number,
+        a.get([i + 1, 1]) as number,
+      ]);
     }
   }
   // 0 < t < 2*pi

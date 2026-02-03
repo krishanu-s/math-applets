@@ -196,13 +196,13 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
 
     pos = this.eq_position(1);
     mobj = this.get_mobj("b0") as Line;
-    mobj.move_start(pos[0], ymin / 2);
-    mobj.move_end(pos[0], ymax / 2);
+    mobj.move_start([pos[0], ymin / 2]);
+    mobj.move_end([pos[0], ymax / 2]);
 
     pos = this.eq_position(this.width());
     mobj = this.get_mobj("b1") as Line;
-    mobj.move_start(pos[0], ymin / 2);
-    mobj.move_end(pos[0], ymax / 2);
+    mobj.move_start([pos[0], ymin / 2]);
+    mobj.move_end([pos[0], ymax / 2]);
 
     this.update_mobjects();
     // Reset equilibrium lengths of lines
@@ -251,8 +251,8 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       // Update arrows
       if (i != 0 && i != this.width() - 1) {
         arrow = this.get_mobj(`arr${i + 1}`) as Arrow;
-        arrow.move_start(pos[0], pos[1] + disp);
-        arrow.move_end(pos[0], pos[1] + disp + (deriv[i] as number) / 5);
+        arrow.move_start([pos[0], pos[1] + disp]);
+        arrow.move_end([pos[0], pos[1] + disp + (deriv[i] as number) / 5]);
         arrow.set_arrow_size(Math.sqrt(Math.abs(deriv[i] as number)) / 10);
       }
 
@@ -262,8 +262,8 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
         next_pos = this.eq_position(i + 2);
         next_disp = u[i + 1] as number;
         line = this.get_mobj(`l_${i + 1}`) as LineSpring;
-        line.move_start(pos[0], pos[1] + disp);
-        line.move_end(next_pos[0], next_pos[1] + next_disp);
+        line.move_start([pos[0], pos[1] + disp]);
+        line.move_end([next_pos[0], next_pos[1] + next_disp]);
       }
     }
 

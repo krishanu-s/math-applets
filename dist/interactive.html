@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>interactive demo</title>
+        <base href="." />
+        <script>
+            MathJax = {
+                tex: {
+                    inlineMath: { "[+]": [["$", "$"]] },
+                },
+            };
+        </script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
+        ></script>
+        <script type="module" src="interactive_scene.js"></script>
+        <style>
+            .applet-container {
+                display: flex;
+                justify-content: center; /* Centers horizontally */
+                align-items: center; /* Centers vertically */
+                width: 50%; /* A width less than 100% is required */
+                margin-left: auto;
+                margin-right: auto;
+                padding: 20px;
+                text-align: center;
+                font-family: Arial, sans-serif;
+            }
+            .slider {
+                display: flex;
+                justify-content: center; /* Centers horizontally */
+                align-items: center; /* Centers vertically */
+                width: 40%;
+                height: 25px;
+                margin: 20px 0;
+                margin-left: auto;
+                margin-right: auto;
+            }
+        </style>
+    </head>
+    <body>
+        <div style="text-align: center; margin: 10px auto">
+            <p>This page showcases some interactive scenes.</p>
+            <h3>Draggable dots</h3>
+            <p>You should be able to drag the dots around.</p>
+            <br />
+            <div class="applet-container" id="draggable-dot"></div>
+            <br />
+
+            <h3>Bezier curve</h3>
+            <p>
+                A Bezier curve, determined by a sequence of control points, each
+                of which can be dragged around. This is a technique used for
+                drawing smooth curves interpolated from a finite sample. This
+                demonstration will eventually go into a tutorial page with a
+                full explanation of the math.
+            </p>
+            <br />
+            <div class="applet-container" id="draggable-dot-bezier"></div>
+            <br />
+            <div class="slider" id="draggable-dot-bezier-num-slider"></div>
+            <br />
+        </div>
+
+        <a href="./index.html">back to main page</a>
+    </body>
+</html>

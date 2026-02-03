@@ -7,6 +7,8 @@ var MObject = class {
   set_alpha(alpha) {
     this.alpha = alpha;
   }
+  add(scene) {
+  }
   draw(canvas, scene, args) {
   }
 };
@@ -70,6 +72,8 @@ var Scene = class {
   // Adds a mobject to the scene
   add(name, mobj) {
     this.mobjects[name] = mobj;
+    let self = this;
+    mobj.add(self);
   }
   // Removes the mobject from the scene
   remove(name) {
@@ -119,8 +123,12 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-  move_to(center) {
-    this.center = center;
+  move_to(p) {
+    this.center = p;
+  }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
   }
   // Change the dot radius
   set_radius(radius) {
@@ -158,7 +166,7 @@ var OrbitScene = class extends Scene {
   set_position(x) {
     this.state[0] = x;
     let orbiter = this.get_mobj("orbiter");
-    orbiter.move_to(x[0], x[1]);
+    orbiter.move_to(x);
   }
   get_position() {
     return this.state[0];

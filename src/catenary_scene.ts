@@ -62,9 +62,9 @@ class OneSidedSpringScene extends Scene {
   set_position(x: Vec2D) {
     this.state[0] = x;
     let mass = this.get_mobj("mass") as Dot;
-    mass.move_to(x[0], x[1]);
+    mass.move_to(x);
     let spring = this.get_mobj("spring") as Line;
-    spring.move_end(x[0], x[1]);
+    spring.move_end(x);
   }
   get_position(): Vec2D {
     return this.state[0];
@@ -243,14 +243,14 @@ class CatenaryScene extends Scene {
     let s = this.state[index] as State2D;
     s[0] = position;
     let p = this.get_mobj(`p${index}`) as Dot;
-    p.move_to(position[0], position[1]);
+    p.move_to(position);
     if (index > 0) {
       let v = this.get_mobj(`v${index}`) as Line;
-      v.move_end(position[0], position[1]);
+      v.move_end(position);
     }
     if (index < this.num_segments) {
       let v = this.get_mobj(`v${index + 1}`) as Line;
-      v.move_start(position[0], position[1]);
+      v.move_start(position);
     }
   }
   get_position(index: number): Vec2D {

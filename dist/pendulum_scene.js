@@ -7,6 +7,8 @@ var MObject = class {
   set_alpha(alpha) {
     this.alpha = alpha;
   }
+  add(scene) {
+  }
   draw(canvas, scene, args) {
   }
 };
@@ -70,6 +72,8 @@ var Scene = class {
   // Adds a mobject to the scene
   add(name, mobj) {
     this.mobjects[name] = mobj;
+    let self = this;
+    mobj.add(self);
   }
   // Removes the mobject from the scene
   remove(name) {
@@ -176,8 +180,12 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-  move_to(center) {
-    this.center = center;
+  move_to(p) {
+    this.center = p;
+  }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
   }
   // Change the dot radius
   set_radius(radius) {
@@ -219,11 +227,11 @@ var Line = class extends MObject {
     }
   }
   // Moves the start and end points
-  move_start(x, y) {
-    this.start = [x, y];
+  move_start(p) {
+    this.start = p;
   }
-  move_end(x, y) {
-    this.end = [x, y];
+  move_end(p) {
+    this.end = p;
   }
   length() {
     return vec2_norm(vec2_sub(this.start, this.end));
@@ -267,9 +275,9 @@ var PendulumScene = class extends Scene {
     let sx = this.top[0] - this.length * Math.sin(theta);
     let sy = this.top[1] - this.length * Math.cos(theta);
     let string = this.get_mobj("string");
-    string.move_end(sx, sy);
+    string.move_end([sx, sy]);
     let bob = this.get_mobj("bob");
-    bob.move_to(sx, sy);
+    bob.move_to([sx, sy]);
   }
   get_position() {
     return this.state[0];

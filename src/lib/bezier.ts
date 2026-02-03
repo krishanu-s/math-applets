@@ -149,11 +149,11 @@ export class BezierCurve extends MObject {
     this.width = width;
   }
   // Moves the start and end points
-  move_start(x: number, y: number) {
-    this.start = [x, y];
+  move_start(p: Vec2D) {
+    this.start = p;
   }
-  move_end(x: number, y: number) {
-    this.end = [x, y];
+  move_end(p: Vec2D) {
+    this.end = p;
   }
   // Moves the handles
   move_h1(x: number, y: number) {
@@ -212,6 +212,9 @@ export class BezierSpline extends MObject {
   }
   set_anchors(new_anchors: Vec2D[]) {
     this.anchors = new_anchors;
+  }
+  set_anchor(index: number, new_anchor: Vec2D) {
+    this.anchors[index] = new_anchor;
   }
   get_anchor(index: number): Vec2D {
     return this.anchors[index] as Vec2D;

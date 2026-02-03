@@ -41,11 +41,11 @@ class PendulumScene extends Scene {
 
     // Set the string
     let string = this.get_mobj("string") as Line;
-    string.move_end(sx, sy);
+    string.move_end([sx, sy]);
 
     // Set the bob
     let bob = this.get_mobj("bob") as Dot;
-    bob.move_to(sx, sy);
+    bob.move_to([sx, sy]);
   }
   get_position(): number {
     return this.state[0];

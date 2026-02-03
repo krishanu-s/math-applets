@@ -10735,23 +10735,144 @@ var Scene = class {
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
+function prepare_canvas(width, height, name) {
+  const container = document.getElementById(name);
+  if (container == null) throw new Error(`${name} not found`);
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+  let wrapper = document.createElement("div");
+  wrapper.classList.add("canvas_container");
+  wrapper.classList.add("non_selectable");
+  wrapper.style.width = `${width}px`;
+  wrapper.style.height = `${height}px`;
+  let canvas = document.createElement("canvas");
+  canvas.classList.add("non_selectable");
+  canvas.style.position = "relative";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.height = height;
+  canvas.width = width;
+  wrapper.appendChild(canvas);
+  container.appendChild(wrapper);
+  console.log("Canvas made");
+  return canvas;
+}
 
 // src/lib/base_geom.ts
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
-function vec2_scale(x, factor) {
-  return [x[0] * factor, x[1] * factor];
-}
-function vec2_sum(x, y) {
-  return [x[0] + y[0], x[1] + y[1]];
-}
-function vec2_sum_list(xs) {
-  return xs.reduce((acc, x) => vec2_sum(acc, x), [0, 0]);
-}
 function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
+var Dot = class extends MObject {
+  constructor(center, kwargs) {
+    super();
+    this.fill_color = "black";
+    this.center = center;
+    let radius = kwargs.radius;
+    if (radius == void 0) {
+      this.radius = 0.3;
+    } else {
+      this.radius = radius;
+    }
+  }
+  // Get the center coordinates
+  get_center() {
+    return this.center;
+  }
+  // Move the center of the dot to a desired location
+  move_to(p) {
+    this.center = p;
+  }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
+  }
+  // Change the dot radius
+  set_radius(radius) {
+    this.radius = radius;
+  }
+  // Change the dot color
+  set_color(color) {
+    this.fill_color = color;
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.fillStyle = this.fill_color;
+    ctx.globalAlpha = this.alpha;
+    let [x, y] = scene.v2c(this.center);
+    let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
+    ctx.beginPath();
+    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
+    ctx.fill();
+  }
+};
+var DraggableDot = class extends Dot {
+  constructor() {
+    super(...arguments);
+    this.isClicked = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.dragDiff = [0, 0];
+    this.callbacks = [];
+  }
+  // Tests whether a chosen vector lies inside the dot.
+  is_inside_dot(p) {
+    return vec2_norm(vec2_sub(p, this.center)) < this.radius;
+  }
+  // Adds a callback which triggers when the dot is dragged
+  add_callback(callback) {
+    this.callbacks.push(callback);
+  }
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
+  }
+  // Triggers when the canvas is clicked.
+  click(scene, event) {
+    this.dragStart = [
+      event.pageX - scene.canvas.offsetLeft,
+      event.pageY - scene.canvas.offsetTop
+    ];
+    this.isClicked = this.is_inside_dot(
+      scene.c2s(this.dragStart[0], this.dragStart[1])
+    );
+  }
+  // Triggers when the canvas is unclicked.
+  unclick(scene, event) {
+    this.isClicked = false;
+  }
+  // Triggers when the mouse is dragged over the canvas.
+  drag_cursor(scene, event) {
+    if (this.isClicked) {
+      this.dragEnd = [
+        event.pageX - scene.canvas.offsetLeft,
+        event.pageY - scene.canvas.offsetTop
+      ];
+      this.dragDiff = vec2_sub(
+        scene.c2s(this.dragEnd[0], this.dragEnd[1]),
+        scene.c2s(this.dragStart[0], this.dragStart[1])
+      );
+      this.move_by(this.dragDiff);
+      this.dragStart = this.dragEnd;
+      this.do_callbacks();
+      scene.draw();
+    }
+  }
+  add(scene) {
+    let self = this;
+    scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
+    scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
+    scene.canvas.addEventListener(
+      "mousemove",
+      self.drag_cursor.bind(self, scene)
+    );
+  }
+};
 var Line = class extends MObject {
   constructor(start, end, kwargs) {
     super();
@@ -10796,57 +10917,6 @@ var Line = class extends MObject {
     ctx.stroke();
   }
 };
-
-// src/lib/interactive.ts
-function Slider(container, callback, kwargs) {
-  let slider = document.createElement("input");
-  slider.type = "range";
-  slider.value = kwargs.initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
-  let name = kwargs.name;
-  if (name == void 0) {
-    slider.name = "Value";
-  } else {
-    slider.name = name;
-  }
-  let min2 = kwargs.min;
-  if (min2 == void 0) {
-    slider.min = "0";
-  } else {
-    slider.min = `${min2}`;
-  }
-  let max2 = kwargs.max;
-  if (max2 == void 0) {
-    slider.max = "10";
-  } else {
-    slider.max = `${max2}`;
-  }
-  let step = kwargs.step;
-  if (step == void 0) {
-    slider.step = ".01";
-  } else {
-    slider.step = `${step}`;
-  }
-  container.appendChild(slider);
-  let valueDisplay = document.createElement("span");
-  valueDisplay.classList.add("value-display");
-  valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-  container.appendChild(valueDisplay);
-  function updateDisplay() {
-    callback(slider.value);
-    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-    updateSliderColor(slider);
-  }
-  function updateSliderColor(sliderElement) {
-    const value = 100 * parseFloat(sliderElement.value);
-    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
-  }
-  updateDisplay();
-  slider.addEventListener("input", updateDisplay);
-  return slider;
-}
 
 // src/lib/bezier.ts
 var np = __toESM(require_numpy_ts_node(), 1);
@@ -10943,259 +11013,196 @@ var SmoothOpenPathBezierHandleCalculator = class {
     return [h1, h2];
   }
 };
-
-// src/catenary_scene.ts
-function zero_state() {
-  return [
-    [0, 0],
-    [0, 0]
-  ];
-}
-function state_scale(x, factor) {
-  return [vec2_scale(x[0], factor), vec2_scale(x[1], factor)];
-}
-function state_sum(x, y) {
-  return [vec2_sum(x[0], y[0]), vec2_sum(x[1], y[1])];
-}
-var CatenaryScene = class extends Scene {
-  constructor(canvas, p0, p1, length, num_segments) {
-    super(canvas);
-    this.p0 = p0;
-    this.p1 = p1;
-    this.length = length;
-    this.num_segments = num_segments;
-    this.solver = new SmoothOpenPathBezierHandleCalculator(num_segments);
-    this.smooth = true;
-    this.spring_constant = 1;
-    this.friction_constant = 0.4;
-    this.gravity = 1;
-    this.dt = 0.1;
-    this.state = [];
-    for (let i = 0; i <= num_segments; i++) {
-      this.state.push([
-        [
-          p0[0] + (p1[0] - p0[0]) * i / num_segments,
-          p0[1] + (p1[1] - p0[1]) * i / num_segments
-        ],
-        [0, 0]
+var BezierSpline = class extends MObject {
+  constructor(num_steps, kwargs) {
+    super();
+    this.num_steps = num_steps;
+    this.solver = new SmoothOpenPathBezierHandleCalculator(num_steps);
+    this.anchors = [];
+    for (let i = 0; i < num_steps + 1; i++) {
+      this.anchors.push([0, 0]);
+    }
+    let stroke_width = kwargs.stroke_width;
+    if (stroke_width == void 0) {
+      this.stroke_width = 0.08;
+    } else {
+      this.stroke_width = stroke_width;
+    }
+    let stroke_color = kwargs.stroke_color;
+    if (stroke_color == void 0) {
+      this.stroke_color = `rgb(0, 0, 0)`;
+    } else {
+      this.stroke_color = stroke_color;
+    }
+  }
+  set_anchors(new_anchors) {
+    this.anchors = new_anchors;
+  }
+  set_anchor(index, new_anchor) {
+    this.anchors[index] = new_anchor;
+  }
+  get_anchor(index) {
+    return this.anchors[index];
+  }
+  draw(canvas, scene) {
+    super.draw(canvas, scene);
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    let a_x, a_y, a;
+    a = this.get_anchor(0);
+    [a_x, a_y] = scene.v2c(a);
+    ctx.beginPath();
+    ctx.moveTo(a_x, a_y);
+    let [handles_1, handles_2] = this.solver.get_bezier_handles(
+      np.array(this.anchors)
+    );
+    let h1_x, h1_y, h2_x, h2_y;
+    for (let i = 0; i < this.num_steps; i++) {
+      [h1_x, h1_y] = scene.v2c([
+        handles_1.get([i, 0]),
+        handles_1.get([i, 1])
       ]);
+      [h2_x, h2_y] = scene.v2c([
+        handles_2.get([i, 0]),
+        handles_2.get([i, 1])
+      ]);
+      a = this.get_anchor(i + 1);
+      [a_x, a_y] = scene.v2c(a);
+      ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
+      ctx.stroke();
     }
-    for (let i = 1; i <= num_segments; i++) {
-      this.add(
-        `v${i}`,
-        new Line(this.get_position(i - 1), this.get_position(i), {
-          stroke_width: 0.05
-        })
-      );
-    }
-  }
-  set_gravity(g) {
-    this.gravity = g;
-  }
-  set_friction(c) {
-    this.friction_constant = c;
-  }
-  set_spring(k) {
-    this.spring_constant = k;
-  }
-  set_dt(dt) {
-    this.dt = dt;
-  }
-  move_start(p) {
-    this.p0 = p;
-  }
-  move_end(p) {
-    this.p1 = p;
-  }
-  set_num_segments(n) {
-    this.num_segments = n;
-    this.solver = new SmoothOpenPathBezierHandleCalculator(n);
-  }
-  get_state(index) {
-    return this.state[index];
-  }
-  set_position(index, position) {
-    let s = this.state[index];
-    s[0] = position;
-    let p = this.get_mobj(`p${index}`);
-    p.move_to(position);
-    if (index > 0) {
-      let v = this.get_mobj(`v${index}`);
-      v.move_end(position);
-    }
-    if (index < this.num_segments) {
-      let v = this.get_mobj(`v${index + 1}`);
-      v.move_start(position);
-    }
-  }
-  get_position(index) {
-    return this._get_position(index, this.state);
-  }
-  _get_position(index, state) {
-    let s = state[index];
-    return s[0];
-  }
-  set_velocity(index, velocity) {
-    let s = this.state[index];
-    s[1] = velocity;
-  }
-  get_velocity(index) {
-    return this._get_velocity(index, this.state);
-  }
-  _get_velocity(index, state) {
-    let s = state[index];
-    return s[1];
-  }
-  d2x(index, state) {
-    let rel_pos, disp;
-    rel_pos = vec2_sub(
-      state[index][0],
-      state[index - 1][0]
-    );
-    disp = vec2_norm(rel_pos);
-    let spring_term_1 = vec2_scale(
-      rel_pos,
-      -this.spring_constant * Math.max(disp - this.length / this.num_segments, 0) / disp
-    );
-    rel_pos = vec2_sub(
-      state[index][0],
-      state[index + 1][0]
-    );
-    disp = vec2_norm(rel_pos);
-    let spring_term_2 = vec2_scale(
-      rel_pos,
-      -this.spring_constant * Math.max(disp - this.length / this.num_segments, 0) / disp
-    );
-    return vec2_sum_list([
-      [0, -this.gravity / this.num_segments],
-      vec2_scale(this._get_velocity(index, state), -this.friction_constant),
-      spring_term_1,
-      spring_term_2
-    ]);
-  }
-  // Evolves the simulation forward by time dt
-  step(dt) {
-    let k1 = [];
-    k1.push(zero_state());
-    for (let i = 1; i < this.num_segments; i++) {
-      k1.push([this.get_velocity(i), this.d2x(i, this.state)]);
-    }
-    k1.push(zero_state());
-    let p2 = [];
-    p2.push(this.get_state(0));
-    for (let i = 1; i < this.num_segments; i++) {
-      p2.push(
-        state_sum(this.get_state(i), state_scale(k1[i], dt / 2))
-      );
-    }
-    p2.push(this.get_state(this.num_segments));
-    let k2 = [];
-    k2.push(zero_state());
-    for (let i = 1; i < this.num_segments; i++) {
-      k2.push([this._get_velocity(i, p2), this.d2x(i, p2)]);
-    }
-    k2.push(zero_state());
-    let p3 = [];
-    p3.push(this.get_state(0));
-    for (let i = 1; i < this.num_segments; i++) {
-      p3.push(
-        state_sum(this.get_state(i), state_scale(k2[i], dt / 2))
-      );
-    }
-    p3.push(this.get_state(this.num_segments));
-    let k3 = [];
-    k3.push(zero_state());
-    for (let i = 1; i < this.num_segments; i++) {
-      k3.push([this._get_velocity(i, p3), this.d2x(i, p3)]);
-    }
-    k3.push(zero_state());
-    let p4 = [];
-    p4.push(this.get_state(0));
-    for (let i = 1; i < this.num_segments; i++) {
-      p4.push(state_sum(this.get_state(i), state_scale(k2[i], dt)));
-    }
-    p4.push(this.get_state(this.num_segments));
-    let k4 = [];
-    k4.push(zero_state());
-    for (let i = 1; i < this.num_segments; i++) {
-      k4.push([this._get_velocity(i, p4), this.d2x(i, p4)]);
-    }
-    k4.push(zero_state());
-    for (let i = 1; i < this.num_segments; i++) {
-      this.set_position(
-        i,
-        vec2_sum_list([
-          this.get_position(i),
-          vec2_scale(this._get_position(i, k1), dt / 6),
-          vec2_scale(this._get_position(i, k2), dt / 3),
-          vec2_scale(this._get_position(i, k3), dt / 3),
-          vec2_scale(this._get_position(i, k4), dt / 6)
-        ])
-      );
-      this.set_velocity(
-        i,
-        vec2_sum_list([
-          this.get_velocity(i),
-          vec2_scale(this._get_velocity(i, k1), dt / 6),
-          vec2_scale(this._get_velocity(i, k2), dt / 3),
-          vec2_scale(this._get_velocity(i, k3), dt / 3),
-          vec2_scale(this._get_velocity(i, k4), dt / 6)
-        ])
-      );
-    }
-  }
-  // Starts animation
-  start_playing() {
-    this.step(this.dt);
-    this.draw();
-    window.requestAnimationFrame(this.start_playing.bind(this));
   }
 };
-(function() {
+
+// src/lib/interactive.ts
+function Slider(container, callback, kwargs) {
+  let slider = document.createElement("input");
+  slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
+  }
+  let min2 = kwargs.min;
+  if (min2 == void 0) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min2}`;
+  }
+  let max2 = kwargs.max;
+  if (max2 == void 0) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max2}`;
+  }
+  let step = kwargs.step;
+  if (step == void 0) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
+  }
+  container.appendChild(slider);
+  let valueDisplay = document.createElement("span");
+  valueDisplay.classList.add("value-display");
+  valueDisplay.id = "sliderValue";
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+  container.appendChild(valueDisplay);
+  function updateDisplay() {
+    callback(slider.value);
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+    updateSliderColor(slider);
+  }
+  function updateSliderColor(sliderElement) {
+    const value = 100 * parseFloat(sliderElement.value);
+    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
+  }
+  updateDisplay();
+  slider.addEventListener("input", updateDisplay);
+  return slider;
+}
+
+// src/interactive_scene.ts
+(async function() {
   document.addEventListener("DOMContentLoaded", async function() {
-    function prepare_canvas(width2, height2, name) {
-      const container = document.getElementById(name);
-      if (container == null) throw new Error(`${name} not found`);
-      container.style.width = `${width2}px`;
-      container.style.height = `${height2}px`;
-      let wrapper = document.createElement("div");
-      wrapper.classList.add("canvas_container");
-      wrapper.classList.add("non_selectable");
-      wrapper.style.width = `${width2}px`;
-      wrapper.style.height = `${height2}px`;
-      let canvas2 = document.createElement("canvas");
-      canvas2.classList.add("non_selectable");
-      canvas2.style.position = "relative";
-      canvas2.style.top = "0";
-      canvas2.style.left = "0";
-      canvas2.height = height2;
-      canvas2.width = width2;
-      wrapper.appendChild(canvas2);
-      container.appendChild(wrapper);
-      console.log("Canvas made");
-      return canvas2;
-    }
-    let width = 300;
-    let height = 300;
-    let canvas = prepare_canvas(width, height, "scene-container");
-    let p0 = [-2, 2];
-    let p1 = [2, 3];
-    let length = 6;
-    let num_segments = 20;
-    let scene = new CatenaryScene(canvas, p0, p1, length, num_segments);
-    let xlims = [-5, 5];
-    let ylims = [-5, 5];
-    scene.set_frame_lims(xlims, ylims);
-    let spring_slider = Slider(
-      document.getElementById("slider-container-1"),
-      function(k) {
-        scene.set_dt(0.5 / k ** 2);
-        scene.set_spring(k ** 2);
-      },
-      { initial_value: "1.0", min: 0.1, max: 10, step: 0.01 }
-    );
-    spring_slider.width = 200;
-    scene.draw();
-    scene.start_playing();
+    (function draggable_dots(width, height) {
+      let canvas = prepare_canvas(width, height, "draggable-dot");
+      let scene = new Scene(canvas);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      let dot_1 = new DraggableDot([1, 0], {});
+      dot_1.set_radius(0.3);
+      let dot_2 = new DraggableDot([-1, 0], {});
+      dot_2.set_radius(0.3);
+      let line = new Line([1, 0], [-1, 0], {});
+      dot_1.add_callback(() => {
+        line.move_start(dot_1.get_center());
+      });
+      dot_2.add_callback(() => {
+        line.move_end(dot_2.get_center());
+      });
+      scene.add("line", line);
+      scene.add("p1", dot_1);
+      scene.add("p2", dot_2);
+      scene.draw();
+    })(300, 300);
+    (function draggable_dots_bezier(width, height) {
+      let canvas = prepare_canvas(width, height, "draggable-dot-bezier");
+      let scene = new Scene(canvas);
+      let xmin = -5;
+      let xmax = 5;
+      let ymin = -5;
+      let ymax = 5;
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      function make_scene(n) {
+        scene.clear();
+        let dots = [];
+        for (let i = 0; i < n; i++) {
+          let dot3 = new DraggableDot(
+            [xmin + (xmax - xmin) * (i + 0.5) / n, 0],
+            {}
+          );
+          dot3.set_radius(0.5 / Math.sqrt(n));
+          dots.push(dot3);
+          scene.add(`p${i}`, dot3);
+        }
+        let curve = new BezierSpline(n - 1, {
+          stroke_width: 0.2 / Math.sqrt(n)
+        });
+        curve.set_anchors(dots.map((dot3) => dot3.get_center()));
+        for (let i = 0; i < n; i++) {
+          dots[i].add_callback(() => {
+            curve.set_anchor(i, dots[i].get_center());
+          });
+        }
+        scene.add("curve", curve);
+        for (let i = 0; i < n; i++) {
+          scene.add(`p${i}`, dots[i]);
+        }
+        scene.draw();
+      }
+      let n_slider = Slider(
+        document.getElementById(
+          "draggable-dot-bezier-num-slider"
+        ),
+        function(n) {
+          make_scene(n);
+        },
+        {
+          name: "Number of points",
+          initial_value: "5.0",
+          min: 3,
+          max: 20,
+          step: 1
+        }
+      );
+      n_slider.width = 200;
+      make_scene(5);
+    })(300, 300);
   });
 })();
