@@ -161,7 +161,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
 
     // Depicts ray trajectories emanating from the focus of a conic section
     // and reflecting off the conic section.
-    (function conic_rays() {
+    (async function conic_rays() {
       // Prepare the canvas
       let canvas = prepare_canvas(200, 200, "conic-rays");
 
@@ -176,7 +176,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       let scene = new Scene(canvas);
       scene.set_frame_lims([-5, 5], [-5, 5]);
 
-      // Define conic
+      // Define conic section
       class Conic {
         focus: Vec2D;
         eccentricity: number;
@@ -241,13 +241,13 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
         }
         // Makes dots for the foci
         make_focus(): Dot {
-          return new Dot(this.focus[0], this.focus[1], { radius: 0.2 });
+          return new Dot(this.focus, { radius: 0.2 });
         }
         make_other_focus(): MObject {
           if (this.eccentricity >= 1.0) {
             return new MObject();
           } else {
-            return new Dot(this.other_focus[0], this.other_focus[1], {
+            return new Dot(this.other_focus, {
               radius: 0.1,
             });
           }
@@ -348,7 +348,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
           let [u, v] = this.get_simulator(0).get_vals() as Vec2D;
 
           let mass = this.get_mobj("mass") as Dot;
-          mass.move_to(u, 0);
+          mass.move_to([u, 0]);
 
           let spring = this.get_mobj("spring") as Line;
           spring.move_end(u, 0);

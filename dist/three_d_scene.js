@@ -160,10 +160,10 @@ function vec2_rot(v, angle) {
   return [x * cos - y * sin, x * sin + y * cos];
 }
 var Dot = class extends MObject {
-  constructor(center_x, center_y, kwargs) {
+  constructor(center, kwargs) {
     super();
     this.fill_color = "black";
-    this.center = [center_x, center_y];
+    this.center = center;
     let radius = kwargs.radius;
     if (radius == void 0) {
       this.radius = 0.3;
@@ -176,8 +176,8 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-  move_to(x, y) {
-    this.center = [x, y];
+  move_to(center) {
+    this.center = center;
   }
   // Change the dot radius
   set_radius(radius) {
@@ -1223,7 +1223,7 @@ function pick_random_step(dim) {
         line.set_alpha(1);
         line.set_width(0.1);
         scene.add("line", line);
-        let p = new Dot(x, y, { radius: 0.3 });
+        let p = new Dot([x, y], { radius: 0.3 });
         p.set_color("blue");
         scene.add("point", p);
         while (true) {
@@ -1233,7 +1233,7 @@ function pick_random_step(dim) {
             line = scene.get_mobj("line");
             line.add_point([x, y]);
             p = scene.get_mobj("point");
-            p.move_to(x, y);
+            p.move_to([x, y]);
             scene.draw();
             if (x == 0 && y == 0) {
               await delay(1e3);
@@ -1289,14 +1289,14 @@ function pick_random_step(dim) {
       async function do_simulation() {
         let x = 0;
         let dx;
+        let p = new Dot([x, 0], { radius: 0.3 });
+        p.set_color("blue");
+        scene.add("point", p);
         let line = new LineSequence([[x, 0]], {});
         line.set_color("red");
         line.set_alpha(1);
         line.set_width(0.1);
         scene.add("line", line);
-        let p = new Dot(x, 0, { radius: 0.3 });
-        p.set_color("blue");
-        scene.add("point", p);
         while (true) {
           if (playing) {
             [dx] = pick_random_step(1);
@@ -1304,7 +1304,7 @@ function pick_random_step(dim) {
             line = scene.get_mobj("line");
             line.add_point([x, 0]);
             p = scene.get_mobj("point");
-            p.move_to(x, 0);
+            p.move_to([x, 0]);
             scene.draw();
             if (x == 0) {
               await delay(1e3);
@@ -1439,7 +1439,7 @@ function pick_random_step(dim) {
       }
       scene.draw();
       let [x, y] = [0, 0];
-      let p = new Dot(x, y, { radius: 0.05 });
+      let p = new Dot([x, y], { radius: 0.05 });
       p.set_color("blue");
       scene.add("point", p);
       let line = new LineSequence([[x, y]], {});
@@ -1476,7 +1476,7 @@ function pick_random_step(dim) {
           line = scene.get_mobj("line");
           line.add_point([x, y]);
           p = scene.get_mobj("point");
-          p.move_to(x, y);
+          p.move_to([x, y]);
           scene.draw();
         }
         await delay(1);

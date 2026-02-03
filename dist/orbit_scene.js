@@ -103,10 +103,10 @@ var Scene = class {
 
 // src/lib/base_geom.ts
 var Dot = class extends MObject {
-  constructor(center_x, center_y, kwargs) {
+  constructor(center, kwargs) {
     super();
     this.fill_color = "black";
-    this.center = [center_x, center_y];
+    this.center = center;
     let radius = kwargs.radius;
     if (radius == void 0) {
       this.radius = 0.3;
@@ -119,8 +119,8 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-  move_to(x, y) {
-    this.center = [x, y];
+  move_to(center) {
+    this.center = center;
   }
   // Change the dot radius
   set_radius(radius) {
@@ -150,12 +150,9 @@ var OrbitScene = class extends Scene {
   constructor(canvas, center) {
     super(canvas);
     this.center = center;
-    this.add("center", new Dot(center[0], center[1], { radius: 0.2 }));
-    this.add("orbiter", new Dot(center[0], center[1], { radius: 0.1 }));
-    this.state = [
-      [center[0], center[1]],
-      [0, 0]
-    ];
+    this.add("center", new Dot(center, { radius: 0.2 }));
+    this.add("orbiter", new Dot(center, { radius: 0.1 }));
+    this.state = [center, [0, 0]];
   }
   // Set the position of the orbiter
   set_position(x) {

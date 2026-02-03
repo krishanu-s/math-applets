@@ -133,7 +133,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     this.mode = "dots";
     console.log("Initialized one-dimensional wave simulation scene");
 
-    let pos, next_pos;
+    let pos: Vec2D, next_pos: Vec2D;
 
     // Add boundary lines
     let [ymin, ymax] = this.ylims;
@@ -176,7 +176,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     // Add dots which track with uValues in simulator
     for (let i = 0; i < width; i++) {
       pos = this.eq_position(i + 1);
-      let dot = new Dot(pos[0], pos[1], { radius: 0.5 / Math.sqrt(width) });
+      let dot = new Dot(pos, { radius: 0.5 / Math.sqrt(width) });
       this.add(`p_${i + 1}`, dot);
     }
 
@@ -231,8 +231,8 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
   // Moves the dots and curve in the scene to the positions dictated by the wave simulation.
   update_mobjects() {
     let dot, line, arrow;
-    let pos, next_pos;
-    let disp, next_disp;
+    let pos: Vec2D, next_pos: Vec2D;
+    let disp: number, next_disp: number;
     let sim = this.sim();
     let u = sim.get_uValues();
 
@@ -245,7 +245,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
 
       // Update dots
       dot = this.get_mobj(`p_${i + 1}`) as Dot;
-      dot.move_to(pos[0], pos[1] + disp);
+      dot.move_to([pos[0], pos[1] + disp]);
 
       // Update arrows
       arrow = this.get_mobj(`arr${i + 1}`) as Arrow;
@@ -939,11 +939,12 @@ export class WaveSimTwoDimDotsScene extends InteractivePlayingScene {
     console.log(this.xlims[1], this.xlims[0]);
     let w = simulators[0].width;
     let h = simulators[0].height;
-    let x_eq, y_eq;
     for (let x = 0; x < w; x++) {
       for (let y = 0; y < h; y++) {
-        [x_eq, y_eq] = this.eq_position(x, y);
-        this.add(`p_{${x}, ${y}}`, new Dot(x_eq, y_eq, { radius: 2 / w }));
+        this.add(
+          `p_{${x}, ${y}}`,
+          new Dot(this.eq_position(x, y), { radius: 2 / w }),
+        );
       }
     }
   }

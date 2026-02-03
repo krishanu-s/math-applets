@@ -25,7 +25,7 @@ class PendulumScene extends Scene {
     );
 
     // TODO Radius is 0.3, but make it modifiable
-    this.add("bob", new Dot(top[0], top[1] - length, { radius: radius }));
+    this.add("bob", new Dot([top[0], top[1] - length], { radius: radius }));
 
     // Position and velocity
     this.state = [0.0, 0.0];

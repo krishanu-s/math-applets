@@ -126,7 +126,7 @@ export function pick_random_step(dim: number): number[] {
         scene.add("line", line);
 
         // Add the path current point
-        let p = new Dot(x, y, { radius: 0.3 });
+        let p = new Dot([x, y], { radius: 0.3 });
         p.set_color("blue");
         scene.add("point", p);
 
@@ -142,7 +142,7 @@ export function pick_random_step(dim: number): number[] {
 
             // Move the endpoint
             p = scene.get_mobj("point") as Dot;
-            p.move_to(x, y);
+            p.move_to([x, y]);
 
             // Draw
             scene.draw();
@@ -216,7 +216,7 @@ export function pick_random_step(dim: number): number[] {
         let dx: number;
 
         // Add the path current point
-        let p = new Dot(x, 0, { radius: 0.3 });
+        let p = new Dot([x, 0], { radius: 0.3 });
         p.set_color("blue");
         scene.add("point", p);
 
@@ -241,7 +241,7 @@ export function pick_random_step(dim: number): number[] {
 
             // Move the endpoint
             p = scene.get_mobj("point") as Dot;
-            p.move_to(x, 0);
+            p.move_to([x, 0]);
 
             // Draw
             scene.draw();
@@ -406,7 +406,7 @@ export function pick_random_step(dim: number): number[] {
       let [x, y] = [0, 0];
 
       // Add the path current point
-      let p = new Dot(x, y, { radius: 0.05 });
+      let p = new Dot([x, y], { radius: 0.05 });
       p.set_color("blue");
       scene.add("point", p);
 
@@ -453,7 +453,7 @@ export function pick_random_step(dim: number): number[] {
 
           // Move the endpoint
           p = scene.get_mobj("point") as Dot;
-          p.move_to(x, y);
+          p.move_to([x, y]);
 
           // Draw
           scene.draw();

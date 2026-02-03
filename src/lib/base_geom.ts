@@ -45,9 +45,9 @@ export class Dot extends MObject {
   center: Vec2D;
   radius: number;
   fill_color: string = "black";
-  constructor(center_x: number, center_y: number, kwargs: Record<string, any>) {
+  constructor(center: Vec2D, kwargs: Record<string, any>) {
     super();
-    this.center = [center_x, center_y];
+    this.center = center;
     let radius = kwargs.radius as number;
     if (radius == undefined) {
       this.radius = 0.3;
@@ -61,8 +61,8 @@ export class Dot extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-  move_to(x: number, y: number) {
-    this.center = [x, y];
+  move_to(center: Vec2D) {
+    this.center = center;
   }
   // Change the dot radius
   set_radius(radius: number) {

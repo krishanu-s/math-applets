@@ -10737,10 +10737,10 @@ var Scene = class {
 
 // src/lib/base_geom.ts
 var Dot = class extends MObject {
-  constructor(center_x, center_y, kwargs) {
+  constructor(center, kwargs) {
     super();
     this.fill_color = "black";
-    this.center = [center_x, center_y];
+    this.center = center;
     let radius = kwargs.radius;
     if (radius == void 0) {
       this.radius = 0.3;
@@ -10753,8 +10753,8 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-  move_to(x, y) {
-    this.center = [x, y];
+  move_to(center) {
+    this.center = center;
   }
   // Change the dot radius
   set_radius(radius) {
@@ -10924,7 +10924,7 @@ var ClosedCurveScene = class extends Scene {
     let a_list = [];
     for (let i = 0; i < n; i++) {
       let p = this.calculate(i / n * Math.PI * 2);
-      this.add(`p${i}`, new Dot(p[0], p[1], { radius: 0.02 }));
+      this.add(`p${i}`, new Dot(p, { radius: 0.02 }));
       a_list.push(np2.array(p));
     }
     a_list.push(np2.array(this.calculate(0)));

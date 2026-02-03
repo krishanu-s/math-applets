@@ -160,10 +160,10 @@ function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
 var Dot = class extends MObject {
-  constructor(center_x, center_y, kwargs) {
+  constructor(center, kwargs) {
     super();
     this.fill_color = "black";
-    this.center = [center_x, center_y];
+    this.center = center;
     let radius = kwargs.radius;
     if (radius == void 0) {
       this.radius = 0.3;
@@ -176,8 +176,8 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-  move_to(x, y) {
-    this.center = [x, y];
+  move_to(center) {
+    this.center = center;
   }
   // Change the dot radius
   set_radius(radius) {
@@ -257,7 +257,7 @@ var PendulumScene = class extends Scene {
       "string",
       new Line(top, [top[0], top[1] - length], { stroke_width })
     );
-    this.add("bob", new Dot(top[0], top[1] - length, { radius }));
+    this.add("bob", new Dot([top[0], top[1] - length], { radius }));
     this.state = [0, 0];
   }
   // Set the arc-length position. Used by the scene evolution engine and by user input.

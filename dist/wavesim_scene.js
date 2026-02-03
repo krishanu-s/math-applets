@@ -10870,10 +10870,10 @@ function vec2_rot(v, angle2) {
   return [x * cos2 - y * sin2, x * sin2 + y * cos2];
 }
 var Dot = class extends MObject {
-  constructor(center_x, center_y, kwargs) {
+  constructor(center, kwargs) {
     super();
     this.fill_color = "black";
-    this.center = [center_x, center_y];
+    this.center = center;
     let radius = kwargs.radius;
     if (radius == void 0) {
       this.radius = 0.3;
@@ -10886,8 +10886,8 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-  move_to(x, y) {
-    this.center = [x, y];
+  move_to(center) {
+    this.center = center;
   }
   // Change the dot radius
   set_radius(radius) {
@@ -11769,7 +11769,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     }
     for (let i = 0; i < width; i++) {
       pos = this.eq_position(i + 1);
-      let dot3 = new Dot(pos[0], pos[1], { radius: 0.5 / Math.sqrt(width) });
+      let dot3 = new Dot(pos, { radius: 0.5 / Math.sqrt(width) });
       this.add(`p_${i + 1}`, dot3);
     }
     let curve = new BezierSpline(width - 1, { stroke_width: 0.04 });
@@ -11826,7 +11826,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       pos = this.eq_position(i + 1);
       disp = u[i];
       dot3 = this.get_mobj(`p_${i + 1}`);
-      dot3.move_to(pos[0], pos[1] + disp);
+      dot3.move_to([pos[0], pos[1] + disp]);
       arrow = this.get_mobj(`arr${i + 1}`);
       arrow.move_start(pos[0], pos[1] + disp);
       arrow.move_end(pos[0], pos[1] + disp + deriv[i] / 5);
@@ -12439,7 +12439,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       waveEquationScene.draw();
       waveEquationScene.play(void 0);
     })();
-    (function conic_rays() {
+    (async function conic_rays() {
       let canvas = prepare_canvas(200, 200, "conic-rays");
       const ctx = canvas.getContext("2d");
       if (!ctx) {
@@ -12503,13 +12503,13 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
         }
         // Makes dots for the foci
         make_focus() {
-          return new Dot(this.focus[0], this.focus[1], { radius: 0.2 });
+          return new Dot(this.focus, { radius: 0.2 });
         }
         make_other_focus() {
           if (this.eccentricity >= 1) {
             return new MObject();
           } else {
-            return new Dot(this.other_focus[0], this.other_focus[1], {
+            return new Dot(this.other_focus, {
               radius: 0.1
             });
           }
@@ -12588,7 +12588,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
         update_mobjects() {
           let [u, v] = this.get_simulator(0).get_vals();
           let mass = this.get_mobj("mass");
-          mass.move_to(u, 0);
+          mass.move_to([u, 0]);
           let spring = this.get_mobj("spring");
           spring.move_end(u, 0);
         }
