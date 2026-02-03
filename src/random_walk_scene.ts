@@ -52,11 +52,17 @@ export function pick_random_step(dim: number): number[] {
       let [ymin, ymax] = [-10, 10];
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
 
-      // Add graph lines with ticks
+      // Add axes with ticks and grid lines
       let tick_size = 0.1;
       scene.add(
         "x-axis",
         new TwoHeadedArrow([xmin, 0], [xmax, 0], { stroke_width: 0.02 }),
+      );
+      scene.add(
+        `x-tick-(${0})`,
+        new Line([0, -2 * tick_size], [0, 2 * tick_size], {
+          stroke_width: 0.04,
+        }),
       );
       for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
         if (x == 0) {
@@ -66,6 +72,9 @@ export function pick_random_step(dim: number): number[] {
           `x-tick-(${x})`,
           new Line([x, -tick_size], [x, tick_size], { stroke_width: 0.02 }),
         );
+        let xline = new Line([x, ymin], [x, ymax], { stroke_width: 0.01 });
+        xline.set_alpha(0.3);
+        scene.add(`x-line-(${x})`, xline);
       }
 
       scene.add(
@@ -80,6 +89,9 @@ export function pick_random_step(dim: number): number[] {
           `y-tick-(${y})`,
           new Line([-tick_size, y], [tick_size, y], { stroke_width: 0.02 }),
         );
+        let yline = new Line([xmin, y], [xmax, y], { stroke_width: 0.01 });
+        yline.set_alpha(0.3);
+        scene.add(`y-line-(${y})`, yline);
       }
       scene.draw();
 
@@ -153,9 +165,101 @@ export function pick_random_step(dim: number): number[] {
 
     // Simplest visualization of a 1D random walk
     // TODO
-    (function one_dim_random_walk_basic() {
+    (async function one_dim_random_walk_basic() {
       let canvas = prepare_canvas(300, 300, "1d-random-walk");
       let scene = new Scene(canvas);
+
+      let [xmin, xmax] = [-10, 10];
+      let [ymin, ymax] = [-10, 10];
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+
+      // Add number line with ticks
+      // TODO Add numbers below ticks
+      let tick_size = 0.2;
+      scene.add(
+        "x-axis",
+        new TwoHeadedArrow([xmin, 0], [xmax, 0], { stroke_width: 0.02 }),
+      );
+      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
+        if (x == 0) {
+          continue;
+        }
+        scene.add(
+          `x-tick-(${x})`,
+          new Line([x, -tick_size], [x, tick_size], { stroke_width: 0.02 }),
+        );
+      }
+
+      scene.draw();
+
+      // Make a pause button
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById("1d-random-walk-pause-button") as HTMLElement,
+        function () {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Pause simulation";
+      pauseButton.style.padding = "15px";
+
+      // Do simulation
+      async function do_simulation(): Promise<boolean> {
+        let x = 0;
+        let dx: number;
+
+        // Add the path current point
+        let p = new Dot(x, 0, { radius: 0.3 });
+        p.set_color("blue");
+        scene.add("point", p);
+
+        // Add the path line sequence
+        let line = new LineSequence([[x, 0]], {});
+        line.set_color("red");
+        line.set_alpha(1);
+        line.set_width(0.1);
+        scene.add("line", line);
+
+        // TODO Add text
+
+        while (true) {
+          if (playing) {
+            // Generate a random step
+            [dx] = pick_random_step(1);
+            x += dx;
+
+            // Extend the line sequence
+            line = scene.get_mobj("line") as LineSequence;
+            line.add_point([x, 0]);
+
+            // Move the endpoint
+            p = scene.get_mobj("point") as Dot;
+            p.move_to(x, 0);
+
+            // Draw
+            scene.draw();
+
+            if (x == 0) {
+              await delay(1000);
+              scene.remove("line");
+              scene.remove("dot");
+              return true;
+            }
+          }
+          await delay(100);
+        }
+      }
+
+      while (true) {
+        await do_simulation();
+      }
     })();
 
     // Makes a graph over time of how many random walks have not returned to the origin.

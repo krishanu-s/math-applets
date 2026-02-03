@@ -68,11 +68,10 @@
                 The particle begins at some initial point $P$, and at each time
                 step it moves to one of its four neighboring points each with
                 equal probability $\frac{1}{4}$. This is an example of a
-                <b>random walk</b>. The question I want to consider is the
-                following:
-                <i
-                    >assuming this random walk is allowed to proceed forever,
-                    what is the probability that the particle eventually
+                <b>random walk</b>. Consider the following question: assuming
+                this random walk is allowed to proceed forever,
+                <i>
+                    what is the probability that the particle, at some point,
                     revisits its starting point $P$?</i
                 >
             </p>
@@ -81,10 +80,10 @@
             <div class="button" id="2d-random-walk-pause-button"></div>
 
             <p>
-                We can take a simpler version of the question above by
-                considering instead a one-dimensional grid, i.e. a line. In this
-                case, the particle can only move left or right, each with
-                probability $\frac{1}{2}$.
+                We can simplify the model above and consider instead a
+                one-dimensional grid, i.e. a line. In this case, the particle
+                can only move left or right, each with probability
+                $\frac{1}{2}$.
             </p>
 
             <div class="applet-container" id="1d-random-walk"></div>
@@ -95,17 +94,13 @@
                 For example, you could imagine repeatedly flipping a fair coin
                 in a gambling scenario. A heads means that you gain \$1, and a
                 tails means that you lose \$1. A famous theorem says that if you
-                continue this game indefinitely, you will eventually get back to
-                your original amount of money, and eventually go bankrupt. In
-                other words,
-                <b
-                    >a random walk on a one-dimensional grid always eventually
-                    returns to its starting point.</b
-                >
-                (See
+                continue this game indefinitely (starting with a finite amount
+                of money), you will eventually go bankrupt. (See
                 <a href="https://en.wikipedia.org/wiki/Gambler%27s_ruin"
                     >gambler's ruin</a
-                >.)
+                >.) This is similar to the statement that a random walk on a
+                one-dimensional grid always eventually returns to its starting
+                point, which turns out to be true.
             </p>
 
             <p>
@@ -122,13 +117,13 @@
             <div class="button" id="3d-random-walk-pause-button"></div>
 
             <p>
-                <b>Why?</b> Intuitively, this makes some sense. In higher
-                dimensions, there are more degrees of freedom to move around, so
-                the probability of returning to the starting point decreases.
-                But why is there a sudden phase transition between dimensions 2
-                and 3? And how does one calculate the percentage values above?
-                Lastly, <b>how long</b> does it take for a random walk to return
-                to its starting point?
+                <b>Why?</b> Intuitively, the drop in probability makes sense. In
+                higher dimensions, there are more degrees of freedom to move
+                around, so the probability of returning to the starting point
+                decreases. But why is there a sudden phase transition between
+                dimensions 2 and 3? And how does one calculate the percentage
+                values above? Lastly, <b>how long</b> does it take for a random
+                walk to return to its starting point?
             </p>
 
             <p>

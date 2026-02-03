@@ -1005,6 +1005,12 @@ function pick_random_step(dim) {
         "x-axis",
         new TwoHeadedArrow([xmin, 0], [xmax, 0], { stroke_width: 0.02 })
       );
+      scene.add(
+        `x-tick-(${0})`,
+        new Line([0, -2 * tick_size], [0, 2 * tick_size], {
+          stroke_width: 0.04
+        })
+      );
       for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
         if (x == 0) {
           continue;
@@ -1013,6 +1019,9 @@ function pick_random_step(dim) {
           `x-tick-(${x})`,
           new Line([x, -tick_size], [x, tick_size], { stroke_width: 0.02 })
         );
+        let xline = new Line([x, ymin], [x, ymax], { stroke_width: 0.01 });
+        xline.set_alpha(0.3);
+        scene.add(`x-line-(${x})`, xline);
       }
       scene.add(
         "y-axis",
@@ -1026,6 +1035,9 @@ function pick_random_step(dim) {
           `y-tick-(${y})`,
           new Line([-tick_size, y], [tick_size, y], { stroke_width: 0.02 })
         );
+        let yline = new Line([xmin, y], [xmax, y], { stroke_width: 0.01 });
+        yline.set_alpha(0.3);
+        scene.add(`y-line-(${y})`, yline);
       }
       scene.draw();
       let playing = false;
@@ -1078,9 +1090,76 @@ function pick_random_step(dim) {
         await do_simulation();
       }
     })();
-    (function one_dim_random_walk_basic() {
+    (async function one_dim_random_walk_basic() {
       let canvas = prepare_canvas(300, 300, "1d-random-walk");
       let scene = new Scene(canvas);
+      let [xmin, xmax] = [-10, 10];
+      let [ymin, ymax] = [-10, 10];
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      let tick_size = 0.2;
+      scene.add(
+        "x-axis",
+        new TwoHeadedArrow([xmin, 0], [xmax, 0], { stroke_width: 0.02 })
+      );
+      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
+        if (x == 0) {
+          continue;
+        }
+        scene.add(
+          `x-tick-(${x})`,
+          new Line([x, -tick_size], [x, tick_size], { stroke_width: 0.02 })
+        );
+      }
+      scene.draw();
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById("1d-random-walk-pause-button"),
+        function() {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Pause simulation";
+      pauseButton.style.padding = "15px";
+      async function do_simulation() {
+        let x = 0;
+        let dx;
+        let line = new LineSequence([[x, 0]], {});
+        line.set_color("red");
+        line.set_alpha(1);
+        line.set_width(0.1);
+        scene.add("line", line);
+        let p = new Dot(x, 0, { radius: 0.3 });
+        p.set_color("blue");
+        scene.add("point", p);
+        while (true) {
+          if (playing) {
+            [dx] = pick_random_step(1);
+            x += dx;
+            line = scene.get_mobj("line");
+            line.add_point([x, 0]);
+            p = scene.get_mobj("point");
+            p.move_to(x, 0);
+            scene.draw();
+            if (x == 0) {
+              await delay(1e3);
+              scene.remove("line");
+              scene.remove("dot");
+              return true;
+            }
+          }
+          await delay(100);
+        }
+      }
+      while (true) {
+        await do_simulation();
+      }
     })();
     (async function graph_random_walk(num_walks, num_steps) {
       let canvas2 = prepare_canvas(300, 300, "histogram-dim-two");
