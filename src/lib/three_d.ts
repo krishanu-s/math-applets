@@ -171,9 +171,15 @@ export class LineSequence3D extends ThreeDMObject {
     return this.points[i];
   }
   depth(scene: ThreeDScene): number {
-    return scene.depth(
-      vec3_scale(vec3_sum(this.points[0], this.points[1]), 0.5),
-    );
+    if (this.points.length == 0) {
+      return 0;
+    } else if (this.points.length == 1) {
+      return scene.depth(this.points[0]);
+    } else {
+      return scene.depth(
+        vec3_scale(vec3_sum(this.points[0], this.points[1]), 0.5),
+      );
+    }
     // return scene.depth(
     //   vec3_scale(vec3_sum_list(this.points), 1 / this.points.length),
     // );

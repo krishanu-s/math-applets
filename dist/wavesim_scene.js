@@ -10896,17 +10896,12 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-<<<<<<< HEAD
-  move_to(center) {
-    this.center = center;
-=======
   move_to(p) {
     this.center = p;
   }
   move_by(p) {
     this.center[0] += p[0];
     this.center[1] += p[1];
->>>>>>> db77de1 (added draggable dots and a demonstration)
   }
   // Change the dot radius
   set_radius(radius) {
@@ -10980,13 +10975,8 @@ var Rectangle = class extends MObject {
     this.size_x = size_x;
     this.size_y = size_y;
   }
-<<<<<<< HEAD
   move_to(center) {
     this.center = center;
-=======
-  move_to(p) {
-    this.center = p;
->>>>>>> db77de1 (added draggable dots and a demonstration)
   }
   // Draws on the canvas
   draw(canvas, scene) {
@@ -11043,11 +11033,11 @@ var Line = class extends MObject {
     }
   }
   // Moves the start and end points
-  move_start(x, y) {
-    this.start = [x, y];
+  move_start(p) {
+    this.start = p;
   }
-  move_end(x, y) {
-    this.end = [x, y];
+  move_end(p) {
+    this.end = p;
   }
   length() {
     return vec2_norm(vec2_sub(this.start, this.end));
@@ -11224,6 +11214,9 @@ var BezierSpline = class extends MObject {
   }
   set_anchors(new_anchors) {
     this.anchors = new_anchors;
+  }
+  set_anchor(index, new_anchor) {
+    this.anchors[index] = new_anchor;
   }
   get_anchor(index) {
     return this.anchors[index];
@@ -11852,12 +11845,12 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     let [ymin, ymax] = this.ylims;
     pos = this.eq_position(1);
     mobj = this.get_mobj("b0");
-    mobj.move_start(pos[0], ymin / 2);
-    mobj.move_end(pos[0], ymax / 2);
+    mobj.move_start([pos[0], ymin / 2]);
+    mobj.move_end([pos[0], ymax / 2]);
     pos = this.eq_position(this.width());
     mobj = this.get_mobj("b1");
-    mobj.move_start(pos[0], ymin / 2);
-    mobj.move_end(pos[0], ymax / 2);
+    mobj.move_start([pos[0], ymin / 2]);
+    mobj.move_end([pos[0], ymax / 2]);
     this.update_mobjects();
     let eq_length;
     for (let i = 1; i < this.width(); i++) {
@@ -11895,25 +11888,19 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       disp = u[i];
       dot3 = this.get_mobj(`p_${i + 1}`);
       dot3.move_to([pos[0], pos[1] + disp]);
-<<<<<<< HEAD
       if (i != 0 && i != this.width() - 1) {
         arrow = this.get_mobj(`arr${i + 1}`);
-        arrow.move_start(pos[0], pos[1] + disp);
-        arrow.move_end(pos[0], pos[1] + disp + deriv[i] / 5);
+        arrow.move_start([pos[0], pos[1] + disp]);
+        arrow.move_end([pos[0], pos[1] + disp + deriv[i] / 5]);
         arrow.set_arrow_size(Math.sqrt(Math.abs(deriv[i])) / 10);
       }
-=======
-      arrow = this.get_mobj(`arr${i + 1}`);
-      arrow.move_start(pos[0], pos[1] + disp);
-      arrow.move_end(pos[0], pos[1] + disp + deriv[i] / 5);
->>>>>>> db77de1 (added draggable dots and a demonstration)
       anchors.push([pos[0], pos[1] + disp]);
       if (i < this.width() - 1) {
         next_pos = this.eq_position(i + 2);
         next_disp = u[i + 1];
         line = this.get_mobj(`l_${i + 1}`);
-        line.move_start(pos[0], pos[1] + disp);
-        line.move_end(next_pos[0], next_pos[1] + next_disp);
+        line.move_start([pos[0], pos[1] + disp]);
+        line.move_end([next_pos[0], next_pos[1] + next_disp]);
       }
     }
     let curve = this.get_mobj("curve");
@@ -12772,7 +12759,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
           let mass = this.get_mobj("mass");
           mass.move_to([u, 0]);
           let spring = this.get_mobj("spring");
-          spring.move_end(u, 0);
+          spring.move_end([u, 0]);
         }
         draw_mobject(mobj) {
           mobj.draw(this.canvas, this);
@@ -12893,7 +12880,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       }
       sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
       scene.draw();
-    })(5);
+    })(7);
     (function point_mass_continuous_sequence(num_points) {
       let canvas = prepare_canvas(300, 300, "point-mass-continuous-sequence");
       let scene = new WaveSimOneDimScene(canvas, num_points);

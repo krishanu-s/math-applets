@@ -131,11 +131,11 @@ var Line = class extends MObject {
     }
   }
   // Moves the start and end points
-  move_start(x, y) {
-    this.start = [x, y];
+  move_start(p) {
+    this.start = p;
   }
-  move_end(x, y) {
-    this.end = [x, y];
+  move_end(p) {
+    this.end = p;
   }
   length() {
     return vec2_norm(vec2_sub(this.start, this.end));

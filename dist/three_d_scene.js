@@ -180,17 +180,12 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-<<<<<<< HEAD
-  move_to(center) {
-    this.center = center;
-=======
   move_to(p) {
     this.center = p;
   }
   move_by(p) {
     this.center[0] += p[0];
     this.center[1] += p[1];
->>>>>>> db77de1 (added draggable dots and a demonstration)
   }
   // Change the dot radius
   set_radius(radius) {
@@ -221,13 +216,8 @@ var Rectangle = class extends MObject {
     this.size_x = size_x;
     this.size_y = size_y;
   }
-<<<<<<< HEAD
   move_to(center) {
     this.center = center;
-=======
-  move_to(p) {
-    this.center = p;
->>>>>>> db77de1 (added draggable dots and a demonstration)
   }
   // Draws on the canvas
   draw(canvas, scene) {
@@ -284,11 +274,11 @@ var Line = class extends MObject {
     }
   }
   // Moves the start and end points
-  move_start(x, y) {
-    this.start = [x, y];
+  move_start(p) {
+    this.start = p;
   }
-  move_end(x, y) {
-    this.end = [x, y];
+  move_end(p) {
+    this.end = p;
   }
   length() {
     return vec2_norm(vec2_sub(this.start, this.end));
@@ -539,9 +529,15 @@ var LineSequence3D = class extends ThreeDMObject {
     return this.points[i];
   }
   depth(scene) {
-    return scene.depth(
-      vec3_scale(vec3_sum(this.points[0], this.points[1]), 0.5)
-    );
+    if (this.points.length == 0) {
+      return 0;
+    } else if (this.points.length == 1) {
+      return scene.depth(this.points[0]);
+    } else {
+      return scene.depth(
+        vec3_scale(vec3_sum(this.points[0], this.points[1]), 0.5)
+      );
+    }
   }
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
@@ -1307,11 +1303,7 @@ function pick_random_step(dim) {
       async function do_simulation() {
         let x = 0;
         let dx;
-<<<<<<< HEAD
         let p = new Dot([x, 0], { radius: 0.3 });
-=======
-        let p = new Dot(x, 0, { radius: 0.3 });
->>>>>>> db77de1 (added draggable dots and a demonstration)
         p.set_color("blue");
         scene.add("point", p);
         let line = new LineSequence([[x, 0]], {});

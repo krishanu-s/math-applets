@@ -471,7 +471,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
           mass.move_to([u, 0]);
 
           let spring = this.get_mobj("spring") as Line;
-          spring.move_end(u, 0);
+          spring.move_end([u, 0]);
         }
         draw_mobject(mobj: MObject) {
           mobj.draw(this.canvas, this);

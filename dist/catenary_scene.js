@@ -10771,11 +10771,11 @@ var Line = class extends MObject {
     }
   }
   // Moves the start and end points
-  move_start(x, y) {
-    this.start = [x, y];
+  move_start(p) {
+    this.start = p;
   }
-  move_end(x, y) {
-    this.end = [x, y];
+  move_end(p) {
+    this.end = p;
   }
   length() {
     return vec2_norm(vec2_sub(this.start, this.end));
@@ -11021,11 +11021,11 @@ var CatenaryScene = class extends Scene {
     p.move_to(position);
     if (index > 0) {
       let v = this.get_mobj(`v${index}`);
-      v.move_end(position[0], position[1]);
+      v.move_end(position);
     }
     if (index < this.num_segments) {
       let v = this.get_mobj(`v${index + 1}`);
-      v.move_start(position[0], position[1]);
+      v.move_start(position);
     }
   }
   get_position(index) {

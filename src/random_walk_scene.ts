@@ -437,7 +437,7 @@ export function pick_random_step(dim: number): number[] {
           }
         },
       );
-      pauseButton.textContent = "Pause simulation";
+      pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
 
       while (true) {
@@ -562,7 +562,7 @@ export function pick_random_step(dim: number): number[] {
           }
         },
       );
-      pauseButton.textContent = "Pause simulation";
+      pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
 
       while (true) {

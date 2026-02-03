@@ -123,17 +123,12 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
-<<<<<<< HEAD
-  move_to(center) {
-    this.center = center;
-=======
   move_to(p) {
     this.center = p;
   }
   move_by(p) {
     this.center[0] += p[0];
     this.center[1] += p[1];
->>>>>>> db77de1 (added draggable dots and a demonstration)
   }
   // Change the dot radius
   set_radius(radius) {

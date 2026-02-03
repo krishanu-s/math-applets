@@ -145,6 +145,8 @@ export class Sector extends MObject {
     ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), this.start_angle, this.end_angle);
     ctx.fill();
+  }
+}
 // A filled circle which can be clicked-and-dragged
 export class DraggableDot extends Dot {
   isClicked: boolean = false;
@@ -289,11 +291,11 @@ export class Line extends MObject {
     }
   }
   // Moves the start and end points
-  move_start(x: number, y: number) {
-    this.start = [x, y];
+  move_start(p: Vec2D) {
+    this.start = p;
   }
-  move_end(x: number, y: number) {
-    this.end = [x, y];
+  move_end(p: Vec2D) {
+    this.end = p;
   }
   length(): number {
     return vec2_norm(vec2_sub(this.start, this.end));
@@ -316,7 +318,6 @@ export class Line extends MObject {
 }
 
 // A sequence of line segments with joined endpoints.
-// TODO
 export class LineSequence extends MObject {
   points: Vec2D[];
   stroke_width: number;
@@ -374,7 +375,6 @@ export class LineSequence extends MObject {
 }
 
 // An arrow
-// TODO
 export class Arrow extends Line {
   arrow_size: number = 0.1;
   set_arrow_size(size: number) {
