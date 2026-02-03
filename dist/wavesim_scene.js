@@ -11807,13 +11807,14 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       line.set_eq_length(eq_length);
       this.add(`l_${i}`, line);
     }
-    for (let i = 0; i < width; i++) {
+    for (let i = 1; i < width - 1; i++) {
       pos = this.eq_position(i + 1);
       let arrow = new Arrow([pos[0], pos[1]], [pos[0], pos[1]], {
         stroke_width: 0.05,
         stroke_color: "red",
         stroke_opacity: 0.5
       });
+      arrow.set_arrow_size(0);
       this.add(`arr${i + 1}`, arrow);
     }
     for (let i = 0; i < width; i++) {
@@ -11876,9 +11877,12 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       disp = u[i];
       dot3 = this.get_mobj(`p_${i + 1}`);
       dot3.move_to([pos[0], pos[1] + disp]);
-      arrow = this.get_mobj(`arr${i + 1}`);
-      arrow.move_start(pos[0], pos[1] + disp);
-      arrow.move_end(pos[0], pos[1] + disp + deriv[i] / 5);
+      if (i != 0 && i != this.width() - 1) {
+        arrow = this.get_mobj(`arr${i + 1}`);
+        arrow.move_start(pos[0], pos[1] + disp);
+        arrow.move_end(pos[0], pos[1] + disp + deriv[i] / 5);
+        arrow.set_arrow_size(Math.sqrt(Math.abs(deriv[i])) / 10);
+      }
       anchors.push([pos[0], pos[1] + disp]);
       if (i < this.width() - 1) {
         next_pos = this.eq_position(i + 2);
