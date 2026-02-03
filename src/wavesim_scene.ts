@@ -612,7 +612,6 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       scene.set_mode("dots");
       let sim = scene.sim();
 
-      // TODO Add force arrows to the scene
       // TODO Add spring elements to the scene
       // TODO Add interactivity where points can be dragged
 
@@ -625,7 +624,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
 
       // Prepare the simulation
       scene.draw();
-    })(5);
+    })(7);
 
     // Redraw the previous scene in a continuous-Bezier curve fashion,
     // using a large number of tiny point masses.
