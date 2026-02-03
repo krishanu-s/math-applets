@@ -10641,6 +10641,8 @@ var MObject = class {
   set_alpha(alpha) {
     this.alpha = alpha;
   }
+  add(scene) {
+  }
   draw(canvas, scene, args) {
   }
 };
@@ -10704,6 +10706,8 @@ var Scene = class {
   // Adds a mobject to the scene
   add(name, mobj) {
     this.mobjects[name] = mobj;
+    let self = this;
+    mobj.add(self);
   }
   // Removes the mobject from the scene
   remove(name) {
@@ -10753,8 +10757,17 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
+<<<<<<< HEAD
   move_to(center) {
     this.center = center;
+=======
+  move_to(p) {
+    this.center = p;
+  }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
+>>>>>>> db77de1 (added draggable dots and a demonstration)
   }
   // Change the dot radius
   set_radius(radius) {
@@ -10943,7 +10956,7 @@ var ClosedCurveScene = class extends Scene {
     for (let i = 0; i < this.n; i++) {
       let p = this.calculate(i / this.n * Math.PI * 2);
       let pt = this.get_mobj(`p${i}`);
-      pt.move_to(p[0], p[1]);
+      pt.move_to(p);
     }
   }
   _move_handles() {

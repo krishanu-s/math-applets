@@ -54,6 +54,7 @@ export class MObject {
   set_alpha(alpha: number) {
     this.alpha = alpha;
   }
+  add(scene: Scene) {}
   draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {}
 }
 
@@ -145,6 +146,8 @@ export class Scene {
   // Adds a mobject to the scene
   add(name: string, mobj: MObject) {
     this.mobjects[name] = mobj;
+    let self = this;
+    mobj.add(self);
   }
   // Removes the mobject from the scene
   remove(name: string) {

@@ -10651,6 +10651,8 @@ var MObject = class {
   set_alpha(alpha) {
     this.alpha = alpha;
   }
+  add(scene) {
+  }
   draw(canvas, scene, args) {
   }
 };
@@ -10714,6 +10716,8 @@ var Scene = class {
   // Adds a mobject to the scene
   add(name, mobj) {
     this.mobjects[name] = mobj;
+    let self = this;
+    mobj.add(self);
   }
   // Removes the mobject from the scene
   remove(name) {
@@ -10892,8 +10896,17 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
+<<<<<<< HEAD
   move_to(center) {
     this.center = center;
+=======
+  move_to(p) {
+    this.center = p;
+  }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
+>>>>>>> db77de1 (added draggable dots and a demonstration)
   }
   // Change the dot radius
   set_radius(radius) {
@@ -10967,8 +10980,13 @@ var Rectangle = class extends MObject {
     this.size_x = size_x;
     this.size_y = size_y;
   }
+<<<<<<< HEAD
   move_to(center) {
     this.center = center;
+=======
+  move_to(p) {
+    this.center = p;
+>>>>>>> db77de1 (added draggable dots and a demonstration)
   }
   // Draws on the canvas
   draw(canvas, scene) {
@@ -11877,12 +11895,18 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       disp = u[i];
       dot3 = this.get_mobj(`p_${i + 1}`);
       dot3.move_to([pos[0], pos[1] + disp]);
+<<<<<<< HEAD
       if (i != 0 && i != this.width() - 1) {
         arrow = this.get_mobj(`arr${i + 1}`);
         arrow.move_start(pos[0], pos[1] + disp);
         arrow.move_end(pos[0], pos[1] + disp + deriv[i] / 5);
         arrow.set_arrow_size(Math.sqrt(Math.abs(deriv[i])) / 10);
       }
+=======
+      arrow = this.get_mobj(`arr${i + 1}`);
+      arrow.move_start(pos[0], pos[1] + disp);
+      arrow.move_end(pos[0], pos[1] + disp + deriv[i] / 5);
+>>>>>>> db77de1 (added draggable dots and a demonstration)
       anchors.push([pos[0], pos[1] + disp]);
       if (i < this.width() - 1) {
         next_pos = this.eq_position(i + 2);

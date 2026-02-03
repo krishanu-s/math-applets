@@ -16,6 +16,8 @@ var MObject = class {
   set_alpha(alpha) {
     this.alpha = alpha;
   }
+  add(scene) {
+  }
   draw(canvas, scene, args) {
   }
 };
@@ -79,6 +81,8 @@ var Scene = class {
   // Adds a mobject to the scene
   add(name, mobj) {
     this.mobjects[name] = mobj;
+    let self = this;
+    mobj.add(self);
   }
   // Removes the mobject from the scene
   remove(name) {
@@ -176,8 +180,17 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
+<<<<<<< HEAD
   move_to(center) {
     this.center = center;
+=======
+  move_to(p) {
+    this.center = p;
+  }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
+>>>>>>> db77de1 (added draggable dots and a demonstration)
   }
   // Change the dot radius
   set_radius(radius) {
@@ -208,8 +221,13 @@ var Rectangle = class extends MObject {
     this.size_x = size_x;
     this.size_y = size_y;
   }
+<<<<<<< HEAD
   move_to(center) {
     this.center = center;
+=======
+  move_to(p) {
+    this.center = p;
+>>>>>>> db77de1 (added draggable dots and a demonstration)
   }
   // Draws on the canvas
   draw(canvas, scene) {
@@ -1289,7 +1307,11 @@ function pick_random_step(dim) {
       async function do_simulation() {
         let x = 0;
         let dx;
+<<<<<<< HEAD
         let p = new Dot([x, 0], { radius: 0.3 });
+=======
+        let p = new Dot(x, 0, { radius: 0.3 });
+>>>>>>> db77de1 (added draggable dots and a demonstration)
         p.set_color("blue");
         scene.add("point", p);
         let line = new LineSequence([[x, 0]], {});

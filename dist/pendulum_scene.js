@@ -7,6 +7,8 @@ var MObject = class {
   set_alpha(alpha) {
     this.alpha = alpha;
   }
+  add(scene) {
+  }
   draw(canvas, scene, args) {
   }
 };
@@ -70,6 +72,8 @@ var Scene = class {
   // Adds a mobject to the scene
   add(name, mobj) {
     this.mobjects[name] = mobj;
+    let self = this;
+    mobj.add(self);
   }
   // Removes the mobject from the scene
   remove(name) {
@@ -176,8 +180,17 @@ var Dot = class extends MObject {
     return this.center;
   }
   // Move the center of the dot to a desired location
+<<<<<<< HEAD
   move_to(center) {
     this.center = center;
+=======
+  move_to(p) {
+    this.center = p;
+  }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
+>>>>>>> db77de1 (added draggable dots and a demonstration)
   }
   // Change the dot radius
   set_radius(radius) {
@@ -269,7 +282,7 @@ var PendulumScene = class extends Scene {
     let string = this.get_mobj("string");
     string.move_end(sx, sy);
     let bob = this.get_mobj("bob");
-    bob.move_to(sx, sy);
+    bob.move_to([sx, sy]);
   }
   get_position() {
     return this.state[0];

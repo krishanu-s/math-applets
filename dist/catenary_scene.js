@@ -10638,6 +10638,8 @@ var MObject = class {
   set_alpha(alpha) {
     this.alpha = alpha;
   }
+  add(scene) {
+  }
   draw(canvas, scene, args) {
   }
 };
@@ -10701,6 +10703,8 @@ var Scene = class {
   // Adds a mobject to the scene
   add(name, mobj) {
     this.mobjects[name] = mobj;
+    let self = this;
+    mobj.add(self);
   }
   // Removes the mobject from the scene
   remove(name) {
@@ -11014,7 +11018,7 @@ var CatenaryScene = class extends Scene {
     let s = this.state[index];
     s[0] = position;
     let p = this.get_mobj(`p${index}`);
-    p.move_to(position[0], position[1]);
+    p.move_to(position);
     if (index > 0) {
       let v = this.get_mobj(`v${index}`);
       v.move_end(position[0], position[1]);

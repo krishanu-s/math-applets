@@ -45,7 +45,7 @@ class ClosedCurveScene extends Scene {
     for (let i = 0; i < this.n; i++) {
       let p = this.calculate((i / this.n) * Math.PI * 2);
       let pt = this.get_mobj(`p${i}`) as Dot;
-      pt.move_to(p[0], p[1]);
+      pt.move_to(p);
     }
   }
   _move_handles() {
