@@ -3,13 +3,16 @@ import { MObject, Scene, prepare_canvas } from "./lib/base.js";
 import { Slider, Button, PauseButton } from "./lib/interactive.js";
 import {
   Dot,
+  Sector,
   Rectangle,
   Line,
   Vec2D,
   vec2_sum,
   vec2_sum_list,
+  vec2_sub,
+  vec2_angle,
 } from "./lib/base_geom.js";
-import { clamp, sigmoid, linspace, funspace } from "./lib/base.js";
+import { clamp, sigmoid, linspace, funspace, delay } from "./lib/base.js";
 import { ParametricFunction } from "./lib/parametric.js";
 import { HeatMap } from "./lib/heatmap.js";
 import {
@@ -188,18 +191,20 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
           this.scale = scale;
           this.other_focus = this.calculate_other_focus();
         }
-        // Parametrization in polar form
+        // Radius as a function of angle, i.e. polar parametrization
+        polar_radius(t: number): number {
+          return this.scale / (1 + this.eccentricity * Math.cos(t));
+        }
+        // 2D parametrization in polar form
         polar_function(t: number): Vec2D {
+          let r = this.polar_radius(t);
           return [
-            this.focus[0] +
-              (this.scale * Math.cos(t)) /
-                (1 + this.eccentricity * Math.cos(t)),
-            this.focus[1] +
-              (this.scale * Math.sin(t)) /
-                (1 + this.eccentricity * Math.cos(t)),
+            this.focus[0] + r * Math.cos(t),
+            this.focus[1] + r * Math.sin(t),
           ];
         }
         // Calculates the other focus
+        // TODO Return a PVec2D in projective space.
         calculate_other_focus(): Vec2D | null {
           if (this.eccentricity == 1) {
             return null;
@@ -270,52 +275,167 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       }
 
       // Make conic
-      let conic = new Conic([2.0, 0], 0.5, 3.0);
+      let focus: Vec2D = [2.0, 0];
+      let eccentricity = 0.5;
+      let scale = 3.0;
+      let conic = new Conic(focus, eccentricity, scale);
 
-      // Set trajectory angles
-      let num_trajectories = 10;
-      let thetas: number[] = [];
-      for (let i = 1; i < num_trajectories; i++) {
-        thetas.push((2 * Math.PI * i) / num_trajectories);
-      }
-
-      // Reset objects in scene
-      function reset_scene() {
-        scene.clear();
+      // Redraw fixed elements of scene
+      function reset_scene_fixed_elements() {
+        scene.remove("focus");
+        scene.remove("other_focus");
+        scene.remove("curve");
         scene.add("focus", conic.make_focus());
         scene.add("other_focus", conic.make_other_focus());
         scene.add("curve", conic.make_curve());
-        // TODO Make these animated.
-        for (let i = 0; i < num_trajectories; i++) {
-          let theta = thetas[i] as number;
-          let [l1, l2] = conic.make_trajectory(theta);
-          scene.add(`l${i}_1`, l1);
-          scene.add(`l${i}_2`, l2);
-        }
+      }
+
+      // Decide trajectory angles
+      let num_trajectories = 10;
+      let thetas: number[] = [];
+      for (let i = 0; i < num_trajectories; i++) {
+        thetas.push((2 * Math.PI * i) / num_trajectories);
+      }
+      let collision_times: number[];
+
+      // Calculate the collision points of the trajectories with the conic section
+      function recalculate_collision_time(theta: number): number {
+        return conic.polar_radius(theta);
       }
 
       // Add a slider
-      let eccentricity_slider = new Slider(
+      let eccentricity_slider: HTMLInputElement = Slider(
         document.getElementById(
           "conic-rays-eccentricity-slider",
         ) as HTMLElement,
         function (val: number) {
           conic.set_eccentricity(val);
-          reset_scene();
+          reset_scene_fixed_elements();
           scene.draw();
+          let collision_times: number[] = [];
+          for (let i = 0; i < num_trajectories; i++) {
+            collision_times.push(recalculate_collision_time(thetas[i]));
+          }
         },
         {
           name: "Eccentricity",
-          initial_value: "0.5",
           min: 0.0,
           max: 1.0,
+          initial_value: "0.5",
           step: 0.05,
         },
       );
-      // TODO Animate these trajectories
 
       // Draw the scene
       scene.draw();
+
+      // Make a pause button for the animation
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById("conic-rays-pause-button") as HTMLElement,
+        function () {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+
+      async function do_simulation(total_time: number, dt: number) {
+        // Setup
+        let current_thetas: number[] = [];
+        let moving_points: Vec2D[] = [];
+        let reflected: boolean[] = [];
+        for (let i = 0; i < num_trajectories; i++) {
+          current_thetas.push((2 * Math.PI * i) / num_trajectories);
+          reflected.push(false);
+          moving_points.push([focus[0], focus[1]]);
+          let dot = new Dot(focus, {});
+          dot.set_radius(0.05);
+          dot.set_color("red");
+          scene.add(`p_${i}`, dot);
+        }
+        let collision_times: number[] = [];
+        for (let i = 0; i < num_trajectories; i++) {
+          collision_times.push(recalculate_collision_time(thetas[i]));
+        }
+        // Animate trajectories
+        let t = 0;
+        let x: number, y: number;
+        let collision_indices: number[] = [];
+        while (t < total_time) {
+          if (playing) {
+            for (let i = 0; i < num_trajectories; i++) {
+              [x, y] = moving_points[i];
+              if (t + dt > collision_times[i] && !reflected[i]) {
+                // Collision case
+                collision_indices.push(i);
+
+                // TODO Recalculate next collision time for continued reflections
+                let s = collision_times[i] - t;
+
+                // Add the first trajectory portion to the reflection point
+                x += Math.cos(thetas[i]) * s;
+                y += Math.sin(thetas[i]) * s;
+
+                // Add a little collision effect
+                let effect = new Sector(
+                  [x, y],
+                  thetas[i] - Math.PI / 2,
+                  thetas[i] + Math.PI / 2,
+                  {},
+                );
+                effect.set_color("red");
+                effect.set_radius(0.3);
+                scene.add(`c_${i}`, effect);
+
+                // Set new trajectory angle after reflection
+                if (conic.eccentricity == 1) {
+                  current_thetas[i] = Math.PI;
+                } else {
+                  console.log(conic.eccentricity);
+                  // TODO Calculate the angle in a more robust way, using local partial derivatives of the curve.
+                  current_thetas[i] = vec2_angle(
+                    vec2_sub(
+                      conic.other_focus as Vec2D,
+                      conic.polar_function(thetas[i]),
+                    ),
+                  );
+                }
+                // Add the first trajectory portion after the reflection point
+                x += Math.cos(current_thetas[i]) * (dt - s);
+                y += Math.sin(current_thetas[i]) * (dt - s);
+                reflected[i] = true;
+              } else {
+                x += Math.cos(current_thetas[i]) * dt;
+                y += Math.sin(current_thetas[i]) * dt;
+              }
+              moving_points[i] = [x, y];
+              (scene.get_mobj(`p_${i}`) as Dot).move_to([x, y]);
+            }
+            scene.draw();
+            t += dt;
+            while (collision_indices.length > 0) {
+              let i = collision_indices.pop();
+              scene.remove(`c_${i}`);
+            }
+          }
+          await delay(10);
+        }
+        for (let i = 0; i < num_trajectories; i++) {
+          scene.remove(`p_${i}`);
+        }
+        await delay(500);
+      }
+      while (true) {
+        await do_simulation(10, 0.06);
+      }
     })();
 
     // Shows a single vibrating spring in two dimensions, obeying Hooke's law.
@@ -347,7 +467,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
         update_mobjects() {
           let [u, v] = this.get_simulator(0).get_vals() as Vec2D;
 
-          let mass = this.get_mobj("mass") as Dot;
+          let mass = this.get_mobj("mass") as Rectangle;
           mass.move_to([u, 0]);
 
           let spring = this.get_mobj("spring") as Line;

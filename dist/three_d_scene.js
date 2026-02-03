@@ -208,8 +208,8 @@ var Rectangle = class extends MObject {
     this.size_x = size_x;
     this.size_y = size_y;
   }
-  move_to(x, y) {
-    this.center = [x, y];
+  move_to(center) {
+    this.center = center;
   }
   // Draws on the canvas
   draw(canvas, scene) {

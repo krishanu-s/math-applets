@@ -10640,6 +10640,9 @@ function funspace(func, start, stop, num) {
   const step = (stop - start) / (num - 1);
   return Array.from({ length: num }, (_, i) => func(start + i * step));
 }
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 var MObject = class {
   // Opacity for drawing
   constructor() {
@@ -10851,6 +10854,9 @@ function PauseButton(container, scene) {
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
+function vec2_angle(v) {
+  return Math.atan2(v[1], v[0]);
+}
 function vec2_scale(x, factor) {
   return [x[0] * factor, x[1] * factor];
 }
@@ -10910,6 +10916,49 @@ var Dot = class extends MObject {
     ctx.fill();
   }
 };
+var Sector = class extends MObject {
+  constructor(center, start_angle, end_angle, kwargs) {
+    super();
+    this.fill_color = "black";
+    this.center = center;
+    let radius = kwargs.radius;
+    if (radius == void 0) {
+      this.radius = 0.3;
+    } else {
+      this.radius = radius;
+    }
+    this.start_angle = start_angle;
+    this.end_angle = end_angle;
+  }
+  // Get the center coordinates
+  get_center() {
+    return this.center;
+  }
+  // Move the center of the dot to a desired location
+  move_to(center) {
+    this.center = center;
+  }
+  // Change the dot radius
+  set_radius(radius) {
+    this.radius = radius;
+  }
+  // Change the dot color
+  set_color(color) {
+    this.fill_color = color;
+  }
+  // Draws on the canvas
+  draw(canvas, scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.fillStyle = this.fill_color;
+    ctx.globalAlpha = this.alpha;
+    let [x, y] = scene.v2c(this.center);
+    let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
+    ctx.beginPath();
+    ctx.arc(x, y, Math.abs(xr - x), this.start_angle, this.end_angle);
+    ctx.fill();
+  }
+};
 var Rectangle = class extends MObject {
   constructor(center, size_x, size_y) {
     super();
@@ -10918,8 +10967,8 @@ var Rectangle = class extends MObject {
     this.size_x = size_x;
     this.size_y = size_y;
   }
-  move_to(x, y) {
-    this.center = [x, y];
+  move_to(center) {
+    this.center = center;
   }
   // Draws on the canvas
   draw(canvas, scene) {
@@ -12448,20 +12497,26 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       let scene = new Scene(canvas);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       class Conic {
-        constructor(focus, eccentricity, scale) {
-          this.focus = focus;
-          this.eccentricity = eccentricity;
-          this.scale = scale;
+        constructor(focus2, eccentricity2, scale2) {
+          this.focus = focus2;
+          this.eccentricity = eccentricity2;
+          this.scale = scale2;
           this.other_focus = this.calculate_other_focus();
         }
-        // Parametrization in polar form
+        // Radius as a function of angle, i.e. polar parametrization
+        polar_radius(t) {
+          return this.scale / (1 + this.eccentricity * Math.cos(t));
+        }
+        // 2D parametrization in polar form
         polar_function(t) {
+          let r = this.polar_radius(t);
           return [
-            this.focus[0] + this.scale * Math.cos(t) / (1 + this.eccentricity * Math.cos(t)),
-            this.focus[1] + this.scale * Math.sin(t) / (1 + this.eccentricity * Math.cos(t))
+            this.focus[0] + r * Math.cos(t),
+            this.focus[1] + r * Math.sin(t)
           ];
         }
         // Calculates the other focus
+        // TODO Return a PVec2D in projective space.
         calculate_other_focus() {
           if (this.eccentricity == 1) {
             return null;
@@ -12474,8 +12529,8 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
           }
         }
         // Sets the eccentricity
-        set_eccentricity(eccentricity) {
-          this.eccentricity = eccentricity;
+        set_eccentricity(eccentricity2) {
+          this.eccentricity = eccentricity2;
           this.other_focus = this.calculate_other_focus();
         }
         // Makes a conic section object
@@ -12530,42 +12585,141 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
           }
         }
       }
-      let conic = new Conic([2, 0], 0.5, 3);
-      let num_trajectories = 10;
-      let thetas = [];
-      for (let i = 1; i < num_trajectories; i++) {
-        thetas.push(2 * Math.PI * i / num_trajectories);
-      }
-      function reset_scene() {
-        scene.clear();
+      let focus = [2, 0];
+      let eccentricity = 0.5;
+      let scale = 3;
+      let conic = new Conic(focus, eccentricity, scale);
+      function reset_scene_fixed_elements() {
+        scene.remove("focus");
+        scene.remove("other_focus");
+        scene.remove("curve");
         scene.add("focus", conic.make_focus());
         scene.add("other_focus", conic.make_other_focus());
         scene.add("curve", conic.make_curve());
-        for (let i = 0; i < num_trajectories; i++) {
-          let theta = thetas[i];
-          let [l1, l2] = conic.make_trajectory(theta);
-          scene.add(`l${i}_1`, l1);
-          scene.add(`l${i}_2`, l2);
-        }
       }
-      let eccentricity_slider = new Slider(
+      let num_trajectories = 10;
+      let thetas = [];
+      for (let i = 0; i < num_trajectories; i++) {
+        thetas.push(2 * Math.PI * i / num_trajectories);
+      }
+      let collision_times;
+      function recalculate_collision_time(theta) {
+        return conic.polar_radius(theta);
+      }
+      let eccentricity_slider = Slider(
         document.getElementById(
           "conic-rays-eccentricity-slider"
         ),
         function(val) {
           conic.set_eccentricity(val);
-          reset_scene();
+          reset_scene_fixed_elements();
           scene.draw();
+          let collision_times2 = [];
+          for (let i = 0; i < num_trajectories; i++) {
+            collision_times2.push(recalculate_collision_time(thetas[i]));
+          }
         },
         {
           name: "Eccentricity",
-          initial_value: "0.5",
           min: 0,
           max: 1,
+          initial_value: "0.5",
           step: 0.05
         }
       );
       scene.draw();
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById("conic-rays-pause-button"),
+        function() {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+      async function do_simulation(total_time, dt) {
+        let current_thetas = [];
+        let moving_points = [];
+        let reflected = [];
+        for (let i = 0; i < num_trajectories; i++) {
+          current_thetas.push(2 * Math.PI * i / num_trajectories);
+          reflected.push(false);
+          moving_points.push([focus[0], focus[1]]);
+          let dot3 = new Dot(focus, {});
+          dot3.set_radius(0.05);
+          dot3.set_color("red");
+          scene.add(`p_${i}`, dot3);
+        }
+        let collision_times2 = [];
+        for (let i = 0; i < num_trajectories; i++) {
+          collision_times2.push(recalculate_collision_time(thetas[i]));
+        }
+        let t = 0;
+        let x, y;
+        let collision_indices = [];
+        while (t < total_time) {
+          if (playing) {
+            for (let i = 0; i < num_trajectories; i++) {
+              [x, y] = moving_points[i];
+              if (t + dt > collision_times2[i] && !reflected[i]) {
+                collision_indices.push(i);
+                let s = collision_times2[i] - t;
+                x += Math.cos(thetas[i]) * s;
+                y += Math.sin(thetas[i]) * s;
+                let effect = new Sector(
+                  [x, y],
+                  thetas[i] - Math.PI / 2,
+                  thetas[i] + Math.PI / 2,
+                  {}
+                );
+                effect.set_color("red");
+                effect.set_radius(0.3);
+                scene.add(`c_${i}`, effect);
+                if (conic.eccentricity == 1) {
+                  current_thetas[i] = Math.PI;
+                } else {
+                  console.log(conic.eccentricity);
+                  current_thetas[i] = vec2_angle(
+                    vec2_sub(
+                      conic.other_focus,
+                      conic.polar_function(thetas[i])
+                    )
+                  );
+                }
+                x += Math.cos(current_thetas[i]) * (dt - s);
+                y += Math.sin(current_thetas[i]) * (dt - s);
+                reflected[i] = true;
+              } else {
+                x += Math.cos(current_thetas[i]) * dt;
+                y += Math.sin(current_thetas[i]) * dt;
+              }
+              moving_points[i] = [x, y];
+              scene.get_mobj(`p_${i}`).move_to([x, y]);
+            }
+            scene.draw();
+            t += dt;
+            while (collision_indices.length > 0) {
+              let i = collision_indices.pop();
+              scene.remove(`c_${i}`);
+            }
+          }
+          await delay(10);
+        }
+        for (let i = 0; i < num_trajectories; i++) {
+          scene.remove(`p_${i}`);
+        }
+        await delay(500);
+      }
+      while (true) {
+        await do_simulation(10, 0.06);
+      }
     })();
     (function point_mass_spring() {
       let canvas = prepare_canvas(200, 200, "point-mass-spring");

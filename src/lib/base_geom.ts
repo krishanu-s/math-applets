@@ -8,6 +8,10 @@ export function vec2_norm(x: Vec2D): number {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
 
+export function vec2_angle(v: Vec2D): number {
+  return Math.atan2(v[1], v[0]);
+}
+
 export function vec2_normalize(x: Vec2D) {
   let n = vec2_norm(x);
   if (n == 0) {
@@ -86,6 +90,60 @@ export class Dot extends MObject {
   }
 }
 
+// A filled circular sector
+export class Sector extends MObject {
+  center: Vec2D;
+  radius: number;
+  start_angle: number;
+  end_angle: number;
+  fill_color: string = "black";
+  constructor(
+    center: Vec2D,
+    start_angle: number,
+    end_angle: number,
+    kwargs: Record<string, any>,
+  ) {
+    super();
+    this.center = center;
+    let radius = kwargs.radius as number;
+    if (radius == undefined) {
+      this.radius = 0.3;
+    } else {
+      this.radius = radius;
+    }
+    this.start_angle = start_angle;
+    this.end_angle = end_angle;
+  }
+  // Get the center coordinates
+  get_center(): Vec2D {
+    return this.center;
+  }
+  // Move the center of the dot to a desired location
+  move_to(center: Vec2D) {
+    this.center = center;
+  }
+  // Change the dot radius
+  set_radius(radius: number) {
+    this.radius = radius;
+  }
+  // Change the dot color
+  set_color(color: string) {
+    this.fill_color = color;
+  }
+  // Draws on the canvas
+  draw(canvas: HTMLCanvasElement, scene: Scene) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.fillStyle = this.fill_color;
+    ctx.globalAlpha = this.alpha;
+    let [x, y] = scene.v2c(this.center);
+    let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
+    ctx.beginPath();
+    ctx.arc(x, y, Math.abs(xr - x), this.start_angle, this.end_angle);
+    ctx.fill();
+  }
+}
+
 // A filled rectangle specified by its center, width, and height
 export class Rectangle extends MObject {
   center: Vec2D;
@@ -98,8 +156,8 @@ export class Rectangle extends MObject {
     this.size_x = size_x;
     this.size_y = size_y;
   }
-  move_to(x: number, y: number) {
-    this.center = [x, y];
+  move_to(center: Vec2D) {
+    this.center = center;
   }
   // Draws on the canvas
   draw(canvas: HTMLCanvasElement, scene: Scene) {
