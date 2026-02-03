@@ -44,13 +44,110 @@
 
     <body>
         <div style="text-align: center; margin: 10px auto">
+            <h1>Random Walks in Two and Three Dimensions</h1>
+            <h3>References</h3>
+            <ul>
+                <li>
+                    <a
+                        href="https://en.wikipedia.org/wiki/Random_walk#Higher_dimensions"
+                        >Random Walks</a
+                    >
+                </li>
+                <li>
+                    <a
+                        href="https://mathworld.wolfram.com/PolyasRandomWalkConstants.html"
+                        >Polya's Random Walk Constants</a
+                    >
+                </li>
+            </ul>
+
+            <h2>Introduction</h2>
+
             <p>
-                This is a dumping ground for several visualizations of random
-                walks as I build out portions of the library pertaining to
-                stochastics and probability.
+                Imagine a particle moving randomly on an infinite square grid.
+                The particle begins at some initial point $P$, and at each time
+                step it moves to one of its four neighboring points each with
+                equal probability $\frac{1}{4}$. This is an example of a
+                <b>random walk</b>. The question I want to consider is the
+                following:
+                <i
+                    >assuming this random walk is allowed to proceed forever,
+                    what is the probability that the particle eventually
+                    revisits its starting point $P$?</i
+                >
             </p>
 
+            <div class="applet-container" id="2d-random-walk"></div>
+            <div class="button" id="2d-random-walk-pause-button"></div>
+
+            <p>
+                We can take a simpler version of the question above by
+                considering instead a one-dimensional grid, i.e. a line. In this
+                case, the particle can only move left or right, each with
+                probability $\frac{1}{2}$.
+            </p>
+
+            <div class="applet-container" id="1d-random-walk"></div>
+            <div class="button" id="1d-random-walk-pause-button"></div>
+
+            <p>
+                This model can be more easily related to some real scenarios.
+                For example, you could imagine repeatedly flipping a fair coin
+                in a gambling scenario. A heads means that you gain \$1, and a
+                tails means that you lose \$1. A famous theorem says that if you
+                continue this game indefinitely, you will eventually get back to
+                your original amount of money, and eventually go bankrupt. In
+                other words,
+                <b
+                    >a random walk on a one-dimensional grid always eventually
+                    returns to its starting point.</b
+                >
+                (See
+                <a href="https://en.wikipedia.org/wiki/Gambler%27s_ruin"
+                    >gambler's ruin</a
+                >.)
+            </p>
+
+            <p>
+                It turns out that a random walk on a two-dimensional grid always
+                eventually returns to its starting point, meaning that the
+                answer to the initial question is 100%. However, on a
+                <i>three-dimensional</i> grid, the probability of returning to
+                the starting point drops to roughly 34%. At four, five, and six
+                dimensions, the probability drops to 19.3%, 13.5%, and 10.4%,
+                respectively.
+            </p>
+
+            <div class="applet-container" id="3d-random-walk"></div>
+            <div class="button" id="3d-random-walk-pause-button"></div>
+
+            <p>
+                <b>Why?</b> Intuitively, this makes some sense. In higher
+                dimensions, there are more degrees of freedom to move around, so
+                the probability of returning to the starting point decreases.
+                But why is there a sudden phase transition between dimensions 2
+                and 3? And how does one calculate the percentage values above?
+                Lastly, <b>how long</b> does it take for a random walk to return
+                to its starting point?
+            </p>
+
+            <p>
+                This page is about visualizing the argument for the phase
+                transition between dimensions 2 and 3. We also will explore
+                <b>Brownian motion</b>, which is a continuous-analogue of random
+                walks which makes some appearances in nature.
+            </p>
+
+            <h2>Modeling a random walk with generating functions</h2>
+            <p>TODO</p>
+
+            <h2>The normal distribution and Brownian motion</h2>
+            <p>TODO Explain how to define Brownian motion</p>
+
+            <h1>Below: Demonstrations</h1>
+
             <h2>Brownian motion</h2>
+
             <p>Brownian motion in the plane, set against a pair of axis.</p>
             <br />
 

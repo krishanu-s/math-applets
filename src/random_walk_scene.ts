@@ -5,6 +5,7 @@ import {
   delay,
   gaussianRandom,
 } from "./lib/base.js";
+import { Histogram } from "./lib/stats.js";
 import { Button, Slider } from "./lib/interactive.js";
 import {
   Dot,
@@ -42,50 +43,120 @@ export function pick_random_step(dim: number): number[] {
 
 (async function () {
   document.addEventListener("DOMContentLoaded", async function () {
-    // TODO Make space for the axes.
-    class Histogram extends MObject {
-      hist: Record<number, number> = {};
-      fill_color: string = "red";
-      // Min/max bin values
-      bin_min: number = 0;
-      bin_max: number = 100;
-      // Min/max counts
-      count_min: number = 0;
-      count_max: number = 100;
-      set_count_limits(min: number, max: number) {
-        this.count_min = min;
-        this.count_max = max;
-      }
-      set_bin_limits(min: number, max: number) {
-        this.bin_min = min;
-        this.bin_max = max;
-      }
-      set_hist(hist: Record<number, number>) {
-        this.hist = hist;
-      }
-      // Create a bunch of rectangles
-      draw(canvas: HTMLCanvasElement, scene: Scene) {
-        let [xmin, xmax] = scene.xlims;
-        let [ymin, ymax] = scene.ylims;
-        let bin_width = (xmax - xmin) / (this.bin_max - this.bin_min);
-        let ct_height = (ymax - ymin) / (this.count_max - this.count_min);
+    // Simplest visualization of a 2D random walk
+    // TODO: Stop upon reaching the origin, and then start over.
+    (async function two_dim_random_walk_basic() {
+      let canvas = prepare_canvas(300, 300, "2d-random-walk");
+      let scene = new Scene(canvas);
+      let [xmin, xmax] = [-10, 10];
+      let [ymin, ymax] = [-10, 10];
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
 
-        let bin;
-        let rect_center: Vec2D, rect_height: number, rect_width: number;
-        for (let i = 0; i < Object.keys(this.hist).length; i++) {
-          bin = Object.keys(this.hist)[i];
-          rect_center = [
-            xmin + (bin - this.bin_min + 0.5) * bin_width,
-            ymin + this.hist[bin] * 0.5 * ct_height,
-          ];
-          rect_height = this.hist[bin] * ct_height;
-          rect_width = bin_width;
-          let rect = new Rectangle(rect_center, rect_width, rect_height);
-          rect.fill_color = this.fill_color;
-          rect.draw(canvas, scene);
+      // Add graph lines with ticks
+      let tick_size = 0.1;
+      scene.add(
+        "x-axis",
+        new TwoHeadedArrow([xmin, 0], [xmax, 0], { stroke_width: 0.02 }),
+      );
+      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
+        if (x == 0) {
+          continue;
+        }
+        scene.add(
+          `x-tick-(${x})`,
+          new Line([x, -tick_size], [x, tick_size], { stroke_width: 0.02 }),
+        );
+      }
+
+      scene.add(
+        "y-axis",
+        new TwoHeadedArrow([0, ymin], [0, ymax], { stroke_width: 0.02 }),
+      );
+      for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
+        if (y == 0) {
+          continue;
+        }
+        scene.add(
+          `y-tick-(${y})`,
+          new Line([-tick_size, y], [tick_size, y], { stroke_width: 0.02 }),
+        );
+      }
+      scene.draw();
+
+      // Make a pause button
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById("2d-random-walk-pause-button") as HTMLElement,
+        function () {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Pause simulation";
+      pauseButton.style.padding = "15px";
+
+      // Do simulation
+      async function do_simulation(): Promise<boolean> {
+        let [x, y] = [0, 0];
+        let dx: number, dy: number;
+
+        // Add the path line sequence
+        let line = new LineSequence([[x, y]], {});
+        line.set_color("red");
+        line.set_alpha(1);
+        line.set_width(0.1);
+        scene.add("line", line);
+
+        // Add the path current point
+        let p = new Dot(x, y, { radius: 0.3 });
+        p.set_color("blue");
+        scene.add("point", p);
+
+        while (true) {
+          if (playing) {
+            // Generate a random step
+            [dx, dy] = pick_random_step(2);
+            [x, y] = [x + dx, y + dy];
+
+            // Extend the line sequence
+            line = scene.get_mobj("line") as LineSequence;
+            line.add_point([x, y]);
+
+            // Move the endpoint
+            p = scene.get_mobj("point") as Dot;
+            p.move_to(x, y);
+
+            // Draw
+            scene.draw();
+
+            if (x == 0 && y == 0) {
+              await delay(1000);
+              scene.remove("line");
+              scene.remove("dot");
+              return true;
+            }
+          }
+          await delay(100);
         }
       }
-    }
+
+      while (true) {
+        await do_simulation();
+      }
+    })();
+
+    // Simplest visualization of a 1D random walk
+    // TODO
+    (function one_dim_random_walk_basic() {
+      let canvas = prepare_canvas(300, 300, "1d-random-walk");
+      let scene = new Scene(canvas);
+    })();
 
     // Makes a graph over time of how many random walks have not returned to the origin.
     (async function graph_random_walk(num_walks: number, num_steps: number) {
@@ -192,8 +263,6 @@ export function pick_random_step(dim: number): number[] {
     // Brownian motion in 2D
     (async function brownian_motion_2d() {
       let canvas = prepare_canvas(300, 300, "brownian-motion-2d");
-      let ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Failed to get 2D context");
       let scene = new Scene(canvas);
       let [xmin, xmax] = [-5, 5];
       let [ymin, ymax] = [-5, 5];

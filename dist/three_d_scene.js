@@ -1089,6 +1089,53 @@ var Arcball = class {
   }
 };
 
+// src/lib/stats.ts
+var Histogram = class extends MObject {
+  constructor() {
+    super(...arguments);
+    this.hist = {};
+    this.fill_color = "red";
+    // Min/max bin values
+    this.bin_min = 0;
+    this.bin_max = 100;
+    // Min/max counts
+    this.count_min = 0;
+    this.count_max = 100;
+  }
+  set_count_limits(min, max) {
+    this.count_min = min;
+    this.count_max = max;
+  }
+  set_bin_limits(min, max) {
+    this.bin_min = min;
+    this.bin_max = max;
+  }
+  set_hist(hist) {
+    this.hist = hist;
+  }
+  // Create a bunch of rectangles
+  draw(canvas, scene) {
+    let [xmin, xmax] = scene.xlims;
+    let [ymin, ymax] = scene.ylims;
+    let bin_width = (xmax - xmin) / (this.bin_max - this.bin_min);
+    let ct_height = (ymax - ymin) / (this.count_max - this.count_min);
+    let bin;
+    let rect_center, rect_height, rect_width;
+    for (let i = 0; i < Object.keys(this.hist).length; i++) {
+      bin = Object.keys(this.hist)[i];
+      rect_center = [
+        xmin + (bin - this.bin_min + 0.5) * bin_width,
+        ymin + this.hist[bin] * 0.5 * ct_height
+      ];
+      rect_height = this.hist[bin] * ct_height;
+      rect_width = bin_width;
+      let rect = new Rectangle(rect_center, rect_width, rect_height);
+      rect.fill_color = this.fill_color;
+      rect.draw(canvas, scene);
+    }
+  }
+};
+
 // src/random_walk_scene.ts
 function pick_random_step(dim) {
   const x = 2 * dim * Math.random();
@@ -1106,51 +1153,94 @@ function pick_random_step(dim) {
 }
 (async function() {
   document.addEventListener("DOMContentLoaded", async function() {
-    class Histogram extends MObject {
-      constructor() {
-        super(...arguments);
-        this.hist = {};
-        this.fill_color = "red";
-        // Min/max bin values
-        this.bin_min = 0;
-        this.bin_max = 100;
-        // Min/max counts
-        this.count_min = 0;
-        this.count_max = 100;
+    (async function two_dim_random_walk_basic() {
+      let canvas = prepare_canvas(300, 300, "2d-random-walk");
+      let scene = new Scene(canvas);
+      let [xmin, xmax] = [-10, 10];
+      let [ymin, ymax] = [-10, 10];
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      let tick_size = 0.1;
+      scene.add(
+        "x-axis",
+        new TwoHeadedArrow([xmin, 0], [xmax, 0], { stroke_width: 0.02 })
+      );
+      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
+        if (x == 0) {
+          continue;
+        }
+        scene.add(
+          `x-tick-(${x})`,
+          new Line([x, -tick_size], [x, tick_size], { stroke_width: 0.02 })
+        );
       }
-      set_count_limits(min, max) {
-        this.count_min = min;
-        this.count_max = max;
+      scene.add(
+        "y-axis",
+        new TwoHeadedArrow([0, ymin], [0, ymax], { stroke_width: 0.02 })
+      );
+      for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
+        if (y == 0) {
+          continue;
+        }
+        scene.add(
+          `y-tick-(${y})`,
+          new Line([-tick_size, y], [tick_size, y], { stroke_width: 0.02 })
+        );
       }
-      set_bin_limits(min, max) {
-        this.bin_min = min;
-        this.bin_max = max;
-      }
-      set_hist(hist) {
-        this.hist = hist;
-      }
-      // Create a bunch of rectangles
-      draw(canvas, scene) {
-        let [xmin, xmax] = scene.xlims;
-        let [ymin, ymax] = scene.ylims;
-        let bin_width = (xmax - xmin) / (this.bin_max - this.bin_min);
-        let ct_height = (ymax - ymin) / (this.count_max - this.count_min);
-        let bin;
-        let rect_center, rect_height, rect_width;
-        for (let i = 0; i < Object.keys(this.hist).length; i++) {
-          bin = Object.keys(this.hist)[i];
-          rect_center = [
-            xmin + (bin - this.bin_min + 0.5) * bin_width,
-            ymin + this.hist[bin] * 0.5 * ct_height
-          ];
-          rect_height = this.hist[bin] * ct_height;
-          rect_width = bin_width;
-          let rect = new Rectangle(rect_center, rect_width, rect_height);
-          rect.fill_color = this.fill_color;
-          rect.draw(canvas, scene);
+      scene.draw();
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById("2d-random-walk-pause-button"),
+        function() {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Pause simulation";
+      pauseButton.style.padding = "15px";
+      async function do_simulation() {
+        let [x, y] = [0, 0];
+        let dx, dy;
+        let line = new LineSequence([[x, y]], {});
+        line.set_color("red");
+        line.set_alpha(1);
+        line.set_width(0.1);
+        scene.add("line", line);
+        let p = new Dot(x, y, { radius: 0.3 });
+        p.set_color("blue");
+        scene.add("point", p);
+        while (true) {
+          if (playing) {
+            [dx, dy] = pick_random_step(2);
+            [x, y] = [x + dx, y + dy];
+            line = scene.get_mobj("line");
+            line.add_point([x, y]);
+            p = scene.get_mobj("point");
+            p.move_to(x, y);
+            scene.draw();
+            if (x == 0 && y == 0) {
+              await delay(1e3);
+              scene.remove("line");
+              scene.remove("dot");
+              return true;
+            }
+          }
+          await delay(100);
         }
       }
-    }
+      while (true) {
+        await do_simulation();
+      }
+    })();
+    (function one_dim_random_walk_basic() {
+      let canvas = prepare_canvas(300, 300, "1d-random-walk");
+      let scene = new Scene(canvas);
+    })();
     (async function graph_random_walk(num_walks, num_steps) {
       let canvas2 = prepare_canvas(300, 300, "histogram-dim-two");
       let canvas3 = prepare_canvas(300, 300, "histogram-dim-three");
@@ -1237,8 +1327,6 @@ function pick_random_step(dim) {
     })(5e4, 1e3);
     (async function brownian_motion_2d() {
       let canvas = prepare_canvas(300, 300, "brownian-motion-2d");
-      let ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Failed to get 2D context");
       let scene = new Scene(canvas);
       let [xmin, xmax] = [-5, 5];
       let [ymin, ymax] = [-5, 5];
