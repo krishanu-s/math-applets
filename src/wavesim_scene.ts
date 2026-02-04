@@ -649,7 +649,6 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       }
 
       // Make springs and add callbacks to dots
-      // TODO
       let springs: LineSpring[] = [];
       function set_spring(i: number, spring: LineSpring) {
         spring.move_start(dots[i].get_center());
@@ -660,6 +659,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
         spring.set_eq_length(
           vec2_norm(vec2_sub(eq_position(i + 1), eq_position(i))),
         );
+        spring.set_mode("spring");
         set_spring(i, spring);
         dots[i].add_callback(() => {
           set_spring(i, spring);
@@ -668,6 +668,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       }
 
       // Make force arrows and add callbacks to dots
+      let arrow_scale = 0.3;
       let arrows: Arrow[] = [];
       function set_force_arrow(i: number, arrow: Arrow) {
         pos = dots[i].get_center();
@@ -675,7 +676,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
         if (i == 0) {
           disp = dots[i + 1].get_center()[1] - pos[1];
         } else if (i == num_points - 1) {
-          disp = pos[1] - dots[i - 1].get_center()[1];
+          disp = dots[i - 1].get_center()[1] - pos[1];
         } else {
           disp =
             dots[i - 1].get_center()[1] +
@@ -683,15 +684,37 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
             2 * dots[i].get_center()[1];
         }
         arrow.move_start(pos);
-        arrow.move_end([pos[0], pos[1] + disp]);
-        arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 5);
+        arrow.move_end([pos[0], pos[1] + arrow_scale * disp]);
+        arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 8);
       }
       for (let i = 0; i < num_points; i++) {
         let arrow = new Arrow([0, 0], [0, 0], { stroke_color: "red" });
         set_force_arrow(i, arrow);
-        dots[i].add_callback(() => {
-          set_force_arrow(i, arrow);
-        });
+        if (i == 0) {
+          dots[i].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+          dots[i + 1].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+        } else if (i == num_points - 1) {
+          dots[i - 1].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+          dots[i].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+        } else {
+          dots[i - 1].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+          dots[i].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+          dots[i + 1].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+        }
         arrows.push(arrow);
       }
 

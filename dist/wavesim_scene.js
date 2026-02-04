@@ -11451,6 +11451,9 @@ var LineSpring = class extends Line {
     this.mode = "color";
     this.eq_length = 2;
   }
+  set_mode(mode) {
+    this.mode = mode;
+  }
   set_eq_length(length) {
     this.eq_length = length;
   }
@@ -11470,14 +11473,47 @@ var LineSpring = class extends Line {
     let [end_x, end_y] = scene.v2c(this.end);
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = colorval_to_rgba(
-      rb_colormap_2(10 * Math.log(this.eq_length / this.length()))
-    );
     ctx.globalAlpha = this.alpha;
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(end_x, end_y);
-    ctx.stroke();
+    if (this.mode == "color") {
+      ctx.strokeStyle = colorval_to_rgba(
+        rb_colormap_2(10 * Math.log(this.eq_length / this.length()))
+      );
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+    } else {
+      let v = [end_x - start_x, end_y - start_y];
+      let num_turns = 5;
+      let r = 1 - this.eq_length * 0.4 / this.length();
+      let theta = Math.atan(8 * (2 * num_turns) / (vec2_norm(v) * r));
+      let scaled_v = vec2_scale(v, r / (2 * Math.cos(theta) * num_turns));
+      let current_p = [
+        start_x + 0.5 * (1 - r) * (end_x - start_x),
+        start_y + 0.5 * (1 - r) * (end_y - start_y)
+      ];
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(current_p[0], current_p[1]);
+      current_p = vec2_sum(
+        current_p,
+        vec2_rot(vec2_scale(scaled_v, 0.5), theta)
+      );
+      ctx.lineTo(current_p[0], current_p[1]);
+      for (let i = 0; i < num_turns - 1; i++) {
+        current_p = vec2_sum(current_p, vec2_rot(scaled_v, -theta));
+        ctx.lineTo(current_p[0], current_p[1]);
+        current_p = vec2_sum(current_p, vec2_rot(scaled_v, theta));
+        ctx.lineTo(current_p[0], current_p[1]);
+      }
+      current_p = vec2_sum(
+        current_p,
+        vec2_rot(vec2_scale(scaled_v, 0.5), -theta)
+      );
+      ctx.lineTo(current_p[0], current_p[1]);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+    }
   }
 };
 
@@ -12986,12 +13022,14 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
         spring.set_eq_length(
           vec2_norm(vec2_sub(eq_position(i + 1), eq_position(i)))
         );
+        spring.set_mode("spring");
         set_spring(i, spring);
         dots[i].add_callback(() => {
           set_spring(i, spring);
         });
         springs.push(spring);
       }
+      let arrow_scale = 0.5;
       let arrows = [];
       function set_force_arrow(i, arrow) {
         pos = dots[i].get_center();
@@ -12999,20 +13037,42 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
         if (i == 0) {
           disp = dots[i + 1].get_center()[1] - pos[1];
         } else if (i == num_points - 1) {
-          disp = pos[1] - dots[i - 1].get_center()[1];
+          disp = dots[i - 1].get_center()[1] - pos[1];
         } else {
           disp = dots[i - 1].get_center()[1] + dots[i + 1].get_center()[1] - 2 * dots[i].get_center()[1];
         }
         arrow.move_start(pos);
-        arrow.move_end([pos[0], pos[1] + disp]);
+        arrow.move_end([pos[0], pos[1] + arrow_scale * disp]);
         arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 5);
       }
       for (let i = 0; i < num_points; i++) {
         let arrow = new Arrow([0, 0], [0, 0], { stroke_color: "red" });
         set_force_arrow(i, arrow);
-        dots[i].add_callback(() => {
-          set_force_arrow(i, arrow);
-        });
+        if (i == 0) {
+          dots[i].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+          dots[i + 1].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+        } else if (i == num_points - 1) {
+          dots[i - 1].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+          dots[i].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+        } else {
+          dots[i - 1].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+          dots[i].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+          dots[i + 1].add_callback(() => {
+            set_force_arrow(i, arrow);
+          });
+        }
         arrows.push(arrow);
       }
       for (let i = 0; i < num_points - 1; i++) {
