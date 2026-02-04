@@ -210,6 +210,48 @@ export class DraggableDot extends Dot {
   }
 }
 
+// Dragging only affects the x-coordinate
+export class DraggableDotX extends DraggableDot {
+  drag_cursor(scene: Scene, event: MouseEvent) {
+    if (this.isClicked) {
+      this.dragEnd = [
+        event.pageX - scene.canvas.offsetLeft,
+        event.pageY - scene.canvas.offsetTop,
+      ];
+      this.dragDiff = vec2_sub(
+        scene.c2s(this.dragEnd[0], 0),
+        scene.c2s(this.dragStart[0], 0),
+      );
+      this.move_by(this.dragDiff);
+      this.dragStart = this.dragEnd;
+      // Perform any other MObject updates necessary.
+      this.do_callbacks();
+      scene.draw();
+    }
+  }
+}
+
+// Dragging only affects the y-coordinate
+export class DraggableDotY extends DraggableDot {
+  drag_cursor(scene: Scene, event: MouseEvent) {
+    if (this.isClicked) {
+      this.dragEnd = [
+        event.pageX - scene.canvas.offsetLeft,
+        event.pageY - scene.canvas.offsetTop,
+      ];
+      this.dragDiff = vec2_sub(
+        scene.c2s(0, this.dragEnd[1]),
+        scene.c2s(0, this.dragStart[1]),
+      );
+      this.move_by(this.dragDiff);
+      this.dragStart = this.dragEnd;
+      // Perform any other MObject updates necessary.
+      this.do_callbacks();
+      scene.draw();
+    }
+  }
+}
+
 // A filled rectangle specified by its center, width, and height
 export class Rectangle extends MObject {
   center: Vec2D;

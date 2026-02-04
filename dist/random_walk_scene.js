@@ -1321,7 +1321,7 @@ function pick_random_step(dim) {
           }
         }
       );
-      pauseButton.textContent = "Pause simulation";
+      pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
       while (true) {
         if (playing) {
@@ -1419,7 +1419,7 @@ function pick_random_step(dim) {
           }
         }
       );
-      pauseButton.textContent = "Pause simulation";
+      pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
       while (true) {
         if (playing) {

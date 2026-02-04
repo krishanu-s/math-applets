@@ -10967,6 +10967,87 @@ var Sector = class extends MObject {
     ctx.fill();
   }
 };
+var DraggableDot = class extends Dot {
+  constructor() {
+    super(...arguments);
+    this.isClicked = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.dragDiff = [0, 0];
+    this.callbacks = [];
+  }
+  // Tests whether a chosen vector lies inside the dot.
+  is_inside_dot(p) {
+    return vec2_norm(vec2_sub(p, this.center)) < this.radius;
+  }
+  // Adds a callback which triggers when the dot is dragged
+  add_callback(callback) {
+    this.callbacks.push(callback);
+  }
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
+  }
+  // Triggers when the canvas is clicked.
+  click(scene, event) {
+    this.dragStart = [
+      event.pageX - scene.canvas.offsetLeft,
+      event.pageY - scene.canvas.offsetTop
+    ];
+    this.isClicked = this.is_inside_dot(
+      scene.c2s(this.dragStart[0], this.dragStart[1])
+    );
+  }
+  // Triggers when the canvas is unclicked.
+  unclick(scene, event) {
+    this.isClicked = false;
+  }
+  // Triggers when the mouse is dragged over the canvas.
+  drag_cursor(scene, event) {
+    if (this.isClicked) {
+      this.dragEnd = [
+        event.pageX - scene.canvas.offsetLeft,
+        event.pageY - scene.canvas.offsetTop
+      ];
+      this.dragDiff = vec2_sub(
+        scene.c2s(this.dragEnd[0], this.dragEnd[1]),
+        scene.c2s(this.dragStart[0], this.dragStart[1])
+      );
+      this.move_by(this.dragDiff);
+      this.dragStart = this.dragEnd;
+      this.do_callbacks();
+      scene.draw();
+    }
+  }
+  add(scene) {
+    let self = this;
+    scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
+    scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
+    scene.canvas.addEventListener(
+      "mousemove",
+      self.drag_cursor.bind(self, scene)
+    );
+  }
+};
+var DraggableDotY = class extends DraggableDot {
+  drag_cursor(scene, event) {
+    if (this.isClicked) {
+      this.dragEnd = [
+        event.pageX - scene.canvas.offsetLeft,
+        event.pageY - scene.canvas.offsetTop
+      ];
+      this.dragDiff = vec2_sub(
+        scene.c2s(0, this.dragEnd[1]),
+        scene.c2s(0, this.dragStart[1])
+      );
+      this.move_by(this.dragDiff);
+      this.dragStart = this.dragEnd;
+      this.do_callbacks();
+      scene.draw();
+    }
+  }
+};
 var Rectangle = class extends MObject {
   constructor(center, size_x, size_y) {
     super();
@@ -12870,15 +12951,77 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
         300,
         "point-mass-discrete-sequence-diagram"
       );
-      let scene = new WaveSimOneDimScene(canvas, num_points);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
-      scene.set_mode("dots");
-      let sim = scene.sim();
-      sim.set_attr("wave_propagation_speed", 3);
-      function foo(x) {
-        return Math.exp(-(5 * (x - 0.5) ** 2));
+      let scene = new Scene(canvas);
+      let xmin = -5;
+      let xmax = 5;
+      let ymin = -5;
+      let ymax = 5;
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      function eq_position(i) {
+        return [xmin + (i + 0.5) * (xmax - xmin) / num_points, 0];
       }
-      sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
+      let pos;
+      pos = eq_position(0);
+      scene.add(
+        "b0",
+        new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 })
+      );
+      pos = eq_position(num_points - 1);
+      scene.add(
+        "b1",
+        new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 })
+      );
+      let dots = [];
+      for (let i = 0; i < num_points; i++) {
+        let dot3 = new DraggableDotY(eq_position(i), { radius: 0.2 });
+        dots.push(dot3);
+      }
+      let springs = [];
+      function set_spring(i, spring) {
+        spring.move_start(dots[i].get_center());
+        spring.move_end(dots[i + 1].get_center());
+      }
+      for (let i = 0; i < num_points - 1; i++) {
+        let spring = new LineSpring([0, 0], [0, 0], {});
+        spring.set_eq_length(
+          vec2_norm(vec2_sub(eq_position(i + 1), eq_position(i)))
+        );
+        set_spring(i, spring);
+        dots[i].add_callback(() => {
+          set_spring(i, spring);
+        });
+        springs.push(spring);
+      }
+      let arrows = [];
+      function set_force_arrow(i, arrow) {
+        pos = dots[i].get_center();
+        let disp;
+        if (i == 0) {
+          disp = dots[i + 1].get_center()[1] - pos[1];
+        } else if (i == num_points - 1) {
+          disp = pos[1] - dots[i - 1].get_center()[1];
+        } else {
+          disp = dots[i - 1].get_center()[1] + dots[i + 1].get_center()[1] - 2 * dots[i].get_center()[1];
+        }
+        arrow.move_start(pos);
+        arrow.move_end([pos[0], pos[1] + disp]);
+        arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 5);
+      }
+      for (let i = 0; i < num_points; i++) {
+        let arrow = new Arrow([0, 0], [0, 0], { stroke_color: "red" });
+        set_force_arrow(i, arrow);
+        dots[i].add_callback(() => {
+          set_force_arrow(i, arrow);
+        });
+        arrows.push(arrow);
+      }
+      for (let i = 0; i < num_points - 1; i++) {
+        scene.add(`spring_${i}`, springs[i]);
+      }
+      for (let i = 0; i < num_points; i++) {
+        scene.add(`arrow_${i}`, arrows[i]);
+        scene.add(`point_${i}`, dots[i]);
+      }
       scene.draw();
     })(7);
     (function point_mass_continuous_sequence(num_points) {

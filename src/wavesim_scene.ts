@@ -11,6 +11,12 @@ import {
   vec2_sum_list,
   vec2_sub,
   vec2_angle,
+  vec2_scale,
+  vec2_norm,
+  DraggableDot,
+  DraggableDotX,
+  DraggableDotY,
+  Arrow,
 } from "./lib/base_geom.js";
 import { clamp, sigmoid, linspace, funspace, delay } from "./lib/base.js";
 import { ParametricFunction } from "./lib/parametric.js";
@@ -607,20 +613,95 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
         300,
         "point-mass-discrete-sequence-diagram",
       );
-      let scene = new WaveSimOneDimScene(canvas, num_points);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
-      scene.set_mode("dots");
-      let sim = scene.sim();
+      // TODO This is essentially a WaveSimOneDimScene.
+      let scene = new Scene(canvas);
+      let xmin = -5;
+      let xmax = 5;
+      let ymin = -5;
+      let ymax = 5;
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
 
-      // TODO Add spring elements to the scene
-      // TODO Add interactivity where points can be dragged
-
-      // Set the attributes of the simulator
-      sim.set_attr("wave_propagation_speed", 3.0);
-      function foo(x: number): number {
-        return Math.exp(-(5 * (x - 0.5) ** 2));
+      // i goes from 0 to num_points -1
+      function eq_position(i: number): Vec2D {
+        return [xmin + ((i + 0.5) * (xmax - xmin)) / num_points, 0];
       }
-      sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
+
+      let pos: Vec2D;
+
+      // Add vertical lines at the beginning and end of the sequence
+      pos = eq_position(0);
+      scene.add(
+        "b0",
+        new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 }),
+      );
+
+      pos = eq_position(num_points - 1);
+      scene.add(
+        "b1",
+        new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 }),
+      );
+
+      // Make draggable dots
+      let dots: DraggableDotY[] = [];
+      for (let i = 0; i < num_points; i++) {
+        let dot = new DraggableDotY(eq_position(i), { radius: 0.2 });
+        dots.push(dot);
+      }
+
+      // Make springs and add callbacks to dots
+      // TODO
+      let springs: LineSpring[] = [];
+      function set_spring(i: number, spring: LineSpring) {
+        spring.move_start(dots[i].get_center());
+        spring.move_end(dots[i + 1].get_center());
+      }
+      for (let i = 0; i < num_points - 1; i++) {
+        let spring = new LineSpring([0, 0], [0, 0], {});
+        spring.set_eq_length(
+          vec2_norm(vec2_sub(eq_position(i + 1), eq_position(i))),
+        );
+        set_spring(i, spring);
+        dots[i].add_callback(() => {
+          set_spring(i, spring);
+        });
+        springs.push(spring);
+      }
+
+      // Make force arrows and add callbacks to dots
+      let arrows: Arrow[] = [];
+      function set_force_arrow(i: number, arrow: Arrow) {
+        pos = dots[i].get_center();
+        let disp: number;
+        if (i == 0) {
+          disp = dots[i + 1].get_center()[1] - pos[1];
+        } else if (i == num_points - 1) {
+          disp = pos[1] - dots[i - 1].get_center()[1];
+        } else {
+          disp =
+            dots[i - 1].get_center()[1] +
+            dots[i + 1].get_center()[1] -
+            2 * dots[i].get_center()[1];
+        }
+        arrow.move_start(pos);
+        arrow.move_end([pos[0], pos[1] + disp]);
+        arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 5);
+      }
+      for (let i = 0; i < num_points; i++) {
+        let arrow = new Arrow([0, 0], [0, 0], { stroke_color: "red" });
+        set_force_arrow(i, arrow);
+        dots[i].add_callback(() => {
+          set_force_arrow(i, arrow);
+        });
+        arrows.push(arrow);
+      }
+
+      for (let i = 0; i < num_points - 1; i++) {
+        scene.add(`spring_${i}`, springs[i]);
+      }
+      for (let i = 0; i < num_points; i++) {
+        scene.add(`arrow_${i}`, arrows[i]);
+        scene.add(`point_${i}`, dots[i]);
+      }
 
       // Prepare the simulation
       scene.draw();
