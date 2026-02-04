@@ -79,6 +79,7 @@ import { pick_random_step } from "./random_walk_scene.js";
             {},
           );
           dot.set_radius(0.5 / Math.sqrt(n));
+          dot.touch_tolerance = 2.0 + n / 10;
           dots.push(dot);
           scene.add(`p${i}`, dot);
         }

@@ -250,5 +250,20 @@ export function prepare_canvas(
   wrapper.appendChild(canvas);
   container.appendChild(wrapper);
 
+  prepareCanvasForMobile(canvas);
+
   return canvas;
+}
+
+// Prepares a canvas for interactive elements on mobile by removing all other touch interactivity
+export function prepareCanvasForMobile(canvas: HTMLCanvasElement) {
+  canvas.ontouchstart = function (e) {
+    e.preventDefault();
+  };
+  canvas.ontouchend = function (e) {
+    e.preventDefault();
+  };
+  canvas.ontouchmove = function (e) {
+    e.preventDefault();
+  };
 }

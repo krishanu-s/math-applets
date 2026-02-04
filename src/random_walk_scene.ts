@@ -132,7 +132,7 @@ export function pick_random_step(dim: number): number[] {
         while (true) {
           if (playing) {
             // Generate a random step
-            [dx, dy] = pick_random_step(2);
+            [dx, dy] = pick_random_step(2) as Vec2D;
             [x, y] = [x + dx, y + dy];
 
             // Extend the line sequence
@@ -231,7 +231,7 @@ export function pick_random_step(dim: number): number[] {
         while (true) {
           if (playing) {
             // Generate a random step
-            [dx] = pick_random_step(1);
+            [dx] = pick_random_step(1) as [number];
             x += dx;
 
             // Extend the line sequence

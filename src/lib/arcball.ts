@@ -28,7 +28,17 @@ export class Arcball {
     ];
     this.drag = true;
   }
+  touch(event: TouchEvent) {
+    this.dragStart = [
+      event.touches[0].pageX - this.scene.canvas.offsetLeft,
+      event.touches[0].pageY - this.scene.canvas.offsetTop,
+    ];
+    this.drag = true;
+  }
   unclick(event: MouseEvent) {
+    this.drag = false;
+  }
+  untouch(event: TouchEvent) {
     this.drag = false;
   }
   drag_cursor(event: MouseEvent) {
@@ -78,20 +88,85 @@ export class Arcball {
       this.dragStart = this.dragEnd;
     }
   }
+  touch_drag_cursor(event: TouchEvent) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.touches[0].pageX - this.scene.canvas.offsetLeft,
+        event.touches[0].pageY - this.scene.canvas.offsetTop,
+      ];
+      this.dragDiff = vec2_sub(
+        this.scene.c2s(this.dragStart[0], this.dragStart[1]),
+        this.scene.c2s(this.dragEnd[0], this.dragEnd[1]),
+      );
+
+      // Return if no dragging has happened
+      if (this.dragDiff[0] == 0 && this.dragDiff[1] == 0) {
+        return;
+      }
+
+      // Otherwise...
+      if (this.mode == "Translate") {
+        // Translation option
+        let camera_frame = this.scene.get_camera_frame();
+        this.scene.translate(
+          vec3_sum(
+            vec3_scale(get_column(camera_frame, 0), this.dragDiff[0]),
+            vec3_scale(get_column(camera_frame, 1), this.dragDiff[1]),
+          ),
+        );
+      } else if (this.mode == "Rotate") {
+        // Rotation option
+        // Find the axis to rotate around based on the angle of dragDiff
+        let v = vec2_normalize([this.dragDiff[1], -this.dragDiff[0]]);
+        let camera_frame = this.scene.get_camera_frame();
+        let rot_axis = vec3_sum(
+          vec3_scale(get_column(camera_frame, 0), v[0]),
+          vec3_scale(get_column(camera_frame, 1), v[1]),
+        );
+
+        // Rotate the scene frame according to the norm, as well as the camera position,
+        let n = vec2_norm(this.dragDiff);
+        this.scene.rot(rot_axis, n);
+        this.scene.set_camera_position(
+          rot(this.scene.camera_position, rot_axis, n),
+        );
+      }
+      this.scene.draw();
+      this.dragStart = this.dragEnd;
+    }
+  }
   add() {
     let self = this;
+    // For desktop
     this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
     this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
     this.scene.canvas.addEventListener(
       "mousemove",
       self.drag_cursor.bind(self),
     );
-    console.log("Arcball added");
+    // For mobile.
+    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self),
+    );
   }
   remove() {
     let self = this;
-    this.scene.canvas.removeEventListener("mousedown", self.click);
-    this.scene.canvas.removeEventListener("mouseup", self.unclick);
-    this.scene.canvas.removeEventListener("mousemove", self.drag_cursor);
+    // For desktop
+    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.removeEventListener(
+      "mousemove",
+      self.drag_cursor.bind(self),
+    );
+    // For mobile
+    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.removeEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self),
+    );
   }
 }

@@ -166,7 +166,19 @@ function prepare_canvas(width, height, name) {
   canvas.width = width;
   wrapper.appendChild(canvas);
   container.appendChild(wrapper);
+  prepareCanvasForMobile(canvas);
   return canvas;
+}
+function prepareCanvasForMobile(canvas) {
+  canvas.ontouchstart = function(e) {
+    e.preventDefault();
+  };
+  canvas.ontouchend = function(e) {
+    e.preventDefault();
+  };
+  canvas.ontouchmove = function(e) {
+    e.preventDefault();
+  };
 }
 
 // src/lib/base_geom.ts
@@ -496,6 +508,12 @@ var ThreeDMObject = class extends MObject {
   depth(scene) {
     return 0;
   }
+  // Return the depth of the nearest point on the object that lies along the
+  // given ray. Used for relative depth-testing between 3D objects, to determine
+  // how to draw them.
+  depth_point(scene, view_point) {
+    return 0;
+  }
 };
 var ThreeDLineLikeMObject = class extends ThreeDMObject {
   constructor() {
@@ -522,7 +540,10 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
 var Dot3D = class extends ThreeDLineLikeMObject {
   constructor(center, radius) {
     super();
+    this.stroke_width = 0.04;
+    this.stroke_color = "black";
     this.fill_color = "black";
+    this.fill = true;
     this.center = center;
     this.radius = radius;
   }
@@ -530,6 +551,16 @@ var Dot3D = class extends ThreeDLineLikeMObject {
     return scene.depth(this.center);
   }
   set_color(color) {
+    this.set_stroke_color(color);
+    this.set_fill_color(color);
+  }
+  set_width(width) {
+    this.stroke_width = width;
+  }
+  set_stroke_color(color) {
+    this.stroke_color = color;
+  }
+  set_fill_color(color) {
     this.fill_color = color;
   }
   move_to(new_center) {
@@ -927,7 +958,17 @@ var Arcball = class {
     ];
     this.drag = true;
   }
+  touch(event) {
+    this.dragStart = [
+      event.touches[0].pageX - this.scene.canvas.offsetLeft,
+      event.touches[0].pageY - this.scene.canvas.offsetTop
+    ];
+    this.drag = true;
+  }
   unclick(event) {
+    this.drag = false;
+  }
+  untouch(event) {
     this.drag = false;
   }
   drag_cursor(event) {
@@ -935,6 +976,44 @@ var Arcball = class {
       this.dragEnd = [
         event.pageX - this.scene.canvas.offsetLeft,
         event.pageY - this.scene.canvas.offsetTop
+      ];
+      this.dragDiff = vec2_sub(
+        this.scene.c2s(this.dragStart[0], this.dragStart[1]),
+        this.scene.c2s(this.dragEnd[0], this.dragEnd[1])
+      );
+      if (this.dragDiff[0] == 0 && this.dragDiff[1] == 0) {
+        return;
+      }
+      if (this.mode == "Translate") {
+        let camera_frame = this.scene.get_camera_frame();
+        this.scene.translate(
+          vec3_sum(
+            vec3_scale(get_column(camera_frame, 0), this.dragDiff[0]),
+            vec3_scale(get_column(camera_frame, 1), this.dragDiff[1])
+          )
+        );
+      } else if (this.mode == "Rotate") {
+        let v = vec2_normalize([this.dragDiff[1], -this.dragDiff[0]]);
+        let camera_frame = this.scene.get_camera_frame();
+        let rot_axis = vec3_sum(
+          vec3_scale(get_column(camera_frame, 0), v[0]),
+          vec3_scale(get_column(camera_frame, 1), v[1])
+        );
+        let n = vec2_norm(this.dragDiff);
+        this.scene.rot(rot_axis, n);
+        this.scene.set_camera_position(
+          rot(this.scene.camera_position, rot_axis, n)
+        );
+      }
+      this.scene.draw();
+      this.dragStart = this.dragEnd;
+    }
+  }
+  touch_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.touches[0].pageX - this.scene.canvas.offsetLeft,
+        event.touches[0].pageY - this.scene.canvas.offsetTop
       ];
       this.dragDiff = vec2_sub(
         this.scene.c2s(this.dragStart[0], this.dragStart[1]),
@@ -976,13 +1055,27 @@ var Arcball = class {
       "mousemove",
       self.drag_cursor.bind(self)
     );
-    console.log("Arcball added");
+    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
   }
   remove() {
     let self = this;
-    this.scene.canvas.removeEventListener("mousedown", self.click);
-    this.scene.canvas.removeEventListener("mouseup", self.unclick);
-    this.scene.canvas.removeEventListener("mousemove", self.drag_cursor);
+    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.removeEventListener(
+      "mousemove",
+      self.drag_cursor.bind(self)
+    );
+    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.removeEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
   }
 };
 

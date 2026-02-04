@@ -1,6 +1,5 @@
 // Three-dimensional geometry and transformations.
-
-// Three-dimensional objects are specified by points in 3D space.
+// TODO Depth of ThreeDMObjects
 
 import { MObject, LineLikeMObject, Scene } from "./base.js";
 import { vec2_norm, Vec2D } from "./base_geom.js";
@@ -53,6 +52,12 @@ export class ThreeDMObject extends MObject {
   depth(scene: ThreeDScene): number {
     return 0;
   }
+  // Return the depth of the nearest point on the object that lies along the
+  // given ray. Used for relative depth-testing between 3D objects, to determine
+  // how to draw them.
+  depth_point(scene: ThreeDScene, view_point: Vec2D): number {
+    return 0;
+  }
 }
 
 // Identical extension as MObject -> LineLikeMObject
@@ -80,7 +85,10 @@ export class ThreeDLineLikeMObject extends ThreeDMObject {
 export class Dot3D extends ThreeDLineLikeMObject {
   center: Vec3D;
   radius: number;
+  stroke_width: number = 0.04;
+  stroke_color: string = "black";
   fill_color: string = "black";
+  fill: boolean = true;
   constructor(center: Vec3D, radius: number) {
     super();
     this.center = center;
@@ -90,6 +98,16 @@ export class Dot3D extends ThreeDLineLikeMObject {
     return scene.depth(this.center);
   }
   set_color(color: string) {
+    this.set_stroke_color(color);
+    this.set_fill_color(color);
+  }
+  set_width(width: number) {
+    this.stroke_width = width;
+  }
+  set_stroke_color(color: string) {
+    this.stroke_color = color;
+  }
+  set_fill_color(color: string) {
     this.fill_color = color;
   }
   move_to(new_center: Vec3D) {
@@ -527,6 +545,7 @@ export class ThreeDScene extends Scene {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     // First order the objects by depth
+    // TODO
     let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
       let depth_a = this.mobjects[a].depth(this);
       let depth_b = this.mobjects[b].depth(this);
