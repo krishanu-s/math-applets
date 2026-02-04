@@ -46,46 +46,69 @@
     <body>
         <div style="text-align: center; margin: 10px auto">
             <p>
-                This is a simulation of the <b>wave equation</b> in two
-                dimensions. We use a color map where positive values appear in
-                red, and negative values in blue.
+                The <b>wave equation</b> is a partial differential equation that
+                describes the propagation of waves, such as sound waves or
+                electromagnetic waves. It is a fundamental equation in physics
+                and engineering, and has many applications in fields such as
+                acoustics, optics, and seismology.
             </p>
             <p>
-                The value at each point $(x, y)$ at time $t$ is represented by a
-                real number $u(x, y, t)$. The function $u(x, y, t)$ obeys the
-                differential equation $$\left(\frac{\partial}{\partial
-                t}\right)^2u = \left(\frac{\partial}{\partial x}\right)^2u +
-                \left(\frac{\partial}{\partial y}\right)^2u$$ at almost all
-                points $(x, y)$. The points where this relationship is violated
-                come in two flavors: (1) stationary points where the function
-                value is held at 0 for all $t$, which act as reflective surfaces
-                for waves, and (2) wave point sources where the function value
-                goes as $A\cos(\omega t)$ for some amplitude $A$ and frequency
-                $\omega$.
-            </p>
-            <p>
-                In the simulation below, the reflective surface is chosen to be
-                a conic section, and one focus is chosen as a point source.
+                For the two-dimensional wave equation, each point in the
+                $xy$-plane has an associated real-numbered value, and this
+                collection of values evolves through time. I've used a color map
+                where red indicates a positive value, blue indicates a negative
+                value, and white indicates zero. The applet below simulates a
+                <b>dipole</b>, where the wave equation has two point sources
+                with opposite phase.
             </p>
             <br />
-            <div class="applet-container" id="scene-container"></div>
+            <div class="applet-container" id="twodim-dipole-demo"></div>
             <br />
-            <div class="slider" id="slider-container-1"></div>
+            <div class="button" id="twodim-dipole-demo-pause-button"></div>
+            <div class="button" id="twodim-dipole-demo-clear-button"></div>
             <br />
-            <div class="slider" id="slider-container-2"></div>
+            <div class="slider" id="twodim-dipole-demo-slider-1"></div>
             <br />
-            <div class="button" id="button-container-1"></div>
+            <div class="slider" id="twodim-dipole-demo-slider-2"></div>
             <br />
-            <div class="button" id="button-container-2"></div>
-            <br />
-            <div class="button" id="button-container-3"></div>
-            <h2>Why did I build this simulation?</h2>
             <p>
-                TODO Why am I investigating this? Conic section property
-                (applet). Colloquially described in terms of light rays.
-                However, light behaves like waves (applet?). Are the wave
-                description and ray description the same? I don't think so:
-                think of light bending around a corner (applet).
+                Let's make this more precise. In mathematical notation, the
+                values of this heatmap can be represented by a function in three
+                variables: the two spatial variables $x$ and $y$, and the time
+                variable $t \ge 0$. We can denote this by $f(x, y, t)$. The wave
+                equation is the partial differential equation which indicates
+                how the function changes over time and space every inside the
+                domain: $$\left(\frac{\partial}{\partial t}\right)^2f =
+                \left(\frac{\partial}{\partial x}\right)^2f +
+                \left(\frac{\partial}{\partial y}\right)^2f$$ One also needs
+                <b>boundary conditions</b> to specify the values of the function
+                at the boundary of the domain. One example of boundary
+                conditions is to specify <b>point sources</b> $(x, y)$ where the
+                function value varies sinusoidally, i.e. goes as $A\cos(\omega
+                (t + \phi))$ for some amplitude $A$, frequency $\omega$, and
+                phase $\phi$. Such points can be viewed as sources for
+                propagating waves. In the example above, we have two point
+                sources which are fully out-of-phase with each other (i.e. phase
+                difference $\pi$).
+            </p>
+            <p>
+                When a line of point sources with amplitude zero are placed,
+                they act as a <b>reflector</b> for incoming waves. (TODO Make
+                another demo)
+            </p>
+
+            <p>
+                As mentioned in the opening paragraph, electromagnetic radiation
+                (such as light) and sound propagate as <b>waves</b>. There is
+                another familiar model we use for envisioning light, namely as
+                <b>rays</b>. An often-quoted fact about ellipses is that
+                multiple rays emanating at the same speed from one focus and
+                reflecting off the ellipse will all simultaneously converge at
+                the other focus. The analogous statement for a parabola is that
+                multiply rays emanating at the same speed from the focus and
+                reflecting off the parabola will then end up traveling parallel
+                to the axis of symmetry, all lying on a line perpendicular to
+                said axis.
             </p>
             <br />
             <div class="applet-container" id="conic-rays"></div>
@@ -94,6 +117,23 @@
             <br />
             <div class="slider" id="conic-rays-pause-button"></div>
             <br />
+            <p>
+                Does this behavior hold when the ray-model is replaced by the
+                wave-model? More generally,
+                <b
+                    >how much does qualitative intuition carry over between the
+                    two models?</b
+                >
+                There are definitely behaviors which differ between the two
+                models: for example, light and sound cannot bend around a corner
+                in the ray model, but they can in the wave model. (TODO example)
+                The
+                <a href="https://en.wikipedia.org/wiki/Double-slit_experiment"
+                    >double-slit experiment</a
+                >, which demonstrates the existence of wave interference, is the
+                prototypical example of qualitative behavior which is captured
+                by the wave model and not by the ray model.
+            </p>
             <h2>Origin of the wave equation: vibrating springs</h2>
 
             <h3>Zero-dimensional case</h3>

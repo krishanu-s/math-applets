@@ -35,18 +35,17 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
     // Demonstration of wave propagation in two dimensions. At the top of the page.
-    (function twodim_wave_propagation_demo() {
+    (function twodim_dipole_demo() {
+      // Prepare the canvas and scene
+      let width = 200;
+      let height = 200;
+      const dt = 0.02;
       const xmin = -5;
       const xmax = 5;
       const ymin = -5;
       const ymax = 5;
 
-      // Prepare the canvas and scene
-      let width = 200;
-      let height = 200;
-      const dt = 0.01;
-
-      let canvas = prepare_canvas(width, height, "scene-container");
+      let canvas = prepare_canvas(width, height, "twodim-dipole-demo");
 
       // Get the context for drawing
       const ctx = canvas.getContext("2d");
@@ -57,21 +56,38 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       // Create ImageData object
       const imageData = ctx.createImageData(width, height);
 
-      let waveSim = new WaveSimTwoDimEllipticReflector(width, height, dt);
-      waveSim.wave_propagation_speed = width / 10;
+      // Create the simulator
+      let waveSim = new WaveSimTwoDim(width, height, dt);
+      waveSim.wave_propagation_speed = 0.1 * width;
 
-      // Set amplitude
-      waveSim.set_attr("a", 5.0);
-      // waveSim.set_attr("clamp_value", clamp_value);
+      // Create a dipole
+      let a = 5.0;
+      let w = 5.0;
+      let distance = 2.0;
+      waveSim.add_point_source(
+        new PointSource(
+          Math.floor(0.5 * (1 + distance / (xmax - xmin)) * width),
+          Math.floor(height / 2),
+          a,
+          w,
+          Math.PI,
+        ),
+      );
+      waveSim.add_point_source(
+        new PointSource(
+          Math.floor(0.5 * (1 - distance / (xmax - xmin)) * width),
+          Math.floor(height / 2),
+          a,
+          w,
+          0.0,
+        ),
+      );
 
       // Set PML layers
       waveSim.set_pml_layer(true, true, 0.2, 200.0);
       waveSim.set_pml_layer(true, false, 0.2, 200.0);
       waveSim.set_pml_layer(false, true, 0.2, 200.0);
       waveSim.set_pml_layer(false, false, 0.2, 200.0);
-
-      // Set up the simulation
-      waveSim.set_boundary_conditions(waveSim.vals, 0);
 
       // Initialize the scene
       let waveEquationScene = new WaveSimTwoDimHeatMapScene(
@@ -81,24 +97,25 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       );
       waveEquationScene.set_frame_lims([xmin, xmax], [ymin, ymax]);
 
-      // Make a slider which controls the frequency
+      // Make a slider which controls the dipole distance
       let w_slider = Slider(
-        document.getElementById("slider-container-1") as HTMLElement,
-        function (w: number) {
-          waveEquationScene.add_to_queue(
-            waveEquationScene.set_simulator_attr.bind(
-              waveEquationScene,
-              0,
-              "w",
-              w,
-            ),
-          );
+        document.getElementById("twodim-dipole-demo-slider-1") as HTMLElement,
+        function (d: number) {
+          waveEquationScene.add_to_queue(() => {
+            let sim = waveEquationScene.get_simulator();
+            sim.point_sources[0].set_x(
+              Math.floor(0.5 * (1 + d / (xmax - xmin)) * width),
+            );
+            sim.point_sources[1].set_x(
+              Math.floor(0.5 * (1 - d / (xmax - xmin)) * width),
+            );
+          });
         },
         {
-          name: "Frequency",
-          initial_value: "5.0",
-          min: 0,
-          max: 20,
+          name: "Distance",
+          initial_value: "1.0",
+          min: 0.2,
+          max: 8,
           step: 0.05,
         },
       );
@@ -106,7 +123,9 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
 
       // Button which pauses/unpauses the simulation
       let pauseButton = Button(
-        document.getElementById("button-container-1") as HTMLElement,
+        document.getElementById(
+          "twodim-dipole-demo-pause-button",
+        ) as HTMLElement,
         function () {
           waveEquationScene.add_to_queue(
             waveEquationScene.toggle_pause.bind(waveEquationScene),
@@ -127,32 +146,11 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
 
-      // Make a slider which controls the amplitude
-      let a_slider = Slider(
-        document.getElementById("slider-container-1") as HTMLElement,
-        function (a: number) {
-          waveEquationScene.add_to_queue(
-            waveEquationScene.set_simulator_attr.bind(
-              waveEquationScene,
-              0,
-              "a",
-              a,
-            ),
-          );
-        },
-        {
-          name: "Amplitude",
-          initial_value: "5.0",
-          min: 0,
-          max: 10,
-          step: 0.05,
-        },
-      );
-      a_slider.width = 200;
-
       // Button which clears the scene
       let clearButton = Button(
-        document.getElementById("button-container-3") as HTMLElement,
+        document.getElementById(
+          "twodim-dipole-demo-clear-button",
+        ) as HTMLElement,
         function () {
           waveEquationScene.add_to_queue(
             waveEquationScene.reset.bind(waveEquationScene),
@@ -162,6 +160,10 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       clearButton.textContent = "Clear";
       clearButton.style.padding = "15px";
 
+      // Set up the simulation
+      waveEquationScene
+        .get_simulator()
+        .set_boundary_conditions(waveSim.vals, 0);
       waveEquationScene.draw();
 
       // Start the simulation when unpaused
@@ -405,7 +407,6 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
                 if (conic.eccentricity == 1) {
                   current_thetas[i] = Math.PI;
                 } else {
-                  console.log(conic.eccentricity);
                   // TODO Calculate the angle in a more robust way, using local partial derivatives of the curve.
                   current_thetas[i] = vec2_angle(
                     vec2_sub(
@@ -491,8 +492,6 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       let sim = scene.get_simulator(0);
       sim.set_vals([1, 0]);
       scene.set_frame_lims([-5, 5], [-5, 5]);
-
-      console.log("");
 
       // Slider which controls the propagation speed
       let w_slider = Slider(

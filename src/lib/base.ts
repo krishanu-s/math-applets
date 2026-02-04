@@ -215,7 +215,5 @@ export function prepare_canvas(
   wrapper.appendChild(canvas);
   container.appendChild(wrapper);
 
-  console.log("Canvas made");
-
   return canvas;
 }

@@ -323,7 +323,7 @@ export abstract class InteractivePlayingScene extends Scene {
     this.time = 0;
     this.dt = (simulators[0] as Simulator).dt;
   }
-  get_simulator(ind: number): Simulator {
+  get_simulator(ind: number = 0): Simulator {
     return this.simulators[ind] as Simulator;
   }
   set_simulator_attr(

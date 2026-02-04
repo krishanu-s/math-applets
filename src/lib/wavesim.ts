@@ -131,7 +131,6 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     let sim = new WaveSimOneDim(width, 0.01);
     super(canvas, [sim]);
     this.mode = "dots";
-    console.log("Initialized one-dimensional wave simulation scene");
 
     let pos: Vec2D, next_pos: Vec2D;
 
@@ -882,6 +881,7 @@ export class WaveSimTwoDimParabolaReflector extends WaveSimTwoDimReflector {}
 
 // Heatmap version of a 2D input wave equation scene
 // TODO Make this written for any Simulator satisfying HeatMapDrawable.
+// TODO Make the initialization of the simulator via add_simulator().
 export class WaveSimTwoDimHeatMapScene extends InteractivePlayingScene {
   simulator: WaveSimTwoDim;
   imageData: ImageData; // Target for heatmap data
@@ -905,6 +905,9 @@ export class WaveSimTwoDimHeatMapScene extends InteractivePlayingScene {
     );
     // TODO Move this part to renderer.
     this.imageData = imageData;
+  }
+  get_simulator(ind: number = 0): WaveSimTwoDim {
+    return super.get_simulator(ind) as WaveSimTwoDim;
   }
   update_mobjects() {
     let mobj = this.get_mobj("heatmap") as HeatMap;
@@ -961,7 +964,7 @@ export class WaveSimTwoDimDotsScene extends InteractivePlayingScene {
         ((y + 0.5) * (this.ylims[1] - this.ylims[0])) / this.height(),
     ];
   }
-  get_simulator(ind: number): WaveSimTwoDim {
+  get_simulator(ind: number = 0): WaveSimTwoDim {
     return super.get_simulator(ind) as WaveSimTwoDim;
   }
   width(): number {

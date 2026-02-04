@@ -10754,7 +10754,6 @@ function prepare_canvas(width, height, name) {
   canvas.width = width;
   wrapper.appendChild(canvas);
   container.appendChild(wrapper);
-  console.log("Canvas made");
   return canvas;
 }
 
