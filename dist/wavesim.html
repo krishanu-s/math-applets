@@ -45,32 +45,33 @@
 
     <body>
         <div style="text-align: center; margin: 10px auto">
+            <h1>Light, sound, and propagating waves</h1>
             <p>
                 The <b>wave equation</b> is a partial differential equation that
-                describes the propagation of waves, such as sound waves or
-                electromagnetic waves. It is a fundamental equation in physics
-                and engineering, and has many applications in fields such as
-                acoustics, optics, and seismology.
+                describes the propagation of waves through a medium, such as
+                mechanical waves (such as sound) through air or water, or
+                electromagnetic waves (such as visible light or radio waves)
+                through vacuum or glass.
             </p>
             <p>
-                For the two-dimensional wave equation, each point in the
-                $xy$-plane has an associated real-numbered value, and this
-                collection of values evolves through time. I've used a color map
-                where red indicates a positive value, blue indicates a negative
-                value, and white indicates zero. The applet below simulates a
+                The two-dimensional wave equation can be used to visualize waves
+                propagating in a two-dimensional medium, such as ripples on the
+                surface of water. Each point in the $xy$-plane has an associated
+                real-numbered value, and this collection of values evolves
+                through time. I've used a color map where
+                <font color="red">red</font> indicates a positive value,
+                <font color="blue">blue</font> indicates a negative value, and
+                <font color="grey">white</font>
+                indicates zero. The applet below simulates a
                 <b>dipole</b>, where the wave equation has two point sources
                 with opposite phase.
             </p>
-            <br />
             <div class="applet-container" id="twodim-dipole-demo"></div>
             <br />
             <div class="button" id="twodim-dipole-demo-pause-button"></div>
             <div class="button" id="twodim-dipole-demo-clear-button"></div>
             <br />
             <div class="slider" id="twodim-dipole-demo-slider-1"></div>
-            <br />
-            <div class="slider" id="twodim-dipole-demo-slider-2"></div>
-            <br />
             <p>
                 Let's make this more precise. In mathematical notation, the
                 values of this heatmap can be represented by a function in three
@@ -85,8 +86,8 @@
                 at the boundary of the domain. One example of boundary
                 conditions is to specify <b>point sources</b> $(x, y)$ where the
                 function value varies sinusoidally, i.e. goes as $A\cos(\omega
-                (t + \phi))$ for some amplitude $A$, frequency $\omega$, and
-                phase $\phi$. Such points can be viewed as sources for
+                \cdot (t - \phi))$ for some amplitude $A$, frequency $\omega$,
+                and phase $\phi$. Such points can be viewed as sources for
                 propagating waves. In the example above, we have two point
                 sources which are fully out-of-phase with each other (i.e. phase
                 difference $\pi$).
@@ -118,8 +119,14 @@
             <div class="slider" id="conic-rays-pause-button"></div>
             <br />
             <p>
-                Does this behavior hold when the ray-model is replaced by the
-                wave-model? More generally,
+                The question I want to investigate is:
+                <b
+                    >does this property of conic sections still hold when the
+                    ray-model is replaced by the wave-model?</b
+                >
+            </p>
+            <p>
+                More generally,
                 <b
                     >how much does qualitative intuition carry over between the
                     two models?</b
@@ -134,9 +141,12 @@
                 prototypical example of qualitative behavior which is captured
                 by the wave model and not by the ray model.
             </p>
+            <p>
+                First, let's decipher the differential equation above into plain
+                English, by thinking from first principles.
+            </p>
             <h2>Origin of the wave equation: vibrating springs</h2>
 
-            <h3>Zero-dimensional case</h3>
             <p>
                 Example 0: A single vibrating spring. Force is proportional to
                 displacement. TODO Add explanation and force arrows.
@@ -149,7 +159,6 @@
             <br />
             <div class="button" id="point-mass-spring-pause-button"></div>
             <br />
-            <h3>One-dimensional discrete case</h3>
             <p>
                 Now let's consider a sequence of point masses in a horizontal
                 line, connected by springs. TODO Example 1: A sequence of point
@@ -180,7 +189,6 @@
             ></div>
             <br />
 
-            <h3>One-dimensional continuous case</h3>
             <p>
                 TODO Example 2: Go to the limit of an infinite number of point
                 masses which are infinitely close, and see how we get a

@@ -299,7 +299,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       }
 
       // Decide trajectory angles
-      let num_trajectories = 10;
+      let num_trajectories = 20;
       let thetas: number[] = [];
       for (let i = 0; i < num_trajectories; i++) {
         thetas.push((2 * Math.PI * i) / num_trajectories);
