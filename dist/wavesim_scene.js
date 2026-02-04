@@ -11931,6 +11931,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       let line = new LineSpring(pos, next_pos, {
         stroke_width: 0.2 / Math.sqrt(width)
       });
+      line.set_mode("spring");
       eq_length = vec2_norm(vec2_sub(pos, next_pos));
       line.set_eq_length(eq_length);
       this.add(`l_${i}`, line);
@@ -13029,7 +13030,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
         });
         springs.push(spring);
       }
-      let arrow_scale = 0.5;
+      let arrow_scale = 0.3;
       let arrows = [];
       function set_force_arrow(i, arrow) {
         pos = dots[i].get_center();
@@ -13043,7 +13044,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
         }
         arrow.move_start(pos);
         arrow.move_end([pos[0], pos[1] + arrow_scale * disp]);
-        arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 5);
+        arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 8);
       }
       for (let i = 0; i < num_points; i++) {
         let arrow = new Arrow([0, 0], [0, 0], { stroke_color: "red" });
