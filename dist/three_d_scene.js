@@ -424,59 +424,90 @@ var Line3D = class extends ThreeDLineLikeMObject {
     let s = scene.camera_view(this.start);
     let e = scene.camera_view(this.end);
     if (s == null || e == null) return;
-    let [start_x, start_y] = scene.v2c(s);
-    let [end_x, end_y] = scene.v2c(e);
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(end_x, end_y);
-    ctx.stroke();
-  }
-};
-var LineSequence3D = class extends ThreeDLineLikeMObject {
-  constructor(points) {
-    super();
-    this.points = points;
-  }
-  add_point(point) {
-    this.points.push(point);
-  }
-  move_point(i, new_point) {
-    this.points[i] = new_point;
-  }
-  get_point(i) {
-    return this.points[i];
-  }
-  depth(scene) {
-    if (this.points.length == 0) {
-      return 0;
-    } else if (this.points.length == 1) {
-      return scene.depth(this.points[0]);
+    let s_depth = scene.depth(this.start);
+    let e_depth = scene.depth(this.end);
+    let s_blocked_depth = this.blocked_depth_at(
+      scene,
+      scene.camera_view(this.start)
+    );
+    let e_blocked_depth = this.blocked_depth_at(
+      scene,
+      scene.camera_view(this.end)
+    );
+    let start_blocked = s_depth > s_blocked_depth + 0.01;
+    let end_blocked = e_depth > e_blocked_depth + 0.01;
+    let state;
+    if (start_blocked && end_blocked) {
+      state = "blocked";
+    } else if (!start_blocked && !end_blocked) {
+      state = "unblocked";
     } else {
-      return scene.depth(
-        vec3_scale(vec3_sum(this.points[0], this.points[1]), 0.5)
-      );
+      state = "mixed";
     }
-  }
-  _draw(ctx, scene) {
-    ctx.beginPath();
-    let in_frame = false;
-    let p;
-    let x, y;
-    for (let i = 0; i < this.points.length; i++) {
-      p = scene.camera_view(this.points[i]);
-      if (p == null) {
-        in_frame = false;
-      } else {
-        [x, y] = scene.v2c(p);
-        if (in_frame) {
-          ctx.lineTo(x, y);
+    if (state == "unblocked") {
+      let [start_x, start_y] = scene.v2c(s);
+      let [end_x, end_y] = scene.v2c(e);
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+    } else if (state == "blocked") {
+      let [start_x, start_y] = scene.v2c(s);
+      let [end_x, end_y] = scene.v2c(e);
+      ctx.beginPath();
+      this.set_behind_linked_mobjects(ctx);
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+      this.unset_behind_linked_mobjects(ctx);
+    } else if (state == "mixed") {
+      let n = 1;
+      let v = vec3_sub(this.end, this.start);
+      let p = vec3_scale(vec3_sum(this.start, this.end), 0.5);
+      let p_depth;
+      let p_blocked_depth;
+      let p_blocked;
+      while (n < 6) {
+        n += 1;
+        p_depth = scene.depth(p);
+        p_blocked_depth = this.blocked_depth_at(
+          scene,
+          scene.camera_view(p)
+        );
+        p_blocked = p_depth > p_blocked_depth + 0.01;
+        if (p_blocked == start_blocked) {
+          p = vec3_sum(p, vec3_scale(v, 1 / 2 ** n));
         } else {
-          ctx.moveTo(x, y);
+          p = vec3_sub(p, vec3_scale(v, 1 / 2 ** n));
         }
-        in_frame = true;
+      }
+      let [start_x, start_y] = scene.v2c(s);
+      let [p_x, p_y] = scene.v2c(scene.camera_view(p));
+      let [end_x, end_y] = scene.v2c(e);
+      if (start_blocked) {
+        ctx.beginPath();
+        ctx.moveTo(start_x, start_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(end_x, end_y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(end_x, end_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(start_x, start_y);
+        ctx.stroke();
       }
     }
-    ctx.stroke();
   }
 };
 var TwoHeadedArrow3D = class extends Line3D {
@@ -1263,20 +1294,21 @@ var Arcball = class {
       equator.set_stroke_width(0.04);
       equator.link_mobject(globe);
       scene.add("equator", equator);
-      let polar_axis = new LineSequence3D([
-        [0, 0, -1.5 * radius],
-        [0, 0, -radius],
-        [0, 0, radius],
-        [0, 0, 1.5 * radius]
-      ]);
-      polar_axis.link_mobject(globe);
+      let polar_axis_1 = new Line3D([0, 0, radius], [0, 0, 1.5 * radius]);
+      polar_axis_1.link_mobject(globe);
+      let polar_axis_2 = new Line3D([0, 0, -radius], [0, 0, radius]);
+      polar_axis_2.link_mobject(globe);
+      let polar_axis_3 = new Line3D([0, 0, -1.5 * radius], [0, 0, -radius]);
+      polar_axis_3.link_mobject(globe);
       let n_pole = new Dot3D([0, 0, radius], 0.1);
       n_pole.set_fill_alpha(1);
       n_pole.link_mobject(globe);
       let s_pole = new Dot3D([0, 0, -radius], 0.1);
       s_pole.set_fill_alpha(1);
       s_pole.link_mobject(globe);
-      scene.add("polar_axis", polar_axis);
+      scene.add("polar_axis_1", polar_axis_1);
+      scene.add("polar_axis_2", polar_axis_2);
+      scene.add("polar_axis_3", polar_axis_3);
       scene.add("n_pole", n_pole);
       scene.add("s_pole", s_pole);
       let arcball = new Arcball(scene);

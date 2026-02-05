@@ -759,12 +759,90 @@ var Line3D = class extends ThreeDLineLikeMObject {
     let s = scene.camera_view(this.start);
     let e = scene.camera_view(this.end);
     if (s == null || e == null) return;
-    let [start_x, start_y] = scene.v2c(s);
-    let [end_x, end_y] = scene.v2c(e);
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(end_x, end_y);
-    ctx.stroke();
+    let s_depth = scene.depth(this.start);
+    let e_depth = scene.depth(this.end);
+    let s_blocked_depth = this.blocked_depth_at(
+      scene,
+      scene.camera_view(this.start)
+    );
+    let e_blocked_depth = this.blocked_depth_at(
+      scene,
+      scene.camera_view(this.end)
+    );
+    let start_blocked = s_depth > s_blocked_depth + 0.01;
+    let end_blocked = e_depth > e_blocked_depth + 0.01;
+    let state;
+    if (start_blocked && end_blocked) {
+      state = "blocked";
+    } else if (!start_blocked && !end_blocked) {
+      state = "unblocked";
+    } else {
+      state = "mixed";
+    }
+    if (state == "unblocked") {
+      let [start_x, start_y] = scene.v2c(s);
+      let [end_x, end_y] = scene.v2c(e);
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+    } else if (state == "blocked") {
+      let [start_x, start_y] = scene.v2c(s);
+      let [end_x, end_y] = scene.v2c(e);
+      ctx.beginPath();
+      this.set_behind_linked_mobjects(ctx);
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+      this.unset_behind_linked_mobjects(ctx);
+    } else if (state == "mixed") {
+      let n = 1;
+      let v = vec3_sub(this.end, this.start);
+      let p = vec3_scale(vec3_sum(this.start, this.end), 0.5);
+      let p_depth;
+      let p_blocked_depth;
+      let p_blocked;
+      while (n < 6) {
+        n += 1;
+        p_depth = scene.depth(p);
+        p_blocked_depth = this.blocked_depth_at(
+          scene,
+          scene.camera_view(p)
+        );
+        p_blocked = p_depth > p_blocked_depth + 0.01;
+        if (p_blocked == start_blocked) {
+          p = vec3_sum(p, vec3_scale(v, 1 / 2 ** n));
+        } else {
+          p = vec3_sub(p, vec3_scale(v, 1 / 2 ** n));
+        }
+      }
+      let [start_x, start_y] = scene.v2c(s);
+      let [p_x, p_y] = scene.v2c(scene.camera_view(p));
+      let [end_x, end_y] = scene.v2c(e);
+      if (start_blocked) {
+        ctx.beginPath();
+        ctx.moveTo(start_x, start_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(end_x, end_y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(end_x, end_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(start_x, start_y);
+        ctx.stroke();
+      }
+    }
   }
 };
 var LineSequence3D = class extends ThreeDLineLikeMObject {

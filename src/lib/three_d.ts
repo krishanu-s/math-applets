@@ -281,21 +281,106 @@ export class Line3D extends ThreeDLineLikeMObject {
     let e = scene.camera_view(this.end);
     if (s == null || e == null) return;
 
-    // TODO Add a check for linked_mobjects to decide if we should draw in blocked style,
-    // similar to ParametrizedCurve3D.
-    // This could go as follows:
-    // - Depth-test at the starting point and at the ending point.
-    // - If both points are unblocked, draw the whole line in unblocked style.
-    // - If both points are blocked, draw the whole line in blocked style.
-    // - If one point is unblocked and the other is blocked, binary-search for a point between them
-    //   where the transition happens. Then draw part of the line in unblocked style and part in blocked style.
-    let [start_x, start_y] = scene.v2c(s);
-    let [end_x, end_y] = scene.v2c(e);
+    // Depth-test at the starting point and at the ending point.
+    let s_depth = scene.depth(this.start);
+    let e_depth = scene.depth(this.end);
+    let s_blocked_depth = this.blocked_depth_at(
+      scene,
+      scene.camera_view(this.start) as Vec2D,
+    );
+    let e_blocked_depth = this.blocked_depth_at(
+      scene,
+      scene.camera_view(this.end) as Vec2D,
+    );
 
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(end_x, end_y);
-    ctx.stroke();
+    // Check if they are blocked.
+    let start_blocked = s_depth > s_blocked_depth + 0.01;
+    let end_blocked = e_depth > e_blocked_depth + 0.01;
+    let state;
+    if (start_blocked && end_blocked) {
+      state = "blocked";
+    } else if (!start_blocked && !end_blocked) {
+      state = "unblocked";
+    } else {
+      state = "mixed";
+    }
+
+    // If both points are unblocked, draw the whole line in unblocked style.
+    if (state == "unblocked") {
+      let [start_x, start_y] = scene.v2c(s);
+      let [end_x, end_y] = scene.v2c(e);
+
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+    }
+    // If both points are blocked, draw the whole line in blocked style.
+    else if (state == "blocked") {
+      let [start_x, start_y] = scene.v2c(s);
+      let [end_x, end_y] = scene.v2c(e);
+
+      ctx.beginPath();
+      this.set_behind_linked_mobjects(ctx);
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+      this.unset_behind_linked_mobjects(ctx);
+    }
+    // If one point is unblocked and the other is blocked, binary-search for a point between them
+    // where the transition happens. Then draw part of the line in unblocked style and part in blocked style.
+    else if (state == "mixed") {
+      // TODO Binary search for the point where the line segment changes from unblocked to blocked
+      let n = 1;
+      let v = vec3_sub(this.end, this.start);
+      let p = vec3_scale(vec3_sum(this.start, this.end), 0.5);
+      let p_depth: number;
+      let p_blocked_depth: number;
+      let p_blocked: boolean;
+      while (n < 6) {
+        n += 1;
+        p_depth = scene.depth(p);
+        p_blocked_depth = this.blocked_depth_at(
+          scene,
+          scene.camera_view(p) as Vec2D,
+        );
+        p_blocked = p_depth > p_blocked_depth + 0.01;
+        if (p_blocked == start_blocked) {
+          p = vec3_sum(p, vec3_scale(v, 1 / 2 ** n));
+        } else {
+          p = vec3_sub(p, vec3_scale(v, 1 / 2 ** n));
+        }
+      }
+
+      let [start_x, start_y] = scene.v2c(s);
+      let [p_x, p_y] = scene.v2c(scene.camera_view(p) as Vec2D);
+      let [end_x, end_y] = scene.v2c(e);
+
+      if (start_blocked) {
+        ctx.beginPath();
+        ctx.moveTo(start_x, start_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(end_x, end_y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(end_x, end_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(start_x, start_y);
+        ctx.stroke();
+      }
+    }
   }
 }
 
@@ -562,7 +647,8 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
     let next_state: "out_of_frame" | "in_frame" | "blocked" | "unblocked" =
       "out_of_frame";
 
-    // TODO Make this more efficient in some way.
+    // TODO This variant of rendering with piecewise depth-testing is more computationally expensive.
+    // Build in the option to use simple, global depth-testing.
     let p: Vec2D | null;
     let x: number, y: number;
     let last_x: number = 0;
@@ -573,19 +659,15 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
       depth = scene.depth(this.points[i]);
       if (p == null) {
         next_state = "out_of_frame";
-        // unblocked -> out_of_frame
         if (state == "unblocked") {
           ctx.stroke();
-        }
-        // blocked -> out_of_frame
-        else if (state == "blocked") {
+        } else if (state == "blocked") {
           ctx.stroke();
           this.unset_behind_linked_mobjects(ctx);
         }
         state = next_state;
       } else {
         [x, y] = scene.v2c(p);
-        // out_of_frame -> in_frame
         if (state == "out_of_frame") {
           next_state = "in_frame";
           ctx.beginPath();
@@ -599,36 +681,27 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
           } else {
             next_state = "unblocked";
           }
-          // in_frame -> blocked
           if (state == "in_frame" && next_state == "blocked") {
             ctx.beginPath();
             this.set_behind_linked_mobjects(ctx);
             ctx.lineTo(x, y);
-          }
-          // in_frame -> unblocked
-          else if (state == "in_frame" && next_state == "unblocked") {
+          } else if (state == "in_frame" && next_state == "unblocked") {
             ctx.beginPath();
             ctx.moveTo(last_x, last_y);
             ctx.lineTo(x, y);
-          }
-          // blocked -> unblocked
-          else if (state == "blocked" && next_state == "unblocked") {
+          } else if (state == "blocked" && next_state == "unblocked") {
             ctx.stroke();
             ctx.beginPath();
             ctx.moveTo(last_x, last_y);
             this.unset_behind_linked_mobjects(ctx);
             ctx.lineTo(x, y);
-          }
-          // unblocked -> blocked
-          else if (state == "unblocked" && next_state == "blocked") {
+          } else if (state == "unblocked" && next_state == "blocked") {
             ctx.stroke();
             ctx.beginPath();
             this.set_behind_linked_mobjects(ctx);
             ctx.moveTo(last_x, last_y);
             ctx.lineTo(x, y);
-          }
-          // No transition
-          else {
+          } else {
             ctx.lineTo(x, y);
           }
           state = next_state;
