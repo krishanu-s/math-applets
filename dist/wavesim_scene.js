@@ -11279,7 +11279,7 @@ var SmoothOpenPathBezierHandleCalculator = class {
     return [h1, h2];
   }
 };
-var BezierSpline = class extends MObject {
+var BezierSpline = class extends LineLikeMObject {
   constructor(num_steps, kwargs) {
     super();
     this.num_steps = num_steps;
@@ -11310,13 +11310,7 @@ var BezierSpline = class extends MObject {
   get_anchor(index) {
     return this.anchors[index];
   }
-  draw(canvas, scene) {
-    super.draw(canvas, scene);
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
+  _draw(ctx, scene) {
     let a_x, a_y, a;
     a = this.get_anchor(0);
     [a_x, a_y] = scene.v2c(a);

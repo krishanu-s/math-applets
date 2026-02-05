@@ -1,5 +1,5 @@
 import * as np from "numpy-ts";
-import { MObject, Scene } from "./base.js";
+import { MObject, LineLikeMObject, Scene } from "./base.js";
 import { Vec2D } from "./base_geom.js";
 
 // TODO Make a smooth Bezier spline class
@@ -33,7 +33,7 @@ export class SmoothOpenPathBezierHandleCalculator {
     diag_list.push(7.0);
     let diag = np.array(diag_list);
 
-    let above_diag_list = [];
+    let above_diag_list: number[] = [];
     for (let i = 0; i < n - 1; i++) {
       above_diag_list.push(1.0);
     }
@@ -128,7 +128,7 @@ export class SmoothOpenPathBezierHandleCalculator {
 }
 
 // A cubic function starting at one point and ending at another, defined by two control points.
-export class BezierCurve extends MObject {
+export class BezierCurve extends LineLikeMObject {
   start: [number, number];
   end: [number, number];
   h1: [number, number];
@@ -163,12 +163,7 @@ export class BezierCurve extends MObject {
     this.h2 = [x, y];
   }
   // Draws on the canvas
-  draw(canvas: HTMLCanvasElement, scene: Scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.width * canvas.width) / (xmax - xmin);
-    ctx.globalAlpha = this.alpha;
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
     let [start_x, start_y] = scene.v2c(this.start);
     let [h1_x, h1_y] = scene.v2c(this.h1);
     let [h2_x, h2_y] = scene.v2c(this.h2);
@@ -181,12 +176,10 @@ export class BezierCurve extends MObject {
 }
 
 // A sequence of Bezier curves passing through a sequence of points P_0, P_1, ..., P_n.
-export class BezierSpline extends MObject {
+export class BezierSpline extends LineLikeMObject {
   num_steps: number;
   solver: SmoothOpenPathBezierHandleCalculator;
   anchors: Vec2D[];
-  stroke_width: number;
-  stroke_color: string;
   constructor(num_steps: number, kwargs: Record<string, any>) {
     super();
     this.num_steps = num_steps;
@@ -219,15 +212,8 @@ export class BezierSpline extends MObject {
   get_anchor(index: number): Vec2D {
     return this.anchors[index] as Vec2D;
   }
-  draw(canvas: HTMLCanvasElement, scene: Scene) {
-    super.draw(canvas, scene);
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-
-    let a_x, a_y, a;
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
+    let a_x: number, a_y: number, a: Vec2D;
     a = this.get_anchor(0);
     [a_x, a_y] = scene.v2c(a);
     ctx.beginPath();
@@ -239,7 +225,7 @@ export class BezierSpline extends MObject {
     );
 
     // Draw
-    let h1_x, h1_y, h2_x, h2_y;
+    let h1_x: number, h1_y: number, h2_x: number, h2_y: number;
     for (let i = 0; i < this.num_steps; i++) {
       [h1_x, h1_y] = scene.v2c([
         handles_1.get([i, 0]),

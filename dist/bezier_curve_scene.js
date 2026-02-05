@@ -10652,6 +10652,28 @@ var MObject = class {
   _draw(ctx, scene, args) {
   }
 };
+var LineLikeMObject = class extends MObject {
+  constructor() {
+    super(...arguments);
+    this.stroke_width = 0.08;
+    this.stroke_color = "black";
+  }
+  set_stroke_color(color) {
+    this.stroke_color = color;
+  }
+  set_stroke_width(width) {
+    this.stroke_width = width;
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    this._draw(ctx, scene, args);
+  }
+};
 var Scene = class {
   constructor(canvas) {
     this.border_thickness = 4;
@@ -10792,7 +10814,7 @@ var Dot = class extends MObject {
 
 // src/lib/bezier.ts
 var np = __toESM(require_numpy_ts_node(), 1);
-var BezierCurve = class extends MObject {
+var BezierCurve = class extends LineLikeMObject {
   constructor(start, h1, h2, end, width) {
     super();
     this.start = start;
@@ -10816,12 +10838,7 @@ var BezierCurve = class extends MObject {
     this.h2 = [x, y];
   }
   // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.width * canvas.width / (xmax - xmin);
-    ctx.globalAlpha = this.alpha;
+  _draw(ctx, scene) {
     let [start_x, start_y] = scene.v2c(this.start);
     let [h1_x, h1_y] = scene.v2c(this.h1);
     let [h2_x, h2_y] = scene.v2c(this.h2);
