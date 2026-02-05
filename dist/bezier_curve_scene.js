@@ -10644,6 +10644,12 @@ var MObject = class {
   add(scene) {
   }
   draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this._draw(ctx, scene, args);
+  }
+  _draw(ctx, scene, args) {
   }
 };
 var Scene = class {
@@ -10773,9 +10779,7 @@ var Dot = class extends MObject {
     this.fill_color = color;
   }
   // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
+  _draw(ctx, scene) {
     ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
     let [x, y] = scene.v2c(this.center);
@@ -10815,13 +10819,13 @@ var BezierCurve = class extends MObject {
   draw(canvas, scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.width * canvas.width / (xmax - xmin);
     ctx.globalAlpha = this.alpha;
     let [start_x, start_y] = scene.v2c(this.start);
     let [h1_x, h1_y] = scene.v2c(this.h1);
     let [h2_x, h2_y] = scene.v2c(this.h2);
     let [end_x, end_y] = scene.v2c(this.end);
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.width * canvas.width / (xmax - xmin);
     ctx.beginPath();
     ctx.moveTo(start_x, start_y);
     ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, end_x, end_y);

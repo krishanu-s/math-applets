@@ -1,5 +1,5 @@
 // Basic geometric mobjects and functions
-import { MObject, Scene } from "./base.js";
+import { MObject, LineLikeMObject, Scene } from "./base.js";
 
 // A point in 2D space.
 export type Vec2D = [number, number];
@@ -44,6 +44,8 @@ export function vec2_rot(v: Vec2D, angle: number): Vec2D {
   return [x * cos - y * sin, x * sin + y * cos];
 }
 
+// A MObject with linelike properties: in particular,
+
 // A filled circle.
 export class Dot extends MObject {
   center: Vec2D;
@@ -81,9 +83,7 @@ export class Dot extends MObject {
     this.fill_color = color;
   }
   // Draws on the canvas
-  draw(canvas: HTMLCanvasElement, scene: Scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
     ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
     let [x, y] = scene.v2c(this.center);
@@ -135,11 +135,8 @@ export class Sector extends MObject {
     this.fill_color = color;
   }
   // Draws on the canvas
-  draw(canvas: HTMLCanvasElement, scene: Scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
     ctx.fillStyle = this.fill_color;
-    ctx.globalAlpha = this.alpha;
     let [x, y] = scene.v2c(this.center);
     let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
@@ -268,11 +265,8 @@ export class Rectangle extends MObject {
     this.center = center;
   }
   // Draws on the canvas
-  draw(canvas: HTMLCanvasElement, scene: Scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
     ctx.fillStyle = this.fill_color;
-    ctx.globalAlpha = this.alpha;
 
     let [px, py] = scene.v2c([
       this.center[0] - this.size_x / 2,
@@ -308,11 +302,9 @@ export class Rectangle extends MObject {
 // TODO Make "Linelike" for objects with stroke_width and stroke_color properties.
 
 // A line segment.
-export class Line extends MObject {
+export class Line extends LineLikeMObject {
   start: Vec2D;
   end: Vec2D;
-  stroke_width: number;
-  stroke_color: string;
   constructor(start: Vec2D, end: Vec2D, kwargs: Record<string, any>) {
     super();
     this.start = start;
@@ -343,13 +335,7 @@ export class Line extends MObject {
     return vec2_norm(vec2_sub(this.start, this.end));
   }
   // Draws on the canvas
-  draw(canvas: HTMLCanvasElement, scene: Scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
     let [start_x, start_y] = scene.v2c(this.start);
     let [end_x, end_y] = scene.v2c(this.end);
     ctx.beginPath();
@@ -360,10 +346,8 @@ export class Line extends MObject {
 }
 
 // A sequence of line segments with joined endpoints.
-export class LineSequence extends MObject {
+export class LineSequence extends LineLikeMObject {
   points: Vec2D[];
-  stroke_width: number;
-  stroke_color: string;
   constructor(points: Vec2D[], kwargs: Record<string, any>) {
     super();
     this.points = points;
@@ -391,20 +375,8 @@ export class LineSequence extends MObject {
   get_point(i: number): Vec2D {
     return this.points[i];
   }
-  set_color(color: string) {
-    this.stroke_color = color;
-  }
-  set_width(width: number) {
-    this.stroke_width = width;
-  }
   // Draws on the canvas
-  draw(canvas: HTMLCanvasElement, scene: Scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
     let [x, y] = scene.v2c(this.points[0]);
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -423,15 +395,9 @@ export class Arrow extends Line {
     this.arrow_size = size;
   }
   // Draws on the canvas
-  draw(canvas: HTMLCanvasElement, scene: Scene) {
-    super.draw(canvas, scene);
-
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
+    super._draw(ctx, scene);
     ctx.fillStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
 
     let [end_x, end_y] = scene.v2c(this.end);
 
@@ -459,15 +425,9 @@ export class TwoHeadedArrow extends Line {
     this.arrow_size = size;
   }
   // Draws on the canvas
-  draw(canvas: HTMLCanvasElement, scene: Scene) {
-    super.draw(canvas, scene);
-
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
+    super._draw(ctx, scene);
     ctx.fillStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
 
     let [end_x, end_y] = scene.v2c(this.end);
     let [start_x, start_y] = scene.v2c(this.start);

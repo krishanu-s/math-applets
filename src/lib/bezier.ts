@@ -166,13 +166,13 @@ export class BezierCurve extends MObject {
   draw(canvas: HTMLCanvasElement, scene: Scene) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.width * canvas.width) / (xmax - xmin);
     ctx.globalAlpha = this.alpha;
     let [start_x, start_y] = scene.v2c(this.start);
     let [h1_x, h1_y] = scene.v2c(this.h1);
     let [h2_x, h2_y] = scene.v2c(this.h2);
     let [end_x, end_y] = scene.v2c(this.end);
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.width * canvas.width) / (xmax - xmin);
     ctx.beginPath();
     ctx.moveTo(start_x, start_y);
     ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, end_x, end_y);

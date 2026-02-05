@@ -19,6 +19,34 @@ var MObject = class {
   add(scene) {
   }
   draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this._draw(ctx, scene, args);
+  }
+  _draw(ctx, scene, args) {
+  }
+};
+var LineLikeMObject = class extends MObject {
+  constructor() {
+    super(...arguments);
+    this.stroke_width = 0.08;
+    this.stroke_color = "black";
+  }
+  set_stroke_color(color) {
+    this.stroke_color = color;
+  }
+  set_stroke_width(width) {
+    this.stroke_width = width;
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    this._draw(ctx, scene, args);
   }
 };
 var Scene = class {
@@ -195,9 +223,7 @@ var Dot = class extends MObject {
     this.fill_color = color;
   }
   // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
+  _draw(ctx, scene) {
     ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
     let [x, y] = scene.v2c(this.center);
@@ -219,11 +245,8 @@ var Rectangle = class extends MObject {
     this.center = center;
   }
   // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
+  _draw(ctx, scene) {
     ctx.fillStyle = this.fill_color;
-    ctx.globalAlpha = this.alpha;
     let [px, py] = scene.v2c([
       this.center[0] - this.size_x / 2,
       this.center[1] - this.size_y / 2
@@ -254,7 +277,7 @@ var Rectangle = class extends MObject {
     ctx.fill();
   }
 };
-var Line = class extends MObject {
+var Line = class extends LineLikeMObject {
   constructor(start, end, kwargs) {
     super();
     this.start = start;
@@ -283,13 +306,7 @@ var Line = class extends MObject {
     return vec2_norm(vec2_sub(this.start, this.end));
   }
   // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
+  _draw(ctx, scene) {
     let [start_x, start_y] = scene.v2c(this.start);
     let [end_x, end_y] = scene.v2c(this.end);
     ctx.beginPath();
@@ -298,7 +315,7 @@ var Line = class extends MObject {
     ctx.stroke();
   }
 };
-var LineSequence = class extends MObject {
+var LineSequence = class extends LineLikeMObject {
   constructor(points, kwargs) {
     super();
     this.points = points;
@@ -324,20 +341,8 @@ var LineSequence = class extends MObject {
   get_point(i) {
     return this.points[i];
   }
-  set_color(color) {
-    this.stroke_color = color;
-  }
-  set_width(width) {
-    this.stroke_width = width;
-  }
   // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
+  _draw(ctx, scene) {
     let [x, y] = scene.v2c(this.points[0]);
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -357,14 +362,9 @@ var TwoHeadedArrow = class extends Line {
     this.arrow_size = size;
   }
   // Draws on the canvas
-  draw(canvas, scene) {
-    super.draw(canvas, scene);
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+  _draw(ctx, scene) {
+    super._draw(ctx, scene);
     ctx.fillStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
     let [end_x, end_y] = scene.v2c(this.end);
     let [start_x, start_y] = scene.v2c(this.start);
     let v;

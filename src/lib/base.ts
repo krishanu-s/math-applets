@@ -55,7 +55,36 @@ export class MObject {
     this.alpha = alpha;
   }
   add(scene: Scene) {}
-  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {}
+
+  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this._draw(ctx, scene, args);
+  }
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene, args?: any) {}
+}
+
+// A MObject that is drawn using the ctx.stroke() command.
+export class LineLikeMObject extends MObject {
+  stroke_width: number = 0.08;
+  stroke_color: string = "black";
+  set_stroke_color(color: string) {
+    this.stroke_color = color;
+  }
+  set_stroke_width(width: number) {
+    this.stroke_width = width;
+  }
+
+  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    this._draw(ctx, scene, args);
+  }
 }
 
 // *** SCENES ***

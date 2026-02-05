@@ -10641,6 +10641,12 @@ var MObject = class {
   add(scene) {
   }
   draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this._draw(ctx, scene, args);
+  }
+  _draw(ctx, scene, args) {
   }
 };
 var Scene = class {

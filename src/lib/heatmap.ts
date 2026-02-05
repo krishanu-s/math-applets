@@ -38,7 +38,7 @@ export class HeatMap extends MObject {
     return this.valArray;
   }
   // Draws on the canvas
-  draw(canvas: HTMLCanvasElement, scene: Scene, imageData: ImageData) {
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene, imageData: ImageData) {
     let data = imageData.data;
     for (let i = 0; i < this.width * this.height; i++) {
       const px_val = this.valArray[i] as number;
@@ -46,9 +46,6 @@ export class HeatMap extends MObject {
       [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] =
         this.colorMap(px_val);
     }
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
     // Put the image data
     ctx.putImageData(imageData, 0, 0);
   }

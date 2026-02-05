@@ -10,6 +10,12 @@ var MObject = class {
   add(scene) {
   }
   draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this._draw(ctx, scene, args);
+  }
+  _draw(ctx, scene, args) {
   }
 };
 var Scene = class {
@@ -139,9 +145,7 @@ var Dot = class extends MObject {
     this.fill_color = color;
   }
   // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
+  _draw(ctx, scene) {
     ctx.fillStyle = this.fill_color;
     ctx.globalAlpha = this.alpha;
     let [x, y] = scene.v2c(this.center);
