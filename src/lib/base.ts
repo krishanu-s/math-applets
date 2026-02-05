@@ -89,6 +89,46 @@ export class LineLikeMObject extends MObject {
   }
 }
 
+// A MObject that is drawn using the ctx.stroke() and ctx.fill() commands.
+export class FillLikeMObject extends MObject {
+  stroke_width: number = 0.08;
+  stroke_color: string = "black";
+  fill_color: string = "black";
+  fill_alpha: number = 1.0;
+  fill: boolean = true;
+  set_stroke_color(color: string) {
+    this.stroke_color = color;
+    return this;
+  }
+  set_stroke_width(width: number) {
+    this.stroke_width = width;
+    return this;
+  }
+  set_fill_color(color: string) {
+    this.fill_color = color;
+  }
+  set_color(color: string) {
+    this.stroke_color = color;
+    this.fill_color = color;
+  }
+  set_fill_alpha(alpha: number) {
+    this.fill_alpha = alpha;
+  }
+  set_fill(fill: boolean) {
+    this.fill = fill;
+  }
+  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.fillStyle = this.fill_color;
+    this._draw(ctx, scene, args);
+  }
+}
+
 // *** SCENES ***
 
 // A Scene is an abstract class which houses mathematical objects defined by some set of parameters.

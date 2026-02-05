@@ -18,6 +18,47 @@ var MObject = class {
   _draw(ctx, scene, args) {
   }
 };
+var FillLikeMObject = class extends MObject {
+  constructor() {
+    super(...arguments);
+    this.stroke_width = 0.08;
+    this.stroke_color = "black";
+    this.fill_color = "black";
+    this.fill_alpha = 1;
+    this.fill = true;
+  }
+  set_stroke_color(color) {
+    this.stroke_color = color;
+    return this;
+  }
+  set_stroke_width(width) {
+    this.stroke_width = width;
+    return this;
+  }
+  set_fill_color(color) {
+    this.fill_color = color;
+  }
+  set_color(color) {
+    this.stroke_color = color;
+    this.fill_color = color;
+  }
+  set_fill_alpha(alpha) {
+    this.fill_alpha = alpha;
+  }
+  set_fill(fill) {
+    this.fill = fill;
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.fillStyle = this.fill_color;
+    this._draw(ctx, scene, args);
+  }
+};
 var Scene = class {
   constructor(canvas) {
     this.border_thickness = 4;
@@ -116,10 +157,9 @@ var Scene = class {
 };
 
 // src/lib/base_geom.ts
-var Dot = class extends MObject {
+var Dot = class extends FillLikeMObject {
   constructor(center, kwargs) {
     super();
-    this.fill_color = "black";
     this.center = center;
     let radius = kwargs.radius;
     if (radius == void 0) {
@@ -144,14 +184,8 @@ var Dot = class extends MObject {
   set_radius(radius) {
     this.radius = radius;
   }
-  // Change the dot color
-  set_color(color) {
-    this.fill_color = color;
-  }
   // Draws on the canvas
   _draw(ctx, scene) {
-    ctx.fillStyle = this.fill_color;
-    ctx.globalAlpha = this.alpha;
     let [x, y] = scene.v2c(this.center);
     let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();

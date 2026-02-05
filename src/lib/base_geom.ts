@@ -1,5 +1,5 @@
 // Basic geometric mobjects and functions
-import { MObject, LineLikeMObject, Scene } from "./base.js";
+import { MObject, LineLikeMObject, FillLikeMObject, Scene } from "./base.js";
 
 // A point in 2D space.
 export type Vec2D = [number, number];
@@ -47,10 +47,9 @@ export function vec2_rot(v: Vec2D, angle: number): Vec2D {
 // A MObject with linelike properties: in particular,
 
 // A filled circle.
-export class Dot extends MObject {
+export class Dot extends FillLikeMObject {
   center: Vec2D;
   radius: number;
-  fill_color: string = "black";
   constructor(center: Vec2D, kwargs: Record<string, any>) {
     super();
     this.center = center;
@@ -78,14 +77,8 @@ export class Dot extends MObject {
   set_radius(radius: number) {
     this.radius = radius;
   }
-  // Change the dot color
-  set_color(color: string) {
-    this.fill_color = color;
-  }
   // Draws on the canvas
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
-    ctx.fillStyle = this.fill_color;
-    ctx.globalAlpha = this.alpha;
     let [x, y] = scene.v2c(this.center);
     let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
@@ -95,12 +88,11 @@ export class Dot extends MObject {
 }
 
 // A filled circular sector
-export class Sector extends MObject {
+export class Sector extends FillLikeMObject {
   center: Vec2D;
   radius: number;
   start_angle: number;
   end_angle: number;
-  fill_color: string = "black";
   constructor(
     center: Vec2D,
     start_angle: number,
@@ -130,13 +122,8 @@ export class Sector extends MObject {
   set_radius(radius: number) {
     this.radius = radius;
   }
-  // Change the dot color
-  set_color(color: string) {
-    this.fill_color = color;
-  }
   // Draws on the canvas
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
-    ctx.fillStyle = this.fill_color;
     let [x, y] = scene.v2c(this.center);
     let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
@@ -318,11 +305,10 @@ export class DraggableDotY extends DraggableDot {
 }
 
 // A filled rectangle specified by its center, width, and height
-export class Rectangle extends MObject {
+export class Rectangle extends FillLikeMObject {
   center: Vec2D;
   size_x: number;
   size_y: number;
-  fill_color: string = "black";
   constructor(center: Vec2D, size_x: number, size_y: number) {
     super();
     this.center = center;
@@ -334,8 +320,6 @@ export class Rectangle extends MObject {
   }
   // Draws on the canvas
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
-    ctx.fillStyle = this.fill_color;
-
     let [px, py] = scene.v2c([
       this.center[0] - this.size_x / 2,
       this.center[1] - this.size_y / 2,

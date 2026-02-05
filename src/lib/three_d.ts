@@ -81,15 +81,48 @@ export class ThreeDLineLikeMObject extends ThreeDMObject {
   }
 }
 
-// A dot.
-export class Dot3D extends ThreeDLineLikeMObject {
-  center: Vec3D;
-  radius: number;
-  stroke_width: number = 0.04;
+// Identical extension as MObject -> FillLikeMObject
+export class ThreeDFillLikeMObject extends ThreeDMObject {
+  stroke_width: number = 0.08;
   stroke_color: string = "black";
   fill_color: string = "black";
   fill_alpha: number = 1.0;
   fill: boolean = true;
+  set_stroke_color(color: string) {
+    this.stroke_color = color;
+  }
+  set_stroke_width(width: number) {
+    this.stroke_width = width;
+  }
+  set_fill_color(color: string) {
+    this.fill_color = color;
+  }
+  set_color(color: string) {
+    this.stroke_color = color;
+    this.fill_color = color;
+  }
+  set_fill_alpha(alpha: number) {
+    this.fill_alpha = alpha;
+  }
+  set_fill(fill: boolean) {
+    this.fill = fill;
+  }
+  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.fillStyle = this.fill_color;
+    this._draw(ctx, scene, args);
+  }
+}
+
+// A dot.
+export class Dot3D extends ThreeDFillLikeMObject {
+  center: Vec3D;
+  radius: number;
   constructor(center: Vec3D, radius: number) {
     super();
     this.center = center;
@@ -98,28 +131,11 @@ export class Dot3D extends ThreeDLineLikeMObject {
   depth(scene: ThreeDScene): number {
     return scene.depth(this.center);
   }
-  set_color(color: string) {
-    this.set_stroke_color(color);
-    this.set_fill_color(color);
-  }
-  set_width(width: number) {
-    this.stroke_width = width;
-  }
-  set_stroke_color(color: string) {
-    this.stroke_color = color;
-  }
-  set_fill_color(color: string) {
-    this.fill_color = color;
-  }
-  set_fill_alpha(alpha: number) {
-    this.fill_alpha = alpha;
-  }
   move_to(new_center: Vec3D) {
     this.center = new_center;
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     // TODO Make this more efficient.
-    ctx.fillStyle = this.fill_color;
     let p = scene.camera_view(this.center);
     let pr = scene.camera_view(
       vec3_sum(

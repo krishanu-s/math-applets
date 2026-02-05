@@ -233,41 +233,58 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
     this._draw(ctx, scene, args);
   }
 };
-var Dot3D = class extends ThreeDLineLikeMObject {
-  constructor(center, radius) {
-    super();
-    this.stroke_width = 0.04;
+var ThreeDFillLikeMObject = class extends ThreeDMObject {
+  constructor() {
+    super(...arguments);
+    this.stroke_width = 0.08;
     this.stroke_color = "black";
     this.fill_color = "black";
     this.fill_alpha = 1;
     this.fill = true;
+  }
+  set_stroke_color(color) {
+    this.stroke_color = color;
+  }
+  set_stroke_width(width) {
+    this.stroke_width = width;
+  }
+  set_fill_color(color) {
+    this.fill_color = color;
+  }
+  set_color(color) {
+    this.stroke_color = color;
+    this.fill_color = color;
+  }
+  set_fill_alpha(alpha) {
+    this.fill_alpha = alpha;
+  }
+  set_fill(fill) {
+    this.fill = fill;
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    ctx.fillStyle = this.fill_color;
+    this._draw(ctx, scene, args);
+  }
+};
+var Dot3D = class extends ThreeDFillLikeMObject {
+  constructor(center, radius) {
+    super();
     this.center = center;
     this.radius = radius;
   }
   depth(scene) {
     return scene.depth(this.center);
   }
-  set_color(color) {
-    this.set_stroke_color(color);
-    this.set_fill_color(color);
-  }
-  set_width(width) {
-    this.stroke_width = width;
-  }
-  set_stroke_color(color) {
-    this.stroke_color = color;
-  }
-  set_fill_color(color) {
-    this.fill_color = color;
-  }
-  set_fill_alpha(alpha) {
-    this.fill_alpha = alpha;
-  }
   move_to(new_center) {
     this.center = new_center;
   }
   _draw(ctx, scene) {
-    ctx.fillStyle = this.fill_color;
     let p = scene.camera_view(this.center);
     let pr = scene.camera_view(
       vec3_sum(
