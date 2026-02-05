@@ -257,7 +257,7 @@ import { pick_random_step } from "./random_walk_scene.js";
         (t) => [radius * Math.cos(t), radius * Math.sin(t), 0],
         -Math.PI,
         Math.PI,
-        30,
+        100,
       );
       equator.set_stroke_style("solid");
       equator.set_stroke_width(0.04);

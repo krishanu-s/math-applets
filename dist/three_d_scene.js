@@ -307,16 +307,16 @@ var Dot3D = class extends ThreeDFillLikeMObject {
     if (scene.mode == "perspective") {
       return 0;
     } else if (scene.mode == "orthographic") {
-      let view_center = scene.orthographic_view(this.center);
-      let view_radius = this.radius * scene.zoom_ratio;
-      let view_dist = vec2_norm(vec2_sub(view_point, view_center)) * scene.zoom_ratio;
-      if (view_dist > view_radius) {
+      let dist = vec2_norm(
+        vec2_sub(view_point, scene.orthographic_view(this.center))
+      );
+      if (dist > this.radius) {
         return Infinity;
       } else {
         let depth_adjustment = Math.sqrt(
-          Math.max(0, view_radius ** 2 - view_dist ** 2)
+          Math.max(0, this.radius ** 2 - dist ** 2)
         );
-        return scene.depth(this.center) - depth_adjustment / scene.zoom_ratio;
+        return scene.depth(this.center) - depth_adjustment;
       }
     }
     return 0;
@@ -524,7 +524,6 @@ var ParametrizedCurve3D = class extends ThreeDLineLikeMObject {
     );
   }
   _draw(ctx, scene) {
-    console.log("Drawing curve 3D");
     let state = "out_of_frame";
     let next_state = "out_of_frame";
     let p;
@@ -535,7 +534,6 @@ var ParametrizedCurve3D = class extends ThreeDLineLikeMObject {
     for (let i = 0; i < this.points.length; i++) {
       p = scene.camera_view(this.points[i]);
       depth = scene.depth(this.points[i]);
-      console.log("Depth of point ", this.points[i], " is ", depth);
       if (p == null) {
         next_state = "out_of_frame";
         if (state == "unblocked") {
@@ -553,35 +551,26 @@ var ParametrizedCurve3D = class extends ThreeDLineLikeMObject {
           ctx.moveTo(x, y);
           state = next_state;
         } else {
-          console.log(
-            "Depth comparison:",
-            depth,
-            this.blocked_depth_at(scene, p)
-          );
           if (depth > this.blocked_depth_at(scene, p) + 0.01) {
             next_state = "blocked";
           } else {
             next_state = "unblocked";
           }
           if (state == "in_frame" && next_state == "blocked") {
-            console.log("In-frame to blocked");
             ctx.beginPath();
             this.set_behind_linked_mobjects(ctx);
             ctx.lineTo(x, y);
           } else if (state == "in_frame" && next_state == "unblocked") {
-            console.log("In-frame to unblocked");
             ctx.beginPath();
             ctx.moveTo(last_x, last_y);
             ctx.lineTo(x, y);
           } else if (state == "blocked" && next_state == "unblocked") {
-            console.log("Blocked to unblocked");
             ctx.stroke();
             ctx.beginPath();
             ctx.moveTo(last_x, last_y);
             this.unset_behind_linked_mobjects(ctx);
             ctx.lineTo(x, y);
           } else if (state == "unblocked" && next_state == "blocked") {
-            console.log("Unblocked to blocked");
             ctx.stroke();
             ctx.beginPath();
             this.set_behind_linked_mobjects(ctx);
@@ -594,7 +583,6 @@ var ParametrizedCurve3D = class extends ThreeDLineLikeMObject {
         }
         [last_x, last_y] = [x, y];
       }
-      console.log("New state at", this.points[i], ":", state);
     }
     if (state == "blocked" || state == "unblocked") {
       ctx.stroke();
@@ -1185,7 +1173,7 @@ var Arcball = class {
         (t) => [radius * Math.cos(t), radius * Math.sin(t), 0],
         -Math.PI,
         Math.PI,
-        30
+        100
       );
       equator.set_stroke_style("solid");
       equator.set_stroke_width(0.04);

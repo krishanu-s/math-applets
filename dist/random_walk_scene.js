@@ -642,16 +642,16 @@ var Dot3D = class extends ThreeDFillLikeMObject {
     if (scene.mode == "perspective") {
       return 0;
     } else if (scene.mode == "orthographic") {
-      let view_center = scene.orthographic_view(this.center);
-      let view_radius = this.radius * scene.zoom_ratio;
-      let view_dist = vec2_norm(vec2_sub(view_point, view_center)) * scene.zoom_ratio;
-      if (view_dist > view_radius) {
+      let dist = vec2_norm(
+        vec2_sub(view_point, scene.orthographic_view(this.center))
+      );
+      if (dist > this.radius) {
         return Infinity;
       } else {
         let depth_adjustment = Math.sqrt(
-          Math.max(0, view_radius ** 2 - view_dist ** 2)
+          Math.max(0, this.radius ** 2 - dist ** 2)
         );
-        return scene.depth(this.center) - depth_adjustment / scene.zoom_ratio;
+        return scene.depth(this.center) - depth_adjustment;
       }
     }
     return 0;

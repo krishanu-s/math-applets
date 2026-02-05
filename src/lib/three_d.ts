@@ -158,18 +158,16 @@ export class Dot3D extends ThreeDFillLikeMObject {
       // TODO
       return 0;
     } else if (scene.mode == "orthographic") {
-      // TODO Refactor this.
-      let view_center = scene.orthographic_view(this.center);
-      let view_radius = this.radius * scene.zoom_ratio;
-      let view_dist =
-        vec2_norm(vec2_sub(view_point, view_center)) * scene.zoom_ratio;
-      if (view_dist > view_radius) {
+      let dist = vec2_norm(
+        vec2_sub(view_point, scene.orthographic_view(this.center)),
+      );
+      if (dist > this.radius) {
         return Infinity;
       } else {
         let depth_adjustment = Math.sqrt(
-          Math.max(0, view_radius ** 2 - view_dist ** 2),
+          Math.max(0, this.radius ** 2 - dist ** 2),
         );
-        return scene.depth(this.center) - depth_adjustment / scene.zoom_ratio;
+        return scene.depth(this.center) - depth_adjustment;
       }
     }
     return 0;
@@ -513,15 +511,14 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
     );
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
-    console.log("Drawing curve 3D");
     // TODO Use a Bezier curve for smoother rendering.
 
-    // TODO Every time we switch from out of frame, to dashed, to solid
     let state: "out_of_frame" | "in_frame" | "blocked" | "unblocked" =
       "out_of_frame";
     let next_state: "out_of_frame" | "in_frame" | "blocked" | "unblocked" =
       "out_of_frame";
 
+    // TODO Make this more efficient in some way.
     let p: Vec2D | null;
     let x: number, y: number;
     let last_x: number = 0;
@@ -530,7 +527,6 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
     for (let i = 0; i < this.points.length; i++) {
       p = scene.camera_view(this.points[i]);
       depth = scene.depth(this.points[i]);
-      console.log("Depth of point ", this.points[i], " is ", depth);
       if (p == null) {
         next_state = "out_of_frame";
         // unblocked -> out_of_frame
@@ -554,11 +550,6 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
         } else {
           // Do a depth-test at this point with any linked FillLike objects to determine
           // whether to switch to blocked or unblocked
-          console.log(
-            "Depth comparison:",
-            depth,
-            this.blocked_depth_at(scene, p),
-          );
           if (depth > this.blocked_depth_at(scene, p) + 0.01) {
             next_state = "blocked";
           } else {
@@ -566,21 +557,18 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
           }
           // in_frame -> blocked
           if (state == "in_frame" && next_state == "blocked") {
-            console.log("In-frame to blocked");
             ctx.beginPath();
             this.set_behind_linked_mobjects(ctx);
             ctx.lineTo(x, y);
           }
           // in_frame -> unblocked
           else if (state == "in_frame" && next_state == "unblocked") {
-            console.log("In-frame to unblocked");
             ctx.beginPath();
             ctx.moveTo(last_x, last_y);
             ctx.lineTo(x, y);
           }
           // blocked -> unblocked
           else if (state == "blocked" && next_state == "unblocked") {
-            console.log("Blocked to unblocked");
             ctx.stroke();
             ctx.beginPath();
             ctx.moveTo(last_x, last_y);
@@ -589,7 +577,6 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
           }
           // unblocked -> blocked
           else if (state == "unblocked" && next_state == "blocked") {
-            console.log("Unblocked to blocked");
             ctx.stroke();
             ctx.beginPath();
             this.set_behind_linked_mobjects(ctx);
@@ -604,7 +591,6 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
         }
         [last_x, last_y] = [x, y];
       }
-      console.log("New state at", this.points[i], ":", state);
     }
 
     // Finish the path
