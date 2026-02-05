@@ -11,9 +11,9 @@ class OrbitScene extends Scene {
     super(canvas);
 
     this.center = center;
-    this.add("center", new Dot(center, { radius: 0.2 }));
+    this.add("center", new Dot(center, 0.2));
 
-    this.add("orbiter", new Dot(center, { radius: 0.1 }));
+    this.add("orbiter", new Dot(center, 0.1));
     this.state = [center, [0, 0]];
   }
   // Set the position of the orbiter

@@ -66,9 +66,11 @@ export class MObject {
 }
 
 // A MObject that is drawn using the ctx.stroke() command.
+// TODO Incorporate "dashed" drawing
 export class LineLikeMObject extends MObject {
   stroke_width: number = 0.08;
   stroke_color: string = "black";
+  stroke_style: "solid" | "dashed" | "dotted" = "solid";
   set_stroke_color(color: string) {
     this.stroke_color = color;
     return this;
@@ -77,7 +79,10 @@ export class LineLikeMObject extends MObject {
     this.stroke_width = width;
     return this;
   }
-
+  set_stroke_style(style: "solid" | "dashed" | "dotted") {
+    this.stroke_style = style;
+    return this;
+  }
   draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
@@ -85,7 +90,13 @@ export class LineLikeMObject extends MObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 }
 
@@ -93,6 +104,7 @@ export class LineLikeMObject extends MObject {
 export class FillLikeMObject extends MObject {
   stroke_width: number = 0.08;
   stroke_color: string = "black";
+  stroke_style: "solid" | "dashed" | "dotted" = "solid";
   fill_color: string = "black";
   fill_alpha: number = 1.0;
   fill: boolean = true;
@@ -102,6 +114,10 @@ export class FillLikeMObject extends MObject {
   }
   set_stroke_width(width: number) {
     this.stroke_width = width;
+    return this;
+  }
+  set_stroke_style(style: "solid" | "dashed" | "dotted") {
+    this.stroke_style = style;
     return this;
   }
   set_fill_color(color: string) {
@@ -124,8 +140,14 @@ export class FillLikeMObject extends MObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     ctx.fillStyle = this.fill_color;
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 }
 

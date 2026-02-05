@@ -32,6 +32,7 @@ var LineLikeMObject = class extends MObject {
     super(...arguments);
     this.stroke_width = 0.08;
     this.stroke_color = "black";
+    this.stroke_style = "solid";
   }
   set_stroke_color(color) {
     this.stroke_color = color;
@@ -41,6 +42,10 @@ var LineLikeMObject = class extends MObject {
     this.stroke_width = width;
     return this;
   }
+  set_stroke_style(style) {
+    this.stroke_style = style;
+    return this;
+  }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
@@ -48,7 +53,13 @@ var LineLikeMObject = class extends MObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 };
 var FillLikeMObject = class extends MObject {
@@ -56,6 +67,7 @@ var FillLikeMObject = class extends MObject {
     super(...arguments);
     this.stroke_width = 0.08;
     this.stroke_color = "black";
+    this.stroke_style = "solid";
     this.fill_color = "black";
     this.fill_alpha = 1;
     this.fill = true;
@@ -66,6 +78,10 @@ var FillLikeMObject = class extends MObject {
   }
   set_stroke_width(width) {
     this.stroke_width = width;
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_style = style;
     return this;
   }
   set_fill_color(color) {
@@ -88,8 +104,14 @@ var FillLikeMObject = class extends MObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     ctx.fillStyle = this.fill_color;
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 };
 var Scene = class {
@@ -250,15 +272,11 @@ function vec2_rot(v, angle) {
   return [x * cos - y * sin, x * sin + y * cos];
 }
 var Dot = class extends FillLikeMObject {
-  constructor(center, kwargs) {
+  constructor(center, radius) {
     super();
+    this.radius = 0.1;
     this.center = center;
-    let radius = kwargs.radius;
-    if (radius == void 0) {
-      this.radius = 0.3;
-    } else {
-      this.radius = radius;
-    }
+    this.radius = radius;
   }
   // Get the center coordinates
   get_center() {
@@ -275,6 +293,7 @@ var Dot = class extends FillLikeMObject {
   // Change the dot radius
   set_radius(radius) {
     this.radius = radius;
+    return this;
   }
   // Draws on the canvas
   _draw(ctx, scene) {
@@ -333,22 +352,10 @@ var Rectangle = class extends FillLikeMObject {
   }
 };
 var Line = class extends LineLikeMObject {
-  constructor(start, end, kwargs) {
+  constructor(start, end) {
     super();
     this.start = start;
     this.end = end;
-    let stroke_width = kwargs.stroke_width;
-    if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-    let stroke_color = kwargs.stroke_color;
-    if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
   }
   // Moves the start and end points
   move_start(p) {
@@ -371,21 +378,9 @@ var Line = class extends LineLikeMObject {
   }
 };
 var LineSequence = class extends LineLikeMObject {
-  constructor(points, kwargs) {
+  constructor(points) {
     super();
     this.points = points;
-    let stroke_width = kwargs.stroke_width;
-    if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-    let stroke_color = kwargs.stroke_color;
-    if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
   }
   add_point(point) {
     this.points.push(point);
@@ -556,12 +551,17 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
     super(...arguments);
     this.stroke_width = 0.08;
     this.stroke_color = "black";
+    this.stroke_style = "solid";
   }
   set_stroke_color(color) {
     this.stroke_color = color;
   }
   set_stroke_width(width) {
     this.stroke_width = width;
+  }
+  set_stroke_style(style) {
+    this.stroke_style = style;
+    return this;
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
@@ -570,7 +570,13 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 };
 var ThreeDFillLikeMObject = class extends ThreeDMObject {
@@ -578,6 +584,7 @@ var ThreeDFillLikeMObject = class extends ThreeDMObject {
     super(...arguments);
     this.stroke_width = 0.08;
     this.stroke_color = "black";
+    this.stroke_style = "solid";
     this.fill_color = "black";
     this.fill_alpha = 1;
     this.fill = true;
@@ -587,6 +594,10 @@ var ThreeDFillLikeMObject = class extends ThreeDMObject {
   }
   set_stroke_width(width) {
     this.stroke_width = width;
+  }
+  set_stroke_style(style) {
+    this.stroke_style = style;
+    return this;
   }
   set_fill_color(color) {
     this.fill_color = color;
@@ -608,8 +619,14 @@ var ThreeDFillLikeMObject = class extends ThreeDMObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     ctx.fillStyle = this.fill_color;
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 };
 var Dot3D = class extends ThreeDFillLikeMObject {
@@ -769,7 +786,6 @@ var ThreeDScene = class extends Scene {
   constructor() {
     super(...arguments);
     // Inverse of the camera matrix
-    // TODO Also give the camera a position vector
     this.camera_frame_inv = [
       [1, 0, 0],
       [0, 1, 0],
@@ -1137,14 +1153,14 @@ function pick_random_step(dim) {
       let [ymin, ymax] = [-10, 10];
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       let tick_size = 0.1;
-      let x_axis = new TwoHeadedArrow([xmin, 0], [xmax, 0], {});
+      let x_axis = new TwoHeadedArrow([xmin, 0], [xmax, 0]);
       x_axis.set_stroke_width(0.02);
       scene.add("x-axis", x_axis);
       scene.add(
         `x-tick-(${0})`,
-        new Line([0, -2 * tick_size], [0, 2 * tick_size], {
-          stroke_width: 0.04
-        })
+        new Line([0, -2 * tick_size], [0, 2 * tick_size]).set_stroke_width(
+          0.04
+        )
       );
       for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
         if (x == 0) {
@@ -1152,9 +1168,9 @@ function pick_random_step(dim) {
         }
         scene.add(
           `x-tick-(${x})`,
-          new Line([x, -tick_size], [x, tick_size], { stroke_width: 0.02 })
+          new Line([x, -tick_size], [x, tick_size]).set_stroke_width(0.02)
         );
-        let xline = new Line([x, ymin], [x, ymax], { stroke_width: 0.01 });
+        let xline = new Line([x, ymin], [x, ymax]).set_stroke_width(0.01);
         xline.set_alpha(0.3);
         scene.add(`x-line-(${x})`, xline);
       }
@@ -1168,9 +1184,9 @@ function pick_random_step(dim) {
         }
         scene.add(
           `y-tick-(${y})`,
-          new Line([-tick_size, y], [tick_size, y], { stroke_width: 0.02 })
+          new Line([-tick_size, y], [tick_size, y]).set_stroke_width(0.02)
         );
-        let yline = new Line([xmin, y], [xmax, y], { stroke_width: 0.01 });
+        let yline = new Line([xmin, y], [xmax, y]).set_stroke_width(0.01);
         yline.set_alpha(0.3);
         scene.add(`y-line-(${y})`, yline);
       }
@@ -1199,7 +1215,7 @@ function pick_random_step(dim) {
         line.set_alpha(1);
         line.set_stroke_width(0.1);
         scene.add("line", line);
-        let p = new Dot([x, y], { radius: 0.3 });
+        let p = new Dot([x, y], 0.3);
         p.set_color("blue");
         scene.add("point", p);
         while (true) {
@@ -1242,7 +1258,7 @@ function pick_random_step(dim) {
         }
         scene.add(
           `x-tick-(${x})`,
-          new Line([x, -tick_size], [x, tick_size], { stroke_width: 0.02 })
+          new Line([x, -tick_size], [x, tick_size]).set_stroke_width(0.02)
         );
       }
       scene.draw();
@@ -1265,7 +1281,7 @@ function pick_random_step(dim) {
       async function do_simulation() {
         let x = 0;
         let dx;
-        let p = new Dot([x, 0], { radius: 0.3 });
+        let p = new Dot([x, 0], 0.3);
         p.set_color("blue");
         scene.add("point", p);
         let line = new LineSequence([[x, 0]], {});
@@ -1397,7 +1413,7 @@ function pick_random_step(dim) {
         }
         scene.add(
           `x-tick-(${x2})`,
-          new Line([x2, -tick_size], [x2, tick_size], { stroke_width: 0.02 })
+          new Line([x2, -tick_size], [x2, tick_size]).set_stroke_width(0.02)
         );
       }
       scene.add(
@@ -1410,12 +1426,12 @@ function pick_random_step(dim) {
         }
         scene.add(
           `y-tick-(${y2})`,
-          new Line([-tick_size, y2], [tick_size, y2], { stroke_width: 0.02 })
+          new Line([-tick_size, y2], [tick_size, y2]).set_stroke_width(0.02)
         );
       }
       scene.draw();
       let [x, y] = [0, 0];
-      let p = new Dot([x, y], { radius: 0.05 });
+      let p = new Dot([x, y], 0.05);
       p.set_color("blue");
       scene.add("point", p);
       let line = new LineSequence([[x, y]], {});

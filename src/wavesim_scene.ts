@@ -16,6 +16,9 @@ import {
   DraggableDot,
   DraggableDotX,
   DraggableDotY,
+  DraggableRectangle,
+  DraggableRectangleX,
+  DraggableRectangleY,
   Arrow,
 } from "./lib/base_geom.js";
 import { clamp, sigmoid, linspace, funspace, delay } from "./lib/base.js";
@@ -254,15 +257,13 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
         }
         // Makes dots for the foci
         make_focus(): Dot {
-          return new Dot(this.focus, { radius: 0.2 });
+          return new Dot(this.focus, 0.2);
         }
         make_other_focus(): MObject {
           if (this.eccentricity >= 1.0) {
             return new MObject();
           } else {
-            return new Dot(this.other_focus, {
-              radius: 0.1,
-            });
+            return new Dot(this.other_focus as Vec2D, 0.1);
           }
         }
         make_trajectory(t: number): [MObject, MObject] {
@@ -271,12 +272,11 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
           } else {
             let intersection_point = this.polar_function(t);
             return [
-              new Line(this.focus, intersection_point, {
-                stroke_width: 0.04,
-              }),
-              new Line(intersection_point, this.other_focus, {
-                stroke_width: 0.04,
-              }),
+              new Line(this.focus, intersection_point).set_stroke_width(0.04),
+              new Line(
+                intersection_point,
+                this.other_focus as Vec2D,
+              ).set_stroke_width(0.04),
             ];
           }
         }
@@ -364,8 +364,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
           current_thetas.push((2 * Math.PI * i) / num_trajectories);
           reflected.push(false);
           moving_points.push([focus[0], focus[1]]);
-          let dot = new Dot(focus, {});
-          dot.set_radius(0.05);
+          let dot = new Dot(focus, 0.05);
           dot.set_color("red");
           scene.add(`p_${i}`, dot);
         }
@@ -464,7 +463,7 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
           // TODO Set coordinates in terms of scene frame limits
           let spring = new LineSpring([-3, 0], [0, 0], { stroke_width: 0.08 });
           spring.set_eq_length(3.0);
-          let anchor = new Line([-3, -2], [-3, 2], { stroke_width: 0.3 });
+          let anchor = new Line([-3, -2], [-3, 2]).set_stroke_width(0.3);
           let mass = new Rectangle([0, 0], 0.6, 0.6);
           this.add("spring", spring);
           this.add("anchor", anchor);
@@ -631,19 +630,19 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       pos = eq_position(0);
       scene.add(
         "b0",
-        new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 }),
+        new Line([pos[0], ymin / 2], [pos[0], ymax / 2]).set_stroke_width(0.1),
       );
 
       pos = eq_position(num_points - 1);
       scene.add(
         "b1",
-        new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 }),
+        new Line([pos[0], ymin / 2], [pos[0], ymax / 2]).set_stroke_width(0.1),
       );
 
       // Make draggable dots
       let dots: DraggableDotY[] = [];
       for (let i = 0; i < num_points; i++) {
-        let dot = new DraggableDotY(eq_position(i), { radius: 0.2 });
+        let dot = new DraggableDotY(eq_position(i), 0.13);
         dots.push(dot);
       }
 
@@ -687,7 +686,10 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
         arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 8);
       }
       for (let i = 0; i < num_points; i++) {
-        let arrow = new Arrow([0, 0], [0, 0], { stroke_color: "red" });
+        let arrow = new Arrow([0, 0], [0, 0]);
+        arrow.set_stroke_color("red");
+        arrow.set_stroke_width(0.05);
+        arrow.set_alpha(0.5);
         set_force_arrow(i, arrow);
         if (i == 0) {
           dots[i].add_callback(() => {

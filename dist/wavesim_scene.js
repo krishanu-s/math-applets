@@ -10667,6 +10667,7 @@ var LineLikeMObject = class extends MObject {
     super(...arguments);
     this.stroke_width = 0.08;
     this.stroke_color = "black";
+    this.stroke_style = "solid";
   }
   set_stroke_color(color) {
     this.stroke_color = color;
@@ -10676,6 +10677,10 @@ var LineLikeMObject = class extends MObject {
     this.stroke_width = width;
     return this;
   }
+  set_stroke_style(style) {
+    this.stroke_style = style;
+    return this;
+  }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
@@ -10683,7 +10688,13 @@ var LineLikeMObject = class extends MObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 };
 var FillLikeMObject = class extends MObject {
@@ -10691,6 +10702,7 @@ var FillLikeMObject = class extends MObject {
     super(...arguments);
     this.stroke_width = 0.08;
     this.stroke_color = "black";
+    this.stroke_style = "solid";
     this.fill_color = "black";
     this.fill_alpha = 1;
     this.fill = true;
@@ -10701,6 +10713,10 @@ var FillLikeMObject = class extends MObject {
   }
   set_stroke_width(width) {
     this.stroke_width = width;
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_style = style;
     return this;
   }
   set_fill_color(color) {
@@ -10723,8 +10739,14 @@ var FillLikeMObject = class extends MObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     ctx.fillStyle = this.fill_color;
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 };
 var Scene = class {
@@ -10972,15 +10994,11 @@ function vec2_rot(v, angle2) {
   return [x * cos2 - y * sin2, x * sin2 + y * cos2];
 }
 var Dot = class extends FillLikeMObject {
-  constructor(center, kwargs) {
+  constructor(center, radius) {
     super();
+    this.radius = 0.1;
     this.center = center;
-    let radius = kwargs.radius;
-    if (radius == void 0) {
-      this.radius = 0.3;
-    } else {
-      this.radius = radius;
-    }
+    this.radius = radius;
   }
   // Get the center coordinates
   get_center() {
@@ -10997,6 +11015,7 @@ var Dot = class extends FillLikeMObject {
   // Change the dot radius
   set_radius(radius) {
     this.radius = radius;
+    return this;
   }
   // Draws on the canvas
   _draw(ctx, scene) {
@@ -11008,15 +11027,10 @@ var Dot = class extends FillLikeMObject {
   }
 };
 var Sector = class extends FillLikeMObject {
-  constructor(center, start_angle, end_angle, kwargs) {
+  constructor(center, radius, start_angle, end_angle) {
     super();
     this.center = center;
-    let radius = kwargs.radius;
-    if (radius == void 0) {
-      this.radius = 0.3;
-    } else {
-      this.radius = radius;
-    }
+    this.radius = radius;
     this.start_angle = start_angle;
     this.end_angle = end_angle;
   }
@@ -11220,22 +11234,10 @@ var Rectangle = class extends FillLikeMObject {
   }
 };
 var Line = class extends LineLikeMObject {
-  constructor(start, end, kwargs) {
+  constructor(start, end) {
     super();
     this.start = start;
     this.end = end;
-    let stroke_width = kwargs.stroke_width;
-    if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-    let stroke_color = kwargs.stroke_color;
-    if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
   }
   // Moves the start and end points
   move_start(p) {
@@ -12013,11 +12015,11 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     let pos, next_pos;
     let [ymin, ymax] = this.ylims;
     pos = this.eq_position(1);
-    let b0 = new Line([pos[0], ymin / 2], [pos[0], ymax / 2], {});
+    let b0 = new Line([pos[0], ymin / 2], [pos[0], ymax / 2]);
     b0.set_stroke_width(0.1);
     this.add("b0", b0);
     pos = this.eq_position(width);
-    let b1 = new Line([pos[0], ymin / 2], [pos[0], ymax / 2], {});
+    let b1 = new Line([pos[0], ymin / 2], [pos[0], ymax / 2]);
     b1.set_stroke_width(0.1);
     this.add("b1", b1);
     let eq_length;
@@ -12033,17 +12035,18 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     }
     for (let i = 1; i < width - 1; i++) {
       pos = this.eq_position(i + 1);
-      let arrow = new Arrow([pos[0], pos[1]], [pos[0], pos[1]], {
-        stroke_width: 0.05,
-        stroke_color: "red",
-        stroke_opacity: 0.5
-      });
+      let arrow = new Arrow(
+        [pos[0], pos[1]],
+        [pos[0], pos[1]]
+      ).set_stroke_width(0.05);
+      arrow.set_stroke_color("red");
+      arrow.set_alpha(0.5);
       arrow.set_arrow_size(0);
       this.add(`arr${i + 1}`, arrow);
     }
     for (let i = 0; i < width; i++) {
       pos = this.eq_position(i + 1);
-      let dot3 = new Dot(pos, { radius: 0.5 / Math.sqrt(width) });
+      let dot3 = new Dot(pos, 0.5 / Math.sqrt(width));
       this.add(`p_${i + 1}`, dot3);
     }
     let curve = new BezierSpline(width - 1, {});
@@ -12549,15 +12552,13 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
         }
         // Makes dots for the foci
         make_focus() {
-          return new Dot(this.focus, { radius: 0.2 });
+          return new Dot(this.focus, 0.2);
         }
         make_other_focus() {
           if (this.eccentricity >= 1) {
             return new MObject();
           } else {
-            return new Dot(this.other_focus, {
-              radius: 0.1
-            });
+            return new Dot(this.other_focus, 0.1);
           }
         }
         make_trajectory(t) {
@@ -12566,12 +12567,11 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
           } else {
             let intersection_point = this.polar_function(t);
             return [
-              new Line(this.focus, intersection_point, {
-                stroke_width: 0.04
-              }),
-              new Line(intersection_point, this.other_focus, {
-                stroke_width: 0.04
-              })
+              new Line(this.focus, intersection_point).set_stroke_width(0.04),
+              new Line(
+                intersection_point,
+                this.other_focus
+              ).set_stroke_width(0.04)
             ];
           }
         }
@@ -12643,8 +12643,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
           current_thetas.push(2 * Math.PI * i / num_trajectories);
           reflected.push(false);
           moving_points.push([focus[0], focus[1]]);
-          let dot3 = new Dot(focus, {});
-          dot3.set_radius(0.05);
+          let dot3 = new Dot(focus, 0.05);
           dot3.set_color("red");
           scene.add(`p_${i}`, dot3);
         }
@@ -12722,7 +12721,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
           super(canvas2, [new SpringSimulator(1, 0.01)]);
           let spring = new LineSpring([-3, 0], [0, 0], { stroke_width: 0.08 });
           spring.set_eq_length(3);
-          let anchor = new Line([-3, -2], [-3, 2], { stroke_width: 0.3 });
+          let anchor = new Line([-3, -2], [-3, 2]).set_stroke_width(0.3);
           let mass = new Rectangle([0, 0], 0.6, 0.6);
           this.add("spring", spring);
           this.add("anchor", anchor);
@@ -12857,16 +12856,16 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       pos = eq_position(0);
       scene.add(
         "b0",
-        new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 })
+        new Line([pos[0], ymin / 2], [pos[0], ymax / 2]).set_stroke_width(0.1)
       );
       pos = eq_position(num_points - 1);
       scene.add(
         "b1",
-        new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 })
+        new Line([pos[0], ymin / 2], [pos[0], ymax / 2]).set_stroke_width(0.1)
       );
       let dots = [];
       for (let i = 0; i < num_points; i++) {
-        let dot3 = new DraggableDotY(eq_position(i), { radius: 0.2 });
+        let dot3 = new DraggableDotY(eq_position(i), 0.1);
         dots.push(dot3);
       }
       let springs = [];
@@ -12903,7 +12902,10 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
         arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 8);
       }
       for (let i = 0; i < num_points; i++) {
-        let arrow = new Arrow([0, 0], [0, 0], { stroke_color: "red" });
+        let arrow = new Arrow([0, 0], [0, 0]);
+        arrow.set_stroke_color("red");
+        arrow.set_stroke_width(0.05);
+        arrow.set_alpha(0.5);
         set_force_arrow(i, arrow);
         if (i == 0) {
           dots[i].add_callback(() => {

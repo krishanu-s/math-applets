@@ -64,11 +64,16 @@ export class ThreeDMObject extends MObject {
 export class ThreeDLineLikeMObject extends ThreeDMObject {
   stroke_width: number = 0.08;
   stroke_color: string = "black";
+  stroke_style: "solid" | "dashed" | "dotted" = "solid";
   set_stroke_color(color: string) {
     this.stroke_color = color;
   }
   set_stroke_width(width: number) {
     this.stroke_width = width;
+  }
+  set_stroke_style(style: "solid" | "dashed" | "dotted") {
+    this.stroke_style = style;
+    return this;
   }
   draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
     let ctx = canvas.getContext("2d");
@@ -77,7 +82,13 @@ export class ThreeDLineLikeMObject extends ThreeDMObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 }
 
@@ -85,6 +96,7 @@ export class ThreeDLineLikeMObject extends ThreeDMObject {
 export class ThreeDFillLikeMObject extends ThreeDMObject {
   stroke_width: number = 0.08;
   stroke_color: string = "black";
+  stroke_style: "solid" | "dashed" | "dotted" = "solid";
   fill_color: string = "black";
   fill_alpha: number = 1.0;
   fill: boolean = true;
@@ -93,6 +105,10 @@ export class ThreeDFillLikeMObject extends ThreeDMObject {
   }
   set_stroke_width(width: number) {
     this.stroke_width = width;
+  }
+  set_stroke_style(style: "solid" | "dashed" | "dotted") {
+    this.stroke_style = style;
+    return this;
   }
   set_fill_color(color: string) {
     this.fill_color = color;
@@ -114,8 +130,14 @@ export class ThreeDFillLikeMObject extends ThreeDMObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     ctx.fillStyle = this.fill_color;
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 }
 
@@ -418,14 +440,12 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
     tmin: number,
     tmax: number,
     num_steps: number,
-    kwargs: Record<string, any>,
   ) {
     super();
     this.function = f;
     this.tmin = tmin;
     this.tmax = tmax;
     this.num_steps = num_steps;
-    this.mode = kwargs.mode || this.mode;
   }
   // Jagged doesn't use Bezier curves. It is faster to compute and render.
   set_mode(mode: "smooth" | "jagged") {
@@ -464,6 +484,21 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
   }
 }
 
+// TODO Move all camera-related code from ThreeDScene into Camera3D class
+class Camera3D {
+  position: Vec3D = [0, 0, 0];
+  camera_frame: Mat3by3 = [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ];
+  camera_frame_inv: Mat3by3 = [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ];
+}
+
 // Rendering three-dimensional scenes.
 // Drawing three-dimensional objects begins with projecting them onto
 // the two-dimensional plane orthogonal to the camera's view direction.
@@ -477,7 +512,6 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
 export class ThreeDScene extends Scene {
   mobjects: Record<string, ThreeDMObject>;
   // Inverse of the camera matrix
-  // TODO Also give the camera a position vector
   camera_frame_inv: Mat3by3 = [
     [1, 0, 0],
     [0, 1, 0],

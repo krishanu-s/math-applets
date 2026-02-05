@@ -100,8 +100,9 @@ class SunriseScene extends Scene {
               this.xlims[0],
             this.ylims[1],
           ],
-          { stroke_width: 0.2, stroke_color: `rgb(0, 150, 0)` },
-        ),
+        )
+          .set_stroke_width(0.2)
+          .set_stroke_color(`rgb(0, 150, 0)`),
       );
     }
     // Lines for day timestamps
@@ -120,8 +121,9 @@ class SunriseScene extends Scene {
             (i / num_day_steps) * (this.ylims[1] - this.ylims[0]) +
               this.ylims[0],
           ],
-          { stroke_width: 0.2, stroke_color: `rgb(0, 150, 0)` },
-        ),
+        )
+          .set_stroke_width(0.2)
+          .set_stroke_color(`rgb(0, 150, 0)`),
       );
     }
   }

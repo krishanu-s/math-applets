@@ -23,6 +23,7 @@ var FillLikeMObject = class extends MObject {
     super(...arguments);
     this.stroke_width = 0.08;
     this.stroke_color = "black";
+    this.stroke_style = "solid";
     this.fill_color = "black";
     this.fill_alpha = 1;
     this.fill = true;
@@ -33,6 +34,10 @@ var FillLikeMObject = class extends MObject {
   }
   set_stroke_width(width) {
     this.stroke_width = width;
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_style = style;
     return this;
   }
   set_fill_color(color) {
@@ -55,8 +60,14 @@ var FillLikeMObject = class extends MObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     ctx.fillStyle = this.fill_color;
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 };
 var Scene = class {
@@ -158,15 +169,11 @@ var Scene = class {
 
 // src/lib/base_geom.ts
 var Dot = class extends FillLikeMObject {
-  constructor(center, kwargs) {
+  constructor(center, radius) {
     super();
+    this.radius = 0.1;
     this.center = center;
-    let radius = kwargs.radius;
-    if (radius == void 0) {
-      this.radius = 0.3;
-    } else {
-      this.radius = radius;
-    }
+    this.radius = radius;
   }
   // Get the center coordinates
   get_center() {
@@ -183,6 +190,7 @@ var Dot = class extends FillLikeMObject {
   // Change the dot radius
   set_radius(radius) {
     this.radius = radius;
+    return this;
   }
   // Draws on the canvas
   _draw(ctx, scene) {
@@ -200,8 +208,8 @@ var OrbitScene = class extends Scene {
   constructor(canvas, center) {
     super(canvas);
     this.center = center;
-    this.add("center", new Dot(center, { radius: 0.2 }));
-    this.add("orbiter", new Dot(center, { radius: 0.1 }));
+    this.add("center", new Dot(center, 0.2));
+    this.add("orbiter", new Dot(center, 0.1));
     this.state = [center, [0, 0]];
   }
   // Set the position of the orbiter

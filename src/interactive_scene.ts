@@ -38,13 +38,11 @@ import { pick_random_step } from "./random_walk_scene.js";
       let scene = new Scene(canvas);
       scene.set_frame_lims([-5, 5], [-5, 5]);
 
-      let dot_1 = new DraggableDot([1, 0], {});
-      dot_1.set_radius(0.3);
+      let dot_1 = new DraggableDot([1, 0], 0.3);
 
-      let dot_2 = new DraggableDot([-1, 0], {});
-      dot_2.set_radius(0.3);
+      let dot_2 = new DraggableDot([-1, 0], 0.3);
 
-      let line = new Line([1, 0], [-1, 0], {});
+      let line = new Line([1, 0], [-1, 0]);
       dot_1.add_callback(() => {
         line.move_start(dot_1.get_center());
       });
@@ -76,9 +74,8 @@ import { pick_random_step } from "./random_walk_scene.js";
         for (let i = 0; i < n; i++) {
           let dot = new DraggableDot(
             [xmin + ((xmax - xmin) * (i + 0.5)) / n, 0],
-            {},
+            0.5 / Math.sqrt(n),
           );
-          dot.set_radius(0.5 / Math.sqrt(n));
           dot.touch_tolerance = 2.0 + n / 10;
           dots.push(dot);
           scene.add(`p${i}`, dot);

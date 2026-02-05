@@ -10654,6 +10654,7 @@ var LineLikeMObject = class extends MObject {
     super(...arguments);
     this.stroke_width = 0.08;
     this.stroke_color = "black";
+    this.stroke_style = "solid";
   }
   set_stroke_color(color) {
     this.stroke_color = color;
@@ -10663,6 +10664,10 @@ var LineLikeMObject = class extends MObject {
     this.stroke_width = width;
     return this;
   }
+  set_stroke_style(style) {
+    this.stroke_style = style;
+    return this;
+  }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
@@ -10670,7 +10675,13 @@ var LineLikeMObject = class extends MObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 };
 var FillLikeMObject = class extends MObject {
@@ -10678,6 +10689,7 @@ var FillLikeMObject = class extends MObject {
     super(...arguments);
     this.stroke_width = 0.08;
     this.stroke_color = "black";
+    this.stroke_style = "solid";
     this.fill_color = "black";
     this.fill_alpha = 1;
     this.fill = true;
@@ -10688,6 +10700,10 @@ var FillLikeMObject = class extends MObject {
   }
   set_stroke_width(width) {
     this.stroke_width = width;
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_style = style;
     return this;
   }
   set_fill_color(color) {
@@ -10710,8 +10726,14 @@ var FillLikeMObject = class extends MObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     ctx.fillStyle = this.fill_color;
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 };
 var Scene = class {
@@ -10858,15 +10880,11 @@ function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
 var Dot = class extends FillLikeMObject {
-  constructor(center, kwargs) {
+  constructor(center, radius) {
     super();
+    this.radius = 0.1;
     this.center = center;
-    let radius = kwargs.radius;
-    if (radius == void 0) {
-      this.radius = 0.3;
-    } else {
-      this.radius = radius;
-    }
+    this.radius = radius;
   }
   // Get the center coordinates
   get_center() {
@@ -10883,6 +10901,7 @@ var Dot = class extends FillLikeMObject {
   // Change the dot radius
   set_radius(radius) {
     this.radius = radius;
+    return this;
   }
   // Draws on the canvas
   _draw(ctx, scene) {
@@ -11015,22 +11034,10 @@ var DraggableDot = class extends Dot {
   }
 };
 var Line = class extends LineLikeMObject {
-  constructor(start, end, kwargs) {
+  constructor(start, end) {
     super();
     this.start = start;
     this.end = end;
-    let stroke_width = kwargs.stroke_width;
-    if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-    let stroke_color = kwargs.stroke_color;
-    if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
   }
   // Moves the start and end points
   move_start(p) {
@@ -11264,11 +11271,9 @@ function Slider(container, callback, kwargs) {
       let canvas = prepare_canvas(width, height, "draggable-dot");
       let scene = new Scene(canvas);
       scene.set_frame_lims([-5, 5], [-5, 5]);
-      let dot_1 = new DraggableDot([1, 0], {});
-      dot_1.set_radius(0.3);
-      let dot_2 = new DraggableDot([-1, 0], {});
-      dot_2.set_radius(0.3);
-      let line = new Line([1, 0], [-1, 0], {});
+      let dot_1 = new DraggableDot([1, 0], 0.3);
+      let dot_2 = new DraggableDot([-1, 0], 0.3);
+      let line = new Line([1, 0], [-1, 0]);
       dot_1.add_callback(() => {
         line.move_start(dot_1.get_center());
       });
@@ -11294,9 +11299,8 @@ function Slider(container, callback, kwargs) {
         for (let i = 0; i < n; i++) {
           let dot3 = new DraggableDot(
             [xmin + (xmax - xmin) * (i + 0.5) / n, 0],
-            {}
+            0.5 / Math.sqrt(n)
           );
-          dot3.set_radius(0.5 / Math.sqrt(n));
           dot3.touch_tolerance = 2 + n / 10;
           dots.push(dot3);
           scene.add(`p${i}`, dot3);

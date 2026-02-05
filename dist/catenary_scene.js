@@ -10654,6 +10654,7 @@ var LineLikeMObject = class extends MObject {
     super(...arguments);
     this.stroke_width = 0.08;
     this.stroke_color = "black";
+    this.stroke_style = "solid";
   }
   set_stroke_color(color) {
     this.stroke_color = color;
@@ -10663,6 +10664,10 @@ var LineLikeMObject = class extends MObject {
     this.stroke_width = width;
     return this;
   }
+  set_stroke_style(style) {
+    this.stroke_style = style;
+    return this;
+  }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
@@ -10670,7 +10675,13 @@ var LineLikeMObject = class extends MObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 };
 var Scene = class {
@@ -10787,22 +10798,10 @@ function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
 var Line = class extends LineLikeMObject {
-  constructor(start, end, kwargs) {
+  constructor(start, end) {
     super();
     this.start = start;
     this.end = end;
-    let stroke_width = kwargs.stroke_width;
-    if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-    let stroke_color = kwargs.stroke_color;
-    if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
   }
   // Moves the start and end points
   move_start(p) {
@@ -11011,9 +11010,7 @@ var CatenaryScene = class extends Scene {
     for (let i = 1; i <= num_segments; i++) {
       this.add(
         `v${i}`,
-        new Line(this.get_position(i - 1), this.get_position(i), {
-          stroke_width: 0.05
-        })
+        new Line(this.get_position(i - 1), this.get_position(i))
       );
     }
   }

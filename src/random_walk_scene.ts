@@ -54,14 +54,14 @@ export function pick_random_step(dim: number): number[] {
 
       // Add axes with ticks and grid lines
       let tick_size = 0.1;
-      let x_axis = new TwoHeadedArrow([xmin, 0], [xmax, 0], {});
+      let x_axis = new TwoHeadedArrow([xmin, 0], [xmax, 0]);
       x_axis.set_stroke_width(0.02);
       scene.add("x-axis", x_axis);
       scene.add(
         `x-tick-(${0})`,
-        new Line([0, -2 * tick_size], [0, 2 * tick_size], {
-          stroke_width: 0.04,
-        }),
+        new Line([0, -2 * tick_size], [0, 2 * tick_size]).set_stroke_width(
+          0.04,
+        ),
       );
       for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
         if (x == 0) {
@@ -69,9 +69,9 @@ export function pick_random_step(dim: number): number[] {
         }
         scene.add(
           `x-tick-(${x})`,
-          new Line([x, -tick_size], [x, tick_size], { stroke_width: 0.02 }),
+          new Line([x, -tick_size], [x, tick_size]).set_stroke_width(0.02),
         );
-        let xline = new Line([x, ymin], [x, ymax], { stroke_width: 0.01 });
+        let xline = new Line([x, ymin], [x, ymax]).set_stroke_width(0.01);
         xline.set_alpha(0.3);
         scene.add(`x-line-(${x})`, xline);
       }
@@ -86,9 +86,9 @@ export function pick_random_step(dim: number): number[] {
         }
         scene.add(
           `y-tick-(${y})`,
-          new Line([-tick_size, y], [tick_size, y], { stroke_width: 0.02 }),
+          new Line([-tick_size, y], [tick_size, y]).set_stroke_width(0.02),
         );
-        let yline = new Line([xmin, y], [xmax, y], { stroke_width: 0.01 });
+        let yline = new Line([xmin, y], [xmax, y]).set_stroke_width(0.01);
         yline.set_alpha(0.3);
         scene.add(`y-line-(${y})`, yline);
       }
@@ -125,7 +125,7 @@ export function pick_random_step(dim: number): number[] {
         scene.add("line", line);
 
         // Add the path current point
-        let p = new Dot([x, y], { radius: 0.3 });
+        let p = new Dot([x, y], 0.3);
         p.set_color("blue");
         scene.add("point", p);
 
@@ -185,7 +185,7 @@ export function pick_random_step(dim: number): number[] {
         }
         scene.add(
           `x-tick-(${x})`,
-          new Line([x, -tick_size], [x, tick_size], { stroke_width: 0.02 }),
+          new Line([x, -tick_size], [x, tick_size]).set_stroke_width(0.02),
         );
       }
 
@@ -215,7 +215,7 @@ export function pick_random_step(dim: number): number[] {
         let dx: number;
 
         // Add the path current point
-        let p = new Dot([x, 0], { radius: 0.3 });
+        let p = new Dot([x, 0], 0.3);
         p.set_color("blue");
         scene.add("point", p);
 
@@ -383,7 +383,7 @@ export function pick_random_step(dim: number): number[] {
         }
         scene.add(
           `x-tick-(${x})`,
-          new Line([x, -tick_size], [x, tick_size], { stroke_width: 0.02 }),
+          new Line([x, -tick_size], [x, tick_size]).set_stroke_width(0.02),
         );
       }
 
@@ -397,7 +397,7 @@ export function pick_random_step(dim: number): number[] {
         }
         scene.add(
           `y-tick-(${y})`,
-          new Line([-tick_size, y], [tick_size, y], { stroke_width: 0.02 }),
+          new Line([-tick_size, y], [tick_size, y]).set_stroke_width(0.02),
         );
       }
       scene.draw();
@@ -405,7 +405,7 @@ export function pick_random_step(dim: number): number[] {
       let [x, y] = [0, 0];
 
       // Add the path current point
-      let p = new Dot([x, y], { radius: 0.05 });
+      let p = new Dot([x, y], 0.05);
       p.set_color("blue");
       scene.add("point", p);
 

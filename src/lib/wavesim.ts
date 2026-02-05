@@ -137,12 +137,12 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     // Add boundary lines
     let [ymin, ymax] = this.ylims;
     pos = this.eq_position(1);
-    let b0 = new Line([pos[0], ymin / 2], [pos[0], ymax / 2], {});
+    let b0 = new Line([pos[0], ymin / 2], [pos[0], ymax / 2]);
     b0.set_stroke_width(0.1);
     this.add("b0", b0);
 
     pos = this.eq_position(width);
-    let b1 = new Line([pos[0], ymin / 2], [pos[0], ymax / 2], {});
+    let b1 = new Line([pos[0], ymin / 2], [pos[0], ymax / 2]);
     b1.set_stroke_width(0.1);
     this.add("b1", b1);
 
@@ -162,11 +162,12 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     // Add force arrows
     for (let i = 1; i < width - 1; i++) {
       pos = this.eq_position(i + 1);
-      let arrow = new Arrow([pos[0], pos[1]], [pos[0], pos[1]], {
-        stroke_width: 0.05,
-        stroke_color: "red",
-        stroke_opacity: 0.5,
-      });
+      let arrow = new Arrow(
+        [pos[0], pos[1]],
+        [pos[0], pos[1]],
+      ).set_stroke_width(0.05);
+      arrow.set_stroke_color("red");
+      arrow.set_alpha(0.5);
       arrow.set_arrow_size(0.0);
       this.add(`arr${i + 1}`, arrow);
     }
@@ -174,7 +175,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     // Add dots which track with uValues in simulator
     for (let i = 0; i < width; i++) {
       pos = this.eq_position(i + 1);
-      let dot = new Dot(pos, { radius: 0.5 / Math.sqrt(width) });
+      let dot = new Dot(pos, 0.5 / Math.sqrt(width));
       this.add(`p_${i + 1}`, dot);
     }
 
@@ -947,10 +948,7 @@ export class WaveSimTwoDimDotsScene extends InteractivePlayingScene {
     let h = simulators[0].height;
     for (let x = 0; x < w; x++) {
       for (let y = 0; y < h; y++) {
-        this.add(
-          `p_{${x}, ${y}}`,
-          new Dot(this.eq_position(x, y), { radius: 2 / w }),
-        );
+        this.add(`p_{${x}, ${y}}`, new Dot(this.eq_position(x, y), 2 / w));
       }
     }
   }

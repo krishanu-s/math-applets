@@ -23,6 +23,7 @@ var LineLikeMObject = class extends MObject {
     super(...arguments);
     this.stroke_width = 0.08;
     this.stroke_color = "black";
+    this.stroke_style = "solid";
   }
   set_stroke_color(color) {
     this.stroke_color = color;
@@ -32,6 +33,10 @@ var LineLikeMObject = class extends MObject {
     this.stroke_width = width;
     return this;
   }
+  set_stroke_style(style) {
+    this.stroke_style = style;
+    return this;
+  }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
@@ -39,7 +44,13 @@ var LineLikeMObject = class extends MObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 };
 var FillLikeMObject = class extends MObject {
@@ -47,6 +58,7 @@ var FillLikeMObject = class extends MObject {
     super(...arguments);
     this.stroke_width = 0.08;
     this.stroke_color = "black";
+    this.stroke_style = "solid";
     this.fill_color = "black";
     this.fill_alpha = 1;
     this.fill = true;
@@ -57,6 +69,10 @@ var FillLikeMObject = class extends MObject {
   }
   set_stroke_width(width) {
     this.stroke_width = width;
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_style = style;
     return this;
   }
   set_fill_color(color) {
@@ -79,8 +95,14 @@ var FillLikeMObject = class extends MObject {
     let [xmin, xmax] = scene.xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
     ctx.fillStyle = this.fill_color;
     this._draw(ctx, scene, args);
+    ctx.setLineDash([]);
   }
 };
 var Scene = class {
@@ -239,15 +261,11 @@ function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
 var Dot = class extends FillLikeMObject {
-  constructor(center, kwargs) {
+  constructor(center, radius) {
     super();
+    this.radius = 0.1;
     this.center = center;
-    let radius = kwargs.radius;
-    if (radius == void 0) {
-      this.radius = 0.3;
-    } else {
-      this.radius = radius;
-    }
+    this.radius = radius;
   }
   // Get the center coordinates
   get_center() {
@@ -264,6 +282,7 @@ var Dot = class extends FillLikeMObject {
   // Change the dot radius
   set_radius(radius) {
     this.radius = radius;
+    return this;
   }
   // Draws on the canvas
   _draw(ctx, scene) {
@@ -275,22 +294,10 @@ var Dot = class extends FillLikeMObject {
   }
 };
 var Line = class extends LineLikeMObject {
-  constructor(start, end, kwargs) {
+  constructor(start, end) {
     super();
     this.start = start;
     this.end = end;
-    let stroke_width = kwargs.stroke_width;
-    if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-    let stroke_color = kwargs.stroke_color;
-    if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
   }
   // Moves the start and end points
   move_start(p) {
@@ -321,10 +328,10 @@ var PendulumScene = class extends Scene {
     super(canvas);
     this.length = length;
     this.top = top;
-    let string = new Line(top, [top[0], top[1] - length], {});
+    let string = new Line(top, [top[0], top[1] - length]);
     string.set_stroke_width(stroke_width);
     this.add("string", string);
-    this.add("bob", new Dot([top[0], top[1] - length], { radius }));
+    this.add("bob", new Dot([top[0], top[1] - length], radius));
     this.state = [0, 0];
   }
   // Set the arc-length position. Used by the scene evolution engine and by user input.

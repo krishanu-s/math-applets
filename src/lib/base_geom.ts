@@ -56,17 +56,11 @@ export function vec2_rot(v: Vec2D, angle: number): Vec2D {
 // A filled circle.
 export class Dot extends FillLikeMObject {
   center: Vec2D;
-  radius: number;
-  constructor(center: Vec2D, kwargs: Record<string, any>) {
+  radius: number = 0.1;
+  constructor(center: Vec2D, radius: number) {
     super();
     this.center = center;
-    let radius = kwargs.radius as number;
-    if (radius == undefined) {
-      this.radius = 0.3;
-    } else {
-      this.radius = radius;
-    }
-    // TODO Set color
+    this.radius = radius;
   }
   // Get the center coordinates
   get_center(): Vec2D {
@@ -83,6 +77,7 @@ export class Dot extends FillLikeMObject {
   // Change the dot radius
   set_radius(radius: number) {
     this.radius = radius;
+    return this;
   }
   // Draws on the canvas
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
@@ -102,18 +97,13 @@ export class Sector extends FillLikeMObject {
   end_angle: number;
   constructor(
     center: Vec2D,
+    radius: number,
     start_angle: number,
     end_angle: number,
-    kwargs: Record<string, any>,
   ) {
     super();
     this.center = center;
-    let radius = kwargs.radius as number;
-    if (radius == undefined) {
-      this.radius = 0.3;
-    } else {
-      this.radius = radius;
-    }
+    this.radius = radius;
     this.start_angle = start_angle;
     this.end_angle = end_angle;
   }
@@ -495,30 +485,14 @@ export class DraggableRectangleY extends DraggableRectangle {
   }
 }
 
-// TODO Make "Linelike" for objects with stroke_width and stroke_color properties.
-
 // A line segment.
 export class Line extends LineLikeMObject {
   start: Vec2D;
   end: Vec2D;
-  constructor(start: Vec2D, end: Vec2D, kwargs: Record<string, any>) {
+  constructor(start: Vec2D, end: Vec2D) {
     super();
     this.start = start;
     this.end = end;
-
-    let stroke_width = kwargs.stroke_width as number;
-    if (stroke_width == undefined) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-
-    let stroke_color = kwargs.stroke_color as string;
-    if (stroke_color == undefined) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
   }
   // Moves the start and end points
   move_start(p: Vec2D) {
@@ -544,23 +518,9 @@ export class Line extends LineLikeMObject {
 // A sequence of line segments with joined endpoints.
 export class LineSequence extends LineLikeMObject {
   points: Vec2D[];
-  constructor(points: Vec2D[], kwargs: Record<string, any>) {
+  constructor(points: Vec2D[]) {
     super();
     this.points = points;
-
-    let stroke_width = kwargs.stroke_width as number;
-    if (stroke_width == undefined) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-
-    let stroke_color = kwargs.stroke_color as string;
-    if (stroke_color == undefined) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
   }
   add_point(point: Vec2D) {
     this.points.push(point);

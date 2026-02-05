@@ -173,7 +173,6 @@ import { pick_random_step } from "./random_walk_scene.js";
         -3 * Math.PI,
         3 * Math.PI,
         100,
-        {},
       );
       curve.set_stroke_color("red");
       curve.set_stroke_width(0.04);
@@ -258,8 +257,9 @@ import { pick_random_step } from "./random_walk_scene.js";
         -Math.PI,
         Math.PI,
         100,
-        { stroke_color: "grey", stroke_width: 0.04 },
       );
+      equator.set_stroke_style("dashed");
+      equator.set_stroke_width(0.04);
       scene.add("equator", equator);
 
       // Add a polar axis
