@@ -552,6 +552,7 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
     this.stroke_width = 0.08;
     this.stroke_color = "black";
     this.stroke_style = "solid";
+    this.linked_mobjects = [];
   }
   set_stroke_color(color) {
     this.stroke_color = color;
@@ -562,6 +563,28 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
   set_stroke_style(style) {
     this.stroke_style = style;
     return this;
+  }
+  // Add a linked Mobject. These are fill-like MObjects in the scene which might obstruct the view
+  // of the curve, and are used internally to _draw() for depth-testing.
+  link_mobject(mobject) {
+    this.linked_mobjects.push(mobject);
+  }
+  // Calculates the minimum depth value among linked FillLike objects at the given scene view point.
+  blocked_depth_at(scene, view_point) {
+    return Math.min(
+      ...this.linked_mobjects.map(
+        (m) => m.depth_at(scene, view_point)
+      )
+    );
+  }
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha /= 2;
+    ctx.setLineDash([5, 10]);
+  }
+  unset_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha *= 2;
+    ctx.setLineDash([]);
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
@@ -588,6 +611,7 @@ var ThreeDFillLikeMObject = class extends ThreeDMObject {
     this.fill_color = "black";
     this.fill_alpha = 1;
     this.fill = true;
+    this.linked_mobjects = [];
   }
   set_stroke_color(color) {
     this.stroke_color = color;
@@ -611,6 +635,26 @@ var ThreeDFillLikeMObject = class extends ThreeDMObject {
   }
   set_fill(fill) {
     this.fill = fill;
+  }
+  // Add a linked Mobject. These are fill-like MObjects in the scene which might obstruct the view
+  // of the curve, and are used internally to _draw() for depth-testing.
+  link_mobject(mobject) {
+    this.linked_mobjects.push(mobject);
+  }
+  // Calculates the minimum depth value among linked FillLike objects at the given scene view point.
+  blocked_depth_at(scene, view_point) {
+    return Math.min(
+      ...this.linked_mobjects.map(
+        (m) => m.depth_at(scene, view_point)
+      )
+    );
+  }
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha /= 2;
+  }
+  unset_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha *= 2;
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
@@ -667,17 +711,30 @@ var Dot3D = class extends ThreeDFillLikeMObject {
         vec3_scale(get_column(scene.get_camera_frame(), 0), this.radius)
       )
     );
+    let state;
     if (p != null && pr != null) {
+      let depth = scene.depth(this.center);
+      if (depth > this.blocked_depth_at(scene, p) + 0.01) {
+        state = "blocked";
+      } else {
+        state = "unblocked";
+      }
       let [cx, cy] = scene.v2c(p);
       let [rx, ry] = scene.v2c(pr);
       let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
       ctx.beginPath();
+      if (state == "blocked") {
+        this.set_behind_linked_mobjects(ctx);
+      }
       ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
       ctx.stroke();
       if (this.fill) {
         ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
         ctx.fill();
         ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
+      }
+      if (state == "blocked") {
+        this.unset_behind_linked_mobjects(ctx);
       }
     }
   }

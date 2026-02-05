@@ -19,6 +19,7 @@ import {
   Cube,
   Dot3D,
   Line3D,
+  LineSequence3D,
   Arrow3D,
   TwoHeadedArrow3D,
   ParametrizedCurve3D,
@@ -265,11 +266,19 @@ import { pick_random_step } from "./random_walk_scene.js";
       scene.add("equator", equator);
 
       // Add a polar axis
-      let polar_axis = new Line3D([0, 0, -1.5 * radius], [0, 0, 1.5 * radius]);
+      let polar_axis = new LineSequence3D([
+        [0, 0, -1.5 * radius],
+        [0, 0, -radius],
+        [0, 0, radius],
+        [0, 0, 1.5 * radius],
+      ]);
+      polar_axis.link_mobject(globe);
       let n_pole = new Dot3D([0, 0, radius], 0.1);
       n_pole.set_fill_alpha(1.0);
+      n_pole.link_mobject(globe);
       let s_pole = new Dot3D([0, 0, -radius], 0.1);
       s_pole.set_fill_alpha(1.0);
+      s_pole.link_mobject(globe);
       scene.add("polar_axis", polar_axis);
       scene.add("n_pole", n_pole);
       scene.add("s_pole", s_pole);

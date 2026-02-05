@@ -65,6 +65,7 @@ export class ThreeDLineLikeMObject extends ThreeDMObject {
   stroke_width: number = 0.08;
   stroke_color: string = "black";
   stroke_style: "solid" | "dashed" | "dotted" = "solid";
+  linked_mobjects: ThreeDFillLikeMObject[] = [];
   set_stroke_color(color: string) {
     this.stroke_color = color;
   }
@@ -74,6 +75,28 @@ export class ThreeDLineLikeMObject extends ThreeDMObject {
   set_stroke_style(style: "solid" | "dashed" | "dotted") {
     this.stroke_style = style;
     return this;
+  }
+  // Add a linked Mobject. These are fill-like MObjects in the scene which might obstruct the view
+  // of the curve, and are used internally to _draw() for depth-testing.
+  link_mobject(mobject: ThreeDFillLikeMObject) {
+    this.linked_mobjects.push(mobject);
+  }
+  // Calculates the minimum depth value among linked FillLike objects at the given scene view point.
+  blocked_depth_at(scene: ThreeDScene, view_point: Vec2D): number {
+    return Math.min(
+      ...this.linked_mobjects.map((m) =>
+        m.depth_at(scene, view_point as Vec2D),
+      ),
+    );
+  }
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx: CanvasRenderingContext2D) {
+    ctx.globalAlpha /= 2;
+    ctx.setLineDash([5, 10]);
+  }
+  unset_behind_linked_mobjects(ctx: CanvasRenderingContext2D) {
+    ctx.globalAlpha *= 2;
+    ctx.setLineDash([]);
   }
   draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
     let ctx = canvas.getContext("2d");
@@ -100,6 +123,7 @@ export class ThreeDFillLikeMObject extends ThreeDMObject {
   fill_color: string = "black";
   fill_alpha: number = 1.0;
   fill: boolean = true;
+  linked_mobjects: ThreeDFillLikeMObject[] = [];
   set_stroke_color(color: string) {
     this.stroke_color = color;
   }
@@ -122,6 +146,26 @@ export class ThreeDFillLikeMObject extends ThreeDMObject {
   }
   set_fill(fill: boolean) {
     this.fill = fill;
+  }
+  // Add a linked Mobject. These are fill-like MObjects in the scene which might obstruct the view
+  // of the curve, and are used internally to _draw() for depth-testing.
+  link_mobject(mobject: ThreeDFillLikeMObject) {
+    this.linked_mobjects.push(mobject);
+  }
+  // Calculates the minimum depth value among linked FillLike objects at the given scene view point.
+  blocked_depth_at(scene: ThreeDScene, view_point: Vec2D): number {
+    return Math.min(
+      ...this.linked_mobjects.map((m) =>
+        m.depth_at(scene, view_point as Vec2D),
+      ),
+    );
+  }
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx: CanvasRenderingContext2D) {
+    ctx.globalAlpha /= 2;
+  }
+  unset_behind_linked_mobjects(ctx: CanvasRenderingContext2D) {
+    ctx.globalAlpha *= 2;
   }
   draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
     let ctx = canvas.getContext("2d");
@@ -184,17 +228,30 @@ export class Dot3D extends ThreeDFillLikeMObject {
         vec3_scale(get_column(scene.get_camera_frame(), 0), this.radius),
       ),
     );
+    let state;
     if (p != null && pr != null) {
+      let depth = scene.depth(this.center);
+      if (depth > this.blocked_depth_at(scene, p) + 0.01) {
+        state = "blocked";
+      } else {
+        state = "unblocked";
+      }
       let [cx, cy] = scene.v2c(p as Vec2D);
       let [rx, ry] = scene.v2c(pr as Vec2D);
       let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
       ctx.beginPath();
+      if (state == "blocked") {
+        this.set_behind_linked_mobjects(ctx);
+      }
       ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
       ctx.stroke();
       if (this.fill) {
         ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
         ctx.fill();
         ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
+      }
+      if (state == "blocked") {
+        this.unset_behind_linked_mobjects(ctx);
       }
     }
   }
@@ -224,6 +281,14 @@ export class Line3D extends ThreeDLineLikeMObject {
     let e = scene.camera_view(this.end);
     if (s == null || e == null) return;
 
+    // TODO Add a check for linked_mobjects to decide if we should draw in blocked style,
+    // similar to ParametrizedCurve3D.
+    // This could go as follows:
+    // - Depth-test at the starting point and at the ending point.
+    // - If both points are unblocked, draw the whole line in unblocked style.
+    // - If both points are blocked, draw the whole line in blocked style.
+    // - If one point is unblocked and the other is blocked, binary-search for a point between them
+    //   where the transition happens. Then draw part of the line in unblocked style and part in blocked style.
     let [start_x, start_y] = scene.v2c(s);
     let [end_x, end_y] = scene.v2c(e);
 
@@ -267,6 +332,7 @@ export class LineSequence3D extends ThreeDLineLikeMObject {
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     ctx.beginPath();
 
+    // TODO Do a piecewise depth-test routine similar to what's suggested for Line3D.
     let in_frame: boolean = false;
     let p: Vec2D | null;
     let x: number, y: number;
@@ -477,20 +543,6 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
     this.function = new_f;
     this.calculatePoints();
   }
-  // Add a linked Mobject. These are fill-like MObjects in the scene which might obstruct the view
-  // of the curve, and are used internally to _draw() for depth-testing.
-  link_mobject(mobject: ThreeDFillLikeMObject) {
-    this.linked_mobjects.push(mobject);
-  }
-  // Sets the context drawer settings for drawing behind linked FillLike objects.
-  set_behind_linked_mobjects(ctx: CanvasRenderingContext2D) {
-    // ctx.globalAlpha /= 3;
-    ctx.setLineDash([5, 10]);
-  }
-  unset_behind_linked_mobjects(ctx: CanvasRenderingContext2D) {
-    // ctx.globalAlpha *= 3;
-    ctx.setLineDash([]);
-  }
   // Calculates the points for the curve.
   calculatePoints() {
     this.points = [];
@@ -501,14 +553,6 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
         ),
       );
     }
-  }
-  // Calculates the minimum depth value among linked FillLike objects at the given scene view point.
-  blocked_depth_at(scene: ThreeDScene, view_point: Vec2D): number {
-    return Math.min(
-      ...this.linked_mobjects.map((m) =>
-        m.depth_at(scene, view_point as Vec2D),
-      ),
-    );
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     // TODO Use a Bezier curve for smoother rendering.
