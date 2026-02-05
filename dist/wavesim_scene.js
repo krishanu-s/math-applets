@@ -10688,6 +10688,8 @@ var Scene = class {
   constructor(canvas) {
     this.border_thickness = 4;
     this.border_color = "black";
+    // Zoom ratio
+    this.zoom_ratio = 1;
     this.canvas = canvas;
     this.mobjects = {};
     this.xlims = [0, canvas.width];
@@ -10705,11 +10707,13 @@ var Scene = class {
   }
   // Sets the current viewing window
   set_view_lims(xlims, ylims) {
+    this.zoom_ratio = (this.xlims[1] - this.xlims[0]) / (xlims[1] - xlims[0]);
     this.view_xlims = xlims;
     this.view_ylims = ylims;
   }
   // Sets the current zoom level
   set_zoom(value) {
+    this.zoom_ratio = value;
     this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
     this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
   }
@@ -11111,6 +11115,7 @@ var Rectangle = class extends MObject {
     ]);
     ctx.lineTo(px, py);
     ctx.closePath();
+    ctx.stroke();
     ctx.fill();
   }
 };
@@ -11338,7 +11343,7 @@ var BezierSpline = class extends LineLikeMObject {
 };
 
 // src/lib/parametric.ts
-var ParametricFunction = class extends MObject {
+var ParametricFunction = class extends LineLikeMObject {
   constructor(f, tmin, tmax, num_steps, kwargs) {
     super();
     this.function = f;
@@ -11372,12 +11377,7 @@ var ParametricFunction = class extends MObject {
   set_function(new_f) {
     this.function = new_f;
   }
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
+  _draw(ctx, scene) {
     let points = [np2.array(this.function(this.tmin))];
     for (let i = 1; i <= this.num_steps; i++) {
       points.push(

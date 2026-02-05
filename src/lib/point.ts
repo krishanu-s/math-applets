@@ -1,4 +1,5 @@
 // Points in the plane
+// DEPRECATED
 
 export interface PlaneObj {
   translate_x(a: number): void;

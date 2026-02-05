@@ -2,7 +2,7 @@
 
 // Three-dimensional objects are specified by points in 3D space.
 
-import { MObject, Scene } from "./base.js";
+import { MObject, LineLikeMObject, Scene } from "./base.js";
 import { vec2_norm, Vec2D } from "./base_geom.js";
 import {
   Mat3by3,
@@ -55,8 +55,29 @@ export class ThreeDMObject extends MObject {
   }
 }
 
+// Identical extension as MObject -> LineLikeMObject
+export class ThreeDLineLikeMObject extends ThreeDMObject {
+  stroke_width: number = 0.08;
+  stroke_color: string = "black";
+  set_stroke_color(color: string) {
+    this.stroke_color = color;
+  }
+  set_stroke_width(width: number) {
+    this.stroke_width = width;
+  }
+  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    this._draw(ctx, scene, args);
+  }
+}
+
 // A dot.
-export class Dot3D extends ThreeDMObject {
+export class Dot3D extends ThreeDLineLikeMObject {
   center: Vec3D;
   radius: number;
   fill_color: string = "black";
@@ -74,23 +95,22 @@ export class Dot3D extends ThreeDMObject {
   move_to(new_center: Vec3D) {
     this.center = new_center;
   }
-  draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
+  _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     ctx.fillStyle = this.fill_color;
-    ctx.globalAlpha = this.alpha;
     let p = scene.camera_view(this.center);
-    if (p != null) {
+    let pr = scene.camera_view(
+      vec3_scale(
+        get_column(scene.get_camera_frame(), 0),
+        this.radius * scene.zoom_ratio,
+      ),
+    );
+    if (p != null && pr != null) {
       let [cx, cy] = scene.v2c(p as Vec2D);
+      let [rx, ry] = scene.v2c(pr as Vec2D);
+      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
       ctx.beginPath();
-      ctx.arc(
-        cx,
-        cy,
-        (this.radius * canvas.width) /
-          (scene.view_xlims[1] - scene.view_xlims[0]),
-        0,
-        2 * Math.PI,
-      );
+      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
+      ctx.stroke();
       ctx.fill();
     }
   }

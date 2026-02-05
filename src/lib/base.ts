@@ -105,12 +105,14 @@ export class Scene {
   border_color: string = "black";
   mobjects: Record<string, MObject>;
   // Scene size
-  xlims: [number, number];
-  ylims: [number, number];
+  xlims: Vec2D;
+  ylims: Vec2D;
   // Current viewing window, this can differ
   // from the larger scene when zooming
-  view_xlims: [number, number];
-  view_ylims: [number, number];
+  view_xlims: Vec2D;
+  view_ylims: Vec2D;
+  // Zoom ratio
+  zoom_ratio: number = 1.0;
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.mobjects = {};
@@ -121,19 +123,21 @@ export class Scene {
   }
   // Sets the coordinates for the borders of the scene. This also resets
   // the current viewing window to match the scene size.
-  set_frame_lims(xlims: [number, number], ylims: [number, number]) {
+  set_frame_lims(xlims: Vec2D, ylims: Vec2D) {
     this.xlims = xlims;
     this.ylims = ylims;
     this.view_xlims = xlims;
     this.view_ylims = ylims;
   }
   // Sets the current viewing window
-  set_view_lims(xlims: [number, number], ylims: [number, number]) {
+  set_view_lims(xlims: Vec2D, ylims: Vec2D) {
+    this.zoom_ratio = (this.xlims[1] - this.xlims[0]) / (xlims[1] - xlims[0]);
     this.view_xlims = xlims;
     this.view_ylims = ylims;
   }
   // Sets the current zoom level
   set_zoom(value: number) {
+    this.zoom_ratio = value;
     this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
     this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
   }

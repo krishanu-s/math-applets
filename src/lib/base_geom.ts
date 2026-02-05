@@ -295,6 +295,7 @@ export class Rectangle extends MObject {
     ]);
     ctx.lineTo(px, py);
     ctx.closePath();
+    ctx.stroke();
     ctx.fill();
   }
 }

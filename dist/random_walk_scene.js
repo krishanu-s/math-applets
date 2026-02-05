@@ -53,6 +53,8 @@ var Scene = class {
   constructor(canvas) {
     this.border_thickness = 4;
     this.border_color = "black";
+    // Zoom ratio
+    this.zoom_ratio = 1;
     this.canvas = canvas;
     this.mobjects = {};
     this.xlims = [0, canvas.width];
@@ -70,11 +72,13 @@ var Scene = class {
   }
   // Sets the current viewing window
   set_view_lims(xlims, ylims) {
+    this.zoom_ratio = (this.xlims[1] - this.xlims[0]) / (xlims[1] - xlims[0]);
     this.view_xlims = xlims;
     this.view_ylims = ylims;
   }
   // Sets the current zoom level
   set_zoom(value) {
+    this.zoom_ratio = value;
     this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
     this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
   }
@@ -274,6 +278,7 @@ var Rectangle = class extends MObject {
     ]);
     ctx.lineTo(px, py);
     ctx.closePath();
+    ctx.stroke();
     ctx.fill();
   }
 };
@@ -490,7 +495,29 @@ var ThreeDMObject = class extends MObject {
     return 0;
   }
 };
-var Dot3D = class extends ThreeDMObject {
+var ThreeDLineLikeMObject = class extends ThreeDMObject {
+  constructor() {
+    super(...arguments);
+    this.stroke_width = 0.08;
+    this.stroke_color = "black";
+  }
+  set_stroke_color(color) {
+    this.stroke_color = color;
+  }
+  set_stroke_width(width) {
+    this.stroke_width = width;
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    let [xmin, xmax] = scene.xlims;
+    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
+    ctx.strokeStyle = this.stroke_color;
+    this._draw(ctx, scene, args);
+  }
+};
+var Dot3D = class extends ThreeDLineLikeMObject {
   constructor(center, radius) {
     super();
     this.fill_color = "black";
@@ -506,22 +533,22 @@ var Dot3D = class extends ThreeDMObject {
   move_to(new_center) {
     this.center = new_center;
   }
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
+  _draw(ctx, scene) {
     ctx.fillStyle = this.fill_color;
-    ctx.globalAlpha = this.alpha;
     let p = scene.camera_view(this.center);
-    if (p != null) {
+    let pr = scene.camera_view(
+      vec3_scale(
+        get_column(scene.get_camera_frame(), 0),
+        this.radius * scene.zoom_ratio
+      )
+    );
+    if (p != null && pr != null) {
       let [cx, cy] = scene.v2c(p);
+      let [rx, ry] = scene.v2c(pr);
+      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
       ctx.beginPath();
-      ctx.arc(
-        cx,
-        cy,
-        this.radius * canvas.width / (scene.view_xlims[1] - scene.view_xlims[0]),
-        0,
-        2 * Math.PI
-      );
+      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
+      ctx.stroke();
       ctx.fill();
     }
   }
@@ -827,7 +854,7 @@ function mat_inv(m) {
     ]
   ];
 }
-function get_column2(m, i) {
+function get_column(m, i) {
   return [m[0][i], m[1][i], m[2][i]];
 }
 function normalize(v) {
@@ -951,16 +978,16 @@ var Arcball = class {
         let camera_frame = this.scene.get_camera_frame();
         this.scene.translate(
           vec3_sum(
-            vec3_scale(get_column2(camera_frame, 0), this.dragDiff[0]),
-            vec3_scale(get_column2(camera_frame, 1), this.dragDiff[1])
+            vec3_scale(get_column(camera_frame, 0), this.dragDiff[0]),
+            vec3_scale(get_column(camera_frame, 1), this.dragDiff[1])
           )
         );
       } else if (this.mode == "Rotate") {
         let v = vec2_normalize([this.dragDiff[1], -this.dragDiff[0]]);
         let camera_frame = this.scene.get_camera_frame();
         let rot_axis = vec3_sum(
-          vec3_scale(get_column2(camera_frame, 0), v[0]),
-          vec3_scale(get_column2(camera_frame, 1), v[1])
+          vec3_scale(get_column(camera_frame, 0), v[0]),
+          vec3_scale(get_column(camera_frame, 1), v[1])
         );
         let n = vec2_norm(this.dragDiff);
         this.scene.rot(rot_axis, n);
