@@ -71,9 +71,11 @@ export class LineLikeMObject extends MObject {
   stroke_color: string = "black";
   set_stroke_color(color: string) {
     this.stroke_color = color;
+    return this;
   }
   set_stroke_width(width: number) {
     this.stroke_width = width;
+    return this;
   }
 
   draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {

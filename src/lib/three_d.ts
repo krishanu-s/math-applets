@@ -117,11 +117,9 @@ export class Dot3D extends ThreeDLineLikeMObject {
 }
 
 // A line
-export class Line3D extends ThreeDMObject {
+export class Line3D extends ThreeDLineLikeMObject {
   start: Vec3D;
   end: Vec3D;
-  stroke_width: number = 0.04;
-  stroke_color: string = "black";
   constructor(start: Vec3D, end: Vec3D) {
     super();
     this.start = start;
@@ -134,23 +132,10 @@ export class Line3D extends ThreeDMObject {
   move_end(v: Vec3D) {
     this.end = v;
   }
-  set_color(color: string) {
-    this.stroke_color = color;
-  }
-  set_width(width: number) {
-    this.stroke_width = width;
-  }
   depth(scene: ThreeDScene): number {
     return scene.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
   }
-  draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
-
+  _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     let s = scene.camera_view(this.start);
     let e = scene.camera_view(this.end);
     if (s == null || e == null) return;
@@ -167,19 +152,13 @@ export class Line3D extends ThreeDMObject {
 
 // A sequence of line segments with joined endpoints.
 // TODO
-export class LineSequence3D extends ThreeDMObject {
+export class LineSequence3D extends ThreeDLineLikeMObject {
   points: Vec3D[];
   stroke_width: number = 0.04;
   stroke_color: string = "black";
   constructor(points: Vec3D[]) {
     super();
     this.points = points;
-  }
-  set_color(color: string) {
-    this.stroke_color = color;
-  }
-  set_width(width: number) {
-    this.stroke_width = width;
   }
   add_point(point: Vec3D) {
     this.points.push(point);
@@ -204,14 +183,7 @@ export class LineSequence3D extends ThreeDMObject {
     //   vec3_scale(vec3_sum_list(this.points), 1 / this.points.length),
     // );
   }
-  draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
-
+  _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     ctx.beginPath();
 
     let in_frame: boolean = false;
@@ -246,20 +218,9 @@ export class Arrow3D extends Line3D {
   set_arrow_size(size: number) {
     this.arrow_size = size;
   }
-  set_color(color: string): void {
-    super.set_color(color);
-    this.fill_color = this.stroke_color;
-  }
-  draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
-    super.draw(canvas, scene);
-
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
+  _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
+    super._draw(ctx, scene);
     ctx.fillStyle = this.fill_color;
-    ctx.globalAlpha = this.alpha;
 
     // TODO This can surely be refactored with Line3D.
     let s = scene.camera_view(this.start);
@@ -294,20 +255,9 @@ export class TwoHeadedArrow3D extends Line3D {
   set_arrow_size(size: number) {
     this.arrow_size = size;
   }
-  set_color(color: string) {
-    super.set_color(color);
-    this.fill_color = this.stroke_color;
-  }
-  draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
-    super.draw(canvas, scene);
-
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
+  _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
+    super._draw(ctx, scene);
     ctx.fillStyle = this.fill_color;
-    ctx.globalAlpha = this.alpha;
 
     // TODO This can surely be refactored with Line3D.
     let s = scene.camera_view(this.start);
@@ -345,29 +295,18 @@ export class TwoHeadedArrow3D extends Line3D {
 }
 
 // A cube.
-export class Cube extends ThreeDMObject {
+export class Cube extends ThreeDLineLikeMObject {
   center: Vec3D;
   size: number;
-  stroke_width: number;
-  stroke_color: string;
   constructor(center: Vec3D, size: number) {
     super();
     this.center = center;
     this.size = size;
-    this.stroke_width = 0.05;
-    this.stroke_color = "black";
   }
   depth(scene: ThreeDScene): number {
     return scene.depth(this.center);
   }
-  draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
-
+  _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     // First, generate all of the vertices of the cube as Vec3D's.
     const vertices = [
       vec3_sum(this.center, vec3_scale([1, 1, 1], this.size / 2)),
@@ -425,14 +364,12 @@ export class Cube extends ThreeDMObject {
 }
 
 // A parametrized curve
-export class ParametrizedCurve3D extends ThreeDMObject {
+export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
   function: (t: number) => Vec3D;
   tmin: number;
   tmax: number;
   num_steps: number;
   mode: "smooth" | "jagged" = "jagged";
-  stroke_width: number = 0.04;
-  stroke_color: string = "black";
   constructor(
     f: (t: number) => Vec3D,
     tmin: number,
@@ -446,8 +383,6 @@ export class ParametrizedCurve3D extends ThreeDMObject {
     this.tmax = tmax;
     this.num_steps = num_steps;
     this.mode = kwargs.mode || this.mode;
-    this.stroke_width = kwargs.stroke_width || this.stroke_width;
-    this.stroke_color = kwargs.stroke_color || this.stroke_color;
   }
   // Jagged doesn't use Bezier curves. It is faster to compute and render.
   set_mode(mode: "smooth" | "jagged") {
@@ -456,14 +391,7 @@ export class ParametrizedCurve3D extends ThreeDMObject {
   set_function(new_f: (t: number) => Vec3D) {
     this.function = new_f;
   }
-  draw(canvas: HTMLCanvasElement, scene: ThreeDScene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
-
+  _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     // Generate points to draw
     let points: Vec3D[] = [this.function(this.tmin)];
     for (let i = 1; i <= this.num_steps; i++) {

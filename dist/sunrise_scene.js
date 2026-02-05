@@ -26,9 +26,11 @@ var LineLikeMObject = class extends MObject {
   }
   set_stroke_color(color) {
     this.stroke_color = color;
+    return this;
   }
   set_stroke_width(width) {
     this.stroke_width = width;
+    return this;
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");

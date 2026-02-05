@@ -54,10 +54,9 @@ export function pick_random_step(dim: number): number[] {
 
       // Add axes with ticks and grid lines
       let tick_size = 0.1;
-      scene.add(
-        "x-axis",
-        new TwoHeadedArrow([xmin, 0], [xmax, 0], { stroke_width: 0.02 }),
-      );
+      let x_axis = new TwoHeadedArrow([xmin, 0], [xmax, 0], {});
+      x_axis.set_stroke_width(0.02);
+      scene.add("x-axis", x_axis);
       scene.add(
         `x-tick-(${0})`,
         new Line([0, -2 * tick_size], [0, 2 * tick_size], {
@@ -120,9 +119,9 @@ export function pick_random_step(dim: number): number[] {
 
         // Add the path line sequence
         let line = new LineSequence([[x, y]], {});
-        line.set_color("red");
+        line.set_stroke_color("red");
         line.set_alpha(1);
-        line.set_width(0.1);
+        line.set_stroke_width(0.1);
         scene.add("line", line);
 
         // Add the path current point
@@ -222,9 +221,9 @@ export function pick_random_step(dim: number): number[] {
 
         // Add the path line sequence
         let line = new LineSequence([[x, 0]], {});
-        line.set_color("red");
+        line.set_stroke_color("red");
         line.set_alpha(1);
-        line.set_width(0.1);
+        line.set_stroke_width(0.1);
         scene.add("line", line);
 
         // TODO Add text
@@ -412,9 +411,9 @@ export function pick_random_step(dim: number): number[] {
 
       // Add the path line sequence
       let line = new LineSequence([[x, y]], {});
-      line.set_color("red");
+      line.set_stroke_color("red");
       line.set_alpha(0.5);
-      line.set_width(0.01);
+      line.set_stroke_width(0.01);
       scene.add("line", line);
 
       let dx: number, dy: number;
@@ -538,8 +537,8 @@ export function pick_random_step(dim: number): number[] {
 
       // Add the path line sequence
       let line = new LineSequence3D([[x, y, z]]);
-      line.set_color("red");
-      line.set_width(0.02);
+      line.set_stroke_color("red");
+      line.set_stroke_width(0.02);
       scene.add("line", line);
 
       let dx: number, dy: number, dz: number;

@@ -33,13 +33,10 @@ import { pick_random_step } from "./random_walk_scene.js";
       let canvas = prepare_canvas(width, height, "three-d-cube");
 
       // Initialize three-dimensional scene, zoomed in
-      let zoom_ratio = 3.5;
+      let zoom_ratio = 5.5;
       let scene = new ThreeDScene(canvas);
       scene.set_frame_lims([-5, 5], [-5, 5]);
-      scene.set_view_lims(
-        [-5 / zoom_ratio, 5 / zoom_ratio],
-        [-5 / zoom_ratio, 5 / zoom_ratio],
-      );
+      scene.set_zoom(zoom_ratio);
 
       // Rotate the camera angle and set the camera position
       scene.rot_z(Math.PI / 4);
@@ -176,8 +173,10 @@ import { pick_random_step } from "./random_walk_scene.js";
         -3 * Math.PI,
         3 * Math.PI,
         100,
-        { stroke_color: "red", stroke_width: 0.04 },
+        {},
       );
+      curve.set_stroke_color("red");
+      curve.set_stroke_width(0.04);
       curve.set_alpha(0.5);
       scene.add("curve", curve);
 

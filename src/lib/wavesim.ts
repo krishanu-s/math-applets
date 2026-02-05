@@ -137,16 +137,14 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     // Add boundary lines
     let [ymin, ymax] = this.ylims;
     pos = this.eq_position(1);
-    this.add(
-      "b0",
-      new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 }),
-    );
+    let b0 = new Line([pos[0], ymin / 2], [pos[0], ymax / 2], {});
+    b0.set_stroke_width(0.1);
+    this.add("b0", b0);
 
     pos = this.eq_position(width);
-    this.add(
-      "b1",
-      new Line([pos[0], ymin / 2], [pos[0], ymax / 2], { stroke_width: 0.1 }),
-    );
+    let b1 = new Line([pos[0], ymin / 2], [pos[0], ymax / 2], {});
+    b1.set_stroke_width(0.1);
+    this.add("b1", b1);
 
     // Add lines/springs which connect dots
     let eq_length;
@@ -181,7 +179,8 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     }
 
     // Add a Bezier curve which tracks with uValues in simulator
-    let curve = new BezierSpline(width - 1, { stroke_width: 0.04 });
+    let curve = new BezierSpline(width - 1, {});
+    curve.set_stroke_width(0.04);
     this.add("curve", curve);
   }
   set_mode(mode: "curve" | "dots") {

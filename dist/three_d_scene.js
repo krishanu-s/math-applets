@@ -35,9 +35,11 @@ var LineLikeMObject = class extends MObject {
   }
   set_stroke_color(color) {
     this.stroke_color = color;
+    return this;
   }
   set_stroke_width(width) {
     this.stroke_width = width;
+    return this;
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
@@ -490,11 +492,9 @@ var Dot3D = class extends ThreeDLineLikeMObject {
     }
   }
 };
-var Line3D = class extends ThreeDMObject {
+var Line3D = class extends ThreeDLineLikeMObject {
   constructor(start, end) {
     super();
-    this.stroke_width = 0.04;
-    this.stroke_color = "black";
     this.start = start;
     this.end = end;
   }
@@ -505,22 +505,10 @@ var Line3D = class extends ThreeDMObject {
   move_end(v) {
     this.end = v;
   }
-  set_color(color) {
-    this.stroke_color = color;
-  }
-  set_width(width) {
-    this.stroke_width = width;
-  }
   depth(scene) {
     return scene.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
   }
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
+  _draw(ctx, scene) {
     let s = scene.camera_view(this.start);
     let e = scene.camera_view(this.end);
     if (s == null || e == null) return;
@@ -532,18 +520,12 @@ var Line3D = class extends ThreeDMObject {
     ctx.stroke();
   }
 };
-var LineSequence3D = class extends ThreeDMObject {
+var LineSequence3D = class extends ThreeDLineLikeMObject {
   constructor(points) {
     super();
     this.stroke_width = 0.04;
     this.stroke_color = "black";
     this.points = points;
-  }
-  set_color(color) {
-    this.stroke_color = color;
-  }
-  set_width(width) {
-    this.stroke_width = width;
   }
   add_point(point) {
     this.points.push(point);
@@ -565,13 +547,7 @@ var LineSequence3D = class extends ThreeDMObject {
       );
     }
   }
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
+  _draw(ctx, scene) {
     ctx.beginPath();
     let in_frame = false;
     let p;
@@ -602,19 +578,9 @@ var TwoHeadedArrow3D = class extends Line3D {
   set_arrow_size(size) {
     this.arrow_size = size;
   }
-  set_color(color) {
-    super.set_color(color);
-    this.fill_color = this.stroke_color;
-  }
-  draw(canvas, scene) {
-    super.draw(canvas, scene);
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
+  _draw(ctx, scene) {
+    super._draw(ctx, scene);
     ctx.fillStyle = this.fill_color;
-    ctx.globalAlpha = this.alpha;
     let s = scene.camera_view(this.start);
     let e = scene.camera_view(this.end);
     if (s == null || e == null) return;
@@ -643,24 +609,16 @@ var TwoHeadedArrow3D = class extends Line3D {
     ctx.fill();
   }
 };
-var Cube = class extends ThreeDMObject {
+var Cube = class extends ThreeDLineLikeMObject {
   constructor(center, size) {
     super();
     this.center = center;
     this.size = size;
-    this.stroke_width = 0.05;
-    this.stroke_color = "black";
   }
   depth(scene) {
     return scene.depth(this.center);
   }
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
+  _draw(ctx, scene) {
     const vertices = [
       vec3_sum(this.center, vec3_scale([1, 1, 1], this.size / 2)),
       vec3_sum(this.center, vec3_scale([1, -1, 1], this.size / 2)),
@@ -707,19 +665,15 @@ var Cube = class extends ThreeDMObject {
     }
   }
 };
-var ParametrizedCurve3D = class extends ThreeDMObject {
+var ParametrizedCurve3D = class extends ThreeDLineLikeMObject {
   constructor(f, tmin, tmax, num_steps, kwargs) {
     super();
     this.mode = "jagged";
-    this.stroke_width = 0.04;
-    this.stroke_color = "black";
     this.function = f;
     this.tmin = tmin;
     this.tmax = tmax;
     this.num_steps = num_steps;
     this.mode = kwargs.mode || this.mode;
-    this.stroke_width = kwargs.stroke_width || this.stroke_width;
-    this.stroke_color = kwargs.stroke_color || this.stroke_color;
   }
   // Jagged doesn't use Bezier curves. It is faster to compute and render.
   set_mode(mode) {
@@ -728,13 +682,7 @@ var ParametrizedCurve3D = class extends ThreeDMObject {
   set_function(new_f) {
     this.function = new_f;
   }
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    ctx.globalAlpha = this.alpha;
+  _draw(ctx, scene) {
     let points = [this.function(this.tmin)];
     for (let i = 1; i <= this.num_steps; i++) {
       points.push(
@@ -1200,10 +1148,9 @@ function pick_random_step(dim) {
       let [ymin, ymax] = [-10, 10];
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       let tick_size = 0.1;
-      scene.add(
-        "x-axis",
-        new TwoHeadedArrow([xmin, 0], [xmax, 0], { stroke_width: 0.02 })
-      );
+      let x_axis = new TwoHeadedArrow([xmin, 0], [xmax, 0], {});
+      x_axis.set_stroke_width(0.02);
+      scene.add("x-axis", x_axis);
       scene.add(
         `x-tick-(${0})`,
         new Line([0, -2 * tick_size], [0, 2 * tick_size], {
@@ -1259,9 +1206,9 @@ function pick_random_step(dim) {
         let [x, y] = [0, 0];
         let dx, dy;
         let line = new LineSequence([[x, y]], {});
-        line.set_color("red");
+        line.set_stroke_color("red");
         line.set_alpha(1);
-        line.set_width(0.1);
+        line.set_stroke_width(0.1);
         scene.add("line", line);
         let p = new Dot([x, y], { radius: 0.3 });
         p.set_color("blue");
@@ -1333,9 +1280,9 @@ function pick_random_step(dim) {
         p.set_color("blue");
         scene.add("point", p);
         let line = new LineSequence([[x, 0]], {});
-        line.set_color("red");
+        line.set_stroke_color("red");
         line.set_alpha(1);
-        line.set_width(0.1);
+        line.set_stroke_width(0.1);
         scene.add("line", line);
         while (true) {
           if (playing) {
@@ -1483,9 +1430,9 @@ function pick_random_step(dim) {
       p.set_color("blue");
       scene.add("point", p);
       let line = new LineSequence([[x, y]], {});
-      line.set_color("red");
+      line.set_stroke_color("red");
       line.set_alpha(0.5);
-      line.set_width(0.01);
+      line.set_stroke_width(0.01);
       scene.add("line", line);
       let dx, dy;
       let dt = 0.01;
@@ -1582,8 +1529,8 @@ function pick_random_step(dim) {
       p.set_color("blue");
       scene.add("point", p);
       let line = new LineSequence3D([[x, y, z]]);
-      line.set_color("red");
-      line.set_width(0.02);
+      line.set_stroke_color("red");
+      line.set_stroke_width(0.02);
       scene.add("line", line);
       let dx, dy, dz;
       let dt = 0.01;
@@ -1741,8 +1688,10 @@ function pick_random_step(dim) {
         -3 * Math.PI,
         3 * Math.PI,
         100,
-        { stroke_color: "red", stroke_width: 0.04 }
+        {}
       );
+      curve.set_stroke_color("red");
+      curve.set_stroke_width(0.04);
       curve.set_alpha(0.5);
       scene.add("curve", curve);
       let arcball = new Arcball(scene);
