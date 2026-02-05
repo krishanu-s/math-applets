@@ -807,42 +807,13 @@ var Arcball = class {
   untouch(event) {
     this.drag = false;
   }
-  drag_cursor(event) {
+  mouse_drag_cursor(event) {
     if (this.drag) {
       this.dragEnd = [
         event.pageX - this.scene.canvas.offsetLeft,
         event.pageY - this.scene.canvas.offsetTop
       ];
-      this.dragDiff = vec2_sub(
-        this.scene.c2s(this.dragStart[0], this.dragStart[1]),
-        this.scene.c2s(this.dragEnd[0], this.dragEnd[1])
-      );
-      if (this.dragDiff[0] == 0 && this.dragDiff[1] == 0) {
-        return;
-      }
-      if (this.mode == "Translate") {
-        let camera_frame = this.scene.get_camera_frame();
-        this.scene.translate(
-          vec3_sum(
-            vec3_scale(get_column(camera_frame, 0), this.dragDiff[0]),
-            vec3_scale(get_column(camera_frame, 1), this.dragDiff[1])
-          )
-        );
-      } else if (this.mode == "Rotate") {
-        let v = vec2_normalize([this.dragDiff[1], -this.dragDiff[0]]);
-        let camera_frame = this.scene.get_camera_frame();
-        let rot_axis = vec3_sum(
-          vec3_scale(get_column(camera_frame, 0), v[0]),
-          vec3_scale(get_column(camera_frame, 1), v[1])
-        );
-        let n = vec2_norm(this.dragDiff);
-        this.scene.rot(rot_axis, n);
-        this.scene.set_camera_position(
-          rot(this.scene.camera_position, rot_axis, n)
-        );
-      }
-      this.scene.draw();
-      this.dragStart = this.dragEnd;
+      this._drag_cursor();
     }
   }
   touch_drag_cursor(event) {
@@ -851,37 +822,41 @@ var Arcball = class {
         event.touches[0].pageX - this.scene.canvas.offsetLeft,
         event.touches[0].pageY - this.scene.canvas.offsetTop
       ];
-      this.dragDiff = vec2_sub(
-        this.scene.c2s(this.dragStart[0], this.dragStart[1]),
-        this.scene.c2s(this.dragEnd[0], this.dragEnd[1])
-      );
-      if (this.dragDiff[0] == 0 && this.dragDiff[1] == 0) {
-        return;
-      }
-      if (this.mode == "Translate") {
-        let camera_frame = this.scene.get_camera_frame();
-        this.scene.translate(
-          vec3_sum(
-            vec3_scale(get_column(camera_frame, 0), this.dragDiff[0]),
-            vec3_scale(get_column(camera_frame, 1), this.dragDiff[1])
-          )
-        );
-      } else if (this.mode == "Rotate") {
-        let v = vec2_normalize([this.dragDiff[1], -this.dragDiff[0]]);
-        let camera_frame = this.scene.get_camera_frame();
-        let rot_axis = vec3_sum(
-          vec3_scale(get_column(camera_frame, 0), v[0]),
-          vec3_scale(get_column(camera_frame, 1), v[1])
-        );
-        let n = vec2_norm(this.dragDiff);
-        this.scene.rot(rot_axis, n);
-        this.scene.set_camera_position(
-          rot(this.scene.camera_position, rot_axis, n)
-        );
-      }
-      this.scene.draw();
-      this.dragStart = this.dragEnd;
+      this._drag_cursor();
     }
+  }
+  // Updates the scene to account for a dragged cursor position
+  _drag_cursor() {
+    let dragDiff = vec2_sub(
+      this.scene.c2s(this.dragStart[0], this.dragStart[1]),
+      this.scene.c2s(this.dragEnd[0], this.dragEnd[1])
+    );
+    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
+      return;
+    }
+    if (this.mode == "Translate") {
+      let camera_frame = this.scene.get_camera_frame();
+      this.scene.translate(
+        vec3_sum(
+          vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
+          vec3_scale(get_column(camera_frame, 1), dragDiff[1])
+        )
+      );
+    } else if (this.mode == "Rotate") {
+      let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
+      let camera_frame = this.scene.get_camera_frame();
+      let rot_axis = vec3_sum(
+        vec3_scale(get_column(camera_frame, 0), v[0]),
+        vec3_scale(get_column(camera_frame, 1), v[1])
+      );
+      let n = vec2_norm(dragDiff);
+      this.scene.rot(rot_axis, n);
+      this.scene.set_camera_position(
+        rot(this.scene.camera_position, rot_axis, n)
+      );
+    }
+    this.scene.draw();
+    this.dragStart = this.dragEnd;
   }
   add() {
     let self = this;
@@ -889,7 +864,7 @@ var Arcball = class {
     this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
     this.scene.canvas.addEventListener(
       "mousemove",
-      self.drag_cursor.bind(self)
+      self.mouse_drag_cursor.bind(self)
     );
     this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
     this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
@@ -904,7 +879,7 @@ var Arcball = class {
     this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
     this.scene.canvas.removeEventListener(
       "mousemove",
-      self.drag_cursor.bind(self)
+      self.mouse_drag_cursor.bind(self)
     );
     this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
     this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));

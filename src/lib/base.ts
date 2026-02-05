@@ -307,3 +307,11 @@ export function prepareCanvasForMobile(canvas: HTMLCanvasElement) {
     e.preventDefault();
   };
 }
+
+export function mouse_event_coords(event: MouseEvent): Vec2D {
+  return [event.pageX, event.pageY];
+}
+
+export function touch_event_coords(event: TouchEvent): Vec2D {
+  return [event.touches[0].pageX, event.touches[0].pageY];
+}

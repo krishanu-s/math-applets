@@ -1,5 +1,12 @@
 // Basic geometric mobjects and functions
-import { MObject, LineLikeMObject, FillLikeMObject, Scene } from "./base.js";
+import {
+  MObject,
+  LineLikeMObject,
+  FillLikeMObject,
+  Scene,
+  mouse_event_coords,
+  touch_event_coords,
+} from "./base.js";
 
 // A point in 2D space.
 export type Vec2D = [number, number];
@@ -136,11 +143,10 @@ export class DraggableDot extends Dot {
   isClicked: boolean = false;
   dragStart: Vec2D = [0, 0];
   dragEnd: Vec2D = [0, 0];
-  dragDiff: Vec2D = [0, 0];
   touch_tolerance: number = 2.0;
   callbacks: (() => void)[] = [];
-  // Tests whether a chosen vector lies inside the dot. Used for click-detection.
-  is_inside_dot(p: Vec2D) {
+  // Tests whether a chosen vector lies inside the shape. Used for click-detection.
+  is_inside(p: Vec2D) {
     return vec2_norm(vec2_sub(p, this.center)) < this.radius;
   }
   // Tests whether a chosen vector lies within an enlarged version of the dot.
@@ -159,19 +165,19 @@ export class DraggableDot extends Dot {
   }
   // Triggers when the canvas is clicked.
   click(scene: Scene, event: MouseEvent) {
-    this.dragStart = [
-      event.pageX - scene.canvas.offsetLeft,
-      event.pageY - scene.canvas.offsetTop,
-    ];
-    this.isClicked = this.is_inside_dot(
+    this.dragStart = vec2_sub(mouse_event_coords(event), [
+      scene.canvas.offsetLeft,
+      scene.canvas.offsetTop,
+    ]);
+    this.isClicked = this.is_inside(
       scene.c2s(this.dragStart[0], this.dragStart[1]),
     );
   }
   touch(scene: Scene, event: TouchEvent) {
-    this.dragStart = [
-      event.touches[0].pageX - scene.canvas.offsetLeft,
-      event.touches[0].pageY - scene.canvas.offsetTop,
-    ];
+    this.dragStart = vec2_sub(touch_event_coords(event), [
+      scene.canvas.offsetLeft,
+      scene.canvas.offsetTop,
+    ]);
     this.isClicked = this.is_almost_inside_dot(
       scene.c2s(this.dragStart[0], this.dragStart[1]),
       this.touch_tolerance,
@@ -185,39 +191,35 @@ export class DraggableDot extends Dot {
     this.isClicked = false;
   }
   // Triggers when the mouse is dragged over the canvas.
-  drag_cursor(scene: Scene, event: MouseEvent) {
+  mouse_drag_cursor(scene: Scene, event: MouseEvent) {
     if (this.isClicked) {
-      this.dragEnd = [
-        event.pageX - scene.canvas.offsetLeft,
-        event.pageY - scene.canvas.offsetTop,
-      ];
-      this.dragDiff = vec2_sub(
-        scene.c2s(this.dragEnd[0], this.dragEnd[1]),
-        scene.c2s(this.dragStart[0], this.dragStart[1]),
-      );
-      this.move_by(this.dragDiff);
-      this.dragStart = this.dragEnd;
-      // Perform any other MObject updates necessary.
-      this.do_callbacks();
-      scene.draw();
+      this.dragEnd = vec2_sub(mouse_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop,
+      ]);
+      this._drag_cursor(scene);
     }
   }
   touch_drag_cursor(scene: Scene, event: TouchEvent) {
     if (this.isClicked) {
-      this.dragEnd = [
-        event.touches[0].pageX - scene.canvas.offsetLeft,
-        event.touches[0].pageY - scene.canvas.offsetTop,
-      ];
-      this.dragDiff = vec2_sub(
+      this.dragEnd = vec2_sub(touch_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop,
+      ]);
+      this._drag_cursor(scene);
+    }
+  }
+  _drag_cursor(scene: Scene) {
+    this.move_by(
+      vec2_sub(
         scene.c2s(this.dragEnd[0], this.dragEnd[1]),
         scene.c2s(this.dragStart[0], this.dragStart[1]),
-      );
-      this.move_by(this.dragDiff);
-      this.dragStart = this.dragEnd;
-      // Perform any other MObject updates necessary.
-      this.do_callbacks();
-      scene.draw();
-    }
+      ),
+    );
+    this.dragStart = this.dragEnd;
+    // Perform any other MObject updates necessary.
+    this.do_callbacks();
+    scene.draw();
   }
   add(scene: Scene) {
     let self = this;
@@ -226,7 +228,7 @@ export class DraggableDot extends Dot {
     scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
     scene.canvas.addEventListener(
       "mousemove",
-      self.drag_cursor.bind(self, scene),
+      self.mouse_drag_cursor.bind(self, scene),
     );
     // For mobile
     scene.canvas.addEventListener("touchstart", self.touch.bind(self, scene));
@@ -243,7 +245,7 @@ export class DraggableDot extends Dot {
     scene.canvas.removeEventListener("mouseup", this.unclick.bind(self, scene));
     scene.canvas.removeEventListener(
       "mousemove",
-      this.drag_cursor.bind(self, scene),
+      this.mouse_drag_cursor.bind(self, scene),
     );
     // For mobile
     scene.canvas.removeEventListener(
@@ -256,51 +258,32 @@ export class DraggableDot extends Dot {
     );
     scene.canvas.removeEventListener(
       "touchmove",
-      self.drag_cursor.bind(self, scene),
+      self.mouse_drag_cursor.bind(self, scene),
     );
   }
 }
 
 // Dragging only affects the x-coordinate
 export class DraggableDotX extends DraggableDot {
-  drag_cursor(scene: Scene, event: MouseEvent) {
-    if (this.isClicked) {
-      this.dragEnd = [
-        event.pageX - scene.canvas.offsetLeft,
-        event.pageY - scene.canvas.offsetTop,
-      ];
-      this.dragDiff = vec2_sub(
-        scene.c2s(this.dragEnd[0], 0),
-        scene.c2s(this.dragStart[0], 0),
-      );
-      this.move_by(this.dragDiff);
-      this.dragStart = this.dragEnd;
-
-      // Perform any other MObject updates necessary.
-      this.do_callbacks();
-      scene.draw();
-    }
+  _drag_cursor(scene: Scene) {
+    this.move_by(
+      vec2_sub(scene.c2s(this.dragEnd[0], 0), scene.c2s(this.dragStart[0], 0)),
+    );
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
   }
 }
 
 // Dragging only affects the y-coordinate
 export class DraggableDotY extends DraggableDot {
-  drag_cursor(scene: Scene, event: MouseEvent) {
-    if (this.isClicked) {
-      this.dragEnd = [
-        event.pageX - scene.canvas.offsetLeft,
-        event.pageY - scene.canvas.offsetTop,
-      ];
-      this.dragDiff = vec2_sub(
-        scene.c2s(0, this.dragEnd[1]),
-        scene.c2s(0, this.dragStart[1]),
-      );
-      this.move_by(this.dragDiff);
-      this.dragStart = this.dragEnd;
-      // Perform any other MObject updates necessary.
-      this.do_callbacks();
-      scene.draw();
-    }
+  _drag_cursor(scene: Scene) {
+    this.move_by(
+      vec2_sub(scene.c2s(0, this.dragEnd[1]), scene.c2s(0, this.dragStart[1])),
+    );
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
   }
 }
 
@@ -317,6 +300,10 @@ export class Rectangle extends FillLikeMObject {
   }
   move_to(center: Vec2D) {
     this.center = center;
+  }
+  move_by(p: Vec2D) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
   }
   // Draws on the canvas
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
@@ -349,6 +336,162 @@ export class Rectangle extends FillLikeMObject {
     ctx.closePath();
     ctx.stroke();
     ctx.fill();
+  }
+}
+
+// A filled rectangle which can be clicked-and-dragged
+// TODO See if it's possible to refactor this with DraggableDot.
+export class DraggableRectangle extends Rectangle {
+  isClicked: boolean = false;
+  dragStart: Vec2D = [0, 0];
+  dragEnd: Vec2D = [0, 0];
+  touch_tolerance: number = 2.0;
+  callbacks: (() => void)[] = [];
+  // Tests whether a chosen vector lies inside the shape. Used for click-detection.
+  is_inside(p: Vec2D) {
+    return (
+      Math.abs(p[0] - this.center[0]) < this.size_x / 2 &&
+      Math.abs(p[1] - this.center[1]) < this.size_y / 2
+    );
+  }
+  // Tests whether a chosen vector lies within an enlarged version of the shape.
+  // Used for touch-detection on mobile devices, and for use by small children.
+  is_almost_inside(p: Vec2D, tolerance: number) {
+    return (
+      Math.abs(p[0] - this.center[0]) <
+        (this.size_x / 2) * this.touch_tolerance &&
+      Math.abs(p[1] - this.center[1]) < (this.size_y / 2) * this.touch_tolerance
+    );
+  }
+  // Adds a callback which triggers when the dot is dragged
+  add_callback(callback: () => void) {
+    this.callbacks.push(callback);
+  }
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
+  }
+  // Triggers when the canvas is clicked.
+  click(scene: Scene, event: MouseEvent) {
+    this.dragStart = [
+      event.pageX - scene.canvas.offsetLeft,
+      event.pageY - scene.canvas.offsetTop,
+    ];
+    this.isClicked = this.is_inside(
+      scene.c2s(this.dragStart[0], this.dragStart[1]),
+    );
+  }
+  touch(scene: Scene, event: TouchEvent) {
+    this.dragStart = [
+      event.touches[0].pageX - scene.canvas.offsetLeft,
+      event.touches[0].pageY - scene.canvas.offsetTop,
+    ];
+    this.isClicked = this.is_almost_inside(
+      scene.c2s(this.dragStart[0], this.dragStart[1]),
+      this.touch_tolerance,
+    );
+  }
+  // Triggers when the canvas is unclicked.
+  unclick(scene: Scene, event: MouseEvent) {
+    this.isClicked = false;
+  }
+  untouch(scene: Scene, event: TouchEvent) {
+    this.isClicked = false;
+  }
+  // Triggers when the mouse is dragged over the canvas.
+  mouse_drag_cursor(scene: Scene, event: MouseEvent) {
+    if (this.isClicked) {
+      this.dragEnd = vec2_sub(mouse_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop,
+      ]);
+      this._drag_cursor(scene);
+    }
+  }
+  touch_drag_cursor(scene: Scene, event: TouchEvent) {
+    if (this.isClicked) {
+      this.dragEnd = vec2_sub(touch_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop,
+      ]);
+      this._drag_cursor(scene);
+    }
+  }
+  _drag_cursor(scene: Scene) {
+    this.move_by(
+      vec2_sub(
+        scene.c2s(this.dragEnd[0], this.dragEnd[1]),
+        scene.c2s(this.dragStart[0], this.dragStart[1]),
+      ),
+    );
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
+  }
+  add(scene: Scene) {
+    let self = this;
+    // For desktop
+    scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
+    scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
+    scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self, scene),
+    );
+    // For mobile
+    scene.canvas.addEventListener("touchstart", self.touch.bind(self, scene));
+    scene.canvas.addEventListener("touchend", self.untouch.bind(self, scene));
+    scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self, scene),
+    );
+  }
+  remove(scene: Scene) {
+    let self = this;
+    // For desktop
+    scene.canvas.removeEventListener("mousedown", this.click.bind(self, scene));
+    scene.canvas.removeEventListener("mouseup", this.unclick.bind(self, scene));
+    scene.canvas.removeEventListener(
+      "mousemove",
+      this.mouse_drag_cursor.bind(self, scene),
+    );
+    // For mobile
+    scene.canvas.removeEventListener(
+      "touchstart",
+      this.click.bind(self, scene),
+    );
+    scene.canvas.removeEventListener(
+      "touchend",
+      this.unclick.bind(self, scene),
+    );
+    scene.canvas.removeEventListener(
+      "touchmove",
+      self.mouse_drag_cursor.bind(self, scene),
+    );
+  }
+}
+
+// Dragging only affects the x-coordinate
+export class DraggableRectangleX extends DraggableRectangle {
+  _drag_cursor(scene: Scene) {
+    this.move_by(
+      vec2_sub(scene.c2s(this.dragEnd[0], 0), scene.c2s(this.dragStart[0], 0)),
+    );
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
+  }
+}
+
+// Dragging only affects the y-coordinate
+export class DraggableRectangleY extends DraggableRectangle {
+  _drag_cursor(scene: Scene) {
+    this.move_by(
+      vec2_sub(scene.c2s(0, this.dragEnd[1]), scene.c2s(0, this.dragStart[1])),
+    );
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
   }
 }
 
