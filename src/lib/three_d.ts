@@ -88,6 +88,7 @@ export class Dot3D extends ThreeDLineLikeMObject {
   stroke_width: number = 0.04;
   stroke_color: string = "black";
   fill_color: string = "black";
+  fill_alpha: number = 1.0;
   fill: boolean = true;
   constructor(center: Vec3D, radius: number) {
     super();
@@ -109,6 +110,9 @@ export class Dot3D extends ThreeDLineLikeMObject {
   }
   set_fill_color(color: string) {
     this.fill_color = color;
+  }
+  set_fill_alpha(alpha: number) {
+    this.fill_alpha = alpha;
   }
   move_to(new_center: Vec3D) {
     this.center = new_center;
@@ -133,7 +137,11 @@ export class Dot3D extends ThreeDLineLikeMObject {
       ctx.beginPath();
       ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
       ctx.stroke();
-      ctx.fill();
+      if (this.fill) {
+        ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
+        ctx.fill();
+        ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
+      }
     }
   }
 }
@@ -173,8 +181,7 @@ export class Line3D extends ThreeDLineLikeMObject {
 }
 
 // A sequence of line segments with joined endpoints.
-// TODO
-export class LineSequence3D extends ThreeDLineLikeMObject {
+export class LineSequence3D extends ThreeDMObject {
   points: Vec3D[];
   stroke_width: number = 0.04;
   stroke_color: string = "black";
@@ -415,6 +422,7 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     // Generate points to draw
+    // TODO Use a Bezier curve for smoother rendering.
     let points: Vec3D[] = [this.function(this.tmin)];
     for (let i = 1; i <= this.num_steps; i++) {
       points.push(
@@ -423,12 +431,19 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
         ),
       );
     }
-    let [px, py] = scene.v2c(scene.camera_view(points[0]) as Vec2D);
+    let points2D: (Vec2D | null)[] = points.map((p) => {
+      let r = scene.camera_view(p);
+      if (r == null) {
+        return null;
+      }
+      return scene.v2c(r);
+    });
+    let [px, py] = points2D[0] as Vec2D;
     ctx.beginPath();
     ctx.moveTo(px, py);
 
     for (let i = 1; i <= this.num_steps; i++) {
-      [px, py] = scene.v2c(scene.camera_view(points[i]) as Vec2D);
+      [px, py] = points2D[i] as Vec2D;
       ctx.lineTo(px, py);
     }
     ctx.stroke();
@@ -544,8 +559,9 @@ export class ThreeDScene extends Scene {
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    // Objects come in two categories: those with fill and those without fill.
+    // Objects without fill
     // First order the objects by depth
-    // TODO
     let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
       let depth_a = this.mobjects[a].depth(this);
       let depth_b = this.mobjects[b].depth(this);

@@ -239,6 +239,7 @@ var Dot3D = class extends ThreeDLineLikeMObject {
     this.stroke_width = 0.04;
     this.stroke_color = "black";
     this.fill_color = "black";
+    this.fill_alpha = 1;
     this.fill = true;
     this.center = center;
     this.radius = radius;
@@ -258,6 +259,9 @@ var Dot3D = class extends ThreeDLineLikeMObject {
   }
   set_fill_color(color) {
     this.fill_color = color;
+  }
+  set_fill_alpha(alpha) {
+    this.fill_alpha = alpha;
   }
   move_to(new_center) {
     this.center = new_center;
@@ -281,7 +285,11 @@ var Dot3D = class extends ThreeDLineLikeMObject {
       ctx.beginPath();
       ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
       ctx.stroke();
-      ctx.fill();
+      if (this.fill) {
+        ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
+        ctx.fill();
+        ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
+      }
     }
   }
 };
@@ -435,11 +443,18 @@ var ParametrizedCurve3D = class extends ThreeDLineLikeMObject {
         )
       );
     }
-    let [px, py] = scene.v2c(scene.camera_view(points[0]));
+    let points2D = points.map((p) => {
+      let r = scene.camera_view(p);
+      if (r == null) {
+        return null;
+      }
+      return scene.v2c(r);
+    });
+    let [px, py] = points2D[0];
     ctx.beginPath();
     ctx.moveTo(px, py);
     for (let i = 1; i <= this.num_steps; i++) {
-      [px, py] = scene.v2c(scene.camera_view(points[i]));
+      [px, py] = points2D[i];
       ctx.lineTo(px, py);
     }
     ctx.stroke();
@@ -1050,7 +1065,8 @@ var Arcball = class {
       );
       let radius = 2;
       let globe = new Dot3D([0, 0, 0], radius);
-      globe.fill = false;
+      globe.set_fill_color("rgb(63, 63, 63)");
+      globe.set_fill_alpha(0.3);
       scene.add("globe", globe);
       let equator = new ParametrizedCurve3D(
         (t) => [radius * Math.cos(t), radius * Math.sin(t), 0],
@@ -1062,7 +1078,9 @@ var Arcball = class {
       scene.add("equator", equator);
       let polar_axis = new Line3D([0, 0, -1.5 * radius], [0, 0, 1.5 * radius]);
       let n_pole = new Dot3D([0, 0, radius], 0.1);
+      n_pole.set_fill_alpha(1);
       let s_pole = new Dot3D([0, 0, -radius], 0.1);
+      s_pole.set_fill_alpha(1);
       scene.add("polar_axis", polar_axis);
       scene.add("n_pole", n_pole);
       scene.add("s_pole", s_pole);

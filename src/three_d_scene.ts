@@ -240,13 +240,15 @@ import { pick_random_step } from "./random_walk_scene.js";
       // Add a sphere to the scene
       let radius = 2.0;
       let globe = new Dot3D([0, 0, 0], radius);
-      globe.fill = false;
+      // globe.fill = false;
+      globe.set_fill_color("rgb(63, 63, 63)");
+      globe.set_fill_alpha(0.3);
       scene.add("globe", globe);
 
       // Add an equator
       //
-      // TODO Part of this should be dotted. One possible solution is to build a "link" to the globe object,
-      // and then any portion (i.e. BezierCurve) of the curve whose depth is *greater* than that of the globe
+      // TODO Part of this equator should be dotted. One possible solution is to build a "link" to the globe object,
+      // and then any piece (i.e. BezierCurve) of the curve whose depth is *greater* than that of the globe
       // will be drawn as dotted.
       //
       // TODO For now, use depth of the globe as a global function, but we can make this more robust by giving
@@ -263,7 +265,9 @@ import { pick_random_step } from "./random_walk_scene.js";
       // Add a polar axis
       let polar_axis = new Line3D([0, 0, -1.5 * radius], [0, 0, 1.5 * radius]);
       let n_pole = new Dot3D([0, 0, radius], 0.1);
+      n_pole.set_fill_alpha(1.0);
       let s_pole = new Dot3D([0, 0, -radius], 0.1);
+      s_pole.set_fill_alpha(1.0);
       scene.add("polar_axis", polar_axis);
       scene.add("n_pole", n_pole);
       scene.add("s_pole", s_pole);

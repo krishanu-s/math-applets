@@ -543,6 +543,7 @@ var Dot3D = class extends ThreeDLineLikeMObject {
     this.stroke_width = 0.04;
     this.stroke_color = "black";
     this.fill_color = "black";
+    this.fill_alpha = 1;
     this.fill = true;
     this.center = center;
     this.radius = radius;
@@ -562,6 +563,9 @@ var Dot3D = class extends ThreeDLineLikeMObject {
   }
   set_fill_color(color) {
     this.fill_color = color;
+  }
+  set_fill_alpha(alpha) {
+    this.fill_alpha = alpha;
   }
   move_to(new_center) {
     this.center = new_center;
@@ -585,7 +589,11 @@ var Dot3D = class extends ThreeDLineLikeMObject {
       ctx.beginPath();
       ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
       ctx.stroke();
-      ctx.fill();
+      if (this.fill) {
+        ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
+        ctx.fill();
+        ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
+      }
     }
   }
 };
@@ -617,7 +625,7 @@ var Line3D = class extends ThreeDLineLikeMObject {
     ctx.stroke();
   }
 };
-var LineSequence3D = class extends ThreeDLineLikeMObject {
+var LineSequence3D = class extends ThreeDMObject {
   constructor(points) {
     super();
     this.stroke_width = 0.04;
