@@ -12865,7 +12865,7 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       );
       let dots = [];
       for (let i = 0; i < num_points; i++) {
-        let dot3 = new DraggableDotY(eq_position(i), 0.1);
+        let dot3 = new DraggableDotY(eq_position(i), 0.13);
         dots.push(dot3);
       }
       let springs = [];

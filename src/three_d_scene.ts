@@ -123,7 +123,7 @@ import { pick_random_step } from "./random_walk_scene.js";
       let scene = new ThreeDScene(canvas);
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       scene.set_zoom(zoom_ratio);
-      scene.set_view_mode("projection");
+      scene.set_view_mode("orthographic");
 
       // Rotate the camera angle and set the camera position
       scene.rot_z(Math.PI / 4);
@@ -227,14 +227,15 @@ import { pick_random_step } from "./random_walk_scene.js";
       let scene = new ThreeDScene(canvas);
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       scene.set_zoom(zoom_ratio);
-      scene.set_view_mode("projection");
+      scene.set_view_mode("orthographic");
 
       // Rotate the camera angle and set the camera position
-      scene.rot_z(Math.PI / 4);
-      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 3);
-      scene.set_camera_position(
-        rot([0, 0, -5], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 3),
-      );
+      // scene.rot_z(Math.PI / 4);
+      // scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 3);
+      // scene.set_camera_position(
+      //   rot([0, 0, -5], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 3),
+      // );
+      scene.set_camera_position([0, 0, -5]);
 
       // Add a sphere to the scene
       let radius = 2.0;
@@ -256,10 +257,11 @@ import { pick_random_step } from "./random_walk_scene.js";
         (t) => [radius * Math.cos(t), radius * Math.sin(t), 0],
         -Math.PI,
         Math.PI,
-        100,
+        30,
       );
-      equator.set_stroke_style("dashed");
+      equator.set_stroke_style("solid");
       equator.set_stroke_width(0.04);
+      equator.link_mobject(globe);
       scene.add("equator", equator);
 
       // Add a polar axis
@@ -279,8 +281,26 @@ import { pick_random_step } from "./random_walk_scene.js";
       arcball.set_mode("Rotate");
       arcball.add();
 
+      // Add a slider to control the zoom level
+      let zoomSlider = Slider(
+        document.getElementById("three-d-globe-zoom-slider") as HTMLElement,
+        function (value: number) {
+          zoom_ratio = value;
+          scene.set_zoom(value);
+          scene.draw();
+        },
+        {
+          name: "Zoom",
+          initialValue: `${zoom_ratio}`,
+          min: 0.3,
+          max: 3,
+          step: 0.02,
+        },
+      );
+      zoomSlider.value = `1.0`;
+
       scene.draw();
-    })(300, 300);
+    })(500, 500);
 
     // (async function three_d_random_walk(width: number, height: number) {
     //   // Graphing a function
@@ -294,7 +314,7 @@ import { pick_random_step } from "./random_walk_scene.js";
     //   let scene = new ThreeDScene(canvas);
     //   scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
     //   scene.set_zoom(zoom_ratio);
-    //   scene.set_view_mode("projection");
+    //   scene.set_view_mode("orthographic");
 
     //   // Rotate the camera angle and set the camera position
     //   scene.rot_z(Math.PI / 4);
@@ -348,7 +368,7 @@ import { pick_random_step } from "./random_walk_scene.js";
 
     //   let [x, y, z] = [0, 0, 0];
     //   let dx: number, dy: number, dz: number;
-    //   let [cx, cy] = scene.v2c(scene.projection_view([x, y, z]));
+    //   let [cx, cy] = scene.v2c(scene.orthographic_view([x, y, z]));
     //   ctx.beginPath();
     //   ctx.moveTo(cx, cy);
     //   ctx.strokeStyle = "red";
@@ -358,7 +378,7 @@ import { pick_random_step } from "./random_walk_scene.js";
     //     x += dx;
     //     y += dy;
     //     z += dz;
-    //     [cx, cy] = scene.v2c(scene.projection_view([x, y, z]));
+    //     [cx, cy] = scene.v2c(scene.orthographic_view([x, y, z]));
     //     ctx.lineTo(cx, cy);
     //     ctx.stroke();
     //     await delay(1000);

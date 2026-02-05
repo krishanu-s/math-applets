@@ -542,7 +542,7 @@ var ThreeDMObject = class extends MObject {
   // Return the depth of the nearest point on the object that lies along the
   // given ray. Used for relative depth-testing between 3D objects, to determine
   // how to draw them.
-  depth_point(scene, view_point) {
+  depth_at(scene, view_point) {
     return 0;
   }
 };
@@ -638,6 +638,24 @@ var Dot3D = class extends ThreeDFillLikeMObject {
   depth(scene) {
     return scene.depth(this.center);
   }
+  depth_at(scene, view_point) {
+    if (scene.mode == "perspective") {
+      return 0;
+    } else if (scene.mode == "orthographic") {
+      let view_center = scene.orthographic_view(this.center);
+      let view_radius = this.radius * scene.zoom_ratio;
+      let view_dist = vec2_norm(vec2_sub(view_point, view_center)) * scene.zoom_ratio;
+      if (view_dist > view_radius) {
+        return Infinity;
+      } else {
+        let depth_adjustment = Math.sqrt(
+          Math.max(0, view_radius ** 2 - view_dist ** 2)
+        );
+        return scene.depth(this.center) - depth_adjustment / scene.zoom_ratio;
+      }
+    }
+    return 0;
+  }
   move_to(new_center) {
     this.center = new_center;
   }
@@ -646,10 +664,7 @@ var Dot3D = class extends ThreeDFillLikeMObject {
     let pr = scene.camera_view(
       vec3_sum(
         this.center,
-        vec3_scale(
-          get_column(scene.get_camera_frame(), 0),
-          this.radius * scene.zoom_ratio
-        )
+        vec3_scale(get_column(scene.get_camera_frame(), 0), this.radius)
       )
     );
     if (p != null && pr != null) {
@@ -846,7 +861,7 @@ var ThreeDScene = class extends Scene {
     if (this.mode == "perspective") {
       return this.perspective_view(p);
     } else {
-      return this.projection_view(p);
+      return this.orthographic_view(p);
     }
   }
   depth(p) {
@@ -856,7 +871,7 @@ var ThreeDScene = class extends Scene {
     )[2];
   }
   // Projects a 3D point onto the camera view plane. Does not include perspective.
-  projection_view(p) {
+  orthographic_view(p) {
     let [vx, vy, vz] = matmul_vec(
       this.camera_frame_inv,
       vec3_sub(p, this.camera_position)
@@ -1485,7 +1500,7 @@ function pick_random_step(dim) {
       let scene = new ThreeDScene(canvas);
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       scene.set_zoom(zoom_ratio);
-      scene.set_view_mode("projection");
+      scene.set_view_mode("orthographic");
       scene.rot_z(Math.PI / 4);
       scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 3);
       scene.set_camera_position([0, 0, -8]);

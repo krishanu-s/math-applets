@@ -475,7 +475,7 @@ export function pick_random_step(dim: number): number[] {
       let scene = new ThreeDScene(canvas);
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       scene.set_zoom(zoom_ratio);
-      scene.set_view_mode("projection");
+      scene.set_view_mode("orthographic");
 
       // Rotate the camera angle and set the camera position
       scene.rot_z(Math.PI / 4);
