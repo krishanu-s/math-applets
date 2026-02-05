@@ -625,11 +625,9 @@ var Line3D = class extends ThreeDLineLikeMObject {
     ctx.stroke();
   }
 };
-var LineSequence3D = class extends ThreeDMObject {
+var LineSequence3D = class extends ThreeDLineLikeMObject {
   constructor(points) {
     super();
-    this.stroke_width = 0.04;
-    this.stroke_color = "black";
     this.points = points;
   }
   add_point(point) {

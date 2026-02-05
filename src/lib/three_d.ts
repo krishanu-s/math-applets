@@ -181,10 +181,8 @@ export class Line3D extends ThreeDLineLikeMObject {
 }
 
 // A sequence of line segments with joined endpoints.
-export class LineSequence3D extends ThreeDMObject {
+export class LineSequence3D extends ThreeDLineLikeMObject {
   points: Vec3D[];
-  stroke_width: number = 0.04;
-  stroke_color: string = "black";
   constructor(points: Vec3D[]) {
     super();
     this.points = points;
