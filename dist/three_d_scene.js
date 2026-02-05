@@ -476,9 +476,12 @@ var Dot3D = class extends ThreeDLineLikeMObject {
     ctx.fillStyle = this.fill_color;
     let p = scene.camera_view(this.center);
     let pr = scene.camera_view(
-      vec3_scale(
-        get_column(scene.get_camera_frame(), 0),
-        this.radius * scene.zoom_ratio
+      vec3_sum(
+        this.center,
+        vec3_scale(
+          get_column(scene.get_camera_frame(), 0),
+          this.radius * scene.zoom_ratio
+        )
       )
     );
     if (p != null && pr != null) {
