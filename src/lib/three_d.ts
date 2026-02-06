@@ -339,6 +339,20 @@ export class Line3D extends ThreeDLineLikeMObject {
       }
     }
   }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
+
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
+  }
 }
 
 // A sequence of line segments with joined endpoints.
@@ -767,6 +781,35 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
     if (state == "blocked") {
       this.unset_behind_linked_mobjects(ctx);
     }
+  }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
+    // Generate points to draw
+    // TODO Use a Bezier curve for smoother rendering.
+    let points: Vec3D[] = [this.function(this.tmin)];
+    for (let i = 1; i <= this.num_steps; i++) {
+      points.push(
+        this.function(
+          this.tmin + (i / this.num_steps) * (this.tmax - this.tmin),
+        ),
+      );
+    }
+    let points2D: (Vec2D | null)[] = points.map((p) => {
+      let r = scene.camera_view(p);
+      if (r == null) {
+        return null;
+      }
+      return scene.v2c(r);
+    });
+    let [px, py] = points2D[0] as Vec2D;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+
+    for (let i = 1; i <= this.num_steps; i++) {
+      [px, py] = points2D[i] as Vec2D;
+      ctx.lineTo(px, py);
+    }
+    ctx.stroke();
   }
 }
 
