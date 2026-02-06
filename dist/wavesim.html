@@ -19,6 +19,10 @@
         ></script>
         <script type="module" src="wavesim_scene.js"></script>
         <style>
+            .row {
+                display: flex;
+                align-items: center; /* Centers vertically */
+            }
             .applet-container {
                 display: flex;
                 justify-content: center; /* Centers horizontally */
@@ -34,7 +38,7 @@
                 display: flex;
                 justify-content: center; /* Centers horizontally */
                 align-items: center; /* Centers vertically */
-                width: 40%;
+                width: 50%;
                 height: 25px;
                 margin: 20px 0;
                 margin-left: auto;
@@ -234,15 +238,42 @@
 
             <br />
             <div style="width: 100%" class="row">
-                <div class="applet-container" id="wavesim-1d-impulse"></div>
-                <div class="applet-container" id="wavesim-1d-pml"></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="wavesim-1d-impulse"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="wavesim-1d-pml"
+                ></div>
             </div>
             <br />
             <div style="width: 100%" class="row">
-                <div class="button" id="wavesim-1d-impulse-pause-button"></div>
-                <div class="button" id="wavesim-1d-impulse-reset-button"></div>
-                <div class="button" id="wavesim-1d-pml-pause-button"></div>
-                <div class="button" id="wavesim-1d-pml-reset-button"></div>
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="wavesim-1d-impulse-pause-button"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="wavesim-1d-pml-pause-button"
+                ></div>
+            </div>
+            <br />
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="wavesim-1d-impulse-reset-button"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="wavesim-1d-pml-reset-button"
+                ></div>
             </div>
             <br />
             <h3>Two-dimensional case</h3>
