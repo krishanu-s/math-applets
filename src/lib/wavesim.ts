@@ -87,6 +87,8 @@ export class PointSource {
 // Wave equation simulation for a function R -> R, bounded at ends.
 export class WaveSimOneDim extends Simulator {
   width: number;
+  // Perfectly-matched layers in 1D are implemented as increasing friction coefficients at the boundaries.
+  pml_layers: Record<number, [number, number]> = {}; //
   wave_propagation_speed: number = 20.0; // Speed of wave propagation
   damping: number = 0.0; // Damping coefficient
   left_endpoint: number = 0.0; // Left boundary condition
@@ -96,6 +98,40 @@ export class WaveSimOneDim extends Simulator {
     // Store position and velocity at each point.
     super(2 * width, dt);
     this.width = width;
+  }
+  remove_pml_layers() {
+    this.pml_layers = { 0: [0, 0], 1: [0, 0] };
+  }
+  set_pml_layer(positive: boolean, pml_width: number, pml_strength: number) {
+    let ind;
+    if (positive) {
+      ind = 0;
+    } else {
+      ind = 1;
+    }
+    this.pml_layers[ind] = [pml_width, pml_strength];
+  }
+  sigma_x(arr_x: number): number {
+    let ind, pml_thickness, pml_strength;
+    // Find the right PML layer
+    if (arr_x - this.width / 2 >= 0) {
+      ind = 0;
+    } else {
+      ind = 1;
+    }
+    // Calculate the damping factor
+    if (this.pml_layers.hasOwnProperty(ind)) {
+      [pml_thickness, pml_strength] = this.pml_layers[ind] as [number, number];
+      let relative_distance_from_center = Math.abs(
+        -1 + arr_x / (this.width / 2),
+      );
+      return (
+        pml_strength *
+        Math.max(0, relative_distance_from_center + pml_thickness - 1) ** 2
+      );
+    } else {
+      return 0;
+    }
   }
   add_point_source(source: PointSourceOneDim) {
     let ind = Object.keys(this.point_sources).length;
@@ -163,7 +199,7 @@ export class WaveSimOneDim extends Simulator {
     for (let x = 0; x < this.width; x++) {
       dS.push(
         this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x) -
-          this.damping * (vals[x + this.width] as number),
+          this.sigma_x(x) * (vals[x + this.width] as number),
       );
     }
 

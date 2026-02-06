@@ -827,7 +827,6 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       scene.set_mode("dots");
       scene.set_dot_radius(0.05);
       scene.include_arrows = false;
-      // TODO Remove arrows if possible
       let sim = scene.sim();
 
       // Set the attributes of the simulator
@@ -889,7 +888,6 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       scene.draw();
       scene.play(undefined);
     })(300, 300, 50);
-
     (function wavesim_one_dimensional_demo_pml(
       width: number,
       height: number,
@@ -901,16 +899,19 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("curve");
+      scene.set_zoom(1.5);
       scene.set_dot_radius(0.05);
       scene.include_arrows = false;
-      // TODO Remove arrows if possible
       let sim = scene.sim();
 
       // Set the attributes of the simulator
-      sim.set_attr("wave_propagation_speed", 5.0);
+      // TODO Add PML layers at the boundaries.
+      sim.set_attr("wave_propagation_speed", 3.0);
       sim.set_attr("damping", 0.0);
+      sim.set_pml_layer(true, 0.3, 100);
+      sim.set_pml_layer(false, 0.3, 100);
       sim.set_attr("dt", 0.02);
-      sim.add_point_source(new PointSourceOneDim(num_points / 2, 5.0, 1.0, 0));
+      sim.add_point_source(new PointSourceOneDim(num_points / 2, 3.0, 1.0, 0));
 
       // Initial conditions
       function reset_simulation() {
@@ -950,7 +951,7 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       // Prepare the simulation
       scene.draw();
       scene.play(undefined);
-    })(300, 300, 50);
+    })(300, 300, 60);
 
     // *** TWO-DIMENSIONAL WAVE EQUATION ***
     // A 2D lattice of point masses (say, 5x5), oscillating along a third dimension.

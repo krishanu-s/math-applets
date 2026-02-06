@@ -12309,6 +12309,9 @@ var PointSource = class {
 var WaveSimOneDim = class extends Simulator {
   constructor(width, dt) {
     super(2 * width, dt);
+    // Perfectly-matched layers in 1D are implemented as increasing friction coefficients at the boundaries.
+    this.pml_layers = {};
+    //
     this.wave_propagation_speed = 20;
     // Speed of wave propagation
     this.damping = 0;
@@ -12319,6 +12322,35 @@ var WaveSimOneDim = class extends Simulator {
     // Left boundary condition
     this.point_sources = {};
     this.width = width;
+  }
+  remove_pml_layers() {
+    this.pml_layers = { 0: [0, 0], 1: [0, 0] };
+  }
+  set_pml_layer(positive2, pml_width, pml_strength) {
+    let ind;
+    if (positive2) {
+      ind = 0;
+    } else {
+      ind = 1;
+    }
+    this.pml_layers[ind] = [pml_width, pml_strength];
+  }
+  sigma_x(arr_x) {
+    let ind, pml_thickness, pml_strength;
+    if (arr_x - this.width / 2 >= 0) {
+      ind = 0;
+    } else {
+      ind = 1;
+    }
+    if (this.pml_layers.hasOwnProperty(ind)) {
+      [pml_thickness, pml_strength] = this.pml_layers[ind];
+      let relative_distance_from_center = Math.abs(
+        -1 + arr_x / (this.width / 2)
+      );
+      return pml_strength * Math.max(0, relative_distance_from_center + pml_thickness - 1) ** 2;
+    } else {
+      return 0;
+    }
   }
   add_point_source(source) {
     let ind = Object.keys(this.point_sources).length;
@@ -12374,7 +12406,7 @@ var WaveSimOneDim = class extends Simulator {
     let dS = vals.slice(this.width, 2 * this.width);
     for (let x = 0; x < this.width; x++) {
       dS.push(
-        this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x) - this.damping * vals[x + this.width]
+        this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x) - this.sigma_x(x) * vals[x + this.width]
       );
     }
     return dS;
@@ -13451,13 +13483,16 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("curve");
+      scene.set_zoom(1.5);
       scene.set_dot_radius(0.05);
       scene.include_arrows = false;
       let sim = scene.sim();
-      sim.set_attr("wave_propagation_speed", 5);
+      sim.set_attr("wave_propagation_speed", 3);
       sim.set_attr("damping", 0);
+      sim.set_pml_layer(true, 0.3, 100);
+      sim.set_pml_layer(false, 0.3, 100);
       sim.set_attr("dt", 0.02);
-      sim.add_point_source(new PointSourceOneDim(num_points / 2, 5, 1, 0));
+      sim.add_point_source(new PointSourceOneDim(num_points / 2, 3, 1, 0));
       function reset_simulation() {
         sim.time = 0;
         sim.set_uValues(funspace((x) => 0, 0, 1, num_points));
@@ -13490,7 +13525,7 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       resetButton.style.padding = "15px";
       scene.draw();
       scene.play(void 0);
-    })(300, 300, 50);
+    })(300, 300, 60);
     (function point_mass_discrete_lattice(width, height) {
       let canvas = prepare_canvas(width, height, "point-mass-discrete-lattice");
       const ctx = canvas.getContext("2d");
