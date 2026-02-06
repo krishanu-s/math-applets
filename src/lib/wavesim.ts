@@ -140,6 +140,7 @@ export class WaveSimOneDim extends Simulator {
 // to the line of dots.
 export class WaveSimOneDimScene extends InteractivePlayingScene {
   mode: "curve" | "dots";
+  arrow_length_scale: number = 1.5;
   constructor(canvas: HTMLCanvasElement, width: number) {
     let sim = new WaveSimOneDim(width, 0.01);
     super(canvas, [sim]);
@@ -148,7 +149,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     let pos: Vec2D, next_pos: Vec2D;
 
     // Add a line representing the equilibrium position
-    let eq_line = new Line([-5, 0], [5, 0])
+    let eq_line = new Line(this.eq_position(1), this.eq_position(width))
       .set_stroke_width(0.05)
       .set_stroke_style("dashed")
       .set_stroke_color("gray");
@@ -187,7 +188,6 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
         [pos[0], pos[1]],
       ).set_stroke_width(0.05);
       arrow.set_stroke_color("red");
-      arrow.set_alpha(0.5);
       arrow.set_arrow_size(0.0);
       this.add(`arr${i + 1}`, arrow);
     }
@@ -200,12 +200,20 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
         mass.add_callback(() => {
           let sim = this.get_simulator() as WaveSimOneDim;
           sim.set_left_endpoint(mass.get_center()[1]);
+          (this.get_mobj("eq_line") as Line).move_start([
+            this.eq_position(1)[0],
+            mass.get_center()[1],
+          ]);
         });
       }
       if (i == width - 1) {
         mass.add_callback(() => {
           let sim = this.get_simulator() as WaveSimOneDim;
           sim.set_right_endpoint(mass.get_center()[1]);
+          (this.get_mobj("eq_line") as Line).move_end([
+            this.eq_position(width)[0],
+            mass.get_center()[1],
+          ]);
         });
       }
       mass.add_callback(() => {
@@ -226,6 +234,9 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
   set_mode(mode: "curve" | "dots") {
     this.mode = mode;
   }
+  set_arrow_length_scale(scale: number) {
+    this.arrow_length_scale = scale;
+  }
   set_frame_lims(xlims: [number, number], ylims: [number, number]): void {
     super.set_frame_lims(xlims, ylims);
     // Reset positions of objects
@@ -241,6 +252,10 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     mobj = this.get_mobj("b1") as Line;
     mobj.move_start([pos[0], ymin / 2]);
     mobj.move_end([pos[0], ymax / 2]);
+
+    mobj = this.get_mobj("eq_line") as Line;
+    mobj.move_start(this.eq_position(1));
+    mobj.move_end(this.eq_position(this.width()));
 
     this.update_mobjects();
     // Reset equilibrium lengths of lines
@@ -290,8 +305,14 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       if (i != 0 && i != this.width() - 1) {
         arrow = this.get_mobj(`arr${i + 1}`) as Arrow;
         arrow.move_start([pos[0], pos[1] + disp]);
-        arrow.move_end([pos[0], pos[1] + disp + (deriv[i] as number) / 5]);
-        arrow.set_arrow_size(Math.sqrt(Math.abs(deriv[i] as number)) / 10);
+        arrow.move_end([
+          pos[0],
+          pos[1] + disp + (this.arrow_length_scale * (deriv[i] as number)) / 5,
+        ]);
+        arrow.set_arrow_size(
+          Math.sqrt(this.arrow_length_scale * Math.abs(deriv[i] as number)) /
+            10,
+        );
       }
 
       anchors.push([pos[0], pos[1] + disp]);

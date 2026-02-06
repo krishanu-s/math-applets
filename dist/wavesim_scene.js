@@ -10685,7 +10685,7 @@ var LineLikeMObject = class extends MObject {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.xlims;
+    let [xmin, xmax] = scene.view_xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
     if (this.stroke_style == "dashed") {
@@ -10740,7 +10740,7 @@ var FillLikeMObject = class extends MObject {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.xlims;
+    let [xmin, xmax] = scene.view_xlims;
     ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
     ctx.strokeStyle = this.stroke_color;
     if (this.stroke_style == "dashed") {
@@ -10759,12 +10759,20 @@ var Scene = class {
     this.border_color = "black";
     // Zoom ratio
     this.zoom_ratio = 1;
+    // Determines whether any draggable object in the scene is clicked
+    this.is_dragging = false;
     this.canvas = canvas;
     this.mobjects = {};
     this.xlims = [0, canvas.width];
     this.ylims = [0, canvas.height];
     this.view_xlims = [0, canvas.width];
     this.view_ylims = [0, canvas.height];
+  }
+  click() {
+    this.is_dragging = true;
+  }
+  unclick() {
+    this.is_dragging = false;
   }
   // Sets the coordinates for the borders of the scene. This also resets
   // the current viewing window to match the scene size.
@@ -10779,6 +10787,13 @@ var Scene = class {
     this.zoom_ratio = (this.xlims[1] - this.xlims[0]) / (xlims[1] - xlims[0]);
     this.view_xlims = xlims;
     this.view_ylims = ylims;
+  }
+  // Returns the center of the viewing window
+  get_view_center() {
+    return [
+      (this.view_xlims[0] + this.view_xlims[1]) / 2,
+      (this.view_ylims[0] + this.view_ylims[1]) / 2
+    ];
   }
   // Sets the current zoom level
   set_zoom(value) {
@@ -10797,6 +10812,11 @@ var Scene = class {
       center[1] + (this.view_ylims[0] - center[1]) / ratio,
       center[1] + (this.view_ylims[1] - center[1]) / ratio
     ];
+  }
+  // Moves the viewing window by the specified vector
+  move_view(v) {
+    this.view_xlims = [this.view_xlims[0] + v[0], this.view_xlims[1] + v[0]];
+    this.view_ylims = [this.view_ylims[0] + v[1], this.view_ylims[1] + v[1]];
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
@@ -11089,7 +11109,7 @@ var DraggableDot = class extends Dot {
   }
   // Tests whether a chosen vector lies within an enlarged version of the dot.
   // Used for touch-detection on mobile devices, and for use by small children.
-  is_almost_inside_dot(p, tolerance) {
+  is_almost_inside(p, tolerance) {
     return vec2_norm(vec2_sub(p, this.center)) < this.radius * tolerance;
   }
   // Adds a callback which triggers when the dot is dragged
@@ -11107,26 +11127,42 @@ var DraggableDot = class extends Dot {
       scene.canvas.offsetLeft,
       scene.canvas.offsetTop
     ]);
-    this.isClicked = this.is_inside(
-      scene.c2v(this.dragStart[0], this.dragStart[1])
-    );
+    if (!scene.is_dragging) {
+      this.isClicked = this.is_inside(
+        scene.c2v(this.dragStart[0], this.dragStart[1])
+      );
+      if (this.isClicked) {
+        scene.click();
+      }
+    }
   }
   touch(scene, event) {
-    this.dragStart = vec2_sub(touch_event_coords(event), [
-      scene.canvas.offsetLeft,
-      scene.canvas.offsetTop
-    ]);
-    this.isClicked = this.is_almost_inside_dot(
-      scene.c2v(this.dragStart[0], this.dragStart[1]),
-      this.touch_tolerance
-    );
+    this.dragStart = [
+      event.touches[0].pageX - scene.canvas.offsetLeft,
+      event.touches[0].pageY - scene.canvas.offsetTop
+    ];
+    if (!scene.is_dragging) {
+      this.isClicked = this.is_almost_inside(
+        scene.c2v(this.dragStart[0], this.dragStart[1]),
+        this.touch_tolerance
+      );
+      if (this.isClicked) {
+        scene.click();
+      }
+    }
   }
   // Triggers when the canvas is unclicked.
   unclick(scene, event) {
+    if (this.isClicked) {
+      scene.unclick();
+    }
     this.isClicked = false;
   }
   untouch(scene, event) {
-    this.isClicked = false;
+    if (this.isClicked) {
+      scene.unclick();
+    }
+    scene.unclick();
   }
   // Triggers when the mouse is dragged over the canvas.
   mouse_drag_cursor(scene, event) {
@@ -11149,9 +11185,12 @@ var DraggableDot = class extends Dot {
   }
   _drag_cursor(scene) {
     this.move_by(
-      vec2_sub(
-        scene.c2v(this.dragEnd[0], this.dragEnd[1]),
-        scene.c2v(this.dragStart[0], this.dragStart[1])
+      vec2_scale(
+        vec2_sub(
+          scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+          scene.c2v(this.dragStart[0], this.dragStart[1])
+        ),
+        0.5
       )
     );
     this.dragStart = this.dragEnd;
@@ -11308,30 +11347,46 @@ var DraggableRectangle = class extends Rectangle {
   }
   // Triggers when the canvas is clicked.
   click(scene, event) {
-    this.dragStart = [
-      event.pageX - scene.canvas.offsetLeft,
-      event.pageY - scene.canvas.offsetTop
-    ];
-    this.isClicked = this.is_inside(
-      scene.c2v(this.dragStart[0], this.dragStart[1])
-    );
+    this.dragStart = vec2_sub(mouse_event_coords(event), [
+      scene.canvas.offsetLeft,
+      scene.canvas.offsetTop
+    ]);
+    if (!scene.is_dragging) {
+      this.isClicked = this.is_inside(
+        scene.c2v(this.dragStart[0], this.dragStart[1])
+      );
+      if (this.isClicked) {
+        scene.click();
+      }
+    }
   }
   touch(scene, event) {
     this.dragStart = [
       event.touches[0].pageX - scene.canvas.offsetLeft,
       event.touches[0].pageY - scene.canvas.offsetTop
     ];
-    this.isClicked = this.is_almost_inside(
-      scene.c2v(this.dragStart[0], this.dragStart[1]),
-      this.touch_tolerance
-    );
+    if (!scene.is_dragging) {
+      this.isClicked = this.is_almost_inside(
+        scene.c2v(this.dragStart[0], this.dragStart[1]),
+        this.touch_tolerance
+      );
+      if (this.isClicked) {
+        scene.click();
+      }
+    }
   }
   // Triggers when the canvas is unclicked.
   unclick(scene, event) {
+    if (this.isClicked) {
+      scene.unclick();
+    }
     this.isClicked = false;
   }
   untouch(scene, event) {
-    this.isClicked = false;
+    if (this.isClicked) {
+      scene.unclick();
+    }
+    scene.unclick();
   }
   // Triggers when the mouse is dragged over the canvas.
   mouse_drag_cursor(scene, event) {
@@ -11476,6 +11531,105 @@ var Arrow = class extends Line {
     ctx.lineTo(end_x, end_y);
     ctx.closePath();
     ctx.fill();
+  }
+};
+
+// src/lib/scene_view_translator.ts
+var SceneViewTranslator = class {
+  constructor(scene) {
+    this.drag = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.scene = scene;
+  }
+  click(event) {
+    this.dragStart = [
+      event.pageX - this.scene.canvas.offsetLeft,
+      event.pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
+  }
+  touch(event) {
+    this.dragStart = [
+      event.touches[0].pageX - this.scene.canvas.offsetLeft,
+      event.touches[0].pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
+  }
+  unclick(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  untouch(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  mouse_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.pageX - this.scene.canvas.offsetLeft,
+        event.pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  touch_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.touches[0].pageX - this.scene.canvas.offsetLeft,
+        event.touches[0].pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  // Updates the scene to account for a dragged cursor position
+  _drag_cursor() {
+    let dragDiff = vec2_sub(
+      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
+      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
+    );
+    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
+      return;
+    }
+    this.scene.move_view(dragDiff);
+    this.scene.draw();
+    this.dragStart = this.dragEnd;
+  }
+  add() {
+    let self = this;
+    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
+  }
+  remove() {
+    let self = this;
+    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.removeEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.removeEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
   }
 };
 
@@ -12201,9 +12355,10 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
   constructor(canvas, width) {
     let sim = new WaveSimOneDim(width, 0.01);
     super(canvas, [sim]);
+    this.arrow_length_scale = 1.5;
     this.mode = "dots";
     let pos, next_pos;
-    let eq_line = new Line([-5, 0], [5, 0]).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
+    let eq_line = new Line(this.eq_position(1), this.eq_position(width)).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
     this.add("eq_line", eq_line);
     let [ymin, ymax] = this.ylims;
     pos = this.eq_position(1);
@@ -12232,7 +12387,6 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
         [pos[0], pos[1]]
       ).set_stroke_width(0.05);
       arrow.set_stroke_color("red");
-      arrow.set_alpha(0.5);
       arrow.set_arrow_size(0);
       this.add(`arr${i + 1}`, arrow);
     }
@@ -12243,12 +12397,20 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
         mass.add_callback(() => {
           let sim2 = this.get_simulator();
           sim2.set_left_endpoint(mass.get_center()[1]);
+          this.get_mobj("eq_line").move_start([
+            this.eq_position(1)[0],
+            mass.get_center()[1]
+          ]);
         });
       }
       if (i == width - 1) {
         mass.add_callback(() => {
           let sim2 = this.get_simulator();
           sim2.set_right_endpoint(mass.get_center()[1]);
+          this.get_mobj("eq_line").move_end([
+            this.eq_position(width)[0],
+            mass.get_center()[1]
+          ]);
         });
       }
       mass.add_callback(() => {
@@ -12267,6 +12429,9 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
   set_mode(mode) {
     this.mode = mode;
   }
+  set_arrow_length_scale(scale) {
+    this.arrow_length_scale = scale;
+  }
   set_frame_lims(xlims, ylims) {
     super.set_frame_lims(xlims, ylims);
     let mobj, pos, next_pos;
@@ -12279,6 +12444,9 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     mobj = this.get_mobj("b1");
     mobj.move_start([pos[0], ymin / 2]);
     mobj.move_end([pos[0], ymax / 2]);
+    mobj = this.get_mobj("eq_line");
+    mobj.move_start(this.eq_position(1));
+    mobj.move_end(this.eq_position(this.width()));
     this.update_mobjects();
     let eq_length;
     for (let i = 1; i < this.width(); i++) {
@@ -12319,8 +12487,13 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       if (i != 0 && i != this.width() - 1) {
         arrow = this.get_mobj(`arr${i + 1}`);
         arrow.move_start([pos[0], pos[1] + disp]);
-        arrow.move_end([pos[0], pos[1] + disp + deriv[i] / 5]);
-        arrow.set_arrow_size(Math.sqrt(Math.abs(deriv[i])) / 10);
+        arrow.move_end([
+          pos[0],
+          pos[1] + disp + this.arrow_length_scale * deriv[i] / 5
+        ]);
+        arrow.set_arrow_size(
+          Math.sqrt(this.arrow_length_scale * Math.abs(deriv[i])) / 10
+        );
       }
       anchors.push([pos[0], pos[1] + disp]);
       if (i < this.width() - 1) {
@@ -13104,6 +13277,8 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("dots");
+      scene.set_dot_radius(0.05);
+      scene.set_arrow_length_scale(0.1);
       let sim = scene.sim();
       sim.set_attr("wave_propagation_speed", 3);
       sim.set_attr("damping", 0.05);
@@ -13112,35 +13287,15 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
         return Math.exp(-(5 * (x - 0.5) ** 2));
       }
       sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
-      let zoom_point = [2, 2];
-      canvas.addEventListener("mousedown", (event) => {
-        if (scene.paused) {
-          for (let i = 0; i < num_points; i++) {
-            let dot3 = scene.get_mobj(`p_${i + 1}`);
-            if (dot3.isClicked) {
-              return;
-            }
-          }
-        }
-        zoom_point = scene.c2v(event.offsetX, event.offsetY);
-        if (scene.has_mobj("zoom_point")) {
-          scene.get_mobj("zoom_point").move_to(zoom_point);
-          scene.draw();
-        } else {
-          scene.add(
-            "zoom_point",
-            new Rectangle(zoom_point, 0.2, 0.2).set_color("green")
-          );
-          scene.draw();
-        }
-      });
+      let translator = new SceneViewTranslator(scene);
+      translator.add();
       let zoom_slider = Slider(
         document.getElementById(
           "point-mass-continuous-sequence-zoom-slider"
         ),
         function(zr) {
           scene.add_to_queue(() => {
-            scene.zoom_in_on(zr / scene.zoom_ratio, zoom_point);
+            scene.zoom_in_on(zr / scene.zoom_ratio, scene.get_view_center());
             if (zr > 3) {
               scene.set_mode("dots");
             } else {
@@ -13152,7 +13307,7 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
         {
           name: "Zoom ratio",
           initial_value: "1.0",
-          min: 1,
+          min: 0.6,
           max: 5,
           step: 0.05
         }

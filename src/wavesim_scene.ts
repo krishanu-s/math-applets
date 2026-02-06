@@ -1,6 +1,7 @@
 // Testing the direct feeding of a pixel array to the canvas
 import { MObject, Scene, prepare_canvas } from "./lib/base.js";
 import { Slider, Button, PauseButton } from "./lib/interactive.js";
+import { SceneViewTranslator } from "./lib/scene_view_translator.js";
 import {
   Dot,
   Sector,
@@ -841,9 +842,6 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
 
     // Use the same scene as before, but with a large number of point masses (say, 50) drawn
     // as a Bezier-curve.
-    // - TODO Add a button to toggle zoom in/out by clicking on a part of the screen.
-    //   When the zoom reaches a certain level, switch to the discrete point-mass mode
-    //   with draggable point masses (while paused)
     (function point_mass_continuous_sequence(num_points: number) {
       // Prepare the canvas
       let canvas = prepare_canvas(300, 300, "point-mass-continuous-sequence");
@@ -851,6 +849,8 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("dots");
+      scene.set_dot_radius(0.05);
+      scene.set_arrow_length_scale(0.1);
       let sim = scene.sim();
 
       // Set the attributes of the simulator
@@ -862,30 +862,10 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       }
       sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
 
-      // Select a zoom-in point
-      // TODO We need to make sure this doesn't conflict with dragging
-      let zoom_point: Vec2D = [2, 2];
-      canvas.addEventListener("mousedown", (event) => {
-        if (scene.paused) {
-          for (let i = 0; i < num_points; i++) {
-            let dot = scene.get_mobj(`p_${i + 1}`) as DraggableDotY;
-            if (dot.isClicked) {
-              return;
-            }
-          }
-        }
-        zoom_point = scene.c2v(event.offsetX, event.offsetY);
-        if (scene.has_mobj("zoom_point")) {
-          (scene.get_mobj("zoom_point") as Rectangle).move_to(zoom_point);
-          scene.draw();
-        } else {
-          scene.add(
-            "zoom_point",
-            new Rectangle(zoom_point, 0.2, 0.2).set_color("green"),
-          );
-          scene.draw();
-        }
-      });
+      // Add SceneViewTranslator
+      // ** NOTE that this must come after all objects have been added to the scene.
+      let translator = new SceneViewTranslator(scene);
+      translator.add();
 
       // Slider which controls the zoom
       let zoom_slider = Slider(
@@ -894,7 +874,7 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
         ) as HTMLElement,
         function (zr: number) {
           scene.add_to_queue(() => {
-            scene.zoom_in_on(zr / scene.zoom_ratio, zoom_point);
+            scene.zoom_in_on(zr / scene.zoom_ratio, scene.get_view_center());
             if (zr > 3) {
               scene.set_mode("dots");
             } else {
@@ -906,7 +886,7 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
         {
           name: "Zoom ratio",
           initial_value: "1.0",
-          min: 1.0,
+          min: 0.6,
           max: 5,
           step: 0.05,
         },

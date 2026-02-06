@@ -1,25 +1,15 @@
-// An interface for user click-and-drag interaction with a 3D object.
-// Ref: https://graphicsinterface.org/wp-content/uploads/gi1992-18.pdf
-
+// Click-and-drag translation on a 2D scene. This is effectively a simplified version of ArcBall.
+// TODO Refactor this with ArcBall.
+import { Scene } from "./base.js";
 import { Vec2D, vec2_normalize, vec2_sub, vec2_norm } from "./base_geom.js";
-import { vec3_sum, vec3_scale, ThreeDScene } from "./three_d.js";
-import { normalize, get_column, matmul_vec, rot } from "./matvec";
 
-export class Arcball {
-  scene: ThreeDScene;
+export class SceneViewTranslator {
+  scene: Scene;
   drag: boolean = false;
   dragStart: Vec2D = [0, 0];
   dragEnd: Vec2D = [0, 0];
-  dragDiff: Vec2D = [0, 0];
-  mode: "Translate" | "Rotate" = "Translate";
-  constructor(scene: ThreeDScene) {
+  constructor(scene: Scene) {
     this.scene = scene;
-  }
-  set_mode(mode: "Translate" | "Rotate") {
-    this.mode = mode;
-  }
-  switch_mode() {
-    this.mode = this.mode == "Translate" ? "Rotate" : "Translate";
   }
   click(event: MouseEvent) {
     this.dragStart = [
@@ -36,7 +26,10 @@ export class Arcball {
       event.touches[0].pageX - this.scene.canvas.offsetLeft,
       event.touches[0].pageY - this.scene.canvas.offsetTop,
     ];
-    this.drag = true;
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
   }
   unclick(event: MouseEvent) {
     this.drag = false;
@@ -44,7 +37,9 @@ export class Arcball {
   }
   untouch(event: TouchEvent) {
     this.drag = false;
+    this.scene.unclick();
   }
+
   mouse_drag_cursor(event: MouseEvent) {
     if (this.drag) {
       this.dragEnd = [
@@ -76,32 +71,7 @@ export class Arcball {
     }
 
     // Otherwise...
-    if (this.mode == "Translate") {
-      // Translation option
-      let camera_frame = this.scene.get_camera_frame();
-      this.scene.translate(
-        vec3_sum(
-          vec3_scale(get_column(camera_frame, 0), dragDiff[0]),
-          vec3_scale(get_column(camera_frame, 1), dragDiff[1]),
-        ),
-      );
-    } else if (this.mode == "Rotate") {
-      // Rotation option
-      // Find the axis to rotate around based on the angle of dragDiff
-      let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
-      let camera_frame = this.scene.get_camera_frame();
-      let rot_axis = vec3_sum(
-        vec3_scale(get_column(camera_frame, 0), v[0]),
-        vec3_scale(get_column(camera_frame, 1), v[1]),
-      );
-
-      // Rotate the scene frame according to the norm, as well as the camera position,
-      let n = vec2_norm(dragDiff);
-      this.scene.rot(rot_axis, n);
-      this.scene.set_camera_position(
-        rot(this.scene.camera_position, rot_axis, n),
-      );
-    }
+    this.scene.move_view(dragDiff);
     this.scene.draw();
     this.dragStart = this.dragEnd;
   }

@@ -27,12 +27,20 @@ var Scene = class {
     this.border_color = "black";
     // Zoom ratio
     this.zoom_ratio = 1;
+    // Determines whether any draggable object in the scene is clicked
+    this.is_dragging = false;
     this.canvas = canvas;
     this.mobjects = {};
     this.xlims = [0, canvas.width];
     this.ylims = [0, canvas.height];
     this.view_xlims = [0, canvas.width];
     this.view_ylims = [0, canvas.height];
+  }
+  click() {
+    this.is_dragging = true;
+  }
+  unclick() {
+    this.is_dragging = false;
   }
   // Sets the coordinates for the borders of the scene. This also resets
   // the current viewing window to match the scene size.
@@ -47,6 +55,13 @@ var Scene = class {
     this.zoom_ratio = (this.xlims[1] - this.xlims[0]) / (xlims[1] - xlims[0]);
     this.view_xlims = xlims;
     this.view_ylims = ylims;
+  }
+  // Returns the center of the viewing window
+  get_view_center() {
+    return [
+      (this.view_xlims[0] + this.view_xlims[1]) / 2,
+      (this.view_ylims[0] + this.view_ylims[1]) / 2
+    ];
   }
   // Sets the current zoom level
   set_zoom(value) {
@@ -65,6 +80,11 @@ var Scene = class {
       center[1] + (this.view_ylims[0] - center[1]) / ratio,
       center[1] + (this.view_ylims[1] - center[1]) / ratio
     ];
+  }
+  // Moves the viewing window by the specified vector
+  move_view(v) {
+    this.view_xlims = [this.view_xlims[0] + v[0], this.view_xlims[1] + v[0]];
+    this.view_ylims = [this.view_ylims[0] + v[1], this.view_ylims[1] + v[1]];
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
@@ -1179,7 +1199,10 @@ var Arcball = class {
       event.pageX - this.scene.canvas.offsetLeft,
       event.pageY - this.scene.canvas.offsetTop
     ];
-    this.drag = true;
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
   }
   touch(event) {
     this.dragStart = [
@@ -1190,6 +1213,7 @@ var Arcball = class {
   }
   unclick(event) {
     this.drag = false;
+    this.scene.unclick();
   }
   untouch(event) {
     this.drag = false;
@@ -1215,8 +1239,8 @@ var Arcball = class {
   // Updates the scene to account for a dragged cursor position
   _drag_cursor() {
     let dragDiff = vec2_sub(
-      this.scene.c2s(this.dragStart[0], this.dragStart[1]),
-      this.scene.c2s(this.dragEnd[0], this.dragEnd[1])
+      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
+      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
     );
     if (dragDiff[0] == 0 && dragDiff[1] == 0) {
       return;
