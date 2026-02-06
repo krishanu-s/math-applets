@@ -310,9 +310,6 @@ function Slider(container, callback, kwargs) {
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
-function vec2_scale(x, factor) {
-  return [x[0] * factor, x[1] * factor];
-}
 function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
@@ -450,12 +447,9 @@ var DraggableDot = class extends Dot {
   }
   _drag_cursor(scene) {
     this.move_by(
-      vec2_scale(
-        vec2_sub(
-          scene.c2v(this.dragEnd[0], this.dragEnd[1]),
-          scene.c2v(this.dragStart[0], this.dragStart[1])
-        ),
-        0.5
+      vec2_sub(
+        scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+        scene.c2v(this.dragStart[0], this.dragStart[1])
       )
     );
     this.dragStart = this.dragEnd;

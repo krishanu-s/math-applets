@@ -89,6 +89,11 @@ export class WaveSimOneDim extends Simulator {
   _get_uValues(vals: Array<number>): Array<number> {
     return vals.slice(0, this.width);
   }
+  set_vValues(vals: Array<number>) {
+    for (let i = 0; i < this.width; i++) {
+      this.vals[i + this.width] = vals[i] as number;
+    }
+  }
   _get_vValues(vals: Array<number>): Array<number> {
     return vals.slice(this.width, 2 * this.width);
   }
@@ -228,7 +233,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
 
     // Add a Bezier curve which tracks with uValues in simulator
     let curve = new BezierSpline(width - 1, {});
-    curve.set_stroke_width(0.04);
+    curve.set_stroke_width(0.02);
     this.add("curve", curve);
   }
   set_mode(mode: "curve" | "dots") {

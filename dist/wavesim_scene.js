@@ -11185,12 +11185,9 @@ var DraggableDot = class extends Dot {
   }
   _drag_cursor(scene) {
     this.move_by(
-      vec2_scale(
-        vec2_sub(
-          scene.c2v(this.dragEnd[0], this.dragEnd[1]),
-          scene.c2v(this.dragStart[0], this.dragStart[1])
-        ),
-        0.5
+      vec2_sub(
+        scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+        scene.c2v(this.dragStart[0], this.dragStart[1])
       )
     );
     this.dragStart = this.dragEnd;
@@ -12320,6 +12317,11 @@ var WaveSimOneDim = class extends Simulator {
   _get_uValues(vals) {
     return vals.slice(0, this.width);
   }
+  set_vValues(vals) {
+    for (let i = 0; i < this.width; i++) {
+      this.vals[i + this.width] = vals[i];
+    }
+  }
   _get_vValues(vals) {
     return vals.slice(this.width, 2 * this.width);
   }
@@ -12423,7 +12425,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       this.add(`p_${i + 1}`, mass);
     }
     let curve = new BezierSpline(width - 1, {});
-    curve.set_stroke_width(0.04);
+    curve.set_stroke_width(0.02);
     this.add("curve", curve);
   }
   set_mode(mode) {
@@ -13240,8 +13242,12 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       scene.draw();
       scene.play(void 0);
     })(300, 300);
-    (function point_mass_discrete_sequence(num_points) {
-      let canvas = prepare_canvas(300, 300, "point-mass-discrete-sequence");
+    (function point_mass_discrete_sequence(width, height, num_points) {
+      let canvas = prepare_canvas(
+        width,
+        height,
+        "point-mass-discrete-sequence"
+      );
       let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("dots");
@@ -13271,9 +13277,13 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       pauseButton.style.padding = "15px";
       scene.draw();
       scene.play(void 0);
-    })(10);
-    (function point_mass_continuous_sequence(num_points) {
-      let canvas = prepare_canvas(300, 300, "point-mass-continuous-sequence");
+    })(300, 300, 10);
+    (function point_mass_continuous_sequence(width, height, num_points) {
+      let canvas = prepare_canvas(
+        width,
+        height,
+        "point-mass-continuous-sequence"
+      );
       let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("dots");
@@ -13332,7 +13342,65 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       pauseButton.style.padding = "15px";
       scene.draw();
       scene.play(void 0);
-    })(50);
+    })(300, 300, 50);
+    (function wavesim_one_dimensional_demos(width, height, num_points) {
+      let canvas = prepare_canvas(width, height, "wavesim-1d-impulse");
+      let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("dots");
+      scene.set_dot_radius(0.05);
+      let sim = scene.sim();
+      sim.set_attr("wave_propagation_speed", 5);
+      sim.set_attr("damping", 0);
+      sim.set_attr("dt", 0.02);
+      const sigma = 0.1;
+      const mu = 0.5;
+      const a = 2;
+      function pulse(x) {
+        return a * Math.exp(-((x - mu) ** 2 / sigma ** 2));
+      }
+      function pulse_deriv(x) {
+        return -2 * (x - mu) / sigma ** 2 * pulse(x);
+      }
+      function reset_simulation() {
+        sim.time = 0;
+        sim.set_uValues(funspace((x) => pulse(x) - pulse(1), 0, 1, num_points));
+        sim.set_vValues(
+          funspace((x) => -0.1 * pulse_deriv(x), 0, 1, num_points)
+        );
+        scene.draw();
+      }
+      reset_simulation();
+      let pauseButton = Button(
+        document.getElementById(
+          "wavesim-1d-impulse-pause-button"
+        ),
+        function() {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+      let resetButton = Button(
+        document.getElementById(
+          "wavesim-1d-impulse-reset-button"
+        ),
+        function() {
+          scene.add_to_queue(reset_simulation);
+        }
+      );
+      resetButton.textContent = "Reset simulation";
+      resetButton.style.padding = "15px";
+      scene.draw();
+      scene.play(void 0);
+    })(300, 300, 50);
     (function point_mass_discrete_lattice(width, height) {
       let canvas = prepare_canvas(width, height, "point-mass-discrete-lattice");
       const ctx = canvas.getContext("2d");

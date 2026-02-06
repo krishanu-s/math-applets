@@ -647,9 +647,18 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
     // One-dimensional case of the wave equation. A sequence of point masses (say, 5-10)
     // connected in a horizontal line, oscillating vertically.
     // - TODO Add line segments showing the displacements from the equilibrium position.
-    (function point_mass_discrete_sequence(num_points: number) {
+    // - TODO Add a reset button to reset the simulation.
+    (function point_mass_discrete_sequence(
+      width: number,
+      height: number,
+      num_points: number,
+    ) {
       // Prepare the canvas
-      let canvas = prepare_canvas(300, 300, "point-mass-discrete-sequence");
+      let canvas = prepare_canvas(
+        width,
+        height,
+        "point-mass-discrete-sequence",
+      );
 
       let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
@@ -711,140 +720,22 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       // Prepare the simulation
       scene.draw();
       scene.play(undefined);
-    })(10);
-
-    // (function point_mass_discrete_sequence_diagram(num_points: number) {
-    //   // Prepare the scene
-    //   let canvas = prepare_canvas(
-    //     300,
-    //     300,
-    //     "point-mass-discrete-sequence-diagram",
-    //   );
-    //   // TODO This is essentially a WaveSimOneDimScene.
-    //   let scene = new Scene(canvas);
-    //   let xmin = -5;
-    //   let xmax = 5;
-    //   let ymin = -5;
-    //   let ymax = 5;
-    //   scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-
-    //   // i goes from 0 to num_points -1
-    //   function eq_position(i: number): Vec2D {
-    //     return [xmin + ((i + 0.5) * (xmax - xmin)) / num_points, 0];
-    //   }
-
-    //   let pos: Vec2D;
-
-    //   // Add vertical lines at the beginning and end of the sequence
-    //   pos = eq_position(0);
-    //   scene.add(
-    //     "b0",
-    //     new Line([pos[0], ymin / 2], [pos[0], ymax / 2]).set_stroke_width(0.1),
-    //   );
-
-    //   pos = eq_position(num_points - 1);
-    //   scene.add(
-    //     "b1",
-    //     new Line([pos[0], ymin / 2], [pos[0], ymax / 2]).set_stroke_width(0.1),
-    //   );
-
-    //   // Make draggable dots
-    //   let dots: DraggableDotY[] = [];
-    //   for (let i = 0; i < num_points; i++) {
-    //     let dot = new DraggableDotY(eq_position(i), 0.13);
-    //     dots.push(dot);
-    //   }
-
-    //   // Make springs and add callbacks to dots
-    //   let springs: LineSpring[] = [];
-    //   function set_spring(i: number, spring: LineSpring) {
-    //     spring.move_start(dots[i].get_center());
-    //     spring.move_end(dots[i + 1].get_center());
-    //   }
-    //   for (let i = 0; i < num_points - 1; i++) {
-    //     let spring = new LineSpring([0, 0], [0, 0], {});
-    //     spring.set_eq_length(
-    //       vec2_norm(vec2_sub(eq_position(i + 1), eq_position(i))),
-    //     );
-    //     spring.set_mode("spring");
-    //     set_spring(i, spring);
-    //     dots[i].add_callback(() => {
-    //       set_spring(i, spring);
-    //     });
-    //     springs.push(spring);
-    //   }
-
-    //   // Make force arrows and add callbacks to dots
-    //   let arrow_scale = 0.3;
-    //   let arrows: Arrow[] = [];
-    //   function set_force_arrow(i: number, arrow: Arrow) {
-    //     pos = dots[i].get_center();
-    //     let disp: number;
-    //     if (i == 0) {
-    //       disp = dots[i + 1].get_center()[1] - pos[1];
-    //     } else if (i == num_points - 1) {
-    //       disp = dots[i - 1].get_center()[1] - pos[1];
-    //     } else {
-    //       disp =
-    //         dots[i - 1].get_center()[1] +
-    //         dots[i + 1].get_center()[1] -
-    //         2 * dots[i].get_center()[1];
-    //     }
-    //     arrow.move_start(pos);
-    //     arrow.move_end([pos[0], pos[1] + arrow_scale * disp]);
-    //     arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 8);
-    //   }
-    //   for (let i = 0; i < num_points; i++) {
-    //     let arrow = new Arrow([0, 0], [0, 0]);
-    //     arrow.set_stroke_color("red");
-    //     arrow.set_stroke_width(0.05);
-    //     arrow.set_alpha(0.5);
-    //     set_force_arrow(i, arrow);
-    //     if (i == 0) {
-    //       dots[i].add_callback(() => {
-    //         set_force_arrow(i, arrow);
-    //       });
-    //       dots[i + 1].add_callback(() => {
-    //         set_force_arrow(i, arrow);
-    //       });
-    //     } else if (i == num_points - 1) {
-    //       dots[i - 1].add_callback(() => {
-    //         set_force_arrow(i, arrow);
-    //       });
-    //       dots[i].add_callback(() => {
-    //         set_force_arrow(i, arrow);
-    //       });
-    //     } else {
-    //       dots[i - 1].add_callback(() => {
-    //         set_force_arrow(i, arrow);
-    //       });
-    //       dots[i].add_callback(() => {
-    //         set_force_arrow(i, arrow);
-    //       });
-    //       dots[i + 1].add_callback(() => {
-    //         set_force_arrow(i, arrow);
-    //       });
-    //     }
-    //     arrows.push(arrow);
-    //   }
-
-    //   for (let i = 0; i < num_points - 1; i++) {
-    //     scene.add(`spring_${i}`, springs[i]);
-    //   }
-    //   for (let i = 0; i < num_points; i++) {
-    //     scene.add(`arrow_${i}`, arrows[i]);
-    //     scene.add(`point_${i}`, dots[i]);
-    //   }
-
-    //   // Prepare the simulation
-    //   scene.draw();
-    // })(7);
+    })(300, 300, 10);
 
     // Use the same scene as before, but with a large number of point masses (say, 50) drawn
     // as a Bezier-curve.
-    (function point_mass_continuous_sequence(num_points: number) {
+    // - TODO Add a reset button to reset the simulation.
+    (function point_mass_continuous_sequence(
+      width: number,
+      height: number,
+      num_points: number,
+    ) {
       // Prepare the canvas
-      let canvas = prepare_canvas(300, 300, "point-mass-continuous-sequence");
+      let canvas = prepare_canvas(
+        width,
+        height,
+        "point-mass-continuous-sequence",
+      );
 
       let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
@@ -915,13 +806,118 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       // Prepare the simulation
       scene.draw();
       scene.play(undefined);
-    })(50);
+    })(300, 300, 50);
 
-    // TODO A one-dimensional wave example with PML at the ends, where a point in the middle
+    // TODO
+    // - A one-dimensional wave example with PML at the ends, where a point in the middle
     // is a timelike wave-source. Demonstrates how the timelike oscillation becomes spacelike oscillation.
-
-    // TODO A one-dimensional example bounded at both endpoints with an impulse wave traveling back
+    // - A one-dimensional example bounded at both endpoints with an impulse wave traveling back
     // and forth. Demonstrates how a zero-point acts as a reflector.
+    (function wavesim_one_dimensional_demos(
+      width: number,
+      height: number,
+      num_points: number,
+    ) {
+      // Prepare the canvas
+      let canvas = prepare_canvas(width, height, "wavesim-1d-impulse");
+
+      let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("dots");
+      scene.set_dot_radius(0.05);
+      // TODO Remove arrows if possible
+      let sim = scene.sim();
+
+      // Set the attributes of the simulator
+      sim.set_attr("wave_propagation_speed", 5.0);
+      sim.set_attr("damping", 0.0);
+      sim.set_attr("dt", 0.02);
+
+      // Initial conditions
+      const sigma = 0.1;
+      const mu = 0.5;
+      const a = 2.0;
+      function pulse(x: number): number {
+        return a * Math.exp(-((x - mu) ** 2 / sigma ** 2));
+      }
+      function pulse_deriv(x: number): number {
+        return ((-2 * (x - mu)) / sigma ** 2) * pulse(x);
+      }
+      function reset_simulation() {
+        sim.time = 0;
+        sim.set_uValues(funspace((x) => pulse(x) - pulse(1), 0, 1, num_points));
+        sim.set_vValues(
+          funspace((x) => -0.1 * pulse_deriv(x), 0, 1, num_points),
+        );
+        scene.draw();
+      }
+      reset_simulation();
+
+      // // Add SceneViewTranslator
+      // let translator = new SceneViewTranslator(scene);
+      // translator.add();
+
+      // // Slider which controls the zoom
+      // let zoom_slider = Slider(
+      //   document.getElementById(
+      //     "point-mass-continuous-sequence-zoom-slider",
+      //   ) as HTMLElement,
+      //   function (zr: number) {
+      //     scene.add_to_queue(() => {
+      //       scene.zoom_in_on(zr / scene.zoom_ratio, scene.get_view_center());
+      //       if (zr > 3) {
+      //         scene.set_mode("dots");
+      //       } else {
+      //         scene.set_mode("curve");
+      //       }
+      //       scene.draw();
+      //     });
+      //   },
+      //   {
+      //     name: "Zoom ratio",
+      //     initial_value: "1.0",
+      //     min: 0.6,
+      //     max: 5,
+      //     step: 0.05,
+      //   },
+      // );
+      // zoom_slider.width = 200;
+
+      // Button which pauses/unpauses the simulation
+      let pauseButton = Button(
+        document.getElementById(
+          "wavesim-1d-impulse-pause-button",
+        ) as HTMLElement,
+        function () {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+
+      // Button which resets the simulation
+      let resetButton = Button(
+        document.getElementById(
+          "wavesim-1d-impulse-reset-button",
+        ) as HTMLElement,
+        function () {
+          scene.add_to_queue(reset_simulation);
+        },
+      );
+      resetButton.textContent = "Reset simulation";
+      resetButton.style.padding = "15px";
+
+      // Prepare the simulation
+      scene.draw();
+      scene.play(undefined);
+    })(300, 300, 50);
 
     // *** TWO-DIMENSIONAL WAVE EQUATION ***
     // A 2D lattice of point masses (say, 5x5), oscillating along a third dimension.
