@@ -1,18 +1,34 @@
-import { Scene, MObject } from "./lib/base.js";
-import { Dot, Line } from "./lib/base_geom.js";
+import { Scene, prepare_canvas } from "./lib/base.js";
+import { Line } from "./lib/base_geom.js";
 import { BezierCurve } from "./lib/bezier.js";
 import { Slider } from "./lib/interactive.js";
 import {
   SphericalVec3D,
-  Vec3D,
   matmul_vec,
   rot_y,
   rot_z,
   rot_x,
   cartesian_to_spherical,
   spherical_to_cartesian,
+  rot,
 } from "./lib/matvec.js";
+import {
+  Vec3D,
+  vec3_sum,
+  vec3_sum_list,
+  vec3_scale,
+  ThreeDScene,
+  ThreeDMObject,
+  Cube,
+  Dot3D,
+  Line3D,
+  LineSequence3D,
+  Arrow3D,
+  TwoHeadedArrow3D,
+  ParametrizedCurve3D,
+} from "./lib/three_d.js";
 import { HeatMap, TwoDimHeatMap } from "./lib/heatmap.js";
+import { Arcball } from "./lib/arcball.js";
 
 const DEGREE = Math.PI / 180;
 const EARTH_TILT = 23 * DEGREE;
@@ -39,13 +55,13 @@ function sun_zenith_and_azimuth(
   latitude: number,
 ): SphericalVec3D {
   let v: Vec3D = [-1, 0, 0];
-  v = matmul_vec(rot_y(year_angle), v);
-  v = matmul_vec(rot_z(-tilt), v);
-  v = matmul_vec(rot_y(day_angle - year_angle), v);
-  v = matmul_vec(rot_z(latitude), v);
+  v = rot_y(v, year_angle);
+  v = rot_z(v, -tilt);
+  v = rot_y(v, day_angle - year_angle);
+  v = rot_z(v, latitude);
   // Correct for different coordinate systems.
-  v = matmul_vec(rot_y(-Math.PI / 2), v);
-  v = matmul_vec(rot_z(-Math.PI / 2), v);
+  v = rot_y(v, -Math.PI / 2);
+  v = rot_z(v, -Math.PI / 2);
   let [theta, phi] = cartesian_to_spherical(v);
   if (phi < 0 || phi > 2 * Math.PI) {
     console.log(phi);
@@ -76,13 +92,7 @@ class SunriseScene extends Scene {
     this.latitude = 0;
     this.add(
       "heatmap",
-      new TwoDimHeatMap(
-        width,
-        height,
-        this.zenith_values,
-        this.azimuth_values,
-        {},
-      ),
+      new TwoDimHeatMap(width, height, this.zenith_values, this.azimuth_values),
     );
     // Lines for months
     let num_year_steps = 12;
@@ -173,70 +183,301 @@ class SunriseScene extends Scene {
   }
 }
 
+function three_d_globe(width: number, height: number) {
+  let canvas = prepare_canvas(width, height, "three-d-globe");
+  let [xmin, xmax] = [-5, 5];
+  let [ymin, ymax] = [-5, 5];
+  let [zmin, zmax] = [-5, 5];
+
+  // Initialize three-dimensional scene, zoomed in
+  let zoom_ratio = 1.0;
+  let scene = new ThreeDScene(canvas);
+  scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+  scene.set_zoom(zoom_ratio);
+  scene.set_view_mode("orthographic");
+
+  // Rotate the camera angle and set the camera position
+  scene.rot_z(Math.PI / 4);
+  scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], (2 * Math.PI) / 3);
+  scene.set_camera_position(
+    rot([0, 0, -5], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], (2 * Math.PI) / 3),
+  );
+
+  // Adding click-and-drag interactivity to the canvas
+  let arcball = new Arcball(scene);
+  arcball.set_mode("Rotate");
+  arcball.add();
+
+  // Add a sphere to the scene
+  let radius = 1.0;
+  let globe = new Dot3D([0, 0, 0], radius);
+  // globe.fill = false;
+  globe.set_fill_color("rgb(200 200 200)");
+  globe.set_fill_alpha(0.3);
+  scene.add("globe", globe);
+
+  // Add an equator
+  //
+  // TODO Part of this equator should be dotted. One possible solution is to build a "link" to the globe object,
+  // and then any piece (i.e. BezierCurve) of the curve whose depth is *greater* than that of the globe
+  // will be drawn as dotted.
+  //
+  // TODO For now, use depth of the globe as a global function, but we can make this more robust by giving
+  // the globe a *local* depth function which indicates its depth at a given 2D point in the camera view.
+  let equator = new ParametrizedCurve3D(
+    (t) => [radius * Math.cos(t), radius * Math.sin(t), 0],
+    -Math.PI,
+    Math.PI,
+    100,
+  );
+  equator.set_stroke_style("solid");
+  equator.set_stroke_width(0.04);
+  equator.link_mobject(globe);
+  scene.add("equator", equator);
+
+  // Add a polar axis
+  let polar_axis = new LineSequence3D([
+    [0, 0, -1.5 * radius],
+    [0, 0, -radius],
+    [0, 0, radius],
+    [0, 0, 1.5 * radius],
+  ]);
+  polar_axis.link_mobject(globe);
+
+  let n_pole = new Dot3D([0, 0, radius], 0.1);
+  n_pole.set_fill_alpha(1.0);
+  n_pole.link_mobject(globe);
+  let s_pole = new Dot3D([0, 0, -radius], 0.1);
+  s_pole.set_fill_alpha(1.0);
+  s_pole.link_mobject(globe);
+  scene.add("polar_axis", polar_axis);
+  scene.add("n_pole", n_pole);
+  scene.add("s_pole", s_pole);
+
+  // Add a latitude line
+  let theta: number = Math.PI / 6;
+  let latitude_line = new ParametrizedCurve3D(
+    (t) => [
+      radius * Math.cos(t) * Math.cos(theta),
+      radius * Math.sin(t) * Math.cos(theta),
+      radius * Math.sin(theta),
+    ],
+    -Math.PI,
+    Math.PI,
+    100,
+  );
+  latitude_line.set_stroke_color("red");
+  latitude_line.set_stroke_width(0.04);
+  latitude_line.link_mobject(globe);
+  scene.add("latitude_line", latitude_line);
+
+  // Add a slider to control the zoom level
+  let zoomSlider = Slider(
+    document.getElementById("three-d-globe-slider-1") as HTMLElement,
+    function (value: number) {
+      zoom_ratio = value;
+      scene.set_zoom(value);
+      scene.draw();
+    },
+    {
+      name: "Zoom",
+      initialValue: `${zoom_ratio}`,
+      min: 0.3,
+      max: 3,
+      step: 0.02,
+    },
+  );
+  zoomSlider.value = `1.0`;
+
+  // Add a slider to control the latitude level
+  let latitudeSlider = Slider(
+    document.getElementById("three-d-globe-slider-2") as HTMLElement,
+    function (value: number) {
+      theta = (Math.PI * value) / 180;
+      latitude_line = scene.get_mobj("latitude_line") as ParametrizedCurve3D;
+      latitude_line.set_function((t) => [
+        radius * Math.cos(t) * Math.cos(theta),
+        radius * Math.sin(t) * Math.cos(theta),
+        radius * Math.sin(theta),
+      ]);
+      scene.draw();
+    },
+    {
+      name: "Latitude (degrees)",
+      initialValue: `${(theta * 180) / Math.PI}`,
+      min: -90,
+      max: 90,
+      step: 1,
+    },
+  );
+  zoomSlider.value = `1.0`;
+
+  scene.draw();
+}
+
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
-    // Prepare the canvas
-    function prepare_canvas(
-      width: number,
-      height: number,
-      name: string,
-    ): HTMLCanvasElement {
-      const container = document.getElementById(name);
-      if (container == null) throw new Error(`${name} not found`);
+    (function sunrise_heatmap(width: number, height: number) {
+      // *** Make the sunrise heatmap scene
+      let canvas_1 = prepare_canvas(width, height, "sunrise-heatmap");
 
-      // Set size to 300 pixels by 300 pixels
-      container.style.width = `${width}px`;
-      container.style.height = `${height}px`;
+      // Get the context for drawing
+      const ctx = canvas_1.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
 
-      // Make a visual element
-      let wrapper = document.createElement("div");
-      wrapper.classList.add("canvas_container");
-      wrapper.classList.add("non_selectable");
-      wrapper.style.width = `${width}px`;
-      wrapper.style.height = `${height}px`;
+      // Create ImageData object
+      const imageData = ctx.createImageData(width, height);
+      let sunriseScene = new SunriseScene(canvas_1, imageData, width, height);
 
-      let canvas = document.createElement("canvas");
-      canvas.classList.add("non_selectable");
-      canvas.style.position = "relative";
-      canvas.style.top = "0";
-      canvas.style.left = "0";
-      canvas.height = height;
-      canvas.width = width;
+      // *** Make the 3D globe scene
+      let canvas_2 = prepare_canvas(width, height, "three-d-globe");
+      let [xmin, xmax] = [-5, 5];
+      let [ymin, ymax] = [-5, 5];
+      let [zmin, zmax] = [-5, 5];
 
-      wrapper.appendChild(canvas);
-      container.appendChild(wrapper);
+      // Initialize three-dimensional scene, zoomed in
+      let zoom_ratio = 1.0;
+      let globeScene = new ThreeDScene(canvas_2);
+      globeScene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      globeScene.set_zoom(zoom_ratio);
+      globeScene.set_view_mode("orthographic");
 
-      console.log("Canvas made");
+      // Rotate the camera angle and set the camera position
+      globeScene.rot_z(Math.PI / 4);
+      globeScene.rot(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        (2 * Math.PI) / 3,
+      );
+      globeScene.rot([1 / Math.sqrt(2), -1 / Math.sqrt(2), 0], EARTH_TILT);
+      globeScene.set_camera_position(
+        rot(
+          [1 / Math.sqrt(2), -1 / Math.sqrt(2), 0],
+          rot(
+            [0, 0, -5],
+            [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+            (2 * Math.PI) / 3,
+          ),
+          EARTH_TILT,
+        ),
+      );
 
-      return canvas;
-    }
+      // Adding click-and-drag interactivity to the canvas
+      let arcball = new Arcball(globeScene);
+      arcball.set_mode("Translate");
+      arcball.add();
 
-    // Prepare the canvas and scene
-    let width = 300;
-    let height = 300;
+      // Add a sphere to the scene
+      let radius = 2.0;
+      let globe = new Dot3D([0, 0, 0], radius);
+      // globe.fill = false;
+      globe.set_fill_color("rgb(200 200 200)");
+      globe.set_fill_alpha(0.3);
+      globeScene.add("globe", globe);
 
-    let canvas = prepare_canvas(width, height, "scene-container-1");
+      // Add an equator
+      //
+      // TODO Part of this equator should be dotted. One possible solution is to build a "link" to the globe object,
+      // and then any piece (i.e. BezierCurve) of the curve whose depth is *greater* than that of the globe
+      // will be drawn as dotted.
+      //
+      // TODO For now, use depth of the globe as a global function, but we can make this more robust by giving
+      // the globe a *local* depth function which indicates its depth at a given 2D point in the camera view.
+      let equator = new ParametrizedCurve3D(
+        (t) => [radius * Math.cos(t), radius * Math.sin(t), 0],
+        -Math.PI,
+        Math.PI,
+        100,
+      );
+      equator.set_stroke_style("solid");
+      equator.set_stroke_width(0.04);
+      equator.link_mobject(globe);
+      globeScene.add("equator", equator);
 
-    // Get the context for drawing
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      throw new Error("Failed to get 2D context");
-    }
+      // Add a polar axis
+      let polar_axis = new LineSequence3D([
+        [0, 0, -1.5 * radius],
+        [0, 0, -radius],
+        [0, 0, radius],
+        [0, 0, 1.5 * radius],
+      ]);
+      polar_axis.link_mobject(globe);
 
-    // Create ImageData object
-    const imageData = ctx.createImageData(width, height);
+      let n_pole = new Dot3D([0, 0, radius], 0.1);
+      n_pole.set_fill_alpha(1.0);
+      n_pole.link_mobject(globe);
+      let s_pole = new Dot3D([0, 0, -radius], 0.1);
+      s_pole.set_fill_alpha(1.0);
+      s_pole.link_mobject(globe);
+      globeScene.add("polar_axis", polar_axis);
+      globeScene.add("n_pole", n_pole);
+      globeScene.add("s_pole", s_pole);
 
-    let sunriseScene = new SunriseScene(canvas, imageData, width, height);
+      // Add a latitude line
+      let theta: number = Math.PI / 6;
+      let latitude_line = new ParametrizedCurve3D(
+        (t) => [
+          radius * Math.cos(t) * Math.cos(theta),
+          radius * Math.sin(t) * Math.cos(theta),
+          radius * Math.sin(theta),
+        ],
+        -Math.PI,
+        Math.PI,
+        100,
+      );
+      latitude_line.set_stroke_color("red");
+      latitude_line.set_stroke_width(0.04);
+      latitude_line.link_mobject(globe);
+      globeScene.add("latitude_line", latitude_line);
 
-    // Slider which controls the latitude
-    let latitude_slider = Slider(
-      document.getElementById("slider-container-1") as HTMLElement,
-      function (l: number) {
-        sunriseScene.set_latitude(l);
-        sunriseScene.draw();
-      },
-      { initial_value: "0", min: -90, max: 90, step: 0.01 },
-    );
-    latitude_slider.width = 200;
+      // // Add a slider to control the zoom level on the globe scene
+      // let zoomSlider = Slider(
+      //   document.getElementById("three-d-globe-zoom-slider") as HTMLElement,
+      //   function (value: number) {
+      //     zoom_ratio = value;
+      //     globeScene.set_zoom(value);
+      //     globeScene.draw();
+      //   },
+      //   {
+      //     name: "Zoom",
+      //     initialValue: `${zoom_ratio}`,
+      //     min: 0.3,
+      //     max: 3,
+      //     step: 0.02,
+      //   },
+      // );
+      // zoomSlider.value = `1.0`;
+
+      globeScene.draw();
+
+      // Slider which controls the latitude on both
+      let latitudeSlider = Slider(
+        document.getElementById("latitude-slider") as HTMLElement,
+        function (l: number) {
+          sunriseScene.set_latitude(l);
+          sunriseScene.draw();
+
+          theta = (Math.PI * l) / 180;
+          latitude_line = globeScene.get_mobj(
+            "latitude_line",
+          ) as ParametrizedCurve3D;
+          latitude_line.set_function((t) => [
+            radius * Math.cos(t) * Math.cos(theta),
+            radius * Math.sin(t) * Math.cos(theta),
+            radius * Math.sin(theta),
+          ]);
+          globeScene.draw();
+        },
+        {
+          name: "Latitude (degrees)",
+          initial_value: "0",
+          min: -90,
+          max: 90,
+          step: 0.5,
+        },
+      );
+      latitudeSlider.width = 200;
+    })(500, 500);
   });
 })();
