@@ -12252,6 +12252,31 @@ var InteractivePlayingScene = class extends Scene {
 };
 
 // src/lib/wavesim.ts
+var PointSourceOneDim = class {
+  // Time at which the source turns on
+  constructor(x, w, a, p) {
+    this.x = x;
+    this.w = w;
+    this.a = a;
+    this.p = p;
+    this.turn_on_time = 0;
+  }
+  set_x(x) {
+    this.x = x;
+  }
+  set_w(w) {
+    this.w = w;
+  }
+  set_a(a) {
+    this.a = a;
+  }
+  set_p(p) {
+    this.p = p;
+  }
+  set_turn_on_time(time) {
+    this.turn_on_time = time;
+  }
+};
 var PointSource = class {
   // Time at which the source turns on
   constructor(x, y, w, a, p) {
@@ -12282,7 +12307,6 @@ var PointSource = class {
   }
 };
 var WaveSimOneDim = class extends Simulator {
-  // Left boundary condition
   constructor(width, dt) {
     super(2 * width, dt);
     this.wave_propagation_speed = 20;
@@ -12292,7 +12316,16 @@ var WaveSimOneDim = class extends Simulator {
     this.left_endpoint = 0;
     // Left boundary condition
     this.right_endpoint = 0;
+    // Left boundary condition
+    this.point_sources = {};
     this.width = width;
+  }
+  add_point_source(source) {
+    let ind = Object.keys(this.point_sources).length;
+    this.point_sources[ind] = source;
+  }
+  remove_point_source(id) {
+    delete this.point_sources[id];
   }
   set_wave_propagation_speed(speed) {
     this.wave_propagation_speed = speed;
@@ -12351,6 +12384,12 @@ var WaveSimOneDim = class extends Simulator {
     vals[this.width - 1] = this.right_endpoint;
     vals[this.width] = 0;
     vals[2 * this.width - 1] = 0;
+    Object.entries(this.point_sources).forEach(([key, elem]) => {
+      if (this.time >= elem.turn_on_time) {
+        vals[elem.x] = elem.a * Math.sin(elem.w * (this.time - elem.p));
+        vals[elem.x + this.width] = elem.a * elem.w * Math.cos(elem.w * (this.time - elem.p));
+      }
+    });
   }
 };
 var WaveSimOneDimScene = class extends InteractivePlayingScene {
@@ -12358,6 +12397,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     let sim = new WaveSimOneDim(width, 0.01);
     super(canvas, [sim]);
     this.arrow_length_scale = 1.5;
+    this.include_arrows = true;
     this.mode = "dots";
     let pos, next_pos;
     let eq_line = new Line(this.eq_position(1), this.eq_position(width)).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
@@ -12486,7 +12526,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       disp = u[i];
       dot3 = this.get_mobj(`p_${i + 1}`);
       dot3.move_to([pos[0], pos[1] + disp]);
-      if (i != 0 && i != this.width() - 1) {
+      if (i != 0 && i != this.width() - 1 && this.include_arrows) {
         arrow = this.get_mobj(`arr${i + 1}`);
         arrow.move_start([pos[0], pos[1] + disp]);
         arrow.move_end([
@@ -12520,6 +12560,10 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       }
     } else if (mobj instanceof LineSpring) {
       if (this.mode == "dots") {
+        mobj.draw(this.canvas, this);
+      }
+    } else if (mobj instanceof Arrow) {
+      if (this.include_arrows) {
         mobj.draw(this.canvas, this);
       }
     } else {
@@ -13343,12 +13387,13 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       scene.draw();
       scene.play(void 0);
     })(300, 300, 50);
-    (function wavesim_one_dimensional_demos(width, height, num_points) {
+    (function wavesim_one_dimensional_demo_impulse(width, height, num_points) {
       let canvas = prepare_canvas(width, height, "wavesim-1d-impulse");
       let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("dots");
       scene.set_dot_radius(0.05);
+      scene.include_arrows = false;
       let sim = scene.sim();
       sim.set_attr("wave_propagation_speed", 5);
       sim.set_attr("damping", 0);
@@ -13392,6 +13437,51 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
         document.getElementById(
           "wavesim-1d-impulse-reset-button"
         ),
+        function() {
+          scene.add_to_queue(reset_simulation);
+        }
+      );
+      resetButton.textContent = "Reset simulation";
+      resetButton.style.padding = "15px";
+      scene.draw();
+      scene.play(void 0);
+    })(300, 300, 50);
+    (function wavesim_one_dimensional_demo_pml(width, height, num_points) {
+      let canvas = prepare_canvas(width, height, "wavesim-1d-pml");
+      let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("curve");
+      scene.set_dot_radius(0.05);
+      scene.include_arrows = false;
+      let sim = scene.sim();
+      sim.set_attr("wave_propagation_speed", 5);
+      sim.set_attr("damping", 0);
+      sim.set_attr("dt", 0.02);
+      sim.add_point_source(new PointSourceOneDim(num_points / 2, 5, 1, 0));
+      function reset_simulation() {
+        sim.time = 0;
+        sim.set_uValues(funspace((x) => 0, 0, 1, num_points));
+        sim.set_vValues(funspace((x) => 0, 0, 1, num_points));
+        scene.draw();
+      }
+      reset_simulation();
+      let pauseButton = Button(
+        document.getElementById("wavesim-1d-pml-pause-button"),
+        function() {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+      let resetButton = Button(
+        document.getElementById("wavesim-1d-pml-reset-button"),
         function() {
           scene.add_to_queue(reset_simulation);
         }

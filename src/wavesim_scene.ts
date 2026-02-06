@@ -26,6 +26,7 @@ import { clamp, sigmoid, linspace, funspace, delay } from "./lib/base.js";
 import { ParametricFunction } from "./lib/parametric.js";
 import { HeatMap } from "./lib/heatmap.js";
 import {
+  PointSourceOneDim,
   PointSource,
   WaveSimOneDim,
   WaveSimOneDimScene,
@@ -813,7 +814,7 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
     // is a timelike wave-source. Demonstrates how the timelike oscillation becomes spacelike oscillation.
     // - A one-dimensional example bounded at both endpoints with an impulse wave traveling back
     // and forth. Demonstrates how a zero-point acts as a reflector.
-    (function wavesim_one_dimensional_demos(
+    (function wavesim_one_dimensional_demo_impulse(
       width: number,
       height: number,
       num_points: number,
@@ -825,6 +826,7 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("dots");
       scene.set_dot_radius(0.05);
+      scene.include_arrows = false;
       // TODO Remove arrows if possible
       let sim = scene.sim();
 
@@ -852,37 +854,6 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
         scene.draw();
       }
       reset_simulation();
-
-      // // Add SceneViewTranslator
-      // let translator = new SceneViewTranslator(scene);
-      // translator.add();
-
-      // // Slider which controls the zoom
-      // let zoom_slider = Slider(
-      //   document.getElementById(
-      //     "point-mass-continuous-sequence-zoom-slider",
-      //   ) as HTMLElement,
-      //   function (zr: number) {
-      //     scene.add_to_queue(() => {
-      //       scene.zoom_in_on(zr / scene.zoom_ratio, scene.get_view_center());
-      //       if (zr > 3) {
-      //         scene.set_mode("dots");
-      //       } else {
-      //         scene.set_mode("curve");
-      //       }
-      //       scene.draw();
-      //     });
-      //   },
-      //   {
-      //     name: "Zoom ratio",
-      //     initial_value: "1.0",
-      //     min: 0.6,
-      //     max: 5,
-      //     step: 0.05,
-      //   },
-      // );
-      // zoom_slider.width = 200;
-
       // Button which pauses/unpauses the simulation
       let pauseButton = Button(
         document.getElementById(
@@ -907,6 +878,68 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
         document.getElementById(
           "wavesim-1d-impulse-reset-button",
         ) as HTMLElement,
+        function () {
+          scene.add_to_queue(reset_simulation);
+        },
+      );
+      resetButton.textContent = "Reset simulation";
+      resetButton.style.padding = "15px";
+
+      // Prepare the simulation
+      scene.draw();
+      scene.play(undefined);
+    })(300, 300, 50);
+
+    (function wavesim_one_dimensional_demo_pml(
+      width: number,
+      height: number,
+      num_points: number,
+    ) {
+      // Prepare the canvas
+      let canvas = prepare_canvas(width, height, "wavesim-1d-pml");
+
+      let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("curve");
+      scene.set_dot_radius(0.05);
+      scene.include_arrows = false;
+      // TODO Remove arrows if possible
+      let sim = scene.sim();
+
+      // Set the attributes of the simulator
+      sim.set_attr("wave_propagation_speed", 5.0);
+      sim.set_attr("damping", 0.0);
+      sim.set_attr("dt", 0.02);
+      sim.add_point_source(new PointSourceOneDim(num_points / 2, 5.0, 1.0, 0));
+
+      // Initial conditions
+      function reset_simulation() {
+        sim.time = 0;
+        sim.set_uValues(funspace((x) => 0, 0, 1, num_points));
+        sim.set_vValues(funspace((x) => 0, 0, 1, num_points));
+        scene.draw();
+      }
+      reset_simulation();
+      // Button which pauses/unpauses the simulation
+      let pauseButton = Button(
+        document.getElementById("wavesim-1d-pml-pause-button") as HTMLElement,
+        function () {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+
+      // Button which resets the simulation
+      let resetButton = Button(
+        document.getElementById("wavesim-1d-pml-reset-button") as HTMLElement,
         function () {
           scene.add_to_queue(reset_simulation);
         },

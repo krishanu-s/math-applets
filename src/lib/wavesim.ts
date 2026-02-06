@@ -18,6 +18,36 @@ import {
   TwoDimState,
 } from "./statesim.js";
 
+export class PointSourceOneDim {
+  x: number; // X-coordinate
+  w: number; // Frequency
+  a: number; // Amplitude
+  p: number; // Phase
+  turn_on_time: number; // Time at which the source turns on
+  constructor(x: number, w: number, a: number, p: number) {
+    this.x = x;
+    this.w = w;
+    this.a = a;
+    this.p = p;
+    this.turn_on_time = 0.0;
+  }
+  set_x(x: number) {
+    this.x = x;
+  }
+  set_w(w: number) {
+    this.w = w;
+  }
+  set_a(a: number) {
+    this.a = a;
+  }
+  set_p(p: number) {
+    this.p = p;
+  }
+  set_turn_on_time(time: number) {
+    this.turn_on_time = time;
+  }
+}
+
 export class PointSource {
   x: number; // X-coordinate
   y: number; // Y-coordinate
@@ -61,10 +91,18 @@ export class WaveSimOneDim extends Simulator {
   damping: number = 0.0; // Damping coefficient
   left_endpoint: number = 0.0; // Left boundary condition
   right_endpoint: number = 0.0; // Left boundary condition
+  point_sources: Record<number, PointSourceOneDim> = {};
   constructor(width: number, dt: number) {
     // Store position and velocity at each point.
     super(2 * width, dt);
     this.width = width;
+  }
+  add_point_source(source: PointSourceOneDim) {
+    let ind = Object.keys(this.point_sources).length;
+    this.point_sources[ind] = source;
+  }
+  remove_point_source(id: number) {
+    delete this.point_sources[id];
   }
   set_wave_propagation_speed(speed: number) {
     this.wave_propagation_speed = speed;
@@ -133,11 +171,17 @@ export class WaveSimOneDim extends Simulator {
   }
   set_boundary_conditions(vals: Array<number>) {
     // Clamp to zero at the endpoints.
-    // TODO Switch these
     vals[0] = this.left_endpoint;
     vals[this.width - 1] = this.right_endpoint;
     vals[this.width] = 0;
     vals[2 * this.width - 1] = 0;
+    Object.entries(this.point_sources).forEach(([key, elem]) => {
+      if (this.time >= elem.turn_on_time) {
+        vals[elem.x] = elem.a * Math.sin(elem.w * (this.time - elem.p));
+        vals[elem.x + this.width] =
+          elem.a * elem.w * Math.cos(elem.w * (this.time - elem.p));
+      }
+    });
   }
 }
 
@@ -146,6 +190,7 @@ export class WaveSimOneDim extends Simulator {
 export class WaveSimOneDimScene extends InteractivePlayingScene {
   mode: "curve" | "dots";
   arrow_length_scale: number = 1.5;
+  include_arrows: boolean = true;
   constructor(canvas: HTMLCanvasElement, width: number) {
     let sim = new WaveSimOneDim(width, 0.01);
     super(canvas, [sim]);
@@ -307,7 +352,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       dot.move_to([pos[0], pos[1] + disp]);
 
       // Update arrows
-      if (i != 0 && i != this.width() - 1) {
+      if (i != 0 && i != this.width() - 1 && this.include_arrows) {
         arrow = this.get_mobj(`arr${i + 1}`) as Arrow;
         arrow.move_start([pos[0], pos[1] + disp]);
         arrow.move_end([
@@ -346,6 +391,10 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       }
     } else if (mobj instanceof LineSpring) {
       if (this.mode == "dots") {
+        mobj.draw(this.canvas, this);
+      }
+    } else if (mobj instanceof Arrow) {
+      if (this.include_arrows) {
         mobj.draw(this.canvas, this);
       }
     } else {
