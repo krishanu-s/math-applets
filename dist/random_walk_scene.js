@@ -943,9 +943,11 @@ var ThreeDMObject = class extends MObject {
   }
   set_stroke_color(color) {
     this.stroke_color = color;
+    return this;
   }
   set_stroke_width(width) {
     this.stroke_width = width;
+    return this;
   }
   set_stroke_style(style) {
     this.stroke_style = style;
@@ -1061,6 +1063,12 @@ var Dot3D = class extends ThreeDFillLikeMObject {
     this.center = center;
     this.radius = radius;
   }
+  get_center() {
+    return this.center;
+  }
+  get_radius() {
+    return this.radius;
+  }
   depth(scene) {
     return scene.depth(this.center);
   }
@@ -1084,6 +1092,11 @@ var Dot3D = class extends ThreeDFillLikeMObject {
   }
   move_to(new_center) {
     this.center = new_center;
+  }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
+    this.center[2] += p[2];
   }
   _draw(ctx, scene) {
     let p = scene.camera_view(this.center);
@@ -1403,6 +1416,14 @@ var ThreeDScene = class extends Scene {
   // Get the camera frame matrix
   get_camera_frame() {
     return mat_inv(this.camera_frame_inv);
+  }
+  // Converts a 2D vector in the view to world coordinates
+  v2w(v) {
+    let frame = this.get_camera_frame();
+    return vec3_sum(
+      vec3_scale(get_column(frame, 0), v[0]),
+      vec3_scale(get_column(frame, 1), v[1])
+    );
   }
   // Rotate the camera matrix around the z-axis.
   rot_z(angle) {

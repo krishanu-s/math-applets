@@ -23,6 +23,7 @@ import {
   Arrow3D,
   TwoHeadedArrow3D,
   ParametrizedCurve3D,
+  DraggableDot3D,
 } from "./lib/three_d.js";
 import { Slider, Button, PauseButton } from "./lib/interactive.js";
 import { Arcball } from "./lib/arcball.js";
@@ -198,6 +199,124 @@ import { pick_random_step } from "./random_walk_scene.js";
       // Add a slider to control the zoom level
       let zoomSlider = Slider(
         document.getElementById("three-d-graph-zoom-slider") as HTMLElement,
+        function (value: number) {
+          zoom_ratio = value;
+          scene.set_zoom(value);
+          scene.draw();
+        },
+        {
+          name: "Zoom",
+          initialValue: `${zoom_ratio}`,
+          min: 0.5,
+          max: 5,
+          step: 0.05,
+        },
+      );
+      zoomSlider.value = `1.0`;
+
+      scene.draw();
+    })(300, 300);
+
+    (function three_d_graph(width: number, height: number) {
+      // Graphing a function
+      let canvas = prepare_canvas(width, height, "three-d-lattice");
+      let [xmin, xmax] = [-6, 6];
+      let [ymin, ymax] = [-6, 6];
+
+      // Initialize three-dimensional scene, zoomed in
+      let zoom_ratio = 1.0;
+      let scene = new ThreeDScene(canvas);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.set_zoom(zoom_ratio);
+      scene.set_view_mode("orthographic");
+
+      // Rotate the camera angle and set the camera position
+      scene.rot_z(Math.PI / 4);
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
+      scene.set_camera_position(
+        rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4),
+      );
+
+      // Define the grid parameters
+      let arr_width = 5;
+      let arr_height = 5;
+      function eq_position(i: number, j: number): Vec3D {
+        return [(arr_width - 1) / 2 - i, (arr_height - 1) / 2 - j, 0];
+      }
+      // Add lines to the scene
+      for (let i = 0; i < arr_width - 1; i++) {
+        for (let j = 0; j < arr_height; j++) {
+          scene.add(
+            `l(${i},${j})(${i + 1},${j})`,
+            new Line3D(
+              eq_position(i, j),
+              eq_position(i + 1, j),
+            ).set_stroke_width(0.05),
+          );
+        }
+      }
+      for (let i = 0; i < arr_width; i++) {
+        for (let j = 0; j < arr_height - 1; j++) {
+          scene.add(
+            `l(${i},${j})(${i},${j + 1})`,
+            new Line3D(
+              eq_position(i, j),
+              eq_position(i, j + 1),
+            ).set_stroke_width(0.05),
+          );
+        }
+      }
+
+      // Add dots to the scene
+      for (let i = 0; i < arr_width; i++) {
+        for (let j = 0; j < arr_height; j++) {
+          let dot = new DraggableDot3D(eq_position(i, j), 0.1);
+          dot.add_callback(() => {
+            let center = dot.get_center();
+            if (scene.has_mobj(`l(${i},${j})(${i + 1},${j})`)) {
+              (
+                scene.get_mobj(`l(${i},${j})(${i + 1},${j})`) as Line3D
+              ).move_start(center);
+            }
+            if (scene.has_mobj(`l(${i},${j})(${i},${j + 1})`)) {
+              (
+                scene.get_mobj(`l(${i},${j})(${i},${j + 1})`) as Line3D
+              ).move_start(center);
+            }
+            if (scene.has_mobj(`l(${i - 1},${j})(${i},${j})`)) {
+              (
+                scene.get_mobj(`l(${i - 1},${j})(${i},${j})`) as Line3D
+              ).move_end(center);
+            }
+            if (scene.has_mobj(`l(${i},${j - 1})(${i},${j})`)) {
+              (
+                scene.get_mobj(`l(${i},${j - 1})(${i},${j})`) as Line3D
+              ).move_end(center);
+            }
+            scene.draw();
+          });
+          scene.add(`p(${i},${j})`, dot);
+        }
+      }
+
+      // // Adding click-and-drag interactivity to the canvas
+      // let arcball = new Arcball(scene);
+      // arcball.add();
+
+      // // Add a button to toggle between translation and rotation modes
+      // let modeButton = Button(
+      //   document.getElementById("three-d-lattice-mode-button") as HTMLElement,
+      //   function () {
+      //     arcball.switch_mode();
+      //     modeButton.textContent = `Mode = ${arcball.mode}`;
+      //   },
+      // );
+      // modeButton.textContent = `Mode = ${arcball.mode}`;
+      // modeButton.style.padding = "15px";
+
+      // Add a slider to control the zoom level
+      let zoomSlider = Slider(
+        document.getElementById("three-d-lattice-zoom-slider") as HTMLElement,
         function (value: number) {
           zoom_ratio = value;
           scene.set_zoom(value);

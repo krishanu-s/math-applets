@@ -193,6 +193,12 @@ function prepareCanvasForMobile(canvas) {
     e.preventDefault();
   };
 }
+function mouse_event_coords(event) {
+  return [event.pageX, event.pageY];
+}
+function touch_event_coords(event) {
+  return [event.touches[0].pageX, event.touches[0].pageY];
+}
 
 // src/lib/base_geom.ts
 function vec2_norm(x) {
@@ -253,9 +259,11 @@ var ThreeDMObject = class extends MObject {
   }
   set_stroke_color(color) {
     this.stroke_color = color;
+    return this;
   }
   set_stroke_width(width) {
     this.stroke_width = width;
+    return this;
   }
   set_stroke_style(style) {
     this.stroke_style = style;
@@ -371,6 +379,12 @@ var Dot3D = class extends ThreeDFillLikeMObject {
     this.center = center;
     this.radius = radius;
   }
+  get_center() {
+    return this.center;
+  }
+  get_radius() {
+    return this.radius;
+  }
   depth(scene) {
     return scene.depth(this.center);
   }
@@ -394,6 +408,11 @@ var Dot3D = class extends ThreeDFillLikeMObject {
   }
   move_to(new_center) {
     this.center = new_center;
+  }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
+    this.center[2] += p[2];
   }
   _draw(ctx, scene) {
     let p = scene.camera_view(this.center);
@@ -429,6 +448,160 @@ var Dot3D = class extends ThreeDFillLikeMObject {
         this.unset_behind_linked_mobjects(ctx);
       }
     }
+  }
+};
+var DraggableDot3D = class extends Dot3D {
+  constructor() {
+    super(...arguments);
+    this.isClicked = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.touch_tolerance = 2;
+    this.callbacks = [];
+  }
+  // Tests whether a chosen view point lies inside the shape. Used for click-detection.
+  is_inside(scene, view_point) {
+    let center_view = scene.camera_view(this.center);
+    let edge_view = scene.camera_view(
+      vec3_sum(this.center, [0, 0, this.radius])
+    );
+    if (center_view == null || edge_view == null) {
+      return false;
+    } else {
+      return vec2_norm(vec2_sub(view_point, center_view)) < vec2_norm(vec2_sub(edge_view, center_view));
+    }
+  }
+  // Tests whether a chosen vector lies within an enlarged version of the dot.
+  // Used for touch-detection on mobile devices, and for use by small children.
+  is_almost_inside(scene, view_point, tolerance) {
+    let center_view = scene.camera_view(this.center);
+    let edge_view = scene.camera_view(
+      vec3_sum(this.center, [0, 0, this.radius])
+    );
+    if (center_view == null || edge_view == null) {
+      return false;
+    } else {
+      return vec2_norm(vec2_sub(view_point, center_view)) < vec2_norm(vec2_sub(edge_view, center_view)) * tolerance;
+    }
+  }
+  // Adds a callback which triggers when the dot is dragged
+  add_callback(callback) {
+    this.callbacks.push(callback);
+  }
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
+  }
+  // Triggers when the canvas is clicked.
+  click(scene, event) {
+    this.dragStart = vec2_sub(mouse_event_coords(event), [
+      scene.canvas.offsetLeft,
+      scene.canvas.offsetTop
+    ]);
+    if (!scene.is_dragging) {
+      this.isClicked = this.is_inside(
+        scene,
+        scene.c2v(this.dragStart[0], this.dragStart[1])
+      );
+      if (this.isClicked) {
+        scene.click();
+      }
+    }
+  }
+  touch(scene, event) {
+    this.dragStart = [
+      event.touches[0].pageX - scene.canvas.offsetLeft,
+      event.touches[0].pageY - scene.canvas.offsetTop
+    ];
+    if (!scene.is_dragging) {
+      this.isClicked = this.is_almost_inside(
+        scene,
+        scene.c2v(this.dragStart[0], this.dragStart[1]),
+        this.touch_tolerance
+      );
+      if (this.isClicked) {
+        scene.click();
+      }
+    }
+  }
+  // Triggers when the canvas is unclicked.
+  unclick(scene, event) {
+    if (this.isClicked) {
+      scene.unclick();
+    }
+    this.isClicked = false;
+  }
+  untouch(scene, event) {
+    if (this.isClicked) {
+      scene.unclick();
+    }
+    scene.unclick();
+  }
+  // Triggers when the mouse is dragged over the canvas.
+  mouse_drag_cursor(scene, event) {
+    if (this.isClicked) {
+      this.dragEnd = vec2_sub(mouse_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop
+      ]);
+      this._drag_cursor(scene);
+    }
+  }
+  touch_drag_cursor(scene, event) {
+    if (this.isClicked) {
+      this.dragEnd = vec2_sub(touch_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop
+      ]);
+      this._drag_cursor(scene);
+    }
+  }
+  _drag_cursor(scene) {
+    let translate_vec = vec2_sub(
+      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1])
+    );
+    this.move_by(scene.v2w(translate_vec));
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
+  }
+  add(scene) {
+    let self = this;
+    scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
+    scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
+    scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self, scene)
+    );
+    scene.canvas.addEventListener("touchstart", self.touch.bind(self, scene));
+    scene.canvas.addEventListener("touchend", self.untouch.bind(self, scene));
+    scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self, scene)
+    );
+  }
+  remove(scene) {
+    let self = this;
+    scene.canvas.removeEventListener("mousedown", this.click.bind(self, scene));
+    scene.canvas.removeEventListener("mouseup", this.unclick.bind(self, scene));
+    scene.canvas.removeEventListener(
+      "mousemove",
+      this.mouse_drag_cursor.bind(self, scene)
+    );
+    scene.canvas.removeEventListener(
+      "touchstart",
+      this.click.bind(self, scene)
+    );
+    scene.canvas.removeEventListener(
+      "touchend",
+      this.unclick.bind(self, scene)
+    );
+    scene.canvas.removeEventListener(
+      "touchmove",
+      self.mouse_drag_cursor.bind(self, scene)
+    );
   }
 };
 var Line3D = class extends ThreeDLineLikeMObject {
@@ -896,6 +1069,14 @@ var ThreeDScene = class extends Scene {
   // Get the camera frame matrix
   get_camera_frame() {
     return mat_inv(this.camera_frame_inv);
+  }
+  // Converts a 2D vector in the view to world coordinates
+  v2w(v) {
+    let frame = this.get_camera_frame();
+    return vec3_sum(
+      vec3_scale(get_column(frame, 0), v[0]),
+      vec3_scale(get_column(frame, 1), v[1])
+    );
   }
   // Rotate the camera matrix around the z-axis.
   rot_z(angle) {
@@ -1433,6 +1614,87 @@ var Arcball = class {
       modeButton.style.padding = "15px";
       let zoomSlider = Slider(
         document.getElementById("three-d-graph-zoom-slider"),
+        function(value) {
+          zoom_ratio = value;
+          scene.set_zoom(value);
+          scene.draw();
+        },
+        {
+          name: "Zoom",
+          initialValue: `${zoom_ratio}`,
+          min: 0.5,
+          max: 5,
+          step: 0.05
+        }
+      );
+      zoomSlider.value = `1.0`;
+      scene.draw();
+    })(300, 300);
+    (function three_d_graph(width, height) {
+      let canvas = prepare_canvas(width, height, "three-d-lattice");
+      let [xmin, xmax] = [-6, 6];
+      let [ymin, ymax] = [-6, 6];
+      let zoom_ratio = 1;
+      let scene = new ThreeDScene(canvas);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.set_zoom(zoom_ratio);
+      scene.set_view_mode("orthographic");
+      scene.rot_z(Math.PI / 4);
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
+      scene.set_camera_position(
+        rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4)
+      );
+      let arr_width = 5;
+      let arr_height = 5;
+      function eq_position(i, j) {
+        return [(arr_width - 1) / 2 - i, (arr_height - 1) / 2 - j, 0];
+      }
+      for (let i = 0; i < arr_width - 1; i++) {
+        for (let j = 0; j < arr_height; j++) {
+          scene.add(
+            `l(${i},${j})(${i + 1},${j})`,
+            new Line3D(
+              eq_position(i, j),
+              eq_position(i + 1, j)
+            ).set_stroke_width(0.05)
+          );
+        }
+      }
+      for (let i = 0; i < arr_width; i++) {
+        for (let j = 0; j < arr_height - 1; j++) {
+          scene.add(
+            `l(${i},${j})(${i},${j + 1})`,
+            new Line3D(
+              eq_position(i, j),
+              eq_position(i, j + 1)
+            ).set_stroke_width(0.05)
+          );
+        }
+      }
+      for (let i = 0; i < arr_width; i++) {
+        for (let j = 0; j < arr_height; j++) {
+          let dot = new DraggableDot3D(eq_position(i, j), 0.1);
+          dot.add_callback(() => {
+            let center = dot.get_center();
+            if (scene.has_mobj(`l(${i},${j})(${i + 1},${j})`)) {
+              scene.get_mobj(`l(${i},${j})(${i + 1},${j})`).move_start(center);
+            }
+            if (scene.has_mobj(`l(${i},${j})(${i},${j + 1})`)) {
+              scene.get_mobj(`l(${i},${j})(${i},${j + 1})`).move_start(center);
+            }
+            if (scene.has_mobj(`l(${i - 1},${j})(${i},${j})`)) {
+              scene.get_mobj(`l(${i - 1},${j})(${i},${j})`).move_end(center);
+            }
+            if (scene.has_mobj(`l(${i},${j - 1})(${i},${j})`)) {
+              scene.get_mobj(`l(${i},${j - 1})(${i},${j})`).move_end(center);
+            }
+            scene.draw();
+          });
+          scene.add(`p(${i},${j})`, dot);
+        }
+      }
+      let zoomSlider = Slider(
+        document.getElementById("three-d-lattice-zoom-slider"),
         function(value) {
           zoom_ratio = value;
           scene.set_zoom(value);
