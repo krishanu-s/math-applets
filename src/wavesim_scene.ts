@@ -37,7 +37,8 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
-    // Demonstration of wave propagation in two dimensions. At the top of the page.
+    // *** INTRODUCTION SECTION ***
+    // Demonstration of wave propagation in two dimensions. This particular one shows a dipole.
     (function twodim_dipole_demo() {
       // Prepare the canvas and scene
       let width = 200;
@@ -173,8 +174,9 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       waveEquationScene.play(undefined);
     })();
 
-    // Depicts ray trajectories emanating from the focus of a conic section
-    // and reflecting off the conic section.
+    // This demonstration shows an example of light propagation in a two-dimensional medium using
+    // the ray model. More precisely, it shows how light rays emanating from the focus of a conic section
+    // bounce off the conic.
     (async function conic_rays() {
       // Prepare the canvas
       let canvas = prepare_canvas(200, 200, "conic-rays");
@@ -444,9 +446,12 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       }
     })();
 
-    // Shows a single vibrating spring in two dimensions, obeying Hooke's law.
-    // Include both an interactive animation (with spring strength modifiable by slider)
-    // and a static visualization of the force diagram.
+    // *** ONE-DIMENSIONAL WAVE EQUATION ***
+    // This is the zero-dimensional case of the wave equation. A point mass connected to a spring
+    // oscillates in one direction according to Hooke's law.
+    // - TODO Add a dashed gray line representing the equilibrium position of the mass.
+    // - TODO Add the ability to drag the mass back and forth. This is only available when the simulation is paused.
+    // - TODO Add the force arrows.
     (function point_mass_spring() {
       // Prepare the canvas
       let canvas = prepare_canvas(200, 200, "point-mass-spring");
@@ -536,10 +541,11 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       scene.play(undefined);
     })();
 
-    // Shows a sequence of point masses connected by springs, oscillating
-    // according to Hooke's law.
-    // Include both an interactive animation (with spring strength modifiable by slider)
-    // and a static visualization of the force diagram.
+    // One-dimensional case of the wave equation. A sequence of point masses (say, 5-10)
+    // connected in a horizontal line, oscillating vertically.
+    // - TODO Add a dashed gray line representing the equilibrium positions.
+    // - TODO Add line segments showing the displacements from the equilibrium position.
+    // - TODO Allow the user to drag the masses up and down. This is only available when the simulation is paused.
     (function point_mass_discrete_sequence(num_points: number) {
       // Prepare the scene
       let canvas = prepare_canvas(300, 300, "point-mass-discrete-sequence");
@@ -731,10 +737,11 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       scene.draw();
     })(7);
 
-    // Redraw the previous scene in a continuous-Bezier curve fashion,
-    // using a large number of tiny point masses.
-    // Include both an interactive animation (with spring strength modifiable by slider)
-    // and a static visualization of the force diagram.
+    // Use the same scene as before, but with a large number of point masses (say, 50) drawn
+    // as a Bezier-curve.
+    // - TODO Add a button to toggle zoom in/out by clicking on a part of the screen.
+    //   When the zoom reaches a certain level, switch to the discrete point-mass mode
+    //   with draggable point masses (while paused)
     (function point_mass_continuous_sequence(num_points: number) {
       // Prepare the scene
       let canvas = prepare_canvas(300, 300, "point-mass-continuous-sequence");
@@ -801,9 +808,18 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       scene.play(undefined);
     })(50);
 
-    // Extend the 1D, finite-number-of-point-masses to 2D.
-    // Include both an interactive animation (with spring strength modifiable by slider)
-    // and a static visualization of the force diagram. Use color to indicate height.
+    // TODO A one-dimensional wave example with PML at the ends, where a point in the middle
+    // is a timelike wave-source. Demonstrates how the timelike oscillation becomes spacelike oscillation.
+
+    // TODO A one-dimensional example bounded at both endpoints with an impulse wave traveling back
+    // and forth. Demonstrates how a zero-point acts as a reflector.
+
+    // *** TWO-DIMENSIONAL WAVE EQUATION ***
+    // A 2D lattice of point masses (say, 5x5), oscillating along a third dimension.
+    // - TODO Make this scene in 3D. At that point, we'll decide what to add.
+    // - TODO Indicate height using color, to parallel the heatmap version.
+    // - TODO Add draggable 3D dots. When the cursor lies inside multiple dots,
+    //   drag the one with lowest depth.
     (function point_mass_discrete_lattice(width: number, height: number) {
       // TODO
       // Prepare the canvas and context for drawing
@@ -851,82 +867,95 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       scene.play(undefined);
     })(200, 200);
 
-    // Some animation to depict reflective elements.
-    // Some animation to depict point sources and line sources.
-    (function line_source_heatmap(width: number, height: number) {
-      // Prepare the canvas and context for drawing
-      let canvas = prepare_canvas(width, height, "line-source-heatmap");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context");
-      }
-      const imageData = ctx.createImageData(width, height);
+    // TODO A heatmap demonstration of a single point source
 
-      // Prepare the simulator and scene
-      const ratio = 0.5;
-      class WaveSimTwoDimDiffraction extends WaveSimTwoDim {
-        // Has different wave propagation speed in two different media.
-        wps(x: number, y: number): number {
-          if (y < height / 2) {
-            return this.wave_propagation_speed * ratio;
-          } else {
-            return this.wave_propagation_speed;
-          }
-        }
-      }
+    // *** DEMONSTRATIONS ***
 
-      let sim = new WaveSimTwoDimDiffraction(width, height, 0.01);
+    // TODO A heatmap demonstration of diffraction through a single aperture
+    // TODO A heatmap demonstration of the double-slit experiment: diffraction through an aperture
+    // TODO A heatmap demonstration of reflection within a conic section
 
-      let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
+    // *** EIGENFUNCTIONS *** (TODO FUTURE)
 
-      const theta = Math.PI / 6; // Angle off vertical along which wave travels
-      let alpha = Math.asin(ratio * Math.sin(theta));
-      // Angle off vertical along which wave travels after refraction
-      sim.set_attr("wave_propagation_speed", 20.0);
-      let w = 4.0;
-      let a = 5.0;
+    // TODO A depiction of the eigenfunctions for a one-dimensional bounded system
+    // TODO A heatmap demonstration of eigenfunctions within a circular region
 
-      // Turn off PML layers along the bottom and left of the scene
-      sim.remove_pml_layers();
-      sim.set_pml_layer(true, true, 0.2, 200.0);
-      sim.set_pml_layer(false, true, 0.2, 200.0);
+    // // Some animation to depict reflective elements.
+    // // Some animation to depict point sources and line sources.
+    // (function line_source_heatmap(width: number, height: number) {
+    //   // Prepare the canvas and context for drawing
+    //   let canvas = prepare_canvas(width, height, "line-source-heatmap");
+    //   const ctx = canvas.getContext("2d");
+    //   if (!ctx) {
+    //     throw new Error("Failed to get 2D context");
+    //   }
+    //   const imageData = ctx.createImageData(width, height);
 
-      // Set wave source at the bottom and left of the scene
-      // TODO Calculate correct amplitude based on angle of wave
-      let t;
-      for (let px = 0; px <= width - 10; px++) {
-        t = (px * Math.sin(theta)) / 20.0;
-        let p = new PointSource(px, height - 1, w, a, t);
-        p.set_turn_on_time(t);
-        sim.add_point_source(p);
-      }
-      for (let py = 10; py <= height; py++) {
-        if (py < height / 2) {
-          t = (py * Math.cos(theta)) / 20.0;
-        } else {
-          t =
-            ((height / 2) * Math.cos(theta) +
-              ((py - height / 2) * Math.cos(alpha)) / ratio) /
-            20.0;
-        }
-        let p = new PointSource(0, height - 1 - py, w, a, t);
-        p.set_turn_on_time(t);
-        sim.add_point_source(p);
-      }
+    //   // Prepare the simulator and scene
+    //   const ratio = 0.5;
+    //   class WaveSimTwoDimDiffraction extends WaveSimTwoDim {
+    //     // Has different wave propagation speed in two different media.
+    //     wps(x: number, y: number): number {
+    //       if (y < height / 2) {
+    //         return this.wave_propagation_speed * ratio;
+    //       } else {
+    //         return this.wave_propagation_speed;
+    //       }
+    //     }
+    //   }
 
-      // Button which pauses/unpauses the simulation
-      let pauseButton = PauseButton(
-        document.getElementById(
-          "line-source-heatmap-pause-button",
-        ) as HTMLElement,
-        scene,
-      );
+    //   let sim = new WaveSimTwoDimDiffraction(width, height, 0.01);
 
-      scene.draw();
+    //   let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
+    //   scene.set_frame_lims([-5, 5], [-5, 5]);
 
-      // Start playing
-      scene.play(undefined);
-    })(200, 200);
+    //   const theta = Math.PI / 6; // Angle off vertical along which wave travels
+    //   let alpha = Math.asin(ratio * Math.sin(theta));
+    //   // Angle off vertical along which wave travels after refraction
+    //   sim.set_attr("wave_propagation_speed", 20.0);
+    //   let w = 4.0;
+    //   let a = 5.0;
+
+    //   // Turn off PML layers along the bottom and left of the scene
+    //   sim.remove_pml_layers();
+    //   sim.set_pml_layer(true, true, 0.2, 200.0);
+    //   sim.set_pml_layer(false, true, 0.2, 200.0);
+
+    //   // Set wave source at the bottom and left of the scene
+    //   // TODO Calculate correct amplitude based on angle of wave
+    //   let t;
+    //   for (let px = 0; px <= width - 10; px++) {
+    //     t = (px * Math.sin(theta)) / 20.0;
+    //     let p = new PointSource(px, height - 1, w, a, t);
+    //     p.set_turn_on_time(t);
+    //     sim.add_point_source(p);
+    //   }
+    //   for (let py = 10; py <= height; py++) {
+    //     if (py < height / 2) {
+    //       t = (py * Math.cos(theta)) / 20.0;
+    //     } else {
+    //       t =
+    //         ((height / 2) * Math.cos(theta) +
+    //           ((py - height / 2) * Math.cos(alpha)) / ratio) /
+    //         20.0;
+    //     }
+    //     let p = new PointSource(0, height - 1 - py, w, a, t);
+    //     p.set_turn_on_time(t);
+    //     sim.add_point_source(p);
+    //   }
+
+    //   // Button which pauses/unpauses the simulation
+    //   let pauseButton = PauseButton(
+    //     document.getElementById(
+    //       "line-source-heatmap-pause-button",
+    //     ) as HTMLElement,
+    //     scene,
+    //   );
+
+    //   scene.draw();
+
+    //   // Start playing
+    //   scene.play(undefined);
+    // })(200, 200);
   });
 })();
