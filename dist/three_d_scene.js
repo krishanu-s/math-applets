@@ -107,11 +107,18 @@ var Scene = class {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this._draw();
+    this.draw_border(ctx);
+  }
+  _draw() {
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.mobjects[name];
       if (mobj == void 0) throw new Error(`${name} not found`);
       mobj.draw(this.canvas, this);
     });
+  }
+  // Draw a border around the canvas
+  draw_border(ctx) {
     ctx.strokeStyle = this.border_color;
     ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);

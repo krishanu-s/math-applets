@@ -1,10 +1,14 @@
-import { MObject, Scene, prepare_canvas } from "./base.js";
-import { Dot, Line, Arrow } from "./base_geom.js";
+import { MObject, Scene, clamp, sigmoid } from "./base.js";
 import { LineSpring } from "./spring.js";
-import { Slider, Button } from "./interactive.js";
-import { clamp, sigmoid } from "./base.js";
-import { Vec2D, vec2_norm, vec2_sub } from "./base_geom.js";
-import { ParametricFunction } from "./parametric.js";
+import {
+  Vec2D,
+  vec2_norm,
+  vec2_sub,
+  Dot,
+  Line,
+  Arrow,
+  DraggableDotY,
+} from "./base_geom.js";
 import { BezierSpline } from "./bezier.js";
 import { HeatMap } from "./heatmap.js";
 import {
@@ -55,6 +59,8 @@ export class WaveSimOneDim extends Simulator {
   width: number;
   wave_propagation_speed: number = 20.0; // Speed of wave propagation
   damping: number = 0.0; // Damping coefficient
+  left_endpoint: number = 0.0; // Left boundary condition
+  right_endpoint: number = 0.0; // Left boundary condition
   constructor(width: number, dt: number) {
     // Store position and velocity at each point.
     super(2 * width, dt);
@@ -65,6 +71,12 @@ export class WaveSimOneDim extends Simulator {
   }
   set_damping(damping: number) {
     this.damping = damping;
+  }
+  set_left_endpoint(endpoint: number) {
+    this.left_endpoint = endpoint;
+  }
+  set_right_endpoint(endpoint: number) {
+    this.right_endpoint = endpoint;
   }
   get_uValues(): Array<number> {
     return this._get_uValues(this.vals);
@@ -116,8 +128,9 @@ export class WaveSimOneDim extends Simulator {
   }
   set_boundary_conditions(vals: Array<number>) {
     // Clamp to zero at the endpoints.
-    vals[0] = 0;
-    vals[this.width - 1] = 0;
+    // TODO Switch these
+    vals[0] = this.left_endpoint;
+    vals[this.width - 1] = this.right_endpoint;
     vals[this.width] = 0;
     vals[2 * this.width - 1] = 0;
   }
@@ -133,6 +146,13 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     this.mode = "dots";
 
     let pos: Vec2D, next_pos: Vec2D;
+
+    // Add a line representing the equilibrium position
+    let eq_line = new Line([-5, 0], [5, 0])
+      .set_stroke_width(0.05)
+      .set_stroke_style("dashed")
+      .set_stroke_color("gray");
+    this.add("eq_line", eq_line);
 
     // Add boundary lines
     let [ymin, ymax] = this.ylims;
@@ -151,9 +171,9 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     for (let i = 1; i < width; i++) {
       pos = this.eq_position(i);
       next_pos = this.eq_position(i + 1);
-      let line = new LineSpring(pos, next_pos, {
-        stroke_width: 0.2 / Math.sqrt(width),
-      });
+      let line = new LineSpring(pos, next_pos).set_stroke_width(
+        0.2 / Math.sqrt(width),
+      );
       eq_length = vec2_norm(vec2_sub(pos, next_pos));
       line.set_eq_length(eq_length);
       this.add(`l_${i}`, line);
@@ -175,8 +195,27 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     // Add dots which track with uValues in simulator
     for (let i = 0; i < width; i++) {
       pos = this.eq_position(i + 1);
-      let dot = new Dot(pos, 0.5 / Math.sqrt(width));
-      this.add(`p_${i + 1}`, dot);
+      let mass = new DraggableDotY(pos, 0.5 / Math.sqrt(width));
+      if (i == 0) {
+        mass.add_callback(() => {
+          let sim = this.get_simulator() as WaveSimOneDim;
+          sim.set_left_endpoint(mass.get_center()[1]);
+        });
+      }
+      if (i == width - 1) {
+        mass.add_callback(() => {
+          let sim = this.get_simulator() as WaveSimOneDim;
+          sim.set_right_endpoint(mass.get_center()[1]);
+        });
+      }
+      mass.add_callback(() => {
+        let sim = this.get_simulator();
+        let vals = sim.get_vals();
+        vals[i] = mass.get_center()[1];
+        vals[i + this.width()] = 0;
+        sim.set_vals(vals);
+      });
+      this.add(`p_${i + 1}`, mass);
     }
 
     // Add a Bezier curve which tracks with uValues in simulator

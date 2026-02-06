@@ -10721,16 +10721,20 @@ var FillLikeMObject = class extends MObject {
   }
   set_fill_color(color) {
     this.fill_color = color;
+    return this;
   }
   set_color(color) {
     this.stroke_color = color;
     this.fill_color = color;
+    return this;
   }
   set_fill_alpha(alpha) {
     this.fill_alpha = alpha;
+    return this;
   }
   set_fill(fill2) {
     this.fill = fill2;
+    return this;
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
@@ -10835,11 +10839,18 @@ var Scene = class {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this._draw();
+    this.draw_border(ctx);
+  }
+  _draw() {
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.mobjects[name];
       if (mobj == void 0) throw new Error(`${name} not found`);
       mobj.draw(this.canvas, this);
     });
+  }
+  // Draw a border around the canvas
+  draw_border(ctx) {
     ctx.strokeStyle = this.border_color;
     ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
@@ -10949,24 +10960,6 @@ function Button(container, callback) {
   });
   return button;
 }
-function PauseButton(container, scene) {
-  const pauseButton = Button(
-    document.getElementById("line-source-heatmap-pause-button"),
-    function() {
-      scene.add_to_queue(scene.toggle_pause.bind(scene));
-      if (pauseButton.textContent == "Pause simulation") {
-        pauseButton.textContent = "Unpause simulation";
-      } else if (pauseButton.textContent == "Unpause simulation") {
-        pauseButton.textContent = "Pause simulation";
-      } else {
-        throw new Error();
-      }
-    }
-  );
-  pauseButton.textContent = "Unpause simulation";
-  pauseButton.style.padding = "15px";
-  return pauseButton;
-}
 
 // src/lib/base_geom.ts
 function vec2_norm(x) {
@@ -11024,6 +11017,16 @@ var Dot = class extends FillLikeMObject {
     ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
     ctx.fill();
+  }
+  // Convert to a draggable rectangle
+  toDraggableDot() {
+    return new DraggableDot(this.center, this.radius);
+  }
+  toDraggableDotX() {
+    return new DraggableDotX(this.center, this.radius);
+  }
+  toDraggableDotY() {
+    return new DraggableDotY(this.center, this.radius);
   }
 };
 var Sector = class extends FillLikeMObject {
@@ -11175,6 +11178,20 @@ var DraggableDot = class extends Dot {
       self.mouse_drag_cursor.bind(self, scene)
     );
   }
+  // Remove draggability
+  toDot() {
+    return new Dot(this.center, this.radius);
+  }
+};
+var DraggableDotX = class extends DraggableDot {
+  _drag_cursor(scene) {
+    this.move_by(
+      vec2_sub(scene.c2s(this.dragEnd[0], 0), scene.c2s(this.dragStart[0], 0))
+    );
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
+  }
 };
 var DraggableDotY = class extends DraggableDot {
   _drag_cursor(scene) {
@@ -11192,6 +11209,9 @@ var Rectangle = class extends FillLikeMObject {
     this.center = center;
     this.size_x = size_x;
     this.size_y = size_y;
+  }
+  get_center() {
+    return this.center;
   }
   move_to(center) {
     this.center = center;
@@ -11231,6 +11251,161 @@ var Rectangle = class extends FillLikeMObject {
     ctx.closePath();
     ctx.stroke();
     ctx.fill();
+  }
+  // Convert to a draggable rectangle
+  toDraggableRectangle() {
+    return new DraggableRectangle(this.center, this.size_x, this.size_y);
+  }
+  toDraggableRectangleX() {
+    return new DraggableRectangleX(this.center, this.size_x, this.size_y);
+  }
+  toDraggableRectangleY() {
+    return new DraggableRectangleY(this.center, this.size_x, this.size_y);
+  }
+};
+var DraggableRectangle = class extends Rectangle {
+  constructor() {
+    super(...arguments);
+    this.isClicked = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.touch_tolerance = 2;
+    this.callbacks = [];
+  }
+  // Tests whether a chosen vector lies inside the shape. Used for click-detection.
+  is_inside(p) {
+    return Math.abs(p[0] - this.center[0]) < this.size_x / 2 && Math.abs(p[1] - this.center[1]) < this.size_y / 2;
+  }
+  // Tests whether a chosen vector lies within an enlarged version of the shape.
+  // Used for touch-detection on mobile devices, and for use by small children.
+  is_almost_inside(p, tolerance) {
+    return Math.abs(p[0] - this.center[0]) < this.size_x / 2 * this.touch_tolerance && Math.abs(p[1] - this.center[1]) < this.size_y / 2 * this.touch_tolerance;
+  }
+  // Adds a callback which triggers when the dot is dragged
+  add_callback(callback) {
+    this.callbacks.push(callback);
+  }
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
+  }
+  // Triggers when the canvas is clicked.
+  click(scene, event) {
+    this.dragStart = [
+      event.pageX - scene.canvas.offsetLeft,
+      event.pageY - scene.canvas.offsetTop
+    ];
+    this.isClicked = this.is_inside(
+      scene.c2s(this.dragStart[0], this.dragStart[1])
+    );
+  }
+  touch(scene, event) {
+    this.dragStart = [
+      event.touches[0].pageX - scene.canvas.offsetLeft,
+      event.touches[0].pageY - scene.canvas.offsetTop
+    ];
+    this.isClicked = this.is_almost_inside(
+      scene.c2s(this.dragStart[0], this.dragStart[1]),
+      this.touch_tolerance
+    );
+  }
+  // Triggers when the canvas is unclicked.
+  unclick(scene, event) {
+    this.isClicked = false;
+  }
+  untouch(scene, event) {
+    this.isClicked = false;
+  }
+  // Triggers when the mouse is dragged over the canvas.
+  mouse_drag_cursor(scene, event) {
+    if (this.isClicked) {
+      this.dragEnd = vec2_sub(mouse_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop
+      ]);
+      this._drag_cursor(scene);
+    }
+  }
+  touch_drag_cursor(scene, event) {
+    if (this.isClicked) {
+      this.dragEnd = vec2_sub(touch_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop
+      ]);
+      this._drag_cursor(scene);
+    }
+  }
+  _drag_cursor(scene) {
+    this.move_by(
+      vec2_sub(
+        scene.c2s(this.dragEnd[0], this.dragEnd[1]),
+        scene.c2s(this.dragStart[0], this.dragStart[1])
+      )
+    );
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
+  }
+  add(scene) {
+    let self = this;
+    scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
+    scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
+    scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self, scene)
+    );
+    scene.canvas.addEventListener("touchstart", self.touch.bind(self, scene));
+    scene.canvas.addEventListener("touchend", self.untouch.bind(self, scene));
+    scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self, scene)
+    );
+  }
+  remove(scene) {
+    let self = this;
+    scene.canvas.removeEventListener("mousedown", this.click.bind(self, scene));
+    scene.canvas.removeEventListener("mouseup", this.unclick.bind(self, scene));
+    scene.canvas.removeEventListener(
+      "mousemove",
+      this.mouse_drag_cursor.bind(self, scene)
+    );
+    scene.canvas.removeEventListener(
+      "touchstart",
+      this.click.bind(self, scene)
+    );
+    scene.canvas.removeEventListener(
+      "touchend",
+      this.unclick.bind(self, scene)
+    );
+    scene.canvas.removeEventListener(
+      "touchmove",
+      self.mouse_drag_cursor.bind(self, scene)
+    );
+  }
+  // Remove draggability
+  toRectangle() {
+    return new Rectangle(this.center, this.size_x, this.size_y);
+  }
+};
+var DraggableRectangleX = class extends DraggableRectangle {
+  _drag_cursor(scene) {
+    this.move_by(
+      vec2_sub(scene.c2s(this.dragEnd[0], 0), scene.c2s(this.dragStart[0], 0))
+    );
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
+  }
+};
+var DraggableRectangleY = class extends DraggableRectangle {
+  _drag_cursor(scene) {
+    this.move_by(
+      vec2_sub(scene.c2s(0, this.dragEnd[1]), scene.c2s(0, this.dragStart[1]))
+    );
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
   }
 };
 var Line = class extends LineLikeMObject {
@@ -11550,8 +11725,8 @@ function rb_colormap_2(z) {
 
 // src/lib/spring.ts
 var LineSpring = class extends Line {
-  constructor(start, end, kwargs) {
-    super(start, end, kwargs);
+  constructor(start, end) {
+    super(start, end);
     this.mode = "color";
     this.eq_length = 2;
   }
@@ -11570,14 +11745,9 @@ var LineSpring = class extends Line {
   //   return Math.min(1.0, this.eq_length / this.length());
   // }
   // Draws on the canvas
-  draw(canvas, scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
+  _draw(ctx, scene) {
     let [start_x, start_y] = scene.v2c(this.start);
     let [end_x, end_y] = scene.v2c(this.end);
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.globalAlpha = this.alpha;
     if (this.mode == "color") {
       ctx.strokeStyle = colorval_to_rgba(
         rb_colormap_2(10 * Math.log(this.eq_length / this.length()))
@@ -11589,7 +11759,7 @@ var LineSpring = class extends Line {
     } else {
       let v = [end_x - start_x, end_y - start_y];
       let num_turns = 5;
-      let r = 1 - this.eq_length * 0.4 / this.length();
+      let r = 1 - 0.4 * this.eq_length / this.length();
       let theta = Math.atan(8 * (2 * num_turns) / (vec2_norm(v) * r));
       let scaled_v = vec2_scale(v, r / (2 * Math.cos(theta) * num_turns));
       let current_p = [
@@ -11901,19 +12071,13 @@ var InteractivePlayingScene = class extends Scene {
   update_mobjects() {
   }
   // Draws the scene.
-  draw() {
-    let ctx = this.canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  _draw() {
     this.update_mobjects();
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.get_mobj(name);
       if (mobj == void 0) throw new Error(`${name} not found`);
       this.draw_mobject(mobj);
     });
-    ctx.strokeStyle = this.border_color;
-    ctx.lineWidth = this.border_thickness;
-    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
   // Add drawing instructions in the subclass.
   draw_mobject(mobj) {
@@ -11951,12 +12115,16 @@ var PointSource = class {
   }
 };
 var WaveSimOneDim = class extends Simulator {
-  // Damping coefficient
+  // Left boundary condition
   constructor(width, dt) {
     super(2 * width, dt);
     this.wave_propagation_speed = 20;
     // Speed of wave propagation
     this.damping = 0;
+    // Damping coefficient
+    this.left_endpoint = 0;
+    // Left boundary condition
+    this.right_endpoint = 0;
     this.width = width;
   }
   set_wave_propagation_speed(speed) {
@@ -11964,6 +12132,12 @@ var WaveSimOneDim = class extends Simulator {
   }
   set_damping(damping) {
     this.damping = damping;
+  }
+  set_left_endpoint(endpoint) {
+    this.left_endpoint = endpoint;
+  }
+  set_right_endpoint(endpoint) {
+    this.right_endpoint = endpoint;
   }
   get_uValues() {
     return this._get_uValues(this.vals);
@@ -12001,8 +12175,8 @@ var WaveSimOneDim = class extends Simulator {
     return dS;
   }
   set_boundary_conditions(vals) {
-    vals[0] = 0;
-    vals[this.width - 1] = 0;
+    vals[0] = this.left_endpoint;
+    vals[this.width - 1] = this.right_endpoint;
     vals[this.width] = 0;
     vals[2 * this.width - 1] = 0;
   }
@@ -12013,6 +12187,8 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     super(canvas, [sim]);
     this.mode = "dots";
     let pos, next_pos;
+    let eq_line = new Line([-5, 0], [5, 0]).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
+    this.add("eq_line", eq_line);
     let [ymin, ymax] = this.ylims;
     pos = this.eq_position(1);
     let b0 = new Line([pos[0], ymin / 2], [pos[0], ymax / 2]);
@@ -12026,9 +12202,9 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     for (let i = 1; i < width; i++) {
       pos = this.eq_position(i);
       next_pos = this.eq_position(i + 1);
-      let line = new LineSpring(pos, next_pos, {
-        stroke_width: 0.2 / Math.sqrt(width)
-      });
+      let line = new LineSpring(pos, next_pos).set_stroke_width(
+        0.2 / Math.sqrt(width)
+      );
       eq_length = vec2_norm(vec2_sub(pos, next_pos));
       line.set_eq_length(eq_length);
       this.add(`l_${i}`, line);
@@ -12046,8 +12222,27 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     }
     for (let i = 0; i < width; i++) {
       pos = this.eq_position(i + 1);
-      let dot3 = new Dot(pos, 0.5 / Math.sqrt(width));
-      this.add(`p_${i + 1}`, dot3);
+      let mass = new DraggableDotY(pos, 0.5 / Math.sqrt(width));
+      if (i == 0) {
+        mass.add_callback(() => {
+          let sim2 = this.get_simulator();
+          sim2.set_left_endpoint(mass.get_center()[1]);
+        });
+      }
+      if (i == width - 1) {
+        mass.add_callback(() => {
+          let sim2 = this.get_simulator();
+          sim2.set_right_endpoint(mass.get_center()[1]);
+        });
+      }
+      mass.add_callback(() => {
+        let sim2 = this.get_simulator();
+        let vals = sim2.get_vals();
+        vals[i] = mass.get_center()[1];
+        vals[i + this.width()] = 0;
+        sim2.set_vals(vals);
+      });
+      this.add(`p_${i + 1}`, mass);
     }
     let curve = new BezierSpline(width - 1, {});
     curve.set_stroke_width(0.04);
@@ -12710,22 +12905,52 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
         await do_simulation(10, 0.06);
       }
     })();
-    (function point_mass_spring() {
-      let canvas = prepare_canvas(200, 200, "point-mass-spring");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context");
-      }
+    (function point_mass_spring(width, height) {
+      let canvas = prepare_canvas(width, height, "point-mass-spring");
       class SpringScene extends InteractivePlayingScene {
         constructor(canvas2) {
-          super(canvas2, [new SpringSimulator(1, 0.01)]);
-          let spring = new LineSpring([-3, 0], [0, 0], { stroke_width: 0.08 });
+          super(canvas2, [new SpringSimulator(3, 0.01)]);
+          this.arrow_length_scale = 1.5;
+          this.arrow_height = 0;
+          let eq_line = new Line([0, -5], [0, 5]).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
+          let spring = new LineSpring([-3, 0], [0, 0]).set_stroke_width(0.08);
           spring.set_eq_length(3);
-          let anchor = new Line([-3, -2], [-3, 2]).set_stroke_width(0.3);
-          let mass = new Rectangle([0, 0], 0.6, 0.6);
+          let anchor = new Rectangle([-3, 0], 0.15, 4);
+          let mass = new DraggableRectangleX([0, 0], 0.6, 0.6);
+          mass.add_callback(() => {
+            let sim2 = this.get_simulator();
+            sim2.set_vals([mass.get_center()[0], 0]);
+          });
+          let force_arrow = new Arrow(
+            [0, this.arrow_height],
+            [0, this.arrow_height]
+          ).set_stroke_width(0.1).set_stroke_color("red");
+          this.add("eq_line", eq_line);
           this.add("spring", spring);
           this.add("anchor", anchor);
           this.add("mass", mass);
+          this.add("force_arrow", force_arrow);
+        }
+        set_spring_mode(mode) {
+          let spring = this.get_mobj("spring");
+          spring.set_mode(mode);
+        }
+        toggle_pause() {
+          if (this.paused) {
+            let mass = this.get_mobj("mass");
+            this.remove("mass");
+            this.add("mass", mass.toRectangle());
+          } else {
+            let mass = this.get_mobj("mass");
+            this.remove("mass");
+            let new_mass = mass.toDraggableRectangleX();
+            new_mass.add_callback(() => {
+              let sim2 = this.get_simulator();
+              sim2.set_vals([new_mass.get_center()[0], 0]);
+            });
+            this.add("mass", new_mass);
+          }
+          super.toggle_pause();
         }
         // Updates all mobjects to account for the new simulator state
         update_mobjects() {
@@ -12734,6 +12959,22 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
           mass.move_to([u, 0]);
           let spring = this.get_mobj("spring");
           spring.move_end([u, 0]);
+          let force_arrow = this.get_mobj("force_arrow");
+          force_arrow.move_start([u, this.arrow_height]);
+          force_arrow.move_end([
+            u * (1 - this.arrow_length_scale),
+            this.arrow_height
+          ]);
+          force_arrow.set_arrow_size(Math.min(0.5, Math.sqrt(Math.abs(u)) / 2));
+        }
+        // Enforce strict order on drawing mobjects, overriding subclass behavior
+        _draw() {
+          this.update_mobjects();
+          this.draw_mobject(this.get_mobj("eq_line"));
+          this.draw_mobject(this.get_mobj("anchor"));
+          this.draw_mobject(this.get_mobj("spring"));
+          this.draw_mobject(this.get_mobj("mass"));
+          this.draw_mobject(this.get_mobj("force_arrow"));
         }
         draw_mobject(mobj) {
           mobj.draw(this.canvas, this);
@@ -12742,27 +12983,10 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       let scene = new SpringScene(canvas);
       scene.set_simulator_attr(0, "stiffness", 5);
       scene.set_simulator_attr(0, "dt", 0.01);
-      let sim = scene.get_simulator(0);
+      scene.set_spring_mode("spring");
+      let sim = scene.get_simulator();
       sim.set_vals([1, 0]);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
-      let w_slider = Slider(
-        document.getElementById(
-          "point-mass-spring-stiffness-slider"
-        ),
-        function(w) {
-          scene.add_to_queue(
-            scene.set_simulator_attr.bind(scene, 0, "stiffness", w)
-          );
-        },
-        {
-          name: "Spring stiffness",
-          initial_value: "3.0",
-          min: 0,
-          max: 20,
-          step: 0.05
-        }
-      );
-      w_slider.width = 200;
+      scene.set_frame_lims([-4, 4], [-4, 4]);
       let pauseButton = Button(
         document.getElementById(
           "point-mass-spring-pause-button"
@@ -12782,10 +13006,48 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       pauseButton.style.padding = "15px";
       scene.draw();
       scene.play(void 0);
-    })();
+    })(300, 300);
     (function point_mass_discrete_sequence(num_points) {
       let canvas = prepare_canvas(300, 300, "point-mass-discrete-sequence");
-      let scene = new WaveSimOneDimScene(canvas, num_points);
+      class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
+        toggle_pause() {
+          if (this.paused) {
+            for (let i = 0; i < this.width(); i++) {
+              let mass = this.get_mobj(`p_${i + 1}`);
+              this.remove(`p_${i + 1}`);
+              this.add(`p_${i + 1}`, mass.toDot());
+            }
+          } else {
+            for (let i = 0; i < this.width(); i++) {
+              let mass = this.get_mobj(`p_${i + 1}`);
+              this.remove(`p_${i + 1}`);
+              let new_mass = mass.toDraggableDotY();
+              if (i == 0) {
+                new_mass.add_callback(() => {
+                  let sim2 = this.get_simulator();
+                  sim2.set_left_endpoint(new_mass.get_center()[1]);
+                });
+              }
+              if (i == this.width() - 1) {
+                new_mass.add_callback(() => {
+                  let sim2 = this.get_simulator();
+                  sim2.set_right_endpoint(new_mass.get_center()[1]);
+                });
+              }
+              new_mass.add_callback(() => {
+                let sim2 = this.get_simulator();
+                let vals = sim2.get_vals();
+                vals[i] = new_mass.get_center()[1];
+                vals[i + this.width()] = 0;
+                sim2.set_vals(vals);
+              });
+              this.add(`p_${i + 1}`, new_mass);
+            }
+          }
+          super.toggle_pause();
+        }
+      }
+      let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("dots");
       let sim = scene.sim();
@@ -12811,138 +13073,9 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       );
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
-      let w_slider = Slider(
-        document.getElementById(
-          "point-mass-discrete-sequence-stiffness-slider"
-        ),
-        function(w) {
-          scene.add_to_queue(
-            scene.set_simulator_attr.bind(
-              scene,
-              0,
-              "wave_propagation_speed",
-              w
-            )
-          );
-        },
-        {
-          name: "Wave propagation speed",
-          initial_value: "3.0",
-          min: 0,
-          max: 20,
-          step: 0.05
-        }
-      );
-      w_slider.width = 200;
       scene.draw();
       scene.play(void 0);
     })(10);
-    (function point_mass_discrete_sequence_diagram(num_points) {
-      let canvas = prepare_canvas(
-        300,
-        300,
-        "point-mass-discrete-sequence-diagram"
-      );
-      let scene = new Scene(canvas);
-      let xmin = -5;
-      let xmax = 5;
-      let ymin = -5;
-      let ymax = 5;
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      function eq_position(i) {
-        return [xmin + (i + 0.5) * (xmax - xmin) / num_points, 0];
-      }
-      let pos;
-      pos = eq_position(0);
-      scene.add(
-        "b0",
-        new Line([pos[0], ymin / 2], [pos[0], ymax / 2]).set_stroke_width(0.1)
-      );
-      pos = eq_position(num_points - 1);
-      scene.add(
-        "b1",
-        new Line([pos[0], ymin / 2], [pos[0], ymax / 2]).set_stroke_width(0.1)
-      );
-      let dots = [];
-      for (let i = 0; i < num_points; i++) {
-        let dot3 = new DraggableDotY(eq_position(i), 0.13);
-        dots.push(dot3);
-      }
-      let springs = [];
-      function set_spring(i, spring) {
-        spring.move_start(dots[i].get_center());
-        spring.move_end(dots[i + 1].get_center());
-      }
-      for (let i = 0; i < num_points - 1; i++) {
-        let spring = new LineSpring([0, 0], [0, 0], {});
-        spring.set_eq_length(
-          vec2_norm(vec2_sub(eq_position(i + 1), eq_position(i)))
-        );
-        spring.set_mode("spring");
-        set_spring(i, spring);
-        dots[i].add_callback(() => {
-          set_spring(i, spring);
-        });
-        springs.push(spring);
-      }
-      let arrow_scale = 0.3;
-      let arrows = [];
-      function set_force_arrow(i, arrow) {
-        pos = dots[i].get_center();
-        let disp;
-        if (i == 0) {
-          disp = dots[i + 1].get_center()[1] - pos[1];
-        } else if (i == num_points - 1) {
-          disp = dots[i - 1].get_center()[1] - pos[1];
-        } else {
-          disp = dots[i - 1].get_center()[1] + dots[i + 1].get_center()[1] - 2 * dots[i].get_center()[1];
-        }
-        arrow.move_start(pos);
-        arrow.move_end([pos[0], pos[1] + arrow_scale * disp]);
-        arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 8);
-      }
-      for (let i = 0; i < num_points; i++) {
-        let arrow = new Arrow([0, 0], [0, 0]);
-        arrow.set_stroke_color("red");
-        arrow.set_stroke_width(0.05);
-        arrow.set_alpha(0.5);
-        set_force_arrow(i, arrow);
-        if (i == 0) {
-          dots[i].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-          dots[i + 1].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-        } else if (i == num_points - 1) {
-          dots[i - 1].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-          dots[i].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-        } else {
-          dots[i - 1].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-          dots[i].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-          dots[i + 1].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-        }
-        arrows.push(arrow);
-      }
-      for (let i = 0; i < num_points - 1; i++) {
-        scene.add(`spring_${i}`, springs[i]);
-      }
-      for (let i = 0; i < num_points; i++) {
-        scene.add(`arrow_${i}`, arrows[i]);
-        scene.add(`point_${i}`, dots[i]);
-      }
-      scene.draw();
-    })(7);
     (function point_mass_continuous_sequence(num_points) {
       let canvas = prepare_canvas(300, 300, "point-mass-continuous-sequence");
       let scene = new WaveSimOneDimScene(canvas, num_points);
@@ -13031,61 +13164,6 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
       );
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
-      scene.draw();
-      scene.play(void 0);
-    })(200, 200);
-    (function line_source_heatmap(width, height) {
-      let canvas = prepare_canvas(width, height, "line-source-heatmap");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context");
-      }
-      const imageData = ctx.createImageData(width, height);
-      const ratio = 0.5;
-      class WaveSimTwoDimDiffraction extends WaveSimTwoDim {
-        // Has different wave propagation speed in two different media.
-        wps(x, y) {
-          if (y < height / 2) {
-            return this.wave_propagation_speed * ratio;
-          } else {
-            return this.wave_propagation_speed;
-          }
-        }
-      }
-      let sim = new WaveSimTwoDimDiffraction(width, height, 0.01);
-      let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
-      const theta = Math.PI / 6;
-      let alpha = Math.asin(ratio * Math.sin(theta));
-      sim.set_attr("wave_propagation_speed", 20);
-      let w = 4;
-      let a = 5;
-      sim.remove_pml_layers();
-      sim.set_pml_layer(true, true, 0.2, 200);
-      sim.set_pml_layer(false, true, 0.2, 200);
-      let t;
-      for (let px = 0; px <= width - 10; px++) {
-        t = px * Math.sin(theta) / 20;
-        let p = new PointSource(px, height - 1, w, a, t);
-        p.set_turn_on_time(t);
-        sim.add_point_source(p);
-      }
-      for (let py = 10; py <= height; py++) {
-        if (py < height / 2) {
-          t = py * Math.cos(theta) / 20;
-        } else {
-          t = (height / 2 * Math.cos(theta) + (py - height / 2) * Math.cos(alpha) / ratio) / 20;
-        }
-        let p = new PointSource(0, height - 1 - py, w, a, t);
-        p.set_turn_on_time(t);
-        sim.add_point_source(p);
-      }
-      let pauseButton = PauseButton(
-        document.getElementById(
-          "line-source-heatmap-pause-button"
-        ),
-        scene
-      );
       scene.draw();
       scene.play(void 0);
     })(200, 200);

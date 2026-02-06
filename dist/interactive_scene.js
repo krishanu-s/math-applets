@@ -10708,16 +10708,20 @@ var FillLikeMObject = class extends MObject {
   }
   set_fill_color(color) {
     this.fill_color = color;
+    return this;
   }
   set_color(color) {
     this.stroke_color = color;
     this.fill_color = color;
+    return this;
   }
   set_fill_alpha(alpha) {
     this.fill_alpha = alpha;
+    return this;
   }
   set_fill(fill2) {
     this.fill = fill2;
+    return this;
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
@@ -10822,11 +10826,18 @@ var Scene = class {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this._draw();
+    this.draw_border(ctx);
+  }
+  _draw() {
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.mobjects[name];
       if (mobj == void 0) throw new Error(`${name} not found`);
       mobj.draw(this.canvas, this);
     });
+  }
+  // Draw a border around the canvas
+  draw_border(ctx) {
     ctx.strokeStyle = this.border_color;
     ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
@@ -10910,6 +10921,16 @@ var Dot = class extends FillLikeMObject {
     ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
     ctx.fill();
+  }
+  // Convert to a draggable rectangle
+  toDraggableDot() {
+    return new DraggableDot(this.center, this.radius);
+  }
+  toDraggableDotX() {
+    return new DraggableDotX(this.center, this.radius);
+  }
+  toDraggableDotY() {
+    return new DraggableDotY(this.center, this.radius);
   }
 };
 var DraggableDot = class extends Dot {
@@ -11031,6 +11052,30 @@ var DraggableDot = class extends Dot {
       "touchmove",
       self.mouse_drag_cursor.bind(self, scene)
     );
+  }
+  // Remove draggability
+  toDot() {
+    return new Dot(this.center, this.radius);
+  }
+};
+var DraggableDotX = class extends DraggableDot {
+  _drag_cursor(scene) {
+    this.move_by(
+      vec2_sub(scene.c2s(this.dragEnd[0], 0), scene.c2s(this.dragStart[0], 0))
+    );
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
+  }
+};
+var DraggableDotY = class extends DraggableDot {
+  _drag_cursor(scene) {
+    this.move_by(
+      vec2_sub(scene.c2s(0, this.dragEnd[1]), scene.c2s(0, this.dragStart[1]))
+    );
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
   }
 };
 var Line = class extends LineLikeMObject {

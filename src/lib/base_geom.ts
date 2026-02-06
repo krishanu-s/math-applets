@@ -87,6 +87,16 @@ export class Dot extends FillLikeMObject {
     ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
     ctx.fill();
   }
+  // Convert to a draggable rectangle
+  toDraggableDot(): DraggableDot {
+    return new DraggableDot(this.center, this.radius);
+  }
+  toDraggableDotX(): DraggableDotX {
+    return new DraggableDotX(this.center, this.radius);
+  }
+  toDraggableDotY(): DraggableDotX {
+    return new DraggableDotY(this.center, this.radius);
+  }
 }
 
 // A filled circular sector
@@ -251,6 +261,11 @@ export class DraggableDot extends Dot {
       self.mouse_drag_cursor.bind(self, scene),
     );
   }
+
+  // Remove draggability
+  toDot(): Dot {
+    return new Dot(this.center, this.radius);
+  }
 }
 
 // Dragging only affects the x-coordinate
@@ -287,6 +302,9 @@ export class Rectangle extends FillLikeMObject {
     this.center = center;
     this.size_x = size_x;
     this.size_y = size_y;
+  }
+  get_center(): Vec2D {
+    return this.center;
   }
   move_to(center: Vec2D) {
     this.center = center;
@@ -326,6 +344,16 @@ export class Rectangle extends FillLikeMObject {
     ctx.closePath();
     ctx.stroke();
     ctx.fill();
+  }
+  // Convert to a draggable rectangle
+  toDraggableRectangle(): DraggableRectangle {
+    return new DraggableRectangle(this.center, this.size_x, this.size_y);
+  }
+  toDraggableRectangleX(): DraggableRectangleX {
+    return new DraggableRectangleX(this.center, this.size_x, this.size_y);
+  }
+  toDraggableRectangleY(): DraggableRectangleX {
+    return new DraggableRectangleY(this.center, this.size_x, this.size_y);
   }
 }
 
@@ -458,6 +486,10 @@ export class DraggableRectangle extends Rectangle {
       "touchmove",
       self.mouse_drag_cursor.bind(self, scene),
     );
+  }
+  // Remove draggability
+  toRectangle(): Rectangle {
+    return new Rectangle(this.center, this.size_x, this.size_y);
   }
 }
 

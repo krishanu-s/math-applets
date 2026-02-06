@@ -122,16 +122,20 @@ export class FillLikeMObject extends MObject {
   }
   set_fill_color(color: string) {
     this.fill_color = color;
+    return this;
   }
   set_color(color: string) {
     this.stroke_color = color;
     this.fill_color = color;
+    return this;
   }
   set_fill_alpha(alpha: number) {
     this.fill_alpha = alpha;
+    return this;
   }
   set_fill(fill: boolean) {
     this.fill = fill;
+    return this;
   }
   draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
     let ctx = canvas.getContext("2d");
@@ -266,14 +270,20 @@ export class Scene {
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    this._draw();
+
+    this.draw_border(ctx);
+  }
+  _draw() {
     // Draw the mobjects
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.mobjects[name];
       if (mobj == undefined) throw new Error(`${name} not found`);
       mobj.draw(this.canvas, this);
     });
-
-    // Draw a border around the canvas
+  }
+  // Draw a border around the canvas
+  draw_border(ctx: CanvasRenderingContext2D) {
     ctx.strokeStyle = this.border_color;
     ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);

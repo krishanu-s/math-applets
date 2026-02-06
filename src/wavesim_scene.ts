@@ -26,6 +26,7 @@ import { ParametricFunction } from "./lib/parametric.js";
 import { HeatMap } from "./lib/heatmap.js";
 import {
   PointSource,
+  WaveSimOneDim,
   WaveSimOneDimScene,
   WaveSimTwoDim,
   WaveSimTwoDimEllipticReflector,
@@ -449,30 +450,68 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
     // *** ONE-DIMENSIONAL WAVE EQUATION ***
     // This is the zero-dimensional case of the wave equation. A point mass connected to a spring
     // oscillates in one direction according to Hooke's law.
-    // - TODO Add a dashed gray line representing the equilibrium position of the mass.
-    // - TODO Add the ability to drag the mass back and forth. This is only available when the simulation is paused.
-    // - TODO Add the force arrows.
-    (function point_mass_spring() {
+    (function point_mass_spring(width: number, height: number) {
       // Prepare the canvas
-      let canvas = prepare_canvas(200, 200, "point-mass-spring");
-
-      // Get the context for drawing
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context");
-      }
+      let canvas = prepare_canvas(width, height, "point-mass-spring");
 
       class SpringScene extends InteractivePlayingScene {
+        arrow_length_scale: number = 1.5;
+        arrow_height: number = 0;
         constructor(canvas: HTMLCanvasElement) {
-          super(canvas, [new SpringSimulator(1.0, 0.01)]);
+          super(canvas, [new SpringSimulator(3.0, 0.01)]);
           // TODO Set coordinates in terms of scene frame limits
-          let spring = new LineSpring([-3, 0], [0, 0], { stroke_width: 0.08 });
+          let eq_line = new Line([0, -5], [0, 5])
+            .set_stroke_width(0.05)
+            .set_stroke_style("dashed")
+            .set_stroke_color("gray");
+          let spring = new LineSpring([-3, 0], [0, 0]).set_stroke_width(0.08);
           spring.set_eq_length(3.0);
-          let anchor = new Line([-3, -2], [-3, 2]).set_stroke_width(0.3);
-          let mass = new Rectangle([0, 0], 0.6, 0.6);
+          let anchor = new Rectangle([-3, 0], 0.15, 4);
+
+          // While the scene is paused, the point mass is an interactive element which can be dragged
+          // to update the simulator state. While the scene is unpaused, the simulator runs and updates
+          // the state of the point mass.
+          let mass = new DraggableRectangleX([0, 0], 0.6, 0.6);
+          mass.add_callback(() => {
+            let sim = this.get_simulator();
+            sim.set_vals([mass.get_center()[0], 0]);
+          });
+
+          let force_arrow = new Arrow(
+            [0, this.arrow_height],
+            [0, this.arrow_height],
+          )
+            .set_stroke_width(0.1)
+            .set_stroke_color("red");
+          // let velocity_arrow = new Arrow();
+
+          this.add("eq_line", eq_line);
           this.add("spring", spring);
           this.add("anchor", anchor);
           this.add("mass", mass);
+          // this.add("velocity_arrow", velocity_arrow);
+          this.add("force_arrow", force_arrow);
+        }
+        set_spring_mode(mode: "color" | "spring") {
+          let spring = this.get_mobj("spring") as LineSpring;
+          spring.set_mode(mode);
+        }
+        toggle_pause() {
+          if (this.paused) {
+            let mass = this.get_mobj("mass") as DraggableRectangleX;
+            this.remove("mass");
+            this.add("mass", mass.toRectangle());
+          } else {
+            let mass = this.get_mobj("mass") as Rectangle;
+            this.remove("mass");
+            let new_mass = mass.toDraggableRectangleX();
+            new_mass.add_callback(() => {
+              let sim = this.get_simulator();
+              sim.set_vals([new_mass.get_center()[0], 0]);
+            });
+            this.add("mass", new_mass);
+          }
+          super.toggle_pause();
         }
         // Updates all mobjects to account for the new simulator state
         update_mobjects() {
@@ -483,39 +522,57 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
 
           let spring = this.get_mobj("spring") as Line;
           spring.move_end([u, 0]);
+
+          let force_arrow = this.get_mobj("force_arrow") as Arrow;
+          force_arrow.move_start([u, this.arrow_height]);
+          force_arrow.move_end([
+            u * (1 - this.arrow_length_scale),
+            this.arrow_height,
+          ]);
+          force_arrow.set_arrow_size(Math.min(0.5, Math.sqrt(Math.abs(u)) / 2));
+        }
+        // Enforce strict order on drawing mobjects, overriding subclass behavior
+        _draw() {
+          this.update_mobjects();
+          this.draw_mobject(this.get_mobj("eq_line") as Line);
+          this.draw_mobject(this.get_mobj("anchor") as Rectangle);
+          this.draw_mobject(this.get_mobj("spring") as LineSpring);
+          this.draw_mobject(this.get_mobj("mass") as Rectangle);
+          this.draw_mobject(this.get_mobj("force_arrow") as Arrow);
         }
         draw_mobject(mobj: MObject) {
           mobj.draw(this.canvas, this);
         }
       }
 
-      // Make the scene
+      // Make the scene and set initial conditions
       let scene = new SpringScene(canvas);
       scene.set_simulator_attr(0, "stiffness", 5.0);
       scene.set_simulator_attr(0, "dt", 0.01);
-      let sim = scene.get_simulator(0);
+      scene.set_spring_mode("spring");
+      let sim = scene.get_simulator();
       sim.set_vals([1, 0]);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_frame_lims([-4, 4], [-4, 4]);
 
-      // Slider which controls the propagation speed
-      let w_slider = Slider(
-        document.getElementById(
-          "point-mass-spring-stiffness-slider",
-        ) as HTMLElement,
-        function (w: number) {
-          scene.add_to_queue(
-            scene.set_simulator_attr.bind(scene, 0, "stiffness", w),
-          );
-        },
-        {
-          name: "Spring stiffness",
-          initial_value: "3.0",
-          min: 0,
-          max: 20,
-          step: 0.05,
-        },
-      );
-      w_slider.width = 200;
+      // // Slider which controls the propagation speed
+      // let w_slider = Slider(
+      //   document.getElementById(
+      //     "point-mass-spring-stiffness-slider",
+      //   ) as HTMLElement,
+      //   function (w: number) {
+      //     scene.add_to_queue(
+      //       scene.set_simulator_attr.bind(scene, 0, "stiffness", w),
+      //     );
+      //   },
+      //   {
+      //     name: "Spring stiffness",
+      //     initial_value: "3.0",
+      //     min: 0,
+      //     max: 20,
+      //     step: 0.05,
+      //   },
+      // );
+      // w_slider.width = 200;
 
       // Button which pauses/unpauses the simulation
       let pauseButton = Button(
@@ -539,17 +596,55 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       // Play the scene
       scene.draw();
       scene.play(undefined);
-    })();
+    })(300, 300);
 
     // One-dimensional case of the wave equation. A sequence of point masses (say, 5-10)
     // connected in a horizontal line, oscillating vertically.
-    // - TODO Add a dashed gray line representing the equilibrium positions.
     // - TODO Add line segments showing the displacements from the equilibrium position.
-    // - TODO Allow the user to drag the masses up and down. This is only available when the simulation is paused.
     (function point_mass_discrete_sequence(num_points: number) {
-      // Prepare the scene
+      // Prepare the canvas
       let canvas = prepare_canvas(300, 300, "point-mass-discrete-sequence");
-      let scene = new WaveSimOneDimScene(canvas, num_points);
+
+      class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
+        toggle_pause() {
+          if (this.paused) {
+            for (let i = 0; i < this.width(); i++) {
+              let mass = this.get_mobj(`p_${i + 1}`) as DraggableDotX;
+              this.remove(`p_${i + 1}`);
+              this.add(`p_${i + 1}`, mass.toDot());
+            }
+          } else {
+            for (let i = 0; i < this.width(); i++) {
+              let mass = this.get_mobj(`p_${i + 1}`) as Dot;
+              this.remove(`p_${i + 1}`);
+              let new_mass = mass.toDraggableDotY();
+              if (i == 0) {
+                new_mass.add_callback(() => {
+                  let sim = this.get_simulator() as WaveSimOneDim;
+                  sim.set_left_endpoint(new_mass.get_center()[1]);
+                });
+              }
+              if (i == this.width() - 1) {
+                new_mass.add_callback(() => {
+                  let sim = this.get_simulator() as WaveSimOneDim;
+                  sim.set_right_endpoint(new_mass.get_center()[1]);
+                });
+              }
+              new_mass.add_callback(() => {
+                let sim = this.get_simulator();
+                let vals = sim.get_vals();
+                vals[i] = new_mass.get_center()[1];
+                vals[i + this.width()] = 0;
+                sim.set_vals(vals);
+              });
+              this.add(`p_${i + 1}`, new_mass);
+            }
+          }
+          super.toggle_pause();
+        }
+      }
+
+      let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("dots");
       let sim = scene.sim();
@@ -580,162 +675,162 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
 
-      // Slider which controls the propagation speed
-      let w_slider = Slider(
-        document.getElementById(
-          "point-mass-discrete-sequence-stiffness-slider",
-        ) as HTMLElement,
-        function (w: number) {
-          scene.add_to_queue(
-            scene.set_simulator_attr.bind(
-              scene,
-              0,
-              "wave_propagation_speed",
-              w,
-            ),
-          );
-        },
-        {
-          name: "Wave propagation speed",
-          initial_value: "3.0",
-          min: 0,
-          max: 20,
-          step: 0.05,
-        },
-      );
-      w_slider.width = 200;
+      // // Slider which controls the propagation speed
+      // let w_slider = Slider(
+      //   document.getElementById(
+      //     "point-mass-discrete-sequence-stiffness-slider",
+      //   ) as HTMLElement,
+      //   function (w: number) {
+      //     scene.add_to_queue(
+      //       scene.set_simulator_attr.bind(
+      //         scene,
+      //         0,
+      //         "wave_propagation_speed",
+      //         w,
+      //       ),
+      //     );
+      //   },
+      //   {
+      //     name: "Wave propagation speed",
+      //     initial_value: "3.0",
+      //     min: 0,
+      //     max: 20,
+      //     step: 0.05,
+      //   },
+      // );
+      // w_slider.width = 200;
 
       // Prepare the simulation
       scene.draw();
       scene.play(undefined);
     })(10);
 
-    (function point_mass_discrete_sequence_diagram(num_points: number) {
-      // Prepare the scene
-      let canvas = prepare_canvas(
-        300,
-        300,
-        "point-mass-discrete-sequence-diagram",
-      );
-      // TODO This is essentially a WaveSimOneDimScene.
-      let scene = new Scene(canvas);
-      let xmin = -5;
-      let xmax = 5;
-      let ymin = -5;
-      let ymax = 5;
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+    // (function point_mass_discrete_sequence_diagram(num_points: number) {
+    //   // Prepare the scene
+    //   let canvas = prepare_canvas(
+    //     300,
+    //     300,
+    //     "point-mass-discrete-sequence-diagram",
+    //   );
+    //   // TODO This is essentially a WaveSimOneDimScene.
+    //   let scene = new Scene(canvas);
+    //   let xmin = -5;
+    //   let xmax = 5;
+    //   let ymin = -5;
+    //   let ymax = 5;
+    //   scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
 
-      // i goes from 0 to num_points -1
-      function eq_position(i: number): Vec2D {
-        return [xmin + ((i + 0.5) * (xmax - xmin)) / num_points, 0];
-      }
+    //   // i goes from 0 to num_points -1
+    //   function eq_position(i: number): Vec2D {
+    //     return [xmin + ((i + 0.5) * (xmax - xmin)) / num_points, 0];
+    //   }
 
-      let pos: Vec2D;
+    //   let pos: Vec2D;
 
-      // Add vertical lines at the beginning and end of the sequence
-      pos = eq_position(0);
-      scene.add(
-        "b0",
-        new Line([pos[0], ymin / 2], [pos[0], ymax / 2]).set_stroke_width(0.1),
-      );
+    //   // Add vertical lines at the beginning and end of the sequence
+    //   pos = eq_position(0);
+    //   scene.add(
+    //     "b0",
+    //     new Line([pos[0], ymin / 2], [pos[0], ymax / 2]).set_stroke_width(0.1),
+    //   );
 
-      pos = eq_position(num_points - 1);
-      scene.add(
-        "b1",
-        new Line([pos[0], ymin / 2], [pos[0], ymax / 2]).set_stroke_width(0.1),
-      );
+    //   pos = eq_position(num_points - 1);
+    //   scene.add(
+    //     "b1",
+    //     new Line([pos[0], ymin / 2], [pos[0], ymax / 2]).set_stroke_width(0.1),
+    //   );
 
-      // Make draggable dots
-      let dots: DraggableDotY[] = [];
-      for (let i = 0; i < num_points; i++) {
-        let dot = new DraggableDotY(eq_position(i), 0.13);
-        dots.push(dot);
-      }
+    //   // Make draggable dots
+    //   let dots: DraggableDotY[] = [];
+    //   for (let i = 0; i < num_points; i++) {
+    //     let dot = new DraggableDotY(eq_position(i), 0.13);
+    //     dots.push(dot);
+    //   }
 
-      // Make springs and add callbacks to dots
-      let springs: LineSpring[] = [];
-      function set_spring(i: number, spring: LineSpring) {
-        spring.move_start(dots[i].get_center());
-        spring.move_end(dots[i + 1].get_center());
-      }
-      for (let i = 0; i < num_points - 1; i++) {
-        let spring = new LineSpring([0, 0], [0, 0], {});
-        spring.set_eq_length(
-          vec2_norm(vec2_sub(eq_position(i + 1), eq_position(i))),
-        );
-        spring.set_mode("spring");
-        set_spring(i, spring);
-        dots[i].add_callback(() => {
-          set_spring(i, spring);
-        });
-        springs.push(spring);
-      }
+    //   // Make springs and add callbacks to dots
+    //   let springs: LineSpring[] = [];
+    //   function set_spring(i: number, spring: LineSpring) {
+    //     spring.move_start(dots[i].get_center());
+    //     spring.move_end(dots[i + 1].get_center());
+    //   }
+    //   for (let i = 0; i < num_points - 1; i++) {
+    //     let spring = new LineSpring([0, 0], [0, 0], {});
+    //     spring.set_eq_length(
+    //       vec2_norm(vec2_sub(eq_position(i + 1), eq_position(i))),
+    //     );
+    //     spring.set_mode("spring");
+    //     set_spring(i, spring);
+    //     dots[i].add_callback(() => {
+    //       set_spring(i, spring);
+    //     });
+    //     springs.push(spring);
+    //   }
 
-      // Make force arrows and add callbacks to dots
-      let arrow_scale = 0.3;
-      let arrows: Arrow[] = [];
-      function set_force_arrow(i: number, arrow: Arrow) {
-        pos = dots[i].get_center();
-        let disp: number;
-        if (i == 0) {
-          disp = dots[i + 1].get_center()[1] - pos[1];
-        } else if (i == num_points - 1) {
-          disp = dots[i - 1].get_center()[1] - pos[1];
-        } else {
-          disp =
-            dots[i - 1].get_center()[1] +
-            dots[i + 1].get_center()[1] -
-            2 * dots[i].get_center()[1];
-        }
-        arrow.move_start(pos);
-        arrow.move_end([pos[0], pos[1] + arrow_scale * disp]);
-        arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 8);
-      }
-      for (let i = 0; i < num_points; i++) {
-        let arrow = new Arrow([0, 0], [0, 0]);
-        arrow.set_stroke_color("red");
-        arrow.set_stroke_width(0.05);
-        arrow.set_alpha(0.5);
-        set_force_arrow(i, arrow);
-        if (i == 0) {
-          dots[i].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-          dots[i + 1].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-        } else if (i == num_points - 1) {
-          dots[i - 1].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-          dots[i].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-        } else {
-          dots[i - 1].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-          dots[i].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-          dots[i + 1].add_callback(() => {
-            set_force_arrow(i, arrow);
-          });
-        }
-        arrows.push(arrow);
-      }
+    //   // Make force arrows and add callbacks to dots
+    //   let arrow_scale = 0.3;
+    //   let arrows: Arrow[] = [];
+    //   function set_force_arrow(i: number, arrow: Arrow) {
+    //     pos = dots[i].get_center();
+    //     let disp: number;
+    //     if (i == 0) {
+    //       disp = dots[i + 1].get_center()[1] - pos[1];
+    //     } else if (i == num_points - 1) {
+    //       disp = dots[i - 1].get_center()[1] - pos[1];
+    //     } else {
+    //       disp =
+    //         dots[i - 1].get_center()[1] +
+    //         dots[i + 1].get_center()[1] -
+    //         2 * dots[i].get_center()[1];
+    //     }
+    //     arrow.move_start(pos);
+    //     arrow.move_end([pos[0], pos[1] + arrow_scale * disp]);
+    //     arrow.set_arrow_size(Math.sqrt(Math.abs(disp)) / 8);
+    //   }
+    //   for (let i = 0; i < num_points; i++) {
+    //     let arrow = new Arrow([0, 0], [0, 0]);
+    //     arrow.set_stroke_color("red");
+    //     arrow.set_stroke_width(0.05);
+    //     arrow.set_alpha(0.5);
+    //     set_force_arrow(i, arrow);
+    //     if (i == 0) {
+    //       dots[i].add_callback(() => {
+    //         set_force_arrow(i, arrow);
+    //       });
+    //       dots[i + 1].add_callback(() => {
+    //         set_force_arrow(i, arrow);
+    //       });
+    //     } else if (i == num_points - 1) {
+    //       dots[i - 1].add_callback(() => {
+    //         set_force_arrow(i, arrow);
+    //       });
+    //       dots[i].add_callback(() => {
+    //         set_force_arrow(i, arrow);
+    //       });
+    //     } else {
+    //       dots[i - 1].add_callback(() => {
+    //         set_force_arrow(i, arrow);
+    //       });
+    //       dots[i].add_callback(() => {
+    //         set_force_arrow(i, arrow);
+    //       });
+    //       dots[i + 1].add_callback(() => {
+    //         set_force_arrow(i, arrow);
+    //       });
+    //     }
+    //     arrows.push(arrow);
+    //   }
 
-      for (let i = 0; i < num_points - 1; i++) {
-        scene.add(`spring_${i}`, springs[i]);
-      }
-      for (let i = 0; i < num_points; i++) {
-        scene.add(`arrow_${i}`, arrows[i]);
-        scene.add(`point_${i}`, dots[i]);
-      }
+    //   for (let i = 0; i < num_points - 1; i++) {
+    //     scene.add(`spring_${i}`, springs[i]);
+    //   }
+    //   for (let i = 0; i < num_points; i++) {
+    //     scene.add(`arrow_${i}`, arrows[i]);
+    //     scene.add(`point_${i}`, dots[i]);
+    //   }
 
-      // Prepare the simulation
-      scene.draw();
-    })(7);
+    //   // Prepare the simulation
+    //   scene.draw();
+    // })(7);
 
     // Use the same scene as before, but with a large number of point masses (say, 50) drawn
     // as a Bezier-curve.

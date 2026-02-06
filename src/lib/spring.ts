@@ -11,18 +11,12 @@ import { rb_colormap_2, colorval_to_rgba } from "./color.js";
 
 // A stylized line segment representing a spring with an equilibrium length.
 // - In "color" mode, the color changes in accordance with the length
-// TODO Handle this using blue for lengthening, red for shortening.
 // - In "spring" mode, the object is drawn as a coiled spiral.
 export class LineSpring extends Line {
-  // TODO
   mode: "color" | "spring";
   eq_length: number;
-  constructor(
-    start: [number, number],
-    end: [number, number],
-    kwargs: Record<string, any>,
-  ) {
-    super(start, end, kwargs);
+  constructor(start: [number, number], end: [number, number]) {
+    super(start, end);
     this.mode = "color";
     this.eq_length = 2.0;
   }
@@ -41,14 +35,9 @@ export class LineSpring extends Line {
   //   return Math.min(1.0, this.eq_length / this.length());
   // }
   // Draws on the canvas
-  draw(canvas: HTMLCanvasElement, scene: Scene) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
     let [start_x, start_y] = scene.v2c(this.start);
     let [end_x, end_y] = scene.v2c(this.end);
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.globalAlpha = this.alpha;
     if (this.mode == "color") {
       ctx.strokeStyle = colorval_to_rgba(
         rb_colormap_2(10 * Math.log(this.eq_length / this.length())),
@@ -62,7 +51,7 @@ export class LineSpring extends Line {
       // Number of turns
       let num_turns = 5;
       // Ratio of length of spring taken up by zigzag part
-      let r = 1 - (this.eq_length * 0.4) / this.length();
+      let r = 1 - (0.4 * this.eq_length) / this.length();
       // Decide the angle of each turn based on the current length
       // let theta = Math.PI / 3;
       let theta = Math.atan((8 * (2 * num_turns)) / (vec2_norm(v) * r));
