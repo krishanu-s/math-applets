@@ -78,7 +78,7 @@ export function pick_random_step(dim: number): number[] {
 
       scene.add(
         "y-axis",
-        new TwoHeadedArrow([0, ymin], [0, ymax], { stroke_width: 0.02 }),
+        new TwoHeadedArrow([0, ymin], [0, ymax]).set_stroke_width(0.02),
       );
       for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
         if (y == 0) {
@@ -118,7 +118,7 @@ export function pick_random_step(dim: number): number[] {
         let dx: number, dy: number;
 
         // Add the path line sequence
-        let line = new LineSequence([[x, y]], {});
+        let line = new LineSequence([[x, y]]);
         line.set_stroke_color("red");
         line.set_alpha(1);
         line.set_stroke_width(0.1);
@@ -177,7 +177,7 @@ export function pick_random_step(dim: number): number[] {
       let tick_size = 0.2;
       scene.add(
         "x-axis",
-        new TwoHeadedArrow([xmin, 0], [xmax, 0], { stroke_width: 0.02 }),
+        new TwoHeadedArrow([xmin, 0], [xmax, 0]).set_stroke_width(0.02),
       );
       for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
         if (x == 0) {
@@ -220,7 +220,7 @@ export function pick_random_step(dim: number): number[] {
         scene.add("point", p);
 
         // Add the path line sequence
-        let line = new LineSequence([[x, 0]], {});
+        let line = new LineSequence([[x, 0]]);
         line.set_stroke_color("red");
         line.set_alpha(1);
         line.set_stroke_width(0.1);
@@ -375,7 +375,7 @@ export function pick_random_step(dim: number): number[] {
       let tick_size = 0.1;
       scene.add(
         "x-axis",
-        new TwoHeadedArrow([xmin, 0], [xmax, 0], { stroke_width: 0.02 }),
+        new TwoHeadedArrow([xmin, 0], [xmax, 0]).set_stroke_width(0.02),
       );
       for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
         if (x == 0) {
@@ -389,7 +389,7 @@ export function pick_random_step(dim: number): number[] {
 
       scene.add(
         "y-axis",
-        new TwoHeadedArrow([0, ymin], [0, ymax], { stroke_width: 0.02 }),
+        new TwoHeadedArrow([0, ymin], [0, ymax]).set_stroke_width(0.02),
       );
       for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
         if (y == 0) {
@@ -410,7 +410,7 @@ export function pick_random_step(dim: number): number[] {
       scene.add("point", p);
 
       // Add the path line sequence
-      let line = new LineSequence([[x, y]], {});
+      let line = new LineSequence([[x, y]]);
       line.set_stroke_color("red");
       line.set_alpha(0.5);
       line.set_stroke_width(0.01);
