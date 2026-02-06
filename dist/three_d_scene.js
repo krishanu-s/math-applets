@@ -413,13 +413,11 @@ var Line3D = class extends ThreeDLineLikeMObject {
     let start_blocked = this.is_blocked(scene, this.start);
     let end_blocked = this.is_blocked(scene, this.end);
     if (!start_blocked && !end_blocked) {
-      console.log("Both points unblocked");
       ctx.beginPath();
       ctx.moveTo(start_x, start_y);
       ctx.lineTo(end_x, end_y);
       ctx.stroke();
     } else if (start_blocked && end_blocked) {
-      console.log("Both points blocked");
       ctx.beginPath();
       this.set_behind_linked_mobjects(ctx);
       ctx.moveTo(start_x, start_y);
@@ -427,7 +425,6 @@ var Line3D = class extends ThreeDLineLikeMObject {
       ctx.stroke();
       this.unset_behind_linked_mobjects(ctx);
     } else {
-      console.log("One point blocked");
       let n = 1;
       let v = vec3_sub(this.end, this.start);
       let p = vec3_scale(vec3_sum(this.start, this.end), 0.5);
@@ -464,6 +461,18 @@ var Line3D = class extends ThreeDLineLikeMObject {
         ctx.stroke();
       }
     }
+  }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx, scene) {
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
   }
 };
 var LineSequence3D = class extends ThreeDLineLikeMObject {
@@ -508,10 +517,8 @@ var LineSequence3D = class extends ThreeDLineLikeMObject {
     let next_point_blocked;
     let v;
     let n;
-    console.log("Drawing");
     for (let i = 1; i < this.points.length; i++) {
       next_point = this.points[i];
-      console.log(next_point, current_point);
       next_point_camera_view = scene.camera_view(next_point);
       if (current_point_camera_view == null || next_point_camera_view == null) {
         continue;
@@ -519,13 +526,11 @@ var LineSequence3D = class extends ThreeDLineLikeMObject {
       [np_x, np_y] = scene.v2c(next_point_camera_view);
       next_point_blocked = this.is_blocked(scene, next_point);
       if (!current_point_blocked && !next_point_blocked) {
-        console.log("Both points unblocked");
         ctx.beginPath();
         ctx.moveTo(cp_x, cp_y);
         ctx.lineTo(np_x, np_y);
         ctx.stroke();
       } else if (current_point_blocked && next_point_blocked) {
-        console.log("Both points blocked");
         ctx.beginPath();
         this.set_behind_linked_mobjects(ctx);
         ctx.moveTo(cp_x, cp_y);
@@ -533,7 +538,6 @@ var LineSequence3D = class extends ThreeDLineLikeMObject {
         ctx.stroke();
         this.unset_behind_linked_mobjects(ctx);
       } else {
-        console.log("One point blocked");
         n = 1;
         v = vec3_sub(next_point, current_point);
         midpoint = vec3_scale(vec3_sum(next_point, current_point), 0.5);
@@ -795,6 +799,32 @@ var ParametrizedCurve3D = class extends ThreeDLineLikeMObject {
       this.unset_behind_linked_mobjects(ctx);
     }
   }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx, scene) {
+    let points = [this.function(this.tmin)];
+    for (let i = 1; i <= this.num_steps; i++) {
+      points.push(
+        this.function(
+          this.tmin + i / this.num_steps * (this.tmax - this.tmin)
+        )
+      );
+    }
+    let points2D = points.map((p) => {
+      let r = scene.camera_view(p);
+      if (r == null) {
+        return null;
+      }
+      return scene.v2c(r);
+    });
+    let [px, py] = points2D[0];
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    for (let i = 1; i <= this.num_steps; i++) {
+      [px, py] = points2D[i];
+      ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
 };
 var ThreeDScene = class extends Scene {
   constructor() {
@@ -898,7 +928,7 @@ var ThreeDScene = class extends Scene {
     let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
       let depth_a = this.mobjects[a].depth(this);
       let depth_b = this.mobjects[b].depth(this);
-      return depth_a - depth_b;
+      return depth_b - depth_a;
     });
     for (let name of ordered_names) {
       let mobj = this.mobjects[name];
@@ -1358,7 +1388,6 @@ var Arcball = class {
         document.getElementById("three-d-graph-zoom-slider"),
         function(value) {
           zoom_ratio = value;
-          console.log(`Zoom ratio: ${zoom_ratio}`);
           scene.set_zoom(value);
           scene.draw();
         },
@@ -1383,10 +1412,21 @@ var Arcball = class {
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       scene.set_zoom(zoom_ratio);
       scene.set_view_mode("orthographic");
-      scene.set_camera_position([0, 0, -5]);
+      scene.rot_z(Math.PI / 4);
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], 2 * Math.PI / 3);
+      scene.set_camera_position(
+        rot(
+          [0, 0, -5],
+          [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+          2 * Math.PI / 3
+        )
+      );
+      let arcball = new Arcball(scene);
+      arcball.set_mode("Rotate");
+      arcball.add();
       let radius = 2;
       let globe = new Dot3D([0, 0, 0], radius);
-      globe.set_fill_color("rgb(63, 63, 63)");
+      globe.set_fill_color("rgb(200 200 200)");
       globe.set_fill_alpha(0.3);
       scene.add("globe", globe);
       let equator = new ParametrizedCurve3D(
@@ -1415,9 +1455,21 @@ var Arcball = class {
       scene.add("polar_axis", polar_axis);
       scene.add("n_pole", n_pole);
       scene.add("s_pole", s_pole);
-      let arcball = new Arcball(scene);
-      arcball.set_mode("Rotate");
-      arcball.add();
+      let theta = Math.PI / 6;
+      let latitude_line = new ParametrizedCurve3D(
+        (t) => [
+          radius * Math.cos(t) * Math.cos(theta),
+          radius * Math.sin(t) * Math.cos(theta),
+          radius * Math.sin(theta)
+        ],
+        -Math.PI,
+        Math.PI,
+        100
+      );
+      latitude_line.set_stroke_color("red");
+      latitude_line.set_stroke_width(0.04);
+      latitude_line.link_mobject(globe);
+      scene.add("latitude_line", latitude_line);
       let zoomSlider = Slider(
         document.getElementById("three-d-globe-zoom-slider"),
         function(value) {
@@ -1431,6 +1483,29 @@ var Arcball = class {
           min: 0.3,
           max: 3,
           step: 0.02
+        }
+      );
+      zoomSlider.value = `1.0`;
+      let latitudeSlider = Slider(
+        document.getElementById("three-d-globe-latitude-slider"),
+        function(value) {
+          theta = Math.PI * value / 180;
+          latitude_line = scene.get_mobj(
+            "latitude_line"
+          );
+          latitude_line.set_function((t) => [
+            radius * Math.cos(t) * Math.cos(theta),
+            radius * Math.sin(t) * Math.cos(theta),
+            radius * Math.sin(theta)
+          ]);
+          scene.draw();
+        },
+        {
+          name: "Latitude (degrees)",
+          initialValue: `${theta * 180 / Math.PI}`,
+          min: -90,
+          max: 90,
+          step: 1
         }
       );
       zoomSlider.value = `1.0`;

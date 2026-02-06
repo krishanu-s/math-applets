@@ -748,13 +748,11 @@ var Line3D = class extends ThreeDLineLikeMObject {
     let start_blocked = this.is_blocked(scene, this.start);
     let end_blocked = this.is_blocked(scene, this.end);
     if (!start_blocked && !end_blocked) {
-      console.log("Both points unblocked");
       ctx.beginPath();
       ctx.moveTo(start_x, start_y);
       ctx.lineTo(end_x, end_y);
       ctx.stroke();
     } else if (start_blocked && end_blocked) {
-      console.log("Both points blocked");
       ctx.beginPath();
       this.set_behind_linked_mobjects(ctx);
       ctx.moveTo(start_x, start_y);
@@ -762,7 +760,6 @@ var Line3D = class extends ThreeDLineLikeMObject {
       ctx.stroke();
       this.unset_behind_linked_mobjects(ctx);
     } else {
-      console.log("One point blocked");
       let n = 1;
       let v = vec3_sub(this.end, this.start);
       let p = vec3_scale(vec3_sum(this.start, this.end), 0.5);
@@ -799,6 +796,18 @@ var Line3D = class extends ThreeDLineLikeMObject {
         ctx.stroke();
       }
     }
+  }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx, scene) {
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
   }
 };
 var LineSequence3D = class extends ThreeDLineLikeMObject {
@@ -843,10 +852,8 @@ var LineSequence3D = class extends ThreeDLineLikeMObject {
     let next_point_blocked;
     let v;
     let n;
-    console.log("Drawing");
     for (let i = 1; i < this.points.length; i++) {
       next_point = this.points[i];
-      console.log(next_point, current_point);
       next_point_camera_view = scene.camera_view(next_point);
       if (current_point_camera_view == null || next_point_camera_view == null) {
         continue;
@@ -854,13 +861,11 @@ var LineSequence3D = class extends ThreeDLineLikeMObject {
       [np_x, np_y] = scene.v2c(next_point_camera_view);
       next_point_blocked = this.is_blocked(scene, next_point);
       if (!current_point_blocked && !next_point_blocked) {
-        console.log("Both points unblocked");
         ctx.beginPath();
         ctx.moveTo(cp_x, cp_y);
         ctx.lineTo(np_x, np_y);
         ctx.stroke();
       } else if (current_point_blocked && next_point_blocked) {
-        console.log("Both points blocked");
         ctx.beginPath();
         this.set_behind_linked_mobjects(ctx);
         ctx.moveTo(cp_x, cp_y);
@@ -868,7 +873,6 @@ var LineSequence3D = class extends ThreeDLineLikeMObject {
         ctx.stroke();
         this.unset_behind_linked_mobjects(ctx);
       } else {
-        console.log("One point blocked");
         n = 1;
         v = vec3_sub(next_point, current_point);
         midpoint = vec3_scale(vec3_sum(next_point, current_point), 0.5);
@@ -1076,7 +1080,7 @@ var ThreeDScene = class extends Scene {
     let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
       let depth_a = this.mobjects[a].depth(this);
       let depth_b = this.mobjects[b].depth(this);
-      return depth_a - depth_b;
+      return depth_b - depth_a;
     });
     for (let name of ordered_names) {
       let mobj = this.mobjects[name];

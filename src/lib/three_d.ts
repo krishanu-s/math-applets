@@ -407,10 +407,8 @@ export class LineSequence3D extends ThreeDLineLikeMObject {
 
     let v: Vec3D;
     let n: number;
-    console.log("Drawing");
     for (let i = 1; i < this.points.length; i++) {
       next_point = this.points[i];
-      console.log(next_point, current_point);
       next_point_camera_view = scene.camera_view(next_point);
       if (current_point_camera_view == null || next_point_camera_view == null) {
         continue;
@@ -940,7 +938,7 @@ export class ThreeDScene extends Scene {
     let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
       let depth_a = this.mobjects[a].depth(this);
       let depth_b = this.mobjects[b].depth(this);
-      return depth_a - depth_b;
+      return depth_b - depth_a;
     });
 
     // Then draw them in order: first the FillLike objects, then the LineLike objects, then others.

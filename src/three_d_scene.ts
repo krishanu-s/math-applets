@@ -200,7 +200,6 @@ import { pick_random_step } from "./random_walk_scene.js";
         document.getElementById("three-d-graph-zoom-slider") as HTMLElement,
         function (value: number) {
           zoom_ratio = value;
-          console.log(`Zoom ratio: ${zoom_ratio}`);
           scene.set_zoom(value);
           scene.draw();
         },
@@ -231,18 +230,26 @@ import { pick_random_step } from "./random_walk_scene.js";
       scene.set_view_mode("orthographic");
 
       // Rotate the camera angle and set the camera position
-      // scene.rot_z(Math.PI / 4);
-      // scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 3);
-      // scene.set_camera_position(
-      //   rot([0, 0, -5], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 3),
-      // );
-      scene.set_camera_position([0, 0, -5]);
+      scene.rot_z(Math.PI / 4);
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], (2 * Math.PI) / 3);
+      scene.set_camera_position(
+        rot(
+          [0, 0, -5],
+          [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+          (2 * Math.PI) / 3,
+        ),
+      );
+
+      // Adding click-and-drag interactivity to the canvas
+      let arcball = new Arcball(scene);
+      arcball.set_mode("Rotate");
+      arcball.add();
 
       // Add a sphere to the scene
       let radius = 2.0;
       let globe = new Dot3D([0, 0, 0], radius);
       // globe.fill = false;
-      globe.set_fill_color("rgb(63, 63, 63)");
+      globe.set_fill_color("rgb(200 200 200)");
       globe.set_fill_alpha(0.3);
       scene.add("globe", globe);
 
@@ -273,12 +280,6 @@ import { pick_random_step } from "./random_walk_scene.js";
         [0, 0, 1.5 * radius],
       ]);
       polar_axis.link_mobject(globe);
-      // let polar_axis_1 = new Line3D([0, 0, radius], [0, 0, 1.5 * radius]);
-      // polar_axis_1.link_mobject(globe);
-      // let polar_axis_2 = new Line3D([0, 0, -radius], [0, 0, radius]);
-      // polar_axis_2.link_mobject(globe);
-      // let polar_axis_3 = new Line3D([0, 0, -1.5 * radius], [0, 0, -radius]);
-      // polar_axis_3.link_mobject(globe);
 
       let n_pole = new Dot3D([0, 0, radius], 0.1);
       n_pole.set_fill_alpha(1.0);
@@ -286,19 +287,26 @@ import { pick_random_step } from "./random_walk_scene.js";
       let s_pole = new Dot3D([0, 0, -radius], 0.1);
       s_pole.set_fill_alpha(1.0);
       s_pole.link_mobject(globe);
-      // scene.add("polar_axis_1", polar_axis_1);
-      // scene.add("polar_axis_2", polar_axis_2);
-      // scene.add("polar_axis_3", polar_axis_3);
       scene.add("polar_axis", polar_axis);
       scene.add("n_pole", n_pole);
       scene.add("s_pole", s_pole);
 
       // Add a latitude line
-
-      // Adding click-and-drag interactivity to the canvas
-      let arcball = new Arcball(scene);
-      arcball.set_mode("Rotate");
-      arcball.add();
+      let theta: number = Math.PI / 6;
+      let latitude_line = new ParametrizedCurve3D(
+        (t) => [
+          radius * Math.cos(t) * Math.cos(theta),
+          radius * Math.sin(t) * Math.cos(theta),
+          radius * Math.sin(theta),
+        ],
+        -Math.PI,
+        Math.PI,
+        100,
+      );
+      latitude_line.set_stroke_color("red");
+      latitude_line.set_stroke_width(0.04);
+      latitude_line.link_mobject(globe);
+      scene.add("latitude_line", latitude_line);
 
       // Add a slider to control the zoom level
       let zoomSlider = Slider(
@@ -314,6 +322,31 @@ import { pick_random_step } from "./random_walk_scene.js";
           min: 0.3,
           max: 3,
           step: 0.02,
+        },
+      );
+      zoomSlider.value = `1.0`;
+
+      // Add a slider to control the latitude level
+      let latitudeSlider = Slider(
+        document.getElementById("three-d-globe-latitude-slider") as HTMLElement,
+        function (value: number) {
+          theta = (Math.PI * value) / 180;
+          latitude_line = scene.get_mobj(
+            "latitude_line",
+          ) as ParametrizedCurve3D;
+          latitude_line.set_function((t) => [
+            radius * Math.cos(t) * Math.cos(theta),
+            radius * Math.sin(t) * Math.cos(theta),
+            radius * Math.sin(theta),
+          ]);
+          scene.draw();
+        },
+        {
+          name: "Latitude (degrees)",
+          initialValue: `${(theta * 180) / Math.PI}`,
+          min: -90,
+          max: 90,
+          step: 1,
         },
       );
       zoomSlider.value = `1.0`;
