@@ -46,6 +46,7 @@
     <body>
         <div style="text-align: center; margin: 10px auto">
             <h1>Light, sound, and propagating waves</h1>
+            <h3>Simulating the wave equation</h3>
             <p>
                 The <b>wave equation</b> is a partial differential equation that
                 describes the propagation of waves through a medium, such as
@@ -73,43 +74,66 @@
             <br />
             <div class="slider" id="twodim-dipole-demo-slider-1"></div>
             <p>
-                Let's make this more precise. In mathematical notation, the
-                values of this heatmap can be represented by a function in three
-                variables: the two spatial variables $x$ and $y$, and the time
-                variable $t \ge 0$. We can denote this by $f(x, y, t)$. The wave
-                equation is the partial differential equation which indicates
-                how the function changes over time and space every inside the
-                domain: $$\left(\frac{\partial}{\partial t}\right)^2f =
-                \left(\frac{\partial}{\partial x}\right)^2f +
-                \left(\frac{\partial}{\partial y}\right)^2f$$ One also needs
-                <b>boundary conditions</b> to specify the values of the function
-                at the boundary of the domain. One example of boundary
-                conditions is to specify <b>point sources</b> $(x, y)$ where the
-                function value varies sinusoidally, i.e. goes as $A\cos(\omega
-                \cdot (t - \phi))$ for some amplitude $A$, frequency $\omega$,
-                and phase $\phi$. Such points can be viewed as sources for
-                propagating waves. In the example above, we have two point
-                sources which are fully out-of-phase with each other (i.e. phase
-                difference $\pi$).
+                The behavior of the wave surface is determined by a set of
+                <b>boundary conditions</b>, and the wave equation which governs
+                its evolution over time. It's similar to how a pendulum's motion
+                is fully determined by its initial position and velocity (the
+                boundary conditions), and the pendulum's length, mass and
+                strength of gravity (which determine the differential equation).
             </p>
             <p>
-                When a line of point sources with amplitude zero are placed,
+                We can make these two pieces more precise for the wave equation.
+                The values of the heatmap can be represented by a function in
+                three variables: the two spatial variables $x$ and $y$, and the
+                time variable $t \ge 0$. We can denote this by $f(x, y, t)$. The
+                wave equation is the partial differential equation which
+                indicates how the function changes over time and space every
+                inside the domain: $$\left(\frac{\partial}{\partial t}\right)^2f
+                = \left(\frac{\partial}{\partial x}\right)^2f +
+                \left(\frac{\partial}{\partial y}\right)^2f$$ Boundary
+                conditions are locations in space and time where the function
+                does not evolve according to the wave equation, but is forced to
+                evolve some other way. One such example is to specify
+                <b>point sources</b> $(x, y)$ where the function value varies
+                sinusoidally, i.e. goes as $A\cos(\omega \cdot (t - \phi))$ for
+                some amplitude $A$, frequency $\omega$, and phase $\phi$. Such
+                points can be viewed as sources for propagating waves. For
+                example, above we have two point sources which are fully
+                out-of-phase with each other (i.e. phase difference $\pi$).
+            </p>
+            <!--<p>
+                When a line of point sources with amplitude zero are specified,
                 they act as a <b>reflector</b> for incoming waves. (TODO Make
                 another demo)
-            </p>
-
+            </p>-->
+            <h3>Connection to light and sound</h3>
             <p>
                 As mentioned in the opening paragraph, electromagnetic radiation
                 (such as light) and sound propagate as <b>waves</b>. There is
                 another familiar model we use for envisioning light, namely as
-                <b>rays</b>. An often-quoted fact about ellipses is that
-                multiple rays emanating at the same speed from one focus and
-                reflecting off the ellipse will all simultaneously converge at
-                the other focus. The analogous statement for a parabola is that
-                multiply rays emanating at the same speed from the focus and
-                reflecting off the parabola will then end up traveling parallel
-                to the axis of symmetry, all lying on a line perpendicular to
-                said axis.
+                <b>rays</b>. A wonderful fact about ellipses is as follows:
+                <b
+                    >if you shoot a ray out from one focus and it reflects off
+                    the ellipse, it will converge on the other focus. Moreover,
+                    the total distance traveled from one focus to the other is
+                    independent of the initial angle of the ray.</b
+                >
+            </p>
+            <p>
+                The analogous statement for a parabola, whose second focus lies
+                at infinity, is:
+                <b
+                    >multiply rays emanating at the same speed from the focus
+                    and reflecting off the parabola will then end up traveling
+                    parallel to the axis of symmetry, all lying on a line
+                    perpendicular to said axis.</b
+                >
+                This is, for example, how flashlights work, by reflecting light
+                from a point source off a parabolic reflector to convert it into
+                a unidirectional beam. Taking the reverse problem, parabolic
+                satellite dishes and directional microphones work by focusing a
+                distant source of radiation onto a single point by reflecting it
+                off a parabolic reflector.
             </p>
             <br />
             <div class="applet-container" id="conic-rays"></div>
@@ -139,7 +163,11 @@
                     >double-slit experiment</a
                 >, which demonstrates the existence of wave interference, is the
                 prototypical example of qualitative behavior which is captured
-                by the wave model and not by the ray model.
+                by the wave model and not by the ray model. I've read that when
+                the wavelength is much smaller than any physical features, the
+                ray model is a good approximation of the wave model -- this
+                holds true for visible light at macroscopic scales, but does not
+                hold for sound waves.
             </p>
             <p>
                 First, let's decipher the differential equation above into plain
