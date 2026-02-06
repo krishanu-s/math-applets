@@ -19,6 +19,10 @@
         ></script>
         <script type="module" src="sunrise_scene.js"></script>
         <style>
+            .row {
+                display: flex;
+                align-items: center; /* Centers vertically */
+            }
             .applet-container {
                 display: flex;
                 justify-content: center; /* Centers horizontally */
@@ -70,19 +74,16 @@
                 $23^{\circ}$.
             </p>
             <br />
-            <div class="applet-container" id="scene-container-1"></div>
+            <div style="width: 100%" class="row">
+                <div class="applet-container" id="sunrise-heatmap"></div>
+                <div class="applet-container" id="three-d-globe"></div>
+            </div>
             <br />
-            <div class="applet-container" id="scene-container-2"></div>
+            <div style="width: 100%" class="row">
+                <div class="slider" id="latitude-slider"></div>
+                <div class="slider" id="three-d-globe-zoom-slider"></div>
+            </div>
             <br />
-            <div class="slider" id="slider-container-1"></div>
-            <br />
-            <div class="slider" id="slider-container-2"></div>
-            <br />
-            <!--<div class="button" id="button-container-1"></div>
-            <br />
-            <div class="button" id="button-container-2"></div>
-            <br />
-            <div class="button" id="button-container-3"></div>-->
 
             <p>TODO Explain how one derives this heatmap, with a diagram.</p>
             <p>
