@@ -36,6 +36,51 @@ import {
 import { LineSpring } from "./lib/spring.js";
 import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
 
+class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
+  set_dot_radius(radius: number) {
+    for (let i = 0; i < this.width(); i++) {
+      let mass = this.get_mobj(`p_${i + 1}`) as Dot;
+      mass.set_radius(radius);
+    }
+  }
+  toggle_pause() {
+    if (this.paused) {
+      for (let i = 0; i < this.width(); i++) {
+        let mass = this.get_mobj(`p_${i + 1}`) as DraggableDotX;
+        this.remove(`p_${i + 1}`);
+        this.add(`p_${i + 1}`, mass.toDot());
+      }
+    } else {
+      for (let i = 0; i < this.width(); i++) {
+        let mass = this.get_mobj(`p_${i + 1}`) as Dot;
+        this.remove(`p_${i + 1}`);
+        let new_mass = mass.toDraggableDotY();
+        if (i == 0) {
+          new_mass.add_callback(() => {
+            let sim = this.get_simulator() as WaveSimOneDim;
+            sim.set_left_endpoint(new_mass.get_center()[1]);
+          });
+        }
+        if (i == this.width() - 1) {
+          new_mass.add_callback(() => {
+            let sim = this.get_simulator() as WaveSimOneDim;
+            sim.set_right_endpoint(new_mass.get_center()[1]);
+          });
+        }
+        new_mass.add_callback(() => {
+          let sim = this.get_simulator();
+          let vals = sim.get_vals();
+          vals[i] = new_mass.get_center()[1];
+          vals[i + this.width()] = 0;
+          sim.set_vals(vals);
+        });
+        this.add(`p_${i + 1}`, new_mass);
+      }
+    }
+    super.toggle_pause();
+  }
+}
+
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
     // *** INTRODUCTION SECTION ***
@@ -605,48 +650,10 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       // Prepare the canvas
       let canvas = prepare_canvas(300, 300, "point-mass-discrete-sequence");
 
-      class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
-        toggle_pause() {
-          if (this.paused) {
-            for (let i = 0; i < this.width(); i++) {
-              let mass = this.get_mobj(`p_${i + 1}`) as DraggableDotX;
-              this.remove(`p_${i + 1}`);
-              this.add(`p_${i + 1}`, mass.toDot());
-            }
-          } else {
-            for (let i = 0; i < this.width(); i++) {
-              let mass = this.get_mobj(`p_${i + 1}`) as Dot;
-              this.remove(`p_${i + 1}`);
-              let new_mass = mass.toDraggableDotY();
-              if (i == 0) {
-                new_mass.add_callback(() => {
-                  let sim = this.get_simulator() as WaveSimOneDim;
-                  sim.set_left_endpoint(new_mass.get_center()[1]);
-                });
-              }
-              if (i == this.width() - 1) {
-                new_mass.add_callback(() => {
-                  let sim = this.get_simulator() as WaveSimOneDim;
-                  sim.set_right_endpoint(new_mass.get_center()[1]);
-                });
-              }
-              new_mass.add_callback(() => {
-                let sim = this.get_simulator();
-                let vals = sim.get_vals();
-                vals[i] = new_mass.get_center()[1];
-                vals[i + this.width()] = 0;
-                sim.set_vals(vals);
-              });
-              this.add(`p_${i + 1}`, new_mass);
-            }
-          }
-          super.toggle_pause();
-        }
-      }
-
       let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("dots");
+      scene.set_dot_radius(0.1);
       let sim = scene.sim();
 
       // Set the attributes of the simulator
@@ -838,15 +845,16 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
     //   When the zoom reaches a certain level, switch to the discrete point-mass mode
     //   with draggable point masses (while paused)
     (function point_mass_continuous_sequence(num_points: number) {
-      // Prepare the scene
+      // Prepare the canvas
       let canvas = prepare_canvas(300, 300, "point-mass-continuous-sequence");
-      let scene = new WaveSimOneDimScene(canvas, num_points);
+
+      let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
-      scene.set_mode("curve");
+      scene.set_mode("dots");
       let sim = scene.sim();
 
       // Set the attributes of the simulator
-      sim.set_attr("wave_propagation_speed", 10.0);
+      sim.set_attr("wave_propagation_speed", 3.0);
       sim.set_attr("damping", 0.05);
       sim.set_attr("dt", 0.05);
       function foo(x: number): number {
@@ -854,30 +862,56 @@ import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
       }
       sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
 
-      // Slider which controls the propagation speed
-      let w_slider = Slider(
-        document.getElementById(
-          "point-mass-continuous-sequence-stiffness-slider",
-        ) as HTMLElement,
-        function (w: number) {
-          scene.add_to_queue(
-            scene.set_simulator_attr.bind(
-              scene,
-              0,
-              "wave_propagation_speed",
-              w,
-            ),
+      // Select a zoom-in point
+      // TODO We need to make sure this doesn't conflict with dragging
+      let zoom_point: Vec2D = [2, 2];
+      canvas.addEventListener("mousedown", (event) => {
+        if (scene.paused) {
+          for (let i = 0; i < num_points; i++) {
+            let dot = scene.get_mobj(`p_${i + 1}`) as DraggableDotY;
+            if (dot.isClicked) {
+              return;
+            }
+          }
+        }
+        zoom_point = scene.c2v(event.offsetX, event.offsetY);
+        if (scene.has_mobj("zoom_point")) {
+          (scene.get_mobj("zoom_point") as Rectangle).move_to(zoom_point);
+          scene.draw();
+        } else {
+          scene.add(
+            "zoom_point",
+            new Rectangle(zoom_point, 0.2, 0.2).set_color("green"),
           );
+          scene.draw();
+        }
+      });
+
+      // Slider which controls the zoom
+      let zoom_slider = Slider(
+        document.getElementById(
+          "point-mass-continuous-sequence-zoom-slider",
+        ) as HTMLElement,
+        function (zr: number) {
+          scene.add_to_queue(() => {
+            scene.zoom_in_on(zr / scene.zoom_ratio, zoom_point);
+            if (zr > 3) {
+              scene.set_mode("dots");
+            } else {
+              scene.set_mode("curve");
+            }
+            scene.draw();
+          });
         },
         {
-          name: "Wave propagation speed",
-          initial_value: "3.0",
-          min: 0,
-          max: 20,
+          name: "Zoom ratio",
+          initial_value: "1.0",
+          min: 1.0,
+          max: 5,
           step: 0.05,
         },
       );
-      w_slider.width = 200;
+      zoom_slider.width = 200;
 
       // Button which pauses/unpauses the simulation
       let pauseButton = Button(

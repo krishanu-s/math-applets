@@ -10786,6 +10786,18 @@ var Scene = class {
     this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
     this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
   }
+  // Performs a homothety around the specified center point of the viewing window, with the given factor
+  zoom_in_on(ratio, center) {
+    this.zoom_ratio *= ratio;
+    this.view_xlims = [
+      center[0] + (this.view_xlims[0] - center[0]) / ratio,
+      center[0] + (this.view_xlims[1] - center[0]) / ratio
+    ];
+    this.view_ylims = [
+      center[1] + (this.view_ylims[0] - center[1]) / ratio,
+      center[1] + (this.view_ylims[1] - center[1]) / ratio
+    ];
+  }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [
@@ -10827,6 +10839,10 @@ var Scene = class {
   // Removes all mobjects from the scene
   clear() {
     this.mobjects = {};
+  }
+  // Checks if a mobject exists in the scene
+  has_mobj(name) {
+    return this.mobjects.hasOwnProperty(name);
   }
   // Gets the mobject by name
   get_mobj(name) {
@@ -11092,7 +11108,7 @@ var DraggableDot = class extends Dot {
       scene.canvas.offsetTop
     ]);
     this.isClicked = this.is_inside(
-      scene.c2s(this.dragStart[0], this.dragStart[1])
+      scene.c2v(this.dragStart[0], this.dragStart[1])
     );
   }
   touch(scene, event) {
@@ -11101,7 +11117,7 @@ var DraggableDot = class extends Dot {
       scene.canvas.offsetTop
     ]);
     this.isClicked = this.is_almost_inside_dot(
-      scene.c2s(this.dragStart[0], this.dragStart[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1]),
       this.touch_tolerance
     );
   }
@@ -11134,8 +11150,8 @@ var DraggableDot = class extends Dot {
   _drag_cursor(scene) {
     this.move_by(
       vec2_sub(
-        scene.c2s(this.dragEnd[0], this.dragEnd[1]),
-        scene.c2s(this.dragStart[0], this.dragStart[1])
+        scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+        scene.c2v(this.dragStart[0], this.dragStart[1])
       )
     );
     this.dragStart = this.dragEnd;
@@ -11297,7 +11313,7 @@ var DraggableRectangle = class extends Rectangle {
       event.pageY - scene.canvas.offsetTop
     ];
     this.isClicked = this.is_inside(
-      scene.c2s(this.dragStart[0], this.dragStart[1])
+      scene.c2v(this.dragStart[0], this.dragStart[1])
     );
   }
   touch(scene, event) {
@@ -11306,7 +11322,7 @@ var DraggableRectangle = class extends Rectangle {
       event.touches[0].pageY - scene.canvas.offsetTop
     ];
     this.isClicked = this.is_almost_inside(
-      scene.c2s(this.dragStart[0], this.dragStart[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1]),
       this.touch_tolerance
     );
   }
@@ -11339,8 +11355,8 @@ var DraggableRectangle = class extends Rectangle {
   _drag_cursor(scene) {
     this.move_by(
       vec2_sub(
-        scene.c2s(this.dragEnd[0], this.dragEnd[1]),
-        scene.c2s(this.dragStart[0], this.dragStart[1])
+        scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+        scene.c2v(this.dragStart[0], this.dragStart[1])
       )
     );
     this.dragStart = this.dragEnd;
@@ -12571,6 +12587,50 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
 };
 
 // src/wavesim_scene.ts
+var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
+  set_dot_radius(radius) {
+    for (let i = 0; i < this.width(); i++) {
+      let mass = this.get_mobj(`p_${i + 1}`);
+      mass.set_radius(radius);
+    }
+  }
+  toggle_pause() {
+    if (this.paused) {
+      for (let i = 0; i < this.width(); i++) {
+        let mass = this.get_mobj(`p_${i + 1}`);
+        this.remove(`p_${i + 1}`);
+        this.add(`p_${i + 1}`, mass.toDot());
+      }
+    } else {
+      for (let i = 0; i < this.width(); i++) {
+        let mass = this.get_mobj(`p_${i + 1}`);
+        this.remove(`p_${i + 1}`);
+        let new_mass = mass.toDraggableDotY();
+        if (i == 0) {
+          new_mass.add_callback(() => {
+            let sim = this.get_simulator();
+            sim.set_left_endpoint(new_mass.get_center()[1]);
+          });
+        }
+        if (i == this.width() - 1) {
+          new_mass.add_callback(() => {
+            let sim = this.get_simulator();
+            sim.set_right_endpoint(new_mass.get_center()[1]);
+          });
+        }
+        new_mass.add_callback(() => {
+          let sim = this.get_simulator();
+          let vals = sim.get_vals();
+          vals[i] = new_mass.get_center()[1];
+          vals[i + this.width()] = 0;
+          sim.set_vals(vals);
+        });
+        this.add(`p_${i + 1}`, new_mass);
+      }
+    }
+    super.toggle_pause();
+  }
+};
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
     (function twodim_dipole_demo() {
@@ -13009,47 +13069,10 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
     })(300, 300);
     (function point_mass_discrete_sequence(num_points) {
       let canvas = prepare_canvas(300, 300, "point-mass-discrete-sequence");
-      class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
-        toggle_pause() {
-          if (this.paused) {
-            for (let i = 0; i < this.width(); i++) {
-              let mass = this.get_mobj(`p_${i + 1}`);
-              this.remove(`p_${i + 1}`);
-              this.add(`p_${i + 1}`, mass.toDot());
-            }
-          } else {
-            for (let i = 0; i < this.width(); i++) {
-              let mass = this.get_mobj(`p_${i + 1}`);
-              this.remove(`p_${i + 1}`);
-              let new_mass = mass.toDraggableDotY();
-              if (i == 0) {
-                new_mass.add_callback(() => {
-                  let sim2 = this.get_simulator();
-                  sim2.set_left_endpoint(new_mass.get_center()[1]);
-                });
-              }
-              if (i == this.width() - 1) {
-                new_mass.add_callback(() => {
-                  let sim2 = this.get_simulator();
-                  sim2.set_right_endpoint(new_mass.get_center()[1]);
-                });
-              }
-              new_mass.add_callback(() => {
-                let sim2 = this.get_simulator();
-                let vals = sim2.get_vals();
-                vals[i] = new_mass.get_center()[1];
-                vals[i + this.width()] = 0;
-                sim2.set_vals(vals);
-              });
-              this.add(`p_${i + 1}`, new_mass);
-            }
-          }
-          super.toggle_pause();
-        }
-      }
       let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
       scene.set_mode("dots");
+      scene.set_dot_radius(0.1);
       let sim = scene.sim();
       sim.set_attr("wave_propagation_speed", 3);
       function foo(x) {
@@ -13078,40 +13101,63 @@ var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
     })(10);
     (function point_mass_continuous_sequence(num_points) {
       let canvas = prepare_canvas(300, 300, "point-mass-continuous-sequence");
-      let scene = new WaveSimOneDimScene(canvas, num_points);
+      let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
       scene.set_frame_lims([-5, 5], [-5, 5]);
-      scene.set_mode("curve");
+      scene.set_mode("dots");
       let sim = scene.sim();
-      sim.set_attr("wave_propagation_speed", 10);
+      sim.set_attr("wave_propagation_speed", 3);
       sim.set_attr("damping", 0.05);
       sim.set_attr("dt", 0.05);
       function foo(x) {
         return Math.exp(-(5 * (x - 0.5) ** 2));
       }
       sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
-      let w_slider = Slider(
-        document.getElementById(
-          "point-mass-continuous-sequence-stiffness-slider"
-        ),
-        function(w) {
-          scene.add_to_queue(
-            scene.set_simulator_attr.bind(
-              scene,
-              0,
-              "wave_propagation_speed",
-              w
-            )
+      let zoom_point = [2, 2];
+      canvas.addEventListener("mousedown", (event) => {
+        if (scene.paused) {
+          for (let i = 0; i < num_points; i++) {
+            let dot3 = scene.get_mobj(`p_${i + 1}`);
+            if (dot3.isClicked) {
+              return;
+            }
+          }
+        }
+        zoom_point = scene.c2v(event.offsetX, event.offsetY);
+        if (scene.has_mobj("zoom_point")) {
+          scene.get_mobj("zoom_point").move_to(zoom_point);
+          scene.draw();
+        } else {
+          scene.add(
+            "zoom_point",
+            new Rectangle(zoom_point, 0.2, 0.2).set_color("green")
           );
+          scene.draw();
+        }
+      });
+      let zoom_slider = Slider(
+        document.getElementById(
+          "point-mass-continuous-sequence-zoom-slider"
+        ),
+        function(zr) {
+          scene.add_to_queue(() => {
+            scene.zoom_in_on(zr / scene.zoom_ratio, zoom_point);
+            if (zr > 3) {
+              scene.set_mode("dots");
+            } else {
+              scene.set_mode("curve");
+            }
+            scene.draw();
+          });
         },
         {
-          name: "Wave propagation speed",
-          initial_value: "3.0",
-          min: 0,
-          max: 20,
+          name: "Zoom ratio",
+          initial_value: "1.0",
+          min: 1,
+          max: 5,
           step: 0.05
         }
       );
-      w_slider.width = 200;
+      zoom_slider.width = 200;
       let pauseButton = Button(
         document.getElementById(
           "point-mass-continuous-sequence-pause-button"

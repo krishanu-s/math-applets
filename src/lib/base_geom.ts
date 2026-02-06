@@ -170,7 +170,7 @@ export class DraggableDot extends Dot {
       scene.canvas.offsetTop,
     ]);
     this.isClicked = this.is_inside(
-      scene.c2s(this.dragStart[0], this.dragStart[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1]),
     );
   }
   touch(scene: Scene, event: TouchEvent) {
@@ -179,7 +179,7 @@ export class DraggableDot extends Dot {
       scene.canvas.offsetTop,
     ]);
     this.isClicked = this.is_almost_inside_dot(
-      scene.c2s(this.dragStart[0], this.dragStart[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1]),
       this.touch_tolerance,
     );
   }
@@ -212,8 +212,8 @@ export class DraggableDot extends Dot {
   _drag_cursor(scene: Scene) {
     this.move_by(
       vec2_sub(
-        scene.c2s(this.dragEnd[0], this.dragEnd[1]),
-        scene.c2s(this.dragStart[0], this.dragStart[1]),
+        scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+        scene.c2v(this.dragStart[0], this.dragStart[1]),
       ),
     );
     this.dragStart = this.dragEnd;
@@ -397,7 +397,7 @@ export class DraggableRectangle extends Rectangle {
       event.pageY - scene.canvas.offsetTop,
     ];
     this.isClicked = this.is_inside(
-      scene.c2s(this.dragStart[0], this.dragStart[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1]),
     );
   }
   touch(scene: Scene, event: TouchEvent) {
@@ -406,7 +406,7 @@ export class DraggableRectangle extends Rectangle {
       event.touches[0].pageY - scene.canvas.offsetTop,
     ];
     this.isClicked = this.is_almost_inside(
-      scene.c2s(this.dragStart[0], this.dragStart[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1]),
       this.touch_tolerance,
     );
   }
@@ -439,8 +439,8 @@ export class DraggableRectangle extends Rectangle {
   _drag_cursor(scene: Scene) {
     this.move_by(
       vec2_sub(
-        scene.c2s(this.dragEnd[0], this.dragEnd[1]),
-        scene.c2s(this.dragStart[0], this.dragStart[1]),
+        scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+        scene.c2v(this.dragStart[0], this.dragStart[1]),
       ),
     );
     this.dragStart = this.dragEnd;

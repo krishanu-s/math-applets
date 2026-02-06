@@ -142,6 +142,18 @@ var Scene = class {
     this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
     this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
   }
+  // Performs a homothety around the specified center point of the viewing window, with the given factor
+  zoom_in_on(ratio, center) {
+    this.zoom_ratio *= ratio;
+    this.view_xlims = [
+      center[0] + (this.view_xlims[0] - center[0]) / ratio,
+      center[0] + (this.view_xlims[1] - center[0]) / ratio
+    ];
+    this.view_ylims = [
+      center[1] + (this.view_ylims[0] - center[1]) / ratio,
+      center[1] + (this.view_ylims[1] - center[1]) / ratio
+    ];
+  }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
     return [
@@ -183,6 +195,10 @@ var Scene = class {
   // Removes all mobjects from the scene
   clear() {
     this.mobjects = {};
+  }
+  // Checks if a mobject exists in the scene
+  has_mobj(name) {
+    return this.mobjects.hasOwnProperty(name);
   }
   // Gets the mobject by name
   get_mobj(name) {
@@ -354,7 +370,7 @@ var DraggableDot = class extends Dot {
       scene.canvas.offsetTop
     ]);
     this.isClicked = this.is_inside(
-      scene.c2s(this.dragStart[0], this.dragStart[1])
+      scene.c2v(this.dragStart[0], this.dragStart[1])
     );
   }
   touch(scene, event) {
@@ -363,7 +379,7 @@ var DraggableDot = class extends Dot {
       scene.canvas.offsetTop
     ]);
     this.isClicked = this.is_almost_inside_dot(
-      scene.c2s(this.dragStart[0], this.dragStart[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1]),
       this.touch_tolerance
     );
   }
@@ -396,8 +412,8 @@ var DraggableDot = class extends Dot {
   _drag_cursor(scene) {
     this.move_by(
       vec2_sub(
-        scene.c2s(this.dragEnd[0], this.dragEnd[1]),
-        scene.c2s(this.dragStart[0], this.dragStart[1])
+        scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+        scene.c2v(this.dragStart[0], this.dragStart[1])
       )
     );
     this.dragStart = this.dragEnd;

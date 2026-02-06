@@ -209,6 +209,18 @@ export class Scene {
     this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
     this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
   }
+  // Performs a homothety around the specified center point of the viewing window, with the given factor
+  zoom_in_on(ratio: number, center: Vec2D) {
+    this.zoom_ratio *= ratio;
+    this.view_xlims = [
+      center[0] + (this.view_xlims[0] - center[0]) / ratio,
+      center[0] + (this.view_xlims[1] - center[0]) / ratio,
+    ];
+    this.view_ylims = [
+      center[1] + (this.view_ylims[0] - center[1]) / ratio,
+      center[1] + (this.view_ylims[1] - center[1]) / ratio,
+    ];
+  }
   // Converts scene coordinates to canvas coordinates
   s2c(x: number, y: number): [number, number] {
     return [
@@ -257,6 +269,10 @@ export class Scene {
   // Removes all mobjects from the scene
   clear() {
     this.mobjects = {};
+  }
+  // Checks if a mobject exists in the scene
+  has_mobj(name: string): boolean {
+    return this.mobjects.hasOwnProperty(name);
   }
   // Gets the mobject by name
   get_mobj(name: string): MObject {
