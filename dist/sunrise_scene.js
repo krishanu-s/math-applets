@@ -1350,15 +1350,20 @@ var SunriseScene = class extends Scene {
         [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
         2 * Math.PI / 3
       );
+      globeScene.rot([1 / Math.sqrt(2), -1 / Math.sqrt(2), 0], EARTH_TILT);
       globeScene.set_camera_position(
         rot(
-          [0, 0, -5],
-          [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
-          2 * Math.PI / 3
+          [1 / Math.sqrt(2), -1 / Math.sqrt(2), 0],
+          rot(
+            [0, 0, -5],
+            [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+            2 * Math.PI / 3
+          ),
+          EARTH_TILT
         )
       );
       let arcball = new Arcball(globeScene);
-      arcball.set_mode("Rotate");
+      arcball.set_mode("Translate");
       arcball.add();
       let radius = 2;
       let globe = new Dot3D([0, 0, 0], radius);
@@ -1406,22 +1411,6 @@ var SunriseScene = class extends Scene {
       latitude_line.set_stroke_width(0.04);
       latitude_line.link_mobject(globe);
       globeScene.add("latitude_line", latitude_line);
-      let zoomSlider = Slider(
-        document.getElementById("three-d-globe-zoom-slider"),
-        function(value) {
-          zoom_ratio = value;
-          globeScene.set_zoom(value);
-          globeScene.draw();
-        },
-        {
-          name: "Zoom",
-          initialValue: `${zoom_ratio}`,
-          min: 0.3,
-          max: 3,
-          step: 0.02
-        }
-      );
-      zoomSlider.value = `1.0`;
       globeScene.draw();
       let latitudeSlider = Slider(
         document.getElementById("latitude-slider"),
@@ -1448,6 +1437,6 @@ var SunriseScene = class extends Scene {
         }
       );
       latitudeSlider.width = 200;
-    })(300, 300);
+    })(500, 500);
   });
 })();
