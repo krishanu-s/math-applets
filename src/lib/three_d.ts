@@ -1,7 +1,7 @@
 // Three-dimensional geometry and transformations.
 // TODO Depth of ThreeDMObjects
 
-import { MObject, LineLikeMObject, Scene } from "./base.js";
+import { MObject, LineLikeMObject, FillLikeMObject, Scene } from "./base.js";
 import { vec2_norm, Vec2D } from "./base_geom.js";
 import {
   Mat3by3,
@@ -48,20 +48,8 @@ export function vec3_sub(x: Vec3D, y: Vec3D): Vec3D {
 
 // Three-dimensional objects.
 export class ThreeDMObject extends MObject {
-  // Return the depth of the object in the scene. Used for sorting.
-  depth(scene: ThreeDScene): number {
-    return 0;
-  }
-  // Return the depth of the nearest point on the object that lies along the
-  // given ray. Used for relative depth-testing between 3D objects, to determine
-  // how to draw them.
-  depth_point(scene: ThreeDScene, view_point: Vec2D): number {
-    return 0;
-  }
-}
-
-// Identical extension as MObject -> LineLikeMObject
-export class ThreeDLineLikeMObject extends ThreeDMObject {
+  blocked_depth_tolerance: number = 0.01;
+  linked_mobjects: ThreeDFillLikeMObject[] = [];
   stroke_width: number = 0.08;
   stroke_color: string = "black";
   stroke_style: "solid" | "dashed" | "dotted" = "solid";
@@ -74,6 +62,55 @@ export class ThreeDLineLikeMObject extends ThreeDMObject {
   set_stroke_style(style: "solid" | "dashed" | "dotted") {
     this.stroke_style = style;
     return this;
+  }
+  // Return the depth of the object in the scene. Used for sorting.
+  depth(scene: ThreeDScene): number {
+    return 0;
+  }
+  // Return the depth of the nearest point on the object that lies along the
+  // given ray. Used for relative depth-testing between 3D objects, to determine
+  // how to draw them.
+  depth_at(scene: ThreeDScene, view_point: Vec2D): number {
+    return 0;
+  }
+  // Add a linked Mobject. These are fill-like MObjects in the scene which might obstruct the view
+  // of the curve, and are used internally to _draw() for depth-testing.
+  link_mobject(mobject: ThreeDFillLikeMObject) {
+    this.linked_mobjects.push(mobject);
+  }
+  // Calculates the minimum depth value among linked FillLike objects at the given 2D scene view point.
+  blocked_depth_at(scene: ThreeDScene, view_point: Vec2D): number {
+    return Math.min(
+      ...this.linked_mobjects.map((m) =>
+        m.depth_at(scene, view_point as Vec2D),
+      ),
+    );
+  }
+  // Calculates whether the given 3D scene point is either obstructed by any linked FillLike objects
+  // or is out of scene
+  is_blocked(scene: ThreeDScene, point: Vec3D): boolean {
+    let vp = scene.camera_view(point);
+    if (vp == null) {
+      return true;
+    } else {
+      return (
+        scene.depth(point) >
+        this.blocked_depth_at(scene, vp) + this.blocked_depth_tolerance
+      );
+    }
+  }
+}
+
+// Identical extension as MObject -> LineLikeMObject
+export class ThreeDLineLikeMObject extends ThreeDMObject {
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx: CanvasRenderingContext2D) {
+    ctx.globalAlpha /= 2;
+    ctx.setLineDash([5, 5]);
+  }
+  unset_behind_linked_mobjects(ctx: CanvasRenderingContext2D) {
+    ctx.globalAlpha *= 2;
+    ctx.setLineDash([]);
   }
   draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
     let ctx = canvas.getContext("2d");
@@ -94,22 +131,9 @@ export class ThreeDLineLikeMObject extends ThreeDMObject {
 
 // Identical extension as MObject -> FillLikeMObject
 export class ThreeDFillLikeMObject extends ThreeDMObject {
-  stroke_width: number = 0.08;
-  stroke_color: string = "black";
-  stroke_style: "solid" | "dashed" | "dotted" = "solid";
   fill_color: string = "black";
   fill_alpha: number = 1.0;
   fill: boolean = true;
-  set_stroke_color(color: string) {
-    this.stroke_color = color;
-  }
-  set_stroke_width(width: number) {
-    this.stroke_width = width;
-  }
-  set_stroke_style(style: "solid" | "dashed" | "dotted") {
-    this.stroke_style = style;
-    return this;
-  }
   set_fill_color(color: string) {
     this.fill_color = color;
   }
@@ -122,6 +146,13 @@ export class ThreeDFillLikeMObject extends ThreeDMObject {
   }
   set_fill(fill: boolean) {
     this.fill = fill;
+  }
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx: CanvasRenderingContext2D) {
+    ctx.globalAlpha /= 2;
+  }
+  unset_behind_linked_mobjects(ctx: CanvasRenderingContext2D) {
+    ctx.globalAlpha *= 2;
   }
   draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
     let ctx = canvas.getContext("2d");
@@ -153,6 +184,25 @@ export class Dot3D extends ThreeDFillLikeMObject {
   depth(scene: ThreeDScene): number {
     return scene.depth(this.center);
   }
+  depth_at(scene: ThreeDScene, view_point: Vec2D): number {
+    if (scene.mode == "perspective") {
+      // TODO
+      return 0;
+    } else if (scene.mode == "orthographic") {
+      let dist = vec2_norm(
+        vec2_sub(view_point, scene.orthographic_view(this.center)),
+      );
+      if (dist > this.radius) {
+        return Infinity;
+      } else {
+        let depth_adjustment = Math.sqrt(
+          Math.max(0, this.radius ** 2 - dist ** 2),
+        );
+        return scene.depth(this.center) - depth_adjustment;
+      }
+    }
+    return 0;
+  }
   move_to(new_center: Vec3D) {
     this.center = new_center;
   }
@@ -162,23 +212,36 @@ export class Dot3D extends ThreeDFillLikeMObject {
     let pr = scene.camera_view(
       vec3_sum(
         this.center,
-        vec3_scale(
-          get_column(scene.get_camera_frame(), 0),
-          this.radius * scene.zoom_ratio,
-        ),
+        vec3_scale(get_column(scene.get_camera_frame(), 0), this.radius),
       ),
     );
+    let state;
     if (p != null && pr != null) {
+      let depth = scene.depth(this.center);
+      if (
+        depth >
+        this.blocked_depth_at(scene, p) + this.blocked_depth_tolerance
+      ) {
+        state = "blocked";
+      } else {
+        state = "unblocked";
+      }
       let [cx, cy] = scene.v2c(p as Vec2D);
       let [rx, ry] = scene.v2c(pr as Vec2D);
       let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
       ctx.beginPath();
+      if (state == "blocked") {
+        this.set_behind_linked_mobjects(ctx);
+      }
       ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
       ctx.stroke();
       if (this.fill) {
         ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
         ctx.fill();
         ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
+      }
+      if (state == "blocked") {
+        this.unset_behind_linked_mobjects(ctx);
       }
     }
   }
@@ -204,6 +267,80 @@ export class Line3D extends ThreeDLineLikeMObject {
     return scene.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
+
+    // Check if they are blocked.
+    let start_blocked = this.is_blocked(scene, this.start);
+    let end_blocked = this.is_blocked(scene, this.end);
+
+    // If both points are unblocked, draw the whole line in unblocked style.
+    if (!start_blocked && !end_blocked) {
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+    }
+    // If both points are blocked, draw the whole line in blocked style.
+    else if (start_blocked && end_blocked) {
+      ctx.beginPath();
+      this.set_behind_linked_mobjects(ctx);
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+      this.unset_behind_linked_mobjects(ctx);
+    }
+    // If one point is unblocked and the other is blocked, binary-search for a point between them
+    // where the transition happens. Then draw part of the line in unblocked style and part in blocked style.
+    else {
+      // Binary search for the point where the line segment changes from unblocked to blocked
+      let n = 1;
+      let v = vec3_sub(this.end, this.start);
+      let p = vec3_scale(vec3_sum(this.start, this.end), 0.5);
+      while (n < 6) {
+        n += 1;
+        if (this.is_blocked(scene, p) == start_blocked) {
+          p = vec3_sum(p, vec3_scale(v, 1 / 2 ** n));
+        } else {
+          p = vec3_sub(p, vec3_scale(v, 1 / 2 ** n));
+        }
+      }
+
+      let [p_x, p_y] = scene.v2c(scene.camera_view(p) as Vec2D);
+
+      if (start_blocked) {
+        ctx.beginPath();
+        ctx.moveTo(start_x, start_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(end_x, end_y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(end_x, end_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(start_x, start_y);
+        ctx.stroke();
+      }
+    }
+  }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     let s = scene.camera_view(this.start);
     let e = scene.camera_view(this.end);
     if (s == null || e == null) return;
@@ -250,7 +387,96 @@ export class LineSequence3D extends ThreeDLineLikeMObject {
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     ctx.beginPath();
+    let current_point: Vec3D = this.points[0];
+    let current_point_camera_view: Vec2D | null =
+      scene.camera_view(current_point);
+    let cp_x: number = 0,
+      cp_y: number = 0;
+    if (current_point_camera_view != null) {
+      [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+    }
+    let current_point_blocked: boolean = this.is_blocked(scene, current_point);
 
+    let midpoint: Vec3D;
+    let mp_x: number, mp_y: number;
+
+    let next_point: Vec3D;
+    let next_point_camera_view: Vec2D | null;
+    let np_x: number, np_y: number;
+    let next_point_blocked: boolean;
+
+    let v: Vec3D;
+    let n: number;
+    for (let i = 1; i < this.points.length; i++) {
+      next_point = this.points[i];
+      next_point_camera_view = scene.camera_view(next_point);
+      if (current_point_camera_view == null || next_point_camera_view == null) {
+        continue;
+      }
+      [np_x, np_y] = scene.v2c(next_point_camera_view);
+      next_point_blocked = this.is_blocked(scene, next_point);
+
+      if (!current_point_blocked && !next_point_blocked) {
+        ctx.beginPath();
+        ctx.moveTo(cp_x, cp_y);
+        ctx.lineTo(np_x, np_y);
+        ctx.stroke();
+      } else if (current_point_blocked && next_point_blocked) {
+        ctx.beginPath();
+        this.set_behind_linked_mobjects(ctx);
+        ctx.moveTo(cp_x, cp_y);
+        ctx.lineTo(np_x, np_y);
+        ctx.stroke();
+        this.unset_behind_linked_mobjects(ctx);
+      } else {
+        n = 1;
+        v = vec3_sub(next_point, current_point);
+        midpoint = vec3_scale(vec3_sum(next_point, current_point), 0.5);
+        while (n < 6) {
+          n += 1;
+          if (this.is_blocked(scene, midpoint) == current_point_blocked) {
+            midpoint = vec3_sum(midpoint, vec3_scale(v, 1 / 2 ** n));
+          } else {
+            midpoint = vec3_sub(midpoint, vec3_scale(v, 1 / 2 ** n));
+          }
+        }
+        [mp_x, mp_y] = scene.v2c(scene.camera_view(midpoint) as Vec2D);
+
+        if (current_point_blocked) {
+          ctx.beginPath();
+          ctx.moveTo(cp_x, cp_y);
+          this.set_behind_linked_mobjects(ctx);
+          ctx.lineTo(mp_x, mp_y);
+          ctx.stroke();
+
+          ctx.beginPath();
+          this.unset_behind_linked_mobjects(ctx);
+          ctx.moveTo(mp_x, mp_y);
+          ctx.lineTo(np_x, np_y);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(np_x, np_y);
+          this.set_behind_linked_mobjects(ctx);
+          ctx.lineTo(mp_x, mp_y);
+          ctx.stroke();
+
+          ctx.beginPath();
+          this.unset_behind_linked_mobjects(ctx);
+          ctx.moveTo(mp_x, mp_y);
+          ctx.lineTo(cp_x, cp_y);
+          ctx.stroke();
+        }
+      }
+      current_point = next_point;
+      current_point_camera_view = next_point_camera_view;
+      [cp_x, cp_y] = [np_x, np_y];
+      current_point_blocked = next_point_blocked;
+    }
+  }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
+    ctx.beginPath();
     let in_frame: boolean = false;
     let p: Vec2D | null;
     let x: number, y: number;
@@ -261,6 +487,8 @@ export class LineSequence3D extends ThreeDLineLikeMObject {
       } else {
         [x, y] = scene.v2c(p);
         if (in_frame) {
+          // TODO Do a depth-test at this point with any linked FillLike objects to determine
+          // whether to draw dashed or solid.
           ctx.lineTo(x, y);
         } else {
           ctx.moveTo(x, y);
@@ -434,7 +662,9 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
   tmin: number;
   tmax: number;
   num_steps: number;
+  points: Vec3D[] = [];
   mode: "smooth" | "jagged" = "jagged";
+  linked_mobjects: ThreeDFillLikeMObject[] = [];
   constructor(
     f: (t: number) => Vec3D,
     tmin: number,
@@ -446,15 +676,112 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
     this.tmin = tmin;
     this.tmax = tmax;
     this.num_steps = num_steps;
+    this.calculatePoints();
   }
   // Jagged doesn't use Bezier curves. It is faster to compute and render.
+  // TODO Implement Bezier curve for smoother rendering.
   set_mode(mode: "smooth" | "jagged") {
     this.mode = mode;
   }
   set_function(new_f: (t: number) => Vec3D) {
     this.function = new_f;
+    this.calculatePoints();
+  }
+  // Calculates the points for the curve.
+  calculatePoints() {
+    this.points = [];
+    for (let i = 0; i <= this.num_steps; i++) {
+      this.points.push(
+        this.function(
+          this.tmin + (i / this.num_steps) * (this.tmax - this.tmin),
+        ),
+      );
+    }
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
+    // TODO Use a Bezier curve for smoother rendering.
+
+    let state: "out_of_frame" | "in_frame" | "blocked" | "unblocked" =
+      "out_of_frame";
+    let next_state: "out_of_frame" | "in_frame" | "blocked" | "unblocked" =
+      "out_of_frame";
+
+    // TODO This variant of rendering with piecewise depth-testing is more computationally expensive.
+    // Build in the option to use simple, global depth-testing.
+    let p: Vec2D | null;
+    let x: number, y: number;
+    let last_x: number = 0;
+    let last_y: number = 0;
+    let depth: number;
+    for (let i = 0; i < this.points.length; i++) {
+      p = scene.camera_view(this.points[i]);
+      depth = scene.depth(this.points[i]);
+      if (p == null) {
+        next_state = "out_of_frame";
+        if (state == "unblocked") {
+          ctx.stroke();
+        } else if (state == "blocked") {
+          ctx.stroke();
+          this.unset_behind_linked_mobjects(ctx);
+        }
+        state = next_state;
+      } else {
+        [x, y] = scene.v2c(p);
+        if (state == "out_of_frame") {
+          next_state = "in_frame";
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          state = next_state;
+        } else {
+          // Do a depth-test at this point with any linked FillLike objects to determine
+          // whether to switch to blocked or unblocked
+          if (
+            depth >
+            this.blocked_depth_at(scene, p) + this.blocked_depth_tolerance
+          ) {
+            next_state = "blocked";
+          } else {
+            next_state = "unblocked";
+          }
+          if (state == "in_frame" && next_state == "blocked") {
+            ctx.beginPath();
+            this.set_behind_linked_mobjects(ctx);
+            ctx.lineTo(x, y);
+          } else if (state == "in_frame" && next_state == "unblocked") {
+            ctx.beginPath();
+            ctx.moveTo(last_x, last_y);
+            ctx.lineTo(x, y);
+          } else if (state == "blocked" && next_state == "unblocked") {
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(last_x, last_y);
+            this.unset_behind_linked_mobjects(ctx);
+            ctx.lineTo(x, y);
+          } else if (state == "unblocked" && next_state == "blocked") {
+            ctx.stroke();
+            ctx.beginPath();
+            this.set_behind_linked_mobjects(ctx);
+            ctx.moveTo(last_x, last_y);
+            ctx.lineTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+          state = next_state;
+        }
+        [last_x, last_y] = [x, y];
+      }
+    }
+
+    // Finish the path
+    if (state == "blocked" || state == "unblocked") {
+      ctx.stroke();
+    }
+    if (state == "blocked") {
+      this.unset_behind_linked_mobjects(ctx);
+    }
+  }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     // Generate points to draw
     // TODO Use a Bezier curve for smoother rendering.
     let points: Vec3D[] = [this.function(this.tmin)];
@@ -518,7 +845,7 @@ export class ThreeDScene extends Scene {
     [0, 0, 1],
   ];
   camera_position: Vec3D = [0, 0, 0];
-  mode: "perspective" | "projection" = "perspective";
+  mode: "perspective" | "orthographic" = "perspective";
   // Set the camera position
   set_camera_position(position: Vec3D) {
     this.camera_position = position;
@@ -564,14 +891,14 @@ export class ThreeDScene extends Scene {
     );
   }
   // Modes of viewing/drawing
-  set_view_mode(mode: "perspective" | "projection") {
+  set_view_mode(mode: "perspective" | "orthographic") {
     this.mode = mode;
   }
   camera_view(p: Vec3D): Vec2D | null {
     if (this.mode == "perspective") {
       return this.perspective_view(p);
     } else {
-      return this.projection_view(p);
+      return this.orthographic_view(p);
     }
   }
   depth(p: Vec3D): number {
@@ -581,7 +908,7 @@ export class ThreeDScene extends Scene {
     )[2];
   }
   // Projects a 3D point onto the camera view plane. Does not include perspective.
-  projection_view(p: Vec3D): Vec2D {
+  orthographic_view(p: Vec3D): Vec2D {
     let [vx, vy, vz] = matmul_vec(
       this.camera_frame_inv,
       vec3_sub(p, this.camera_position),
@@ -607,20 +934,37 @@ export class ThreeDScene extends Scene {
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Objects come in two categories: those with fill and those without fill.
-    // Objects without fill
     // First order the objects by depth
     let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
       let depth_a = this.mobjects[a].depth(this);
       let depth_b = this.mobjects[b].depth(this);
-      return depth_a - depth_b;
+      return depth_b - depth_a;
     });
 
-    // Then draw them in order
+    // Then draw them in order: first the FillLike objects, then the LineLike objects, then others.
     for (let name of ordered_names) {
       let mobj = this.mobjects[name];
       if (mobj == undefined) throw new Error(`${name} not found`);
-      mobj.draw(this.canvas, this);
+      if (mobj instanceof ThreeDFillLikeMObject) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == undefined) throw new Error(`${name} not found`);
+      if (mobj instanceof ThreeDLineLikeMObject) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == undefined) throw new Error(`${name} not found`);
+      if (
+        !(mobj instanceof ThreeDFillLikeMObject) &&
+        !(mobj instanceof ThreeDLineLikeMObject)
+      ) {
+        mobj.draw(this.canvas, this);
+      }
     }
 
     // Draw a border around the canvas

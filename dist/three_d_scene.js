@@ -200,20 +200,10 @@ function vec3_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
 }
 var ThreeDMObject = class extends MObject {
-  // Return the depth of the object in the scene. Used for sorting.
-  depth(scene) {
-    return 0;
-  }
-  // Return the depth of the nearest point on the object that lies along the
-  // given ray. Used for relative depth-testing between 3D objects, to determine
-  // how to draw them.
-  depth_point(scene, view_point) {
-    return 0;
-  }
-};
-var ThreeDLineLikeMObject = class extends ThreeDMObject {
   constructor() {
     super(...arguments);
+    this.blocked_depth_tolerance = 0.01;
+    this.linked_mobjects = [];
     this.stroke_width = 0.08;
     this.stroke_color = "black";
     this.stroke_style = "solid";
@@ -227,6 +217,50 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
   set_stroke_style(style) {
     this.stroke_style = style;
     return this;
+  }
+  // Return the depth of the object in the scene. Used for sorting.
+  depth(scene) {
+    return 0;
+  }
+  // Return the depth of the nearest point on the object that lies along the
+  // given ray. Used for relative depth-testing between 3D objects, to determine
+  // how to draw them.
+  depth_at(scene, view_point) {
+    return 0;
+  }
+  // Add a linked Mobject. These are fill-like MObjects in the scene which might obstruct the view
+  // of the curve, and are used internally to _draw() for depth-testing.
+  link_mobject(mobject) {
+    this.linked_mobjects.push(mobject);
+  }
+  // Calculates the minimum depth value among linked FillLike objects at the given 2D scene view point.
+  blocked_depth_at(scene, view_point) {
+    return Math.min(
+      ...this.linked_mobjects.map(
+        (m) => m.depth_at(scene, view_point)
+      )
+    );
+  }
+  // Calculates whether the given 3D scene point is either obstructed by any linked FillLike objects
+  // or is out of scene
+  is_blocked(scene, point) {
+    let vp = scene.camera_view(point);
+    if (vp == null) {
+      return true;
+    } else {
+      return scene.depth(point) > this.blocked_depth_at(scene, vp) + this.blocked_depth_tolerance;
+    }
+  }
+};
+var ThreeDLineLikeMObject = class extends ThreeDMObject {
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha /= 2;
+    ctx.setLineDash([5, 5]);
+  }
+  unset_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha *= 2;
+    ctx.setLineDash([]);
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
@@ -247,22 +281,9 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
 var ThreeDFillLikeMObject = class extends ThreeDMObject {
   constructor() {
     super(...arguments);
-    this.stroke_width = 0.08;
-    this.stroke_color = "black";
-    this.stroke_style = "solid";
     this.fill_color = "black";
     this.fill_alpha = 1;
     this.fill = true;
-  }
-  set_stroke_color(color) {
-    this.stroke_color = color;
-  }
-  set_stroke_width(width) {
-    this.stroke_width = width;
-  }
-  set_stroke_style(style) {
-    this.stroke_style = style;
-    return this;
   }
   set_fill_color(color) {
     this.fill_color = color;
@@ -276,6 +297,13 @@ var ThreeDFillLikeMObject = class extends ThreeDMObject {
   }
   set_fill(fill) {
     this.fill = fill;
+  }
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha /= 2;
+  }
+  unset_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha *= 2;
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
@@ -303,6 +331,24 @@ var Dot3D = class extends ThreeDFillLikeMObject {
   depth(scene) {
     return scene.depth(this.center);
   }
+  depth_at(scene, view_point) {
+    if (scene.mode == "perspective") {
+      return 0;
+    } else if (scene.mode == "orthographic") {
+      let dist = vec2_norm(
+        vec2_sub(view_point, scene.orthographic_view(this.center))
+      );
+      if (dist > this.radius) {
+        return Infinity;
+      } else {
+        let depth_adjustment = Math.sqrt(
+          Math.max(0, this.radius ** 2 - dist ** 2)
+        );
+        return scene.depth(this.center) - depth_adjustment;
+      }
+    }
+    return 0;
+  }
   move_to(new_center) {
     this.center = new_center;
   }
@@ -311,23 +357,33 @@ var Dot3D = class extends ThreeDFillLikeMObject {
     let pr = scene.camera_view(
       vec3_sum(
         this.center,
-        vec3_scale(
-          get_column(scene.get_camera_frame(), 0),
-          this.radius * scene.zoom_ratio
-        )
+        vec3_scale(get_column(scene.get_camera_frame(), 0), this.radius)
       )
     );
+    let state;
     if (p != null && pr != null) {
+      let depth = scene.depth(this.center);
+      if (depth > this.blocked_depth_at(scene, p) + this.blocked_depth_tolerance) {
+        state = "blocked";
+      } else {
+        state = "unblocked";
+      }
       let [cx, cy] = scene.v2c(p);
       let [rx, ry] = scene.v2c(pr);
       let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
       ctx.beginPath();
+      if (state == "blocked") {
+        this.set_behind_linked_mobjects(ctx);
+      }
       ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
       ctx.stroke();
       if (this.fill) {
         ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
         ctx.fill();
         ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
+      }
+      if (state == "blocked") {
+        this.unset_behind_linked_mobjects(ctx);
       }
     }
   }
@@ -354,9 +410,196 @@ var Line3D = class extends ThreeDLineLikeMObject {
     if (s == null || e == null) return;
     let [start_x, start_y] = scene.v2c(s);
     let [end_x, end_y] = scene.v2c(e);
+    let start_blocked = this.is_blocked(scene, this.start);
+    let end_blocked = this.is_blocked(scene, this.end);
+    if (!start_blocked && !end_blocked) {
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+    } else if (start_blocked && end_blocked) {
+      ctx.beginPath();
+      this.set_behind_linked_mobjects(ctx);
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+      this.unset_behind_linked_mobjects(ctx);
+    } else {
+      let n = 1;
+      let v = vec3_sub(this.end, this.start);
+      let p = vec3_scale(vec3_sum(this.start, this.end), 0.5);
+      while (n < 6) {
+        n += 1;
+        if (this.is_blocked(scene, p) == start_blocked) {
+          p = vec3_sum(p, vec3_scale(v, 1 / 2 ** n));
+        } else {
+          p = vec3_sub(p, vec3_scale(v, 1 / 2 ** n));
+        }
+      }
+      let [p_x, p_y] = scene.v2c(scene.camera_view(p));
+      if (start_blocked) {
+        ctx.beginPath();
+        ctx.moveTo(start_x, start_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(end_x, end_y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(end_x, end_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(start_x, start_y);
+        ctx.stroke();
+      }
+    }
+  }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx, scene) {
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
     ctx.beginPath();
     ctx.moveTo(start_x, start_y);
     ctx.lineTo(end_x, end_y);
+    ctx.stroke();
+  }
+};
+var LineSequence3D = class extends ThreeDLineLikeMObject {
+  constructor(points) {
+    super();
+    this.points = points;
+  }
+  add_point(point) {
+    this.points.push(point);
+  }
+  move_point(i, new_point) {
+    this.points[i] = new_point;
+  }
+  get_point(i) {
+    return this.points[i];
+  }
+  depth(scene) {
+    if (this.points.length == 0) {
+      return 0;
+    } else if (this.points.length == 1) {
+      return scene.depth(this.points[0]);
+    } else {
+      return scene.depth(
+        vec3_scale(vec3_sum(this.points[0], this.points[1]), 0.5)
+      );
+    }
+  }
+  _draw(ctx, scene) {
+    ctx.beginPath();
+    let current_point = this.points[0];
+    let current_point_camera_view = scene.camera_view(current_point);
+    let cp_x = 0, cp_y = 0;
+    if (current_point_camera_view != null) {
+      [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+    }
+    let current_point_blocked = this.is_blocked(scene, current_point);
+    let midpoint;
+    let mp_x, mp_y;
+    let next_point;
+    let next_point_camera_view;
+    let np_x, np_y;
+    let next_point_blocked;
+    let v;
+    let n;
+    for (let i = 1; i < this.points.length; i++) {
+      next_point = this.points[i];
+      next_point_camera_view = scene.camera_view(next_point);
+      if (current_point_camera_view == null || next_point_camera_view == null) {
+        continue;
+      }
+      [np_x, np_y] = scene.v2c(next_point_camera_view);
+      next_point_blocked = this.is_blocked(scene, next_point);
+      if (!current_point_blocked && !next_point_blocked) {
+        ctx.beginPath();
+        ctx.moveTo(cp_x, cp_y);
+        ctx.lineTo(np_x, np_y);
+        ctx.stroke();
+      } else if (current_point_blocked && next_point_blocked) {
+        ctx.beginPath();
+        this.set_behind_linked_mobjects(ctx);
+        ctx.moveTo(cp_x, cp_y);
+        ctx.lineTo(np_x, np_y);
+        ctx.stroke();
+        this.unset_behind_linked_mobjects(ctx);
+      } else {
+        n = 1;
+        v = vec3_sub(next_point, current_point);
+        midpoint = vec3_scale(vec3_sum(next_point, current_point), 0.5);
+        while (n < 6) {
+          n += 1;
+          if (this.is_blocked(scene, midpoint) == current_point_blocked) {
+            midpoint = vec3_sum(midpoint, vec3_scale(v, 1 / 2 ** n));
+          } else {
+            midpoint = vec3_sub(midpoint, vec3_scale(v, 1 / 2 ** n));
+          }
+        }
+        [mp_x, mp_y] = scene.v2c(scene.camera_view(midpoint));
+        if (current_point_blocked) {
+          ctx.beginPath();
+          ctx.moveTo(cp_x, cp_y);
+          this.set_behind_linked_mobjects(ctx);
+          ctx.lineTo(mp_x, mp_y);
+          ctx.stroke();
+          ctx.beginPath();
+          this.unset_behind_linked_mobjects(ctx);
+          ctx.moveTo(mp_x, mp_y);
+          ctx.lineTo(np_x, np_y);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(np_x, np_y);
+          this.set_behind_linked_mobjects(ctx);
+          ctx.lineTo(mp_x, mp_y);
+          ctx.stroke();
+          ctx.beginPath();
+          this.unset_behind_linked_mobjects(ctx);
+          ctx.moveTo(mp_x, mp_y);
+          ctx.lineTo(cp_x, cp_y);
+          ctx.stroke();
+        }
+      }
+      current_point = next_point;
+      current_point_camera_view = next_point_camera_view;
+      [cp_x, cp_y] = [np_x, np_y];
+      current_point_blocked = next_point_blocked;
+    }
+  }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx, scene) {
+    ctx.beginPath();
+    let in_frame = false;
+    let p;
+    let x, y;
+    for (let i = 0; i < this.points.length; i++) {
+      p = scene.camera_view(this.points[i]);
+      if (p == null) {
+        in_frame = false;
+      } else {
+        [x, y] = scene.v2c(p);
+        if (in_frame) {
+          ctx.lineTo(x, y);
+        } else {
+          ctx.moveTo(x, y);
+        }
+        in_frame = true;
+      }
+    }
     ctx.stroke();
   }
 };
@@ -459,20 +702,105 @@ var Cube = class extends ThreeDLineLikeMObject {
 var ParametrizedCurve3D = class extends ThreeDLineLikeMObject {
   constructor(f, tmin, tmax, num_steps) {
     super();
+    this.points = [];
     this.mode = "jagged";
+    this.linked_mobjects = [];
     this.function = f;
     this.tmin = tmin;
     this.tmax = tmax;
     this.num_steps = num_steps;
+    this.calculatePoints();
   }
   // Jagged doesn't use Bezier curves. It is faster to compute and render.
+  // TODO Implement Bezier curve for smoother rendering.
   set_mode(mode) {
     this.mode = mode;
   }
   set_function(new_f) {
     this.function = new_f;
+    this.calculatePoints();
+  }
+  // Calculates the points for the curve.
+  calculatePoints() {
+    this.points = [];
+    for (let i = 0; i <= this.num_steps; i++) {
+      this.points.push(
+        this.function(
+          this.tmin + i / this.num_steps * (this.tmax - this.tmin)
+        )
+      );
+    }
   }
   _draw(ctx, scene) {
+    let state = "out_of_frame";
+    let next_state = "out_of_frame";
+    let p;
+    let x, y;
+    let last_x = 0;
+    let last_y = 0;
+    let depth;
+    for (let i = 0; i < this.points.length; i++) {
+      p = scene.camera_view(this.points[i]);
+      depth = scene.depth(this.points[i]);
+      if (p == null) {
+        next_state = "out_of_frame";
+        if (state == "unblocked") {
+          ctx.stroke();
+        } else if (state == "blocked") {
+          ctx.stroke();
+          this.unset_behind_linked_mobjects(ctx);
+        }
+        state = next_state;
+      } else {
+        [x, y] = scene.v2c(p);
+        if (state == "out_of_frame") {
+          next_state = "in_frame";
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          state = next_state;
+        } else {
+          if (depth > this.blocked_depth_at(scene, p) + this.blocked_depth_tolerance) {
+            next_state = "blocked";
+          } else {
+            next_state = "unblocked";
+          }
+          if (state == "in_frame" && next_state == "blocked") {
+            ctx.beginPath();
+            this.set_behind_linked_mobjects(ctx);
+            ctx.lineTo(x, y);
+          } else if (state == "in_frame" && next_state == "unblocked") {
+            ctx.beginPath();
+            ctx.moveTo(last_x, last_y);
+            ctx.lineTo(x, y);
+          } else if (state == "blocked" && next_state == "unblocked") {
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(last_x, last_y);
+            this.unset_behind_linked_mobjects(ctx);
+            ctx.lineTo(x, y);
+          } else if (state == "unblocked" && next_state == "blocked") {
+            ctx.stroke();
+            ctx.beginPath();
+            this.set_behind_linked_mobjects(ctx);
+            ctx.moveTo(last_x, last_y);
+            ctx.lineTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+          state = next_state;
+        }
+        [last_x, last_y] = [x, y];
+      }
+    }
+    if (state == "blocked" || state == "unblocked") {
+      ctx.stroke();
+    }
+    if (state == "blocked") {
+      this.unset_behind_linked_mobjects(ctx);
+    }
+  }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx, scene) {
     let points = [this.function(this.tmin)];
     for (let i = 1; i <= this.num_steps; i++) {
       points.push(
@@ -562,7 +890,7 @@ var ThreeDScene = class extends Scene {
     if (this.mode == "perspective") {
       return this.perspective_view(p);
     } else {
-      return this.projection_view(p);
+      return this.orthographic_view(p);
     }
   }
   depth(p) {
@@ -572,7 +900,7 @@ var ThreeDScene = class extends Scene {
     )[2];
   }
   // Projects a 3D point onto the camera view plane. Does not include perspective.
-  projection_view(p) {
+  orthographic_view(p) {
     let [vx, vy, vz] = matmul_vec(
       this.camera_frame_inv,
       vec3_sub(p, this.camera_position)
@@ -600,12 +928,28 @@ var ThreeDScene = class extends Scene {
     let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
       let depth_a = this.mobjects[a].depth(this);
       let depth_b = this.mobjects[b].depth(this);
-      return depth_a - depth_b;
+      return depth_b - depth_a;
     });
     for (let name of ordered_names) {
       let mobj = this.mobjects[name];
       if (mobj == void 0) throw new Error(`${name} not found`);
-      mobj.draw(this.canvas, this);
+      if (mobj instanceof ThreeDFillLikeMObject) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      if (mobj instanceof ThreeDLineLikeMObject) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      if (!(mobj instanceof ThreeDFillLikeMObject) && !(mobj instanceof ThreeDLineLikeMObject)) {
+        mobj.draw(this.canvas, this);
+      }
     }
     ctx.strokeStyle = this.border_color;
     ctx.lineWidth = this.border_thickness;
@@ -982,7 +1326,7 @@ var Arcball = class {
       let scene = new ThreeDScene(canvas);
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       scene.set_zoom(zoom_ratio);
-      scene.set_view_mode("projection");
+      scene.set_view_mode("orthographic");
       scene.rot_z(Math.PI / 4);
       scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
       scene.set_camera_position(
@@ -1044,7 +1388,6 @@ var Arcball = class {
         document.getElementById("three-d-graph-zoom-slider"),
         function(value) {
           zoom_ratio = value;
-          console.log(`Zoom ratio: ${zoom_ratio}`);
           scene.set_zoom(value);
           scene.draw();
         },
@@ -1068,15 +1411,22 @@ var Arcball = class {
       let scene = new ThreeDScene(canvas);
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       scene.set_zoom(zoom_ratio);
-      scene.set_view_mode("projection");
+      scene.set_view_mode("orthographic");
       scene.rot_z(Math.PI / 4);
-      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 3);
+      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], 2 * Math.PI / 3);
       scene.set_camera_position(
-        rot([0, 0, -5], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 3)
+        rot(
+          [0, 0, -5],
+          [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+          2 * Math.PI / 3
+        )
       );
+      let arcball = new Arcball(scene);
+      arcball.set_mode("Rotate");
+      arcball.add();
       let radius = 2;
       let globe = new Dot3D([0, 0, 0], radius);
-      globe.set_fill_color("rgb(63, 63, 63)");
+      globe.set_fill_color("rgb(200 200 200)");
       globe.set_fill_alpha(0.3);
       scene.add("globe", globe);
       let equator = new ParametrizedCurve3D(
@@ -1085,21 +1435,81 @@ var Arcball = class {
         Math.PI,
         100
       );
-      equator.set_stroke_style("dashed");
+      equator.set_stroke_style("solid");
       equator.set_stroke_width(0.04);
+      equator.link_mobject(globe);
       scene.add("equator", equator);
-      let polar_axis = new Line3D([0, 0, -1.5 * radius], [0, 0, 1.5 * radius]);
+      let polar_axis = new LineSequence3D([
+        [0, 0, -1.5 * radius],
+        [0, 0, -radius],
+        [0, 0, radius],
+        [0, 0, 1.5 * radius]
+      ]);
+      polar_axis.link_mobject(globe);
       let n_pole = new Dot3D([0, 0, radius], 0.1);
       n_pole.set_fill_alpha(1);
+      n_pole.link_mobject(globe);
       let s_pole = new Dot3D([0, 0, -radius], 0.1);
       s_pole.set_fill_alpha(1);
+      s_pole.link_mobject(globe);
       scene.add("polar_axis", polar_axis);
       scene.add("n_pole", n_pole);
       scene.add("s_pole", s_pole);
-      let arcball = new Arcball(scene);
-      arcball.set_mode("Rotate");
-      arcball.add();
+      let theta = Math.PI / 6;
+      let latitude_line = new ParametrizedCurve3D(
+        (t) => [
+          radius * Math.cos(t) * Math.cos(theta),
+          radius * Math.sin(t) * Math.cos(theta),
+          radius * Math.sin(theta)
+        ],
+        -Math.PI,
+        Math.PI,
+        100
+      );
+      latitude_line.set_stroke_color("red");
+      latitude_line.set_stroke_width(0.04);
+      latitude_line.link_mobject(globe);
+      scene.add("latitude_line", latitude_line);
+      let zoomSlider = Slider(
+        document.getElementById("three-d-globe-zoom-slider"),
+        function(value) {
+          zoom_ratio = value;
+          scene.set_zoom(value);
+          scene.draw();
+        },
+        {
+          name: "Zoom",
+          initialValue: `${zoom_ratio}`,
+          min: 0.3,
+          max: 3,
+          step: 0.02
+        }
+      );
+      zoomSlider.value = `1.0`;
+      let latitudeSlider = Slider(
+        document.getElementById("three-d-globe-latitude-slider"),
+        function(value) {
+          theta = Math.PI * value / 180;
+          latitude_line = scene.get_mobj(
+            "latitude_line"
+          );
+          latitude_line.set_function((t) => [
+            radius * Math.cos(t) * Math.cos(theta),
+            radius * Math.sin(t) * Math.cos(theta),
+            radius * Math.sin(theta)
+          ]);
+          scene.draw();
+        },
+        {
+          name: "Latitude (degrees)",
+          initialValue: `${theta * 180 / Math.PI}`,
+          min: -90,
+          max: 90,
+          step: 1
+        }
+      );
+      zoomSlider.value = `1.0`;
       scene.draw();
-    })(300, 300);
+    })(500, 500);
   });
 })();
