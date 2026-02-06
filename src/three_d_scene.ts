@@ -266,18 +266,19 @@ import { pick_random_step } from "./random_walk_scene.js";
       scene.add("equator", equator);
 
       // Add a polar axis
-      // let polar_axis = new LineSequence3D([
-      //   [0, 0, -1.5 * radius],
-      //   [0, 0, -radius],
-      //   [0, 0, radius],
-      //   [0, 0, 1.5 * radius],
-      // ]);
-      let polar_axis_1 = new Line3D([0, 0, radius], [0, 0, 1.5 * radius]);
-      polar_axis_1.link_mobject(globe);
-      let polar_axis_2 = new Line3D([0, 0, -radius], [0, 0, radius]);
-      polar_axis_2.link_mobject(globe);
-      let polar_axis_3 = new Line3D([0, 0, -1.5 * radius], [0, 0, -radius]);
-      polar_axis_3.link_mobject(globe);
+      let polar_axis = new LineSequence3D([
+        [0, 0, -1.5 * radius],
+        [0, 0, -radius],
+        [0, 0, radius],
+        [0, 0, 1.5 * radius],
+      ]);
+      polar_axis.link_mobject(globe);
+      // let polar_axis_1 = new Line3D([0, 0, radius], [0, 0, 1.5 * radius]);
+      // polar_axis_1.link_mobject(globe);
+      // let polar_axis_2 = new Line3D([0, 0, -radius], [0, 0, radius]);
+      // polar_axis_2.link_mobject(globe);
+      // let polar_axis_3 = new Line3D([0, 0, -1.5 * radius], [0, 0, -radius]);
+      // polar_axis_3.link_mobject(globe);
 
       let n_pole = new Dot3D([0, 0, radius], 0.1);
       n_pole.set_fill_alpha(1.0);
@@ -285,9 +286,10 @@ import { pick_random_step } from "./random_walk_scene.js";
       let s_pole = new Dot3D([0, 0, -radius], 0.1);
       s_pole.set_fill_alpha(1.0);
       s_pole.link_mobject(globe);
-      scene.add("polar_axis_1", polar_axis_1);
-      scene.add("polar_axis_2", polar_axis_2);
-      scene.add("polar_axis_3", polar_axis_3);
+      // scene.add("polar_axis_1", polar_axis_1);
+      // scene.add("polar_axis_2", polar_axis_2);
+      // scene.add("polar_axis_3", polar_axis_3);
+      scene.add("polar_axis", polar_axis);
       scene.add("n_pole", n_pole);
       scene.add("s_pole", s_pole);
 
