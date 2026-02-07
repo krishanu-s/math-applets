@@ -92,12 +92,17 @@
                 time variable $t \ge 0$. We can denote this by $f(x, y, t)$. The
                 wave equation is the partial differential equation which
                 indicates how the function changes over time and space every
-                inside the domain: $$\left(\frac{\partial}{\partial t}\right)^2f
-                = \left(\frac{\partial}{\partial x}\right)^2f +
-                \left(\frac{\partial}{\partial y}\right)^2f$$ Boundary
-                conditions are locations in space and time where the function
-                does not evolve according to the wave equation, but is forced to
-                evolve some other way. One such example is to specify
+                inside the domain:
+            </p>
+            <div id="2d-wave-equation">
+                $$\left(\frac{\partial}{\partial t}\right)^2f =
+                \left(\frac{\partial}{\partial x}\right)^2f +
+                \left(\frac{\partial}{\partial y}\right)^2f$$
+            </div>
+            <p>
+                Boundary conditions are locations in space and time where the
+                function does not evolve according to the wave equation, but is
+                forced to evolve some other way. One such example is to specify
                 <b>point sources</b> $(x, y)$ where the function value varies
                 sinusoidally, i.e. goes as $A\cos(\omega \cdot (t - \phi))$ for
                 some amplitude $A$, frequency $\omega$, and phase $\phi$. Such
@@ -180,9 +185,29 @@
             <h2>Origin of the wave equation: vibrating springs</h2>
 
             <p>
-                Example 0: A single vibrating spring. Force is proportional to
-                displacement. TODO Add explanation and force arrows.
+                Let's simplify the
+                <a href="./wavesim.html#2d-wave-equation"
+                    >two-dimensional wave equation</a
+                >
+                by first considering the <b>zero-dimensional wave equation</b>.
+                For a function $f(t)$ with a single variable $t$ representing
+                time, the zero-dimensional wave equation has the form $$f''(t) =
+                -f(t)$$ This equation describes the position of a point mass
+                attached to a (idealized)
+                <a href="https://en.wikipedia.org/wiki/Hooke%27s_law">spring</a
+                >, where the force (second-derivative) is proportional and
+                opposite to the displacement from equilibrium. For a spring with
+                spring constant $k$ (representing the <b>stiffness</b>), the
+                equation becomes $$f''(t) = -k f(t)$$ In the applet below, the
+                point mass is represented by a black square and can be dragged
+                horizontally to change its position. Its equilibrium position is
+                depicted by a dashed line, and the force acting on the mass is
+                shown as a red arrow. By clicking the play button, you can
+                observe how the mass moves over time. To its right, the position
+                $f(t)$ is graphed through time. This forward-evolution through
+                time is analogous to the forward-evolution of the wave equation.
             </p>
+            <!-- TODO Add a graph of the function $f(t)$ tracing over time.-->
 
             <br />
             <div class="applet-container" id="point-mass-spring"></div>
@@ -190,13 +215,14 @@
             <div class="button" id="point-mass-spring-pause-button"></div>
             <br />
             <p>
-                Now let's consider a sequence of point masses in a horizontal
+                Next, let's consider a sequence of point masses in a horizontal
                 line, connected by springs. TODO Example 1: A sequence of point
                 masses connected by springs. Let $x_i$ be the displacement of
                 the $i$-th mass. Displacement can be either transversal, or
                 longitudinal (show both examples). Think about force on each
                 mass, and draw with arrows (which can be turned on or off).
             </p>
+            <!--TODO-->
             <br />
             <div
                 class="applet-container"
