@@ -5,7 +5,7 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Math Applets</title>
-        <!--Note that to run this, you would need to run
+        <!--Note that to run this locally, you would need to run
         python -m http.server 8000
         in one terminal, and go to localhost:8000 in your browser-->
     </head>
@@ -13,39 +13,43 @@
     <body>
         <p>
             This is a place where I'm experimenting with interactive animations
-            and explanations of math ideas.
-        </p>
-        <p>
-            The software used is written entirely by me, and can be viewed on
+            and explanations of math ideas, in applet form. The software used
+            can be viewed on
             <a href="https://github.com/krishanu-s/math-applets/tree/main/src"
                 >Github</a
-            >. It is heavily inspired by <a href="https://www.manim.community/">manim</a>: several of the class names and abstractions come directly from manim.
-            The most significant difference is that this software is written in Typescript,
-            which allows for user-interactive elements, while the Python-based manim is used for rendering videos.
+            >. It is heavily inspired by
+            <a href="https://www.manim.community/">manim</a>: several of the
+            class names and abstractions come directly from manim. The most
+            significant difference is that this library is designed for
+            user-interactive web elements (hence written in Typescript), while
+            manim is used for rendering videos.
         </p>
         <h2>Demo explanations</h2>
         <p>
-            <b><a href="./wavesim.html">Wave equation simulation</a>:</b> This
-            page depicts some simulations of the 2-dimensional wave equation. I
-            wrote this to help me visualize some phenomena in optics, such as
-            refraction, and the reflective properties of conic sections.
+            <b><a href="./wavesim.html">Wave equation</a>:</b> This page builds
+            an intuition for the wave equation, and depicts some phenomena of
+            the 2-dimensional wave equation such as dipoles. I wrote this
+            simulator to help me visualize the difference between the ray model
+            and wave model of optics and to visualize the reflective property of
+            conic sections.
         </p>
         <p>
             <b><a href="./random_walk.html">Random walk simulation</a>:</b> A
             random walk on a lattice of dimension 1 or 2 has probability 1 of
             eventually returning to its starting point, but on a lattice of
             dimension 3 or higher has a nonzero probability of never returning.
-            Why? This page is about visualizing and proving this fact, its
-            continuous analog (Brownian motion), and some related ideas.
+            Why? This page is about visualizing and proving this fact and
+            exploring its continuous analog (Brownian motion).
         </p>
         <p>
-            <b><a href="./sunrise_scene.html">Sunlight equation (IN PROGRESS)</a>:</b> This
-            page addresses the phenomenon of solar angle. I got inspired to
-            create these visualizations while investigating the questions, "What
-            is the optimal way to orient a solar panel? How would we estimate
-            the energy absorption over a day, depending on the time of year?"
+            <b><a href="./sunrise_scene.html">Sunrise equation</a>:</b>
+            This page uses 3D geometry to visualize the calculation of sunrise
+            and sunset times. I got inspired to create these visualizations
+            while investigating the questions, "What is the optimal way to
+            orient a solar panel? How would we estimate the energy absorption
+            over a day, depending on the time of year?"
         </p>
-        <p>
+        <!--<p>
             <b
                 ><a href="./catenary.html"
                     >Catenary simulation (CURRENTLY BROKEN)</a
@@ -54,91 +58,16 @@
             A simple simulation to show that a string suspended at two points
             and allowed to hang under the influence of gravity forms a shape
             identical to the graph of the hyperbolic cosine function.
-        </p>
+        </p>-->
 
         <h2>Simpler test demos</h2>
-        <!--<p>
-            <a href="./pendulum.html">pendulum demo</a>
-        </p>
-            <p><a href="./orbit.html">orbit demo</a>,</p>
-            <p><a href="./parametric.html">graphing demo</a></p>-->
-            <p><a href="./three_d.html">three-dimensional scenes demo</a></p>
-            <p><a href="./interactive.html">bezier curve and draggable objects demo</a>
+        <p><a href="./three_d.html">three-dimensional scenes demo</a></p>
+        <p>
+            <a href="./interactive.html"
+                >bezier curve and draggable objects demo</a
+            >
         </p>
         <h2>Tutorial</h2>
-        <p>
-            The process of writing mathematical software is itself an excellent
-            way to learn mathematics. New mathematics arises as it's needed for
-            the task at hand, which is a great filter function for what concepts
-            are actually useful. Making the software work is a good test of
-            whether you've ironed out all of the details correctly. Writing this
-            software taught me a lot, even though I already have a math PhD and
-            have been studying math my whole life!
-        </p>
-        <p>
-            As such, I've written a <b>tutorial</b> for the animation software
-            I've used below. You will build up the software yourself from
-            scratch through a guided series of exercises. Assumed prerequisites
-            are a pen and paper, an appetite for learning, and access to a
-            computer and the internet if you wish to execute your code. I highly
-            recommend the last step, because it will keep you honest.
-        </p>
-        <p>
-            The software is implemented in Typescript, a superset of Javascript
-            that adds static typing and other features. I chose Typescript
-            because (1) it allowed me to put interactive features and easily put
-            the code onto the web, and (2) I wanted to learn the language itself.
-            But you could just as well pick another language, such as Python
-            (see, e.g. <a href="https://www.manim.community/">manim</a>,
-            which was an invaluable reference implementation for me and inspired many of
-            the abstractions I used).
-        </p>
-        <h3>
-            <b><a href="">Chapter 0: Setting up the software</a></b>
-        </h3>
-        <p><a href="">0.1: Your first Typescript program</a></p>
-        <p><a href="">0.2: Creating a Typescript project with Node</a></p>
-        <p><a href="">0.3: Web app versus Desktop app</a></p>
-        <h3>
-            <b><a href="">Chapter 1: Drawing 2D geometry</a></b>
-        </h3>
-        <p><a href="./tutorial/canvas_context.html">1.1: Canvas and Context</a></p>
-        <p><a href="./tutorial/lines.html">1.2: Lines, Dots, and polygons</a></p>
-        <p><a href="./tutorial/graphing.html">1.3: Coordinate systems, and graphing functions</a></p>
-        <p><a href="./tutorial/parametric.html">1.4: Parametric curves</a></p>
-        <p><a href="./tutorial/bezier_curves.html">1.5: Smooth shapes using Bezier curves</a></p>
-        <p><a href="./tutorial/mobject.html">1.6: The MObject class</a></p>
-        <!--<a href="">1.6: TODO</a>-->
-        <h3>
-            <b><a href="">Chapter 2: Animations</a></b>
-        </h3>
-        <p><a href="">2.1: Movement</a></p>
-        <p><a href="">2.2: Interaction: Buttons</a></p>
-        <p><a href="">2.2: Interaction: Sliders</a></p>
-        <p><a href="">2.3: The Scene class</a></p>
-        <h3>
-            <b><a href="">Chapter 3: Simulated systems</a></b>
-        </h3>
-        <p><a href="">3.1: Springs, pendulums, and orbits</a></p>
-        <p><a href="">3.2: Differential equations and how to solve them</a></p>
-        <p><a href="">3.3: The heat equation in one dimension</a></p>
-        <p><a href="">3.4: The wave equation in one dimension</a></p>
-        <h3>
-            <b><a href="">Chapter 4: Three-dimensional scenes</a></b>
-        </h3>
-        <p><a href="">4.1: Vectors, matrices, and dot products</a></p>
-        <p><a href="">4.2: Spherical coordinates</a></p>
-        <p><a href="">4.3: Rendering a 3D object</a></p>
-        <p><a href="">4.4: Rotating a 3D object</a></p>
-        <h3><b><a href="">Chapter 5: More complex simulations</a></b></h3>
-        <p><a href="">5.1: Heatmaps</a></p>
-        <p><a href="">5.2: Optics and the wave equation in two dimensions</a></p>
-        <p><a href="">5.3: Probability and Monte-Carlo simulations</a></body>p>
-        <p><a href=""
-            >5.4: Random walks, Markov chains, and the heat equation in higher
-            dimensions</a
-        ></p>
-        <!--<a href="">5.5: </a>-->
-
+        <a href="./tutorial/index.html">tutorial</a>
     </body>
 </html>
