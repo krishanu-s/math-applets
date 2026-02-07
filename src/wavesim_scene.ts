@@ -543,6 +543,14 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
           let spring = this.get_mobj("spring") as LineSpring;
           spring.set_mode(mode);
         }
+        set_spring_stiffness(val: number) {
+          this.set_simulator_attr(0, "stiffness", val);
+          this.arrow_length_scale = val / 3;
+          scene.draw();
+        }
+        set_friction(val: number) {
+          this.set_simulator_attr(0, "friction", val);
+        }
         toggle_pause() {
           if (this.paused) {
             let mass = this.get_mobj("mass") as DraggableRectangleX;
@@ -594,32 +602,45 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
 
       // Make the scene and set initial conditions
       let scene = new SpringScene(canvas);
-      scene.set_simulator_attr(0, "stiffness", 5.0);
+      scene.set_spring_stiffness(5.0);
       scene.set_simulator_attr(0, "dt", 0.01);
+      scene.set_simulator_attr(0, "damping", 0.0);
       scene.set_spring_mode("spring");
       let sim = scene.get_simulator();
       sim.set_vals([1, 0]);
       scene.set_frame_lims([-4, 4], [-4, 4]);
 
-      // // Slider which controls the propagation speed
-      // let w_slider = Slider(
-      //   document.getElementById(
-      //     "point-mass-spring-stiffness-slider",
-      //   ) as HTMLElement,
-      //   function (w: number) {
-      //     scene.add_to_queue(
-      //       scene.set_simulator_attr.bind(scene, 0, "stiffness", w),
-      //     );
-      //   },
-      //   {
-      //     name: "Spring stiffness",
-      //     initial_value: "3.0",
-      //     min: 0,
-      //     max: 20,
-      //     step: 0.05,
-      //   },
-      // );
-      // w_slider.width = 200;
+      // Slider which controls the propagation speed
+      let w_slider = Slider(
+        document.getElementById("point-mass-stiffness-slider") as HTMLElement,
+        function (val: number) {
+          scene.add_to_queue(scene.set_spring_stiffness.bind(scene, val));
+        },
+        {
+          name: "Spring stiffness",
+          initial_value: "3.0",
+          min: 0,
+          max: 20,
+          step: 0.01,
+        },
+      );
+      w_slider.width = 200;
+
+      // Slider which controls friction
+      let f_slider = Slider(
+        document.getElementById("point-mass-damping-slider") as HTMLElement,
+        function (val: number) {
+          scene.add_to_queue(scene.set_friction.bind(scene, val));
+        },
+        {
+          name: "Friction",
+          initial_value: "0.0",
+          min: 0,
+          max: 5.0,
+          step: 0.01,
+        },
+      );
+      f_slider.width = 200;
 
       // Button which pauses/unpauses the simulation
       let pauseButton = Button(
@@ -672,7 +693,33 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       function foo(x: number): number {
         return Math.exp(-(5 * (x - 0.5) ** 2));
       }
-      sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
+      function reset_simulation() {
+        sim.time = 0;
+        sim.set_uValues(
+          funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
+        );
+        scene.draw();
+      }
+      reset_simulation();
+      // Slider which controls friction
+      let f_slider = Slider(
+        document.getElementById(
+          "point-mass-discrete-sequence-friction-slider",
+        ) as HTMLElement,
+        function (val: number) {
+          scene.add_to_queue(
+            scene.set_simulator_attr.bind(scene, 0, "damping", val),
+          );
+        },
+        {
+          name: "Friction",
+          initial_value: "0.0",
+          min: 0,
+          max: 5.0,
+          step: 0.01,
+        },
+      );
+      f_slider.width = 200;
 
       // Button which pauses/unpauses the simulation
       let pauseButton = Button(
@@ -693,30 +740,42 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
 
-      // // Slider which controls the propagation speed
-      // let w_slider = Slider(
-      //   document.getElementById(
-      //     "point-mass-discrete-sequence-stiffness-slider",
-      //   ) as HTMLElement,
-      //   function (w: number) {
-      //     scene.add_to_queue(
-      //       scene.set_simulator_attr.bind(
-      //         scene,
-      //         0,
-      //         "wave_propagation_speed",
-      //         w,
-      //       ),
-      //     );
-      //   },
-      //   {
-      //     name: "Wave propagation speed",
-      //     initial_value: "3.0",
-      //     min: 0,
-      //     max: 20,
-      //     step: 0.05,
-      //   },
-      // );
-      // w_slider.width = 200;
+      // Button which resets the simulation
+      let resetButton = Button(
+        document.getElementById(
+          "point-mass-discrete-sequence-reset-button",
+        ) as HTMLElement,
+        function () {
+          scene.add_to_queue(reset_simulation);
+        },
+      );
+      resetButton.textContent = "Reset simulation";
+      resetButton.style.padding = "15px";
+
+      // Slider which controls the propagation speed
+      let w_slider = Slider(
+        document.getElementById(
+          "point-mass-discrete-sequence-stiffness-slider",
+        ) as HTMLElement,
+        function (val: number) {
+          scene.add_to_queue(
+            scene.set_simulator_attr.bind(
+              scene,
+              0,
+              "wave_propagation_speed",
+              val,
+            ),
+          );
+        },
+        {
+          name: "Wave propagation speed",
+          initial_value: "3.0",
+          min: 0,
+          max: 20,
+          step: 0.05,
+        },
+      );
+      w_slider.width = 200;
 
       // Prepare the simulation
       scene.draw();

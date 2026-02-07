@@ -191,64 +191,145 @@
                 >
                 by first considering the <b>zero-dimensional wave equation</b>.
                 For a function $f(t)$ with a single variable $t$ representing
-                time, the zero-dimensional wave equation has the form $$f''(t) =
-                -f(t)$$ This equation describes the position of a point mass
+                time, the zero-dimensional wave equation has the form
+            </p>
+            <div id="0d-wave-equation">$$f''(t) = -f(t)$$</div>
+            <p>
+                This equation describes the horizontal position of a point mass
                 attached to a (idealized)
                 <a href="https://en.wikipedia.org/wiki/Hooke%27s_law">spring</a
                 >, where the force (second-derivative) is proportional and
                 opposite to the displacement from equilibrium. For a spring with
                 spring constant $k$ (representing the <b>stiffness</b>), the
-                equation becomes $$f''(t) = -k f(t)$$ In the applet below, the
-                point mass is represented by a black square and can be dragged
-                horizontally to change its position. Its equilibrium position is
-                depicted by a dashed line, and the force acting on the mass is
-                shown as a red arrow. By clicking the play button, you can
-                observe how the mass moves over time. To its right, the position
-                $f(t)$ is graphed through time. This forward-evolution through
-                time is analogous to the forward-evolution of the wave equation.
+                equation becomes (we have normalized mass to 1) $$f''(t) = -k
+                f(t)$$ In the applet below, the point mass is represented by a
+                black square and can be dragged horizontally to change its
+                position. Its equilibrium position is depicted by a dashed line,
+                and the force acting on the mass is shown as a red arrow. By
+                clicking the play button, you can observe how the mass moves
+                over time. To its right, the position $f(t)$ is graphed through
+                time. This forward-evolution through time is analogous to the
+                forward-evolution of the wave equation.
             </p>
             <!-- TODO Add a graph of the function $f(t)$ tracing over time.-->
 
             <br />
-            <div class="applet-container" id="point-mass-spring"></div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="point-mass-spring"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="point-mass-graph"
+                ></div>
+            </div>
             <br />
             <div class="button" id="point-mass-spring-pause-button"></div>
+            <div class="slider" id="point-mass-stiffness-slider"></div>
+            <div class="slider" id="point-mass-damping-slider"></div>
             <br />
+
             <p>
-                Next, let's consider a sequence of point masses in a horizontal
-                line, connected by springs. TODO Example 1: A sequence of point
-                masses connected by springs. Let $x_i$ be the displacement of
-                the $i$-th mass. Displacement can be either transversal, or
-                longitudinal (show both examples). Think about force on each
-                mass, and draw with arrows (which can be turned on or off).
+                Next, let's consider a sequence of point masses, connected by
+                springs. The leftmost and rightmost masses are fixed in place at
+                positions $L$ and $R$, while the middle masses (let's say there
+                are $N$ of them) are free to move up and down along vertical
+                tracks. Their displacements from their equilibrium positions
+                (now depicted
+                <i>vertically</i>, instead of horizontally as before) are
+                denoted by $f_1(t), f_2(t), f_3(t), \ldots, f_N(t)$. Note that
+                the equilibrium state of the system is where the points form a
+                straight line stretching from the left side to the right side,
+                because the shortest path between two points is a line.
             </p>
-            <!--TODO-->
+            <p>
+                Each point mass experiences a force from both sides. The force
+                exerted from the left on the $i$-th mass has vertical component
+                equal to $-k(f_i(t) - f_{i-1}(t))$, where $k$ is the spring
+                constant. Similarly, the force exerted from the right on the
+                $i$-th mass has vertical component equal to $-k(f_i(t) -
+                f_{i+1}(t))$. Added together, we get the equations
+            </p>
+            <div id="1d-discrete-wave-equation">
+                $$f_1''(t) = -k(2f_1(t) - L- f_{2}(t))$$ $$f_2''(t) = -k(2f_2(t)
+                - f_{1}(t)- f_{3}(t))$$ $$f_3''(t) = -k(2f_3(t) - f_{2}(t)-
+                f_{4}(t))$$ $$\vdots$$ $$f_N''(t) = -k(2f_N(t) - f_{N-1}(t)-
+                R)$$
+            </div>
+            <!--TODO Need to address the normalization by distance and strength of the springs.-->
+            <!--TODO Add a force diagram explaining this, showing that the pull is towards the midpoint. -->
             <br />
-            <div
-                class="applet-container"
-                id="point-mass-discrete-sequence"
-            ></div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="point-mass-discrete-sequence"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="point-mass-discrete-sequence-diagram"
+                ></div>
+            </div>
             <br />
             <div
                 class="button"
                 id="point-mass-discrete-sequence-pause-button"
             ></div>
+            <div
+                class="button"
+                id="point-mass-discrete-sequence-reset-button"
+            ></div>
+            <div
+                class="slider"
+                id="point-mass-discrete-sequence-stiffness-slider"
+            ></div>
+            <div
+                class="slider"
+                id="point-mass-discrete-sequence-friction-slider"
+            ></div>
 
             <p>
-                TODO Example 2: Go to the limit of an infinite number of point
-                masses which are infinitely close, and see how we get a
-                differential equation, which is the 1D wave equation (draw as a
-                curve). Global behavior: 2a: If fixed at both ends, we get
-                standing waves, and stable states are given by linear
-                combinations of sine waves with discrete frequencies. 2b: If
-                open (e.g. at one end) then stable states are again given by
-                sine waves. Show examples of driven behavior.
+                Now imagine the limit of the scenario above as the number $N$ of
+                point masses goes to infinity. This is a mental model for an
+                elastic object such as a rubber band or a spring. Instead of $N$
+                displacement functions $f_1(t), f_2(t), \ldots, f_N(t)$, we now
+                have an entire continuum of them, represented by a two-variable
+                function $f(x,t)$. Writing $f''(x, t)$ is now vague: do we mean
+                the second derivative with respect to $t$, or respect to $x$? We
+                therefore write these two possible second derivatives as
+                $\frac{\partial^2}{\partial t^2}f(x,t)$ and
+                $\frac{\partial^2}{\partial x^2}f(x,t)$, respectively. The
+                sequence of $N$ differential equations from before become a
+                single partial differential equation: the
+                <b>one-dimensional wave equation</b>.
             </p>
+            <div id="1d-wave-equation">
+                $$\frac{\partial^2}{\partial t^2}f(x,t) =
+                -k\frac{\partial^2}{\partial x^2}f(x,t)$$
+            </div>
+            <p>
+                This is a consequence of the fact that for a function $g(x)$,
+                the second derivative can be expressed as $$g''(x) =
+                \lim\limits_{h \to 0}\frac{g(x+h) - 2g(x) + g(x-h)}{h^2}$$
+            </p>
+            <!--TODO This aside deserves a visualizer-->
             <br />
-            <div
-                class="applet-container"
-                id="point-mass-continuous-sequence"
-            ></div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="point-mass-continuous-sequence"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="point-mass-continuous-sequence-diagram"
+                ></div>
+            </div>
             <br />
             <div
                 class="slider"
@@ -259,54 +340,73 @@
                 class="button"
                 id="point-mass-continuous-sequence-pause-button"
             ></div>
+            <div
+                class="button"
+                id="point-mass-discrete-sequence-reset-button"
+            ></div>
+            <div
+                class="slider"
+                id="point-mass-discrete-sequence-stiffness-slider"
+            ></div>
+            <div
+                class="slider"
+                id="point-mass-discrete-sequence-friction-slider"
+            ></div>
             <br />
-            <p>A few demonstrations. TODO Explanation.</p>
+            <p>
+                The one-dimensional wave equation exhibits much richer behavior
+                than the zero-dimensional wave equation. On the left, we see
+                that an oscillating point source in the middle of an
+                <b>unbound</b> string generates waves which propagate outwards.
+                On the right, we see that on a <b>bound</b> string (where both
+                endpoints are held at fixed positions) waves reflect off the
+                ends.
+            </p>
 
             <br />
             <div style="width: 100%" class="row">
                 <div
                     style="width: 50%"
                     class="applet-container"
-                    id="wavesim-1d-impulse"
+                    id="wavesim-1d-pml"
                 ></div>
                 <div
                     style="width: 50%"
                     class="applet-container"
-                    id="wavesim-1d-pml"
+                    id="wavesim-1d-impulse"
                 ></div>
+                =
             </div>
             <br />
             <div style="width: 100%" class="row">
-                <div
-                    style="width: 50%"
-                    class="button"
-                    id="wavesim-1d-impulse-pause-button"
-                ></div>
                 <div
                     style="width: 50%"
                     class="button"
                     id="wavesim-1d-pml-pause-button"
                 ></div>
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="wavesim-1d-impulse-pause-button"
+                ></div>
             </div>
             <br />
             <div style="width: 100%" class="row">
                 <div
                     style="width: 50%"
                     class="button"
-                    id="wavesim-1d-impulse-reset-button"
+                    id="wavesim-1d-pml-reset-button"
                 ></div>
                 <div
                     style="width: 50%"
                     class="button"
-                    id="wavesim-1d-pml-reset-button"
+                    id="wavesim-1d-impulse-reset-button"
                 ></div>
             </div>
             <br />
-            <h3>Two-dimensional case</h3>
             <p>
-                TODO Example 3: Extend example 1 to 2 dimensions. Lattice of
-                point masses connected by springs. Again, depict the force
-                diagram.
+                With the above examples in mind, we can now explore the
+                <b>two-dimensional wave equation</b>.
             </p>
 
             <br />

@@ -111,6 +111,7 @@ export class WaveSimOneDim extends Simulator {
     }
     this.pml_layers[ind] = [pml_width, pml_strength];
   }
+  // Damping contribution from PML layers
   sigma_x(arr_x: number): number {
     let ind, pml_thickness, pml_strength;
     // Find the right PML layer
@@ -133,18 +134,22 @@ export class WaveSimOneDim extends Simulator {
       return 0;
     }
   }
+  // Damping contribution globally
+  set_damping(damping: number) {
+    this.damping = damping;
+  }
+  damping_at(arr_x: number): number {
+    return this.damping + this.sigma_x(arr_x);
+  }
+  set_wave_propagation_speed(speed: number) {
+    this.wave_propagation_speed = speed;
+  }
   add_point_source(source: PointSourceOneDim) {
     let ind = Object.keys(this.point_sources).length;
     this.point_sources[ind] = source;
   }
   remove_point_source(id: number) {
     delete this.point_sources[id];
-  }
-  set_wave_propagation_speed(speed: number) {
-    this.wave_propagation_speed = speed;
-  }
-  set_damping(damping: number) {
-    this.damping = damping;
   }
   set_left_endpoint(endpoint: number) {
     this.left_endpoint = endpoint;
@@ -199,7 +204,7 @@ export class WaveSimOneDim extends Simulator {
     for (let x = 0; x < this.width; x++) {
       dS.push(
         this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x) -
-          this.sigma_x(x) * (vals[x + this.width] as number),
+          this.damping_at(x) * (vals[x + this.width] as number),
       );
     }
 
@@ -370,51 +375,58 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
   }
   // Moves the dots and curve in the scene to the positions dictated by the wave simulation.
   update_mobjects() {
-    let dot, line, arrow;
     let pos: Vec2D, next_pos: Vec2D;
     let disp: number, next_disp: number;
     let sim = this.sim();
     let u = sim.get_uValues();
-
     let deriv = sim._get_vValues(sim.dot(sim.vals, sim.time));
 
-    let anchors: Vec2D[] = [];
-    for (let i = 0; i < this.width(); i++) {
-      pos = this.eq_position(i + 1);
-      disp = u[i] as number;
+    // Update the relevant mobjects
+    if (this.mode == "dots") {
+      let dot, line, arrow;
+      for (let i = 0; i < this.width(); i++) {
+        pos = this.eq_position(i + 1);
+        disp = u[i] as number;
 
-      // Update dots
-      dot = this.get_mobj(`p_${i + 1}`) as Dot;
-      dot.move_to([pos[0], pos[1] + disp]);
+        // Update dots
+        dot = this.get_mobj(`p_${i + 1}`) as Dot;
+        dot.move_to([pos[0], pos[1] + disp]);
 
-      // Update arrows
-      if (i != 0 && i != this.width() - 1 && this.include_arrows) {
-        arrow = this.get_mobj(`arr${i + 1}`) as Arrow;
-        arrow.move_start([pos[0], pos[1] + disp]);
-        arrow.move_end([
-          pos[0],
-          pos[1] + disp + (this.arrow_length_scale * (deriv[i] as number)) / 5,
-        ]);
-        arrow.set_arrow_size(
-          Math.sqrt(this.arrow_length_scale * Math.abs(deriv[i] as number)) /
-            10,
-        );
+        // Update arrows
+        if (i != 0 && i != this.width() - 1 && this.include_arrows) {
+          arrow = this.get_mobj(`arr${i + 1}`) as Arrow;
+          arrow.move_start([pos[0], pos[1] + disp]);
+          arrow.move_end([
+            pos[0],
+            pos[1] +
+              disp +
+              (this.arrow_length_scale * (deriv[i] as number)) / 5,
+          ]);
+          arrow.set_arrow_size(
+            Math.sqrt(this.arrow_length_scale * Math.abs(deriv[i] as number)) /
+              10,
+          );
+        }
+        // Update connecting lines
+        if (i < this.width() - 1) {
+          next_pos = this.eq_position(i + 2);
+          next_disp = u[i + 1] as number;
+          line = this.get_mobj(`l_${i + 1}`) as LineSpring;
+          line.move_start([pos[0], pos[1] + disp]);
+          line.move_end([next_pos[0], next_pos[1] + next_disp]);
+        }
       }
-
-      anchors.push([pos[0], pos[1] + disp]);
-      // Update connecting lines
-      if (i < this.width() - 1) {
-        next_pos = this.eq_position(i + 2);
-        next_disp = u[i + 1] as number;
-        line = this.get_mobj(`l_${i + 1}`) as LineSpring;
-        line.move_start([pos[0], pos[1] + disp]);
-        line.move_end([next_pos[0], next_pos[1] + next_disp]);
+    } else if (this.mode == "curve") {
+      let anchors: Vec2D[] = [];
+      for (let i = 0; i < this.width(); i++) {
+        pos = this.eq_position(i + 1);
+        disp = u[i] as number;
+        anchors.push([pos[0], pos[1] + disp]);
       }
+      // Update curve
+      let curve = this.get_mobj("curve") as BezierSpline;
+      curve.set_anchors(anchors);
     }
-
-    // Update curve
-    let curve = this.get_mobj("curve") as BezierSpline;
-    curve.set_anchors(anchors);
   }
   draw_mobject(mobj: MObject) {
     if (mobj instanceof BezierSpline) {

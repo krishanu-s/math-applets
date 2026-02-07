@@ -12335,6 +12335,7 @@ var WaveSimOneDim = class extends Simulator {
     }
     this.pml_layers[ind] = [pml_width, pml_strength];
   }
+  // Damping contribution from PML layers
   sigma_x(arr_x) {
     let ind, pml_thickness, pml_strength;
     if (arr_x - this.width / 2 >= 0) {
@@ -12352,18 +12353,22 @@ var WaveSimOneDim = class extends Simulator {
       return 0;
     }
   }
+  // Damping contribution globally
+  set_damping(damping) {
+    this.damping = damping;
+  }
+  damping_at(arr_x) {
+    return this.damping + this.sigma_x(arr_x);
+  }
+  set_wave_propagation_speed(speed) {
+    this.wave_propagation_speed = speed;
+  }
   add_point_source(source) {
     let ind = Object.keys(this.point_sources).length;
     this.point_sources[ind] = source;
   }
   remove_point_source(id) {
     delete this.point_sources[id];
-  }
-  set_wave_propagation_speed(speed) {
-    this.wave_propagation_speed = speed;
-  }
-  set_damping(damping) {
-    this.damping = damping;
   }
   set_left_endpoint(endpoint) {
     this.left_endpoint = endpoint;
@@ -12406,7 +12411,7 @@ var WaveSimOneDim = class extends Simulator {
     let dS = vals.slice(this.width, 2 * this.width);
     for (let x = 0; x < this.width; x++) {
       dS.push(
-        this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x) - this.sigma_x(x) * vals[x + this.width]
+        this.wave_propagation_speed ** 2 * this.laplacian_entry(u, x) - this.damping_at(x) * vals[x + this.width]
       );
     }
     return dS;
@@ -12497,7 +12502,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       this.add(`p_${i + 1}`, mass);
     }
     let curve = new BezierSpline(width - 1, {});
-    curve.set_stroke_width(0.02);
+    curve.set_stroke_width(0.01);
     this.add("curve", curve);
   }
   set_mode(mode) {
@@ -12546,40 +12551,47 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
   }
   // Moves the dots and curve in the scene to the positions dictated by the wave simulation.
   update_mobjects() {
-    let dot3, line, arrow;
     let pos, next_pos;
     let disp, next_disp;
     let sim = this.sim();
     let u = sim.get_uValues();
     let deriv = sim._get_vValues(sim.dot(sim.vals, sim.time));
-    let anchors = [];
-    for (let i = 0; i < this.width(); i++) {
-      pos = this.eq_position(i + 1);
-      disp = u[i];
-      dot3 = this.get_mobj(`p_${i + 1}`);
-      dot3.move_to([pos[0], pos[1] + disp]);
-      if (i != 0 && i != this.width() - 1 && this.include_arrows) {
-        arrow = this.get_mobj(`arr${i + 1}`);
-        arrow.move_start([pos[0], pos[1] + disp]);
-        arrow.move_end([
-          pos[0],
-          pos[1] + disp + this.arrow_length_scale * deriv[i] / 5
-        ]);
-        arrow.set_arrow_size(
-          Math.sqrt(this.arrow_length_scale * Math.abs(deriv[i])) / 10
-        );
+    if (this.mode == "dots") {
+      let dot3, line, arrow;
+      for (let i = 0; i < this.width(); i++) {
+        pos = this.eq_position(i + 1);
+        disp = u[i];
+        dot3 = this.get_mobj(`p_${i + 1}`);
+        dot3.move_to([pos[0], pos[1] + disp]);
+        if (i != 0 && i != this.width() - 1 && this.include_arrows) {
+          arrow = this.get_mobj(`arr${i + 1}`);
+          arrow.move_start([pos[0], pos[1] + disp]);
+          arrow.move_end([
+            pos[0],
+            pos[1] + disp + this.arrow_length_scale * deriv[i] / 5
+          ]);
+          arrow.set_arrow_size(
+            Math.sqrt(this.arrow_length_scale * Math.abs(deriv[i])) / 10
+          );
+        }
+        if (i < this.width() - 1) {
+          next_pos = this.eq_position(i + 2);
+          next_disp = u[i + 1];
+          line = this.get_mobj(`l_${i + 1}`);
+          line.move_start([pos[0], pos[1] + disp]);
+          line.move_end([next_pos[0], next_pos[1] + next_disp]);
+        }
       }
-      anchors.push([pos[0], pos[1] + disp]);
-      if (i < this.width() - 1) {
-        next_pos = this.eq_position(i + 2);
-        next_disp = u[i + 1];
-        line = this.get_mobj(`l_${i + 1}`);
-        line.move_start([pos[0], pos[1] + disp]);
-        line.move_end([next_pos[0], next_pos[1] + next_disp]);
+    } else if (this.mode == "curve") {
+      let anchors = [];
+      for (let i = 0; i < this.width(); i++) {
+        pos = this.eq_position(i + 1);
+        disp = u[i];
+        anchors.push([pos[0], pos[1] + disp]);
       }
+      let curve = this.get_mobj("curve");
+      curve.set_anchors(anchors);
     }
-    let curve = this.get_mobj("curve");
-    curve.set_anchors(anchors);
   }
   draw_mobject(mobj) {
     if (mobj instanceof BezierSpline) {
@@ -13246,6 +13258,14 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
           let spring = this.get_mobj("spring");
           spring.set_mode(mode);
         }
+        set_spring_stiffness(val) {
+          this.set_simulator_attr(0, "stiffness", val);
+          this.arrow_length_scale = val / 3;
+          scene.draw();
+        }
+        set_friction(val) {
+          this.set_simulator_attr(0, "friction", val);
+        }
         toggle_pause() {
           if (this.paused) {
             let mass = this.get_mobj("mass");
@@ -13292,12 +13312,41 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
         }
       }
       let scene = new SpringScene(canvas);
-      scene.set_simulator_attr(0, "stiffness", 5);
+      scene.set_spring_stiffness(5);
       scene.set_simulator_attr(0, "dt", 0.01);
+      scene.set_simulator_attr(0, "damping", 0);
       scene.set_spring_mode("spring");
       let sim = scene.get_simulator();
       sim.set_vals([1, 0]);
       scene.set_frame_lims([-4, 4], [-4, 4]);
+      let w_slider = Slider(
+        document.getElementById("point-mass-stiffness-slider"),
+        function(val) {
+          scene.add_to_queue(scene.set_spring_stiffness.bind(scene, val));
+        },
+        {
+          name: "Spring stiffness",
+          initial_value: "3.0",
+          min: 0,
+          max: 20,
+          step: 0.01
+        }
+      );
+      w_slider.width = 200;
+      let f_slider = Slider(
+        document.getElementById("point-mass-damping-slider"),
+        function(val) {
+          scene.add_to_queue(scene.set_friction.bind(scene, val));
+        },
+        {
+          name: "Friction",
+          initial_value: "0.0",
+          min: 0,
+          max: 5,
+          step: 0.01
+        }
+      );
+      f_slider.width = 200;
       let pauseButton = Button(
         document.getElementById(
           "point-mass-spring-pause-button"
@@ -13333,7 +13382,32 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       function foo(x) {
         return Math.exp(-(5 * (x - 0.5) ** 2));
       }
-      sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
+      function reset_simulation() {
+        sim.time = 0;
+        sim.set_uValues(
+          funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points)
+        );
+        scene.draw();
+      }
+      reset_simulation();
+      let f_slider = Slider(
+        document.getElementById(
+          "point-mass-discrete-sequence-friction-slider"
+        ),
+        function(val) {
+          scene.add_to_queue(
+            scene.set_simulator_attr.bind(scene, 0, "damping", val)
+          );
+        },
+        {
+          name: "Friction",
+          initial_value: "0.0",
+          min: 0,
+          max: 5,
+          step: 0.01
+        }
+      );
+      f_slider.width = 200;
       let pauseButton = Button(
         document.getElementById(
           "point-mass-discrete-sequence-pause-button"
@@ -13351,6 +13425,39 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       );
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
+      let resetButton = Button(
+        document.getElementById(
+          "point-mass-discrete-sequence-reset-button"
+        ),
+        function() {
+          scene.add_to_queue(reset_simulation);
+        }
+      );
+      resetButton.textContent = "Reset simulation";
+      resetButton.style.padding = "15px";
+      let w_slider = Slider(
+        document.getElementById(
+          "point-mass-discrete-sequence-stiffness-slider"
+        ),
+        function(val) {
+          scene.add_to_queue(
+            scene.set_simulator_attr.bind(
+              scene,
+              0,
+              "wave_propagation_speed",
+              val
+            )
+          );
+        },
+        {
+          name: "Wave propagation speed",
+          initial_value: "3.0",
+          min: 0,
+          max: 20,
+          step: 0.05
+        }
+      );
+      w_slider.width = 200;
       scene.draw();
       scene.play(void 0);
     })(300, 300, 10);
