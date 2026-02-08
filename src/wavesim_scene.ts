@@ -1130,6 +1130,7 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       let arr_height = 10;
 
       class Foo extends InteractivePlayingThreeDScene {
+        rotation_speed: number = 0.01;
         simulator: WaveSimTwoDim;
         constructor(canvas: HTMLCanvasElement, simulator: WaveSimTwoDim) {
           super(canvas, [simulator]);
@@ -1165,6 +1166,9 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
             }
           }
         }
+        set_rotation_speed(speed: number) {
+          this.rotation_speed = speed;
+        }
         eq_position(i: number, j: number): Vec3D {
           return [
             xmin + ((i + 0.5) * (xmax - xmin)) / arr_width,
@@ -1173,6 +1177,12 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
           ];
         }
         add_callbacks(i: number, j: number, dot: DraggableDotZ3D) {
+          dot.add_callback(() => {
+            this.simulator.set_val(
+              this.simulator.index(i, j),
+              dot.get_center()[2],
+            );
+          });
           if (i < this.simulator.width - 1) {
             dot.add_callback(() =>
               (
@@ -1258,7 +1268,9 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
             }
           }
           // Rotate the scene
-          this.rot_camera_z((Math.PI * this.dt) / 10);
+          if (!this.paused) {
+            this.rot_camera_z(this.dt * this.rotation_speed);
+          }
         }
         draw_mobject(mobj: MObject) {
           mobj.draw(this.canvas, this, true);
@@ -1276,25 +1288,42 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       scene.set_zoom(zoom_ratio);
       scene.set_view_mode("orthographic");
-      scene.rot_z(Math.PI / 4);
-      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], (2 * Math.PI) / 3);
-      scene.set_camera_position(
-        rot(
-          [0, 0, -10],
-          [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
-          (2 * Math.PI) / 3,
-        ),
+      scene.set_camera_position([0, 0, -10]);
+      scene.rot_camera_z(Math.PI / 4);
+      scene.rot_camera(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        (2 * Math.PI) / 3,
       );
+      scene.set_rotation_speed(0.15);
 
-      // let arcball = new Arcball(scene);
-      // arcball.add();
+      // Set some initial values in the simulation
+      function foo(x: number): number {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
+      function foo2(x: number, y: number): number {
+        return (foo(x) - foo(1)) * (foo(y) - foo(1));
+      }
+      function reset_simulation() {
+        let vals = new Array(4 * arr_width * arr_height).fill(0);
+        for (let i = 0; i < arr_width; i++) {
+          for (let j = 0; j < arr_height; j++) {
+            vals[sim.index(i, j)] =
+              5 * foo2(i / (arr_width - 1), j / (arr_height - 1));
+          }
+        }
+        sim.set_vals(vals);
+      }
+      reset_simulation();
 
-      // Prepare the simulator and scene
-      // let sim = new WaveSimTwoDim(width, height, 0.02);
-      // sim.remove_pml_layers();
-
-      // let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
-      // scene.set_frame_lims([-5, 5], [-5, 5]);
+      // Set boundary conditions
+      for (let i = 0; i < arr_width; i++) {
+        sim.add_point_source(new PointSource(i, 0, 0, 0, 0));
+        sim.add_point_source(new PointSource(i, arr_height - 1, 0, 0, 0));
+      }
+      for (let j = 1; j < arr_height - 1; j++) {
+        sim.add_point_source(new PointSource(0, j, 0, 0, 0));
+        sim.add_point_source(new PointSource(arr_width - 1, j, 0, 0, 0));
+      }
 
       // Button which pauses/unpauses the simulation
       let pauseButton = Button(
@@ -1315,33 +1344,19 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
 
+      // Button which resets the simulation
+      let resetButton = Button(
+        document.getElementById(
+          "point-mass-discrete-lattice-reset-button",
+        ) as HTMLElement,
+        function () {
+          scene.add_to_queue(reset_simulation);
+        },
+      );
+      resetButton.textContent = "Reset simulation";
+      resetButton.style.padding = "15px";
+
       scene.draw();
-
-      // Set some initial values in the simulation
-      function foo(x: number): number {
-        return Math.exp(-(5 * (x - 0.5) ** 2));
-      }
-      function foo2(x: number, y: number): number {
-        return (foo(x) - foo(1)) * (foo(y) - foo(1));
-      }
-      let vals = new Array(4 * arr_width * arr_height).fill(0);
-      for (let i = 0; i < arr_width; i++) {
-        for (let j = 0; j < arr_height; j++) {
-          vals[sim.index(i, j)] =
-            5 * foo2(i / (arr_width - 1), j / (arr_height - 1));
-        }
-      }
-      sim.set_vals(vals);
-
-      // Set boundary conditions
-      for (let i = 0; i < arr_width; i++) {
-        sim.add_point_source(new PointSource(i, 0, 0, 0, 0));
-        sim.add_point_source(new PointSource(i, arr_height - 1, 0, 0, 0));
-      }
-      for (let j = 1; j < arr_height - 1; j++) {
-        sim.add_point_source(new PointSource(0, j, 0, 0, 0));
-        sim.add_point_source(new PointSource(arr_width - 1, j, 0, 0, 0));
-      }
 
       scene.play(undefined);
     })(300, 300);

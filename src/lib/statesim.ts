@@ -41,6 +41,9 @@ export abstract class Simulator {
   set_vals(vals: Array<number>) {
     this.vals = vals;
   }
+  set_val(index: number, value: number) {
+    this.vals[index] = value;
+  }
   // Time-derivative of a given state and time. Overwritten in subclasses.
   dot(vals: Array<number>, time: number): Array<number> {
     return new Array(this.state_size).fill(0);

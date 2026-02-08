@@ -12044,6 +12044,9 @@ var Simulator = class {
   set_vals(vals) {
     this.vals = vals;
   }
+  set_val(index, value) {
+    this.vals[index] = value;
+  }
   // Time-derivative of a given state and time. Overwritten in subclasses.
   dot(vals, time) {
     return new Array(this.state_size).fill(0);
@@ -14616,6 +14619,7 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       class Foo extends InteractivePlayingThreeDScene {
         constructor(canvas2, simulator) {
           super(canvas2, [simulator]);
+          this.rotation_speed = 0.01;
           this.simulator = simulator;
           for (let i = 0; i < simulator.width - 1; i++) {
             for (let j = 0; j < simulator.height; j++) {
@@ -14641,6 +14645,9 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
             }
           }
         }
+        set_rotation_speed(speed) {
+          this.rotation_speed = speed;
+        }
         eq_position(i, j) {
           return [
             xmin + (i + 0.5) * (xmax - xmin) / arr_width,
@@ -14649,6 +14656,12 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
           ];
         }
         add_callbacks(i, j, dot3) {
+          dot3.add_callback(() => {
+            this.simulator.set_val(
+              this.simulator.index(i, j),
+              dot3.get_center()[2]
+            );
+          });
           if (i < this.simulator.width - 1) {
             dot3.add_callback(
               () => this.get_mobj(`l(${i},${j})(${i + 1},${j})`).move_start(dot3.get_center())
@@ -14701,13 +14714,13 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
           super.toggle_pause();
         }
         update_mobjects() {
-          let vals2 = this.simulator.get_uValues();
+          let vals = this.simulator.get_uValues();
           let new_z;
           let x, y, z;
           let dot3, line;
           for (let i = 0; i < this.simulator.width; i++) {
             for (let j = 0; j < this.simulator.height; j++) {
-              new_z = vals2[this.simulator.index(i, j)];
+              new_z = vals[this.simulator.index(i, j)];
               let dot4 = this.get_mobj(`p(${i},${j})`);
               [x, y, z] = dot4.get_center();
               dot4.move_to([x, y, new_z]);
@@ -14729,7 +14742,9 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
               }
             }
           }
-          this.rot_camera_z(Math.PI * this.dt / 10);
+          if (!this.paused) {
+            this.rot_camera_z(this.dt * this.rotation_speed);
+          }
         }
         draw_mobject(mobj) {
           mobj.draw(this.canvas, this, true);
@@ -14743,15 +14758,37 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       scene.set_zoom(zoom_ratio);
       scene.set_view_mode("orthographic");
-      scene.rot_z(Math.PI / 4);
-      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], 2 * Math.PI / 3);
-      scene.set_camera_position(
-        rot(
-          [0, 0, -10],
-          [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
-          2 * Math.PI / 3
-        )
+      scene.set_camera_position([0, 0, -10]);
+      scene.rot_camera_z(Math.PI / 4);
+      scene.rot_camera(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        2 * Math.PI / 3
       );
+      scene.set_rotation_speed(0.15);
+      function foo(x) {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
+      function foo2(x, y) {
+        return (foo(x) - foo(1)) * (foo(y) - foo(1));
+      }
+      function reset_simulation() {
+        let vals = new Array(4 * arr_width * arr_height).fill(0);
+        for (let i = 0; i < arr_width; i++) {
+          for (let j = 0; j < arr_height; j++) {
+            vals[sim.index(i, j)] = 5 * foo2(i / (arr_width - 1), j / (arr_height - 1));
+          }
+        }
+        sim.set_vals(vals);
+      }
+      reset_simulation();
+      for (let i = 0; i < arr_width; i++) {
+        sim.add_point_source(new PointSource(i, 0, 0, 0, 0));
+        sim.add_point_source(new PointSource(i, arr_height - 1, 0, 0, 0));
+      }
+      for (let j = 1; j < arr_height - 1; j++) {
+        sim.add_point_source(new PointSource(0, j, 0, 0, 0));
+        sim.add_point_source(new PointSource(arr_width - 1, j, 0, 0, 0));
+      }
       let pauseButton = Button(
         document.getElementById(
           "point-mass-discrete-lattice-pause-button"
@@ -14769,28 +14806,17 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       );
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
-      scene.draw();
-      function foo(x) {
-        return Math.exp(-(5 * (x - 0.5) ** 2));
-      }
-      function foo2(x, y) {
-        return (foo(x) - foo(1)) * (foo(y) - foo(1));
-      }
-      let vals = new Array(4 * arr_width * arr_height).fill(0);
-      for (let i = 0; i < arr_width; i++) {
-        for (let j = 0; j < arr_height; j++) {
-          vals[sim.index(i, j)] = 5 * foo2(i / (arr_width - 1), j / (arr_height - 1));
+      let resetButton = Button(
+        document.getElementById(
+          "point-mass-discrete-lattice-reset-button"
+        ),
+        function() {
+          scene.add_to_queue(reset_simulation);
         }
-      }
-      sim.set_vals(vals);
-      for (let i = 0; i < arr_width; i++) {
-        sim.add_point_source(new PointSource(i, 0, 0, 0, 0));
-        sim.add_point_source(new PointSource(i, arr_height - 1, 0, 0, 0));
-      }
-      for (let j = 1; j < arr_height - 1; j++) {
-        sim.add_point_source(new PointSource(0, j, 0, 0, 0));
-        sim.add_point_source(new PointSource(arr_width - 1, j, 0, 0, 0));
-      }
+      );
+      resetButton.textContent = "Reset simulation";
+      resetButton.style.padding = "15px";
+      scene.draw();
       scene.play(void 0);
     })(300, 300);
   });
