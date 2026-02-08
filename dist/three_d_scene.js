@@ -313,7 +313,7 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
     ctx.globalAlpha *= 2;
     ctx.setLineDash([]);
   }
-  draw(canvas, scene, args) {
+  draw(canvas, scene, simple = false, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
@@ -325,7 +325,11 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
     } else if (this.stroke_style == "dotted") {
       ctx.setLineDash([2, 2]);
     }
-    this._draw(ctx, scene, args);
+    if (this instanceof Line3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
     ctx.setLineDash([]);
   }
 };
@@ -356,7 +360,7 @@ var ThreeDFillLikeMObject = class extends ThreeDMObject {
   unset_behind_linked_mobjects(ctx) {
     ctx.globalAlpha *= 2;
   }
-  draw(canvas, scene, args) {
+  draw(canvas, scene, simple = false, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
@@ -369,7 +373,11 @@ var ThreeDFillLikeMObject = class extends ThreeDMObject {
       ctx.setLineDash([2, 2]);
     }
     ctx.fillStyle = this.fill_color;
-    this._draw(ctx, scene, args);
+    if (this instanceof Dot3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
     ctx.setLineDash([]);
   }
 };
@@ -414,6 +422,29 @@ var Dot3D = class extends ThreeDFillLikeMObject {
     this.center[1] += p[1];
     this.center[2] += p[2];
   }
+  _draw_simple(ctx, scene) {
+    let p = scene.camera_view(this.center);
+    let pr = scene.camera_view(
+      vec3_sum(
+        this.center,
+        vec3_scale(get_column(scene.get_camera_frame(), 0), this.radius)
+      )
+    );
+    let state;
+    if (p != null && pr != null) {
+      let [cx, cy] = scene.v2c(p);
+      let [rx, ry] = scene.v2c(pr);
+      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
+      ctx.beginPath();
+      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
+      ctx.stroke();
+      if (this.fill) {
+        ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
+        ctx.fill();
+        ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
+      }
+    }
+  }
   _draw(ctx, scene) {
     let p = scene.camera_view(this.center);
     let pr = scene.camera_view(
@@ -448,6 +479,12 @@ var Dot3D = class extends ThreeDFillLikeMObject {
         this.unset_behind_linked_mobjects(ctx);
       }
     }
+  }
+  toDraggableDot3D() {
+    return new DraggableDot3D(this.center, this.radius);
+  }
+  toDraggableDotZ3D() {
+    return new DraggableDotZ3D(this.center, this.radius);
   }
 };
 var DraggableDot3D = class extends Dot3D {
@@ -602,6 +639,22 @@ var DraggableDot3D = class extends Dot3D {
       "touchmove",
       self.mouse_drag_cursor.bind(self, scene)
     );
+  }
+  toDot3D() {
+    return new Dot3D(this.center, this.radius);
+  }
+};
+var DraggableDotZ3D = class extends DraggableDot3D {
+  _drag_cursor(scene) {
+    let translate_vec = vec2_sub(
+      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1])
+    );
+    let [mx, my, mz] = scene.v2w(translate_vec);
+    this.move_by([0, 0, mz]);
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
   }
 };
 var Line3D = class extends ThreeDLineLikeMObject {

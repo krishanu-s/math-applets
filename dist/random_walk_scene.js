@@ -997,7 +997,7 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
     ctx.globalAlpha *= 2;
     ctx.setLineDash([]);
   }
-  draw(canvas, scene, args) {
+  draw(canvas, scene, simple = false, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
@@ -1009,7 +1009,11 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
     } else if (this.stroke_style == "dotted") {
       ctx.setLineDash([2, 2]);
     }
-    this._draw(ctx, scene, args);
+    if (this instanceof Line3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
     ctx.setLineDash([]);
   }
 };
@@ -1040,7 +1044,7 @@ var ThreeDFillLikeMObject = class extends ThreeDMObject {
   unset_behind_linked_mobjects(ctx) {
     ctx.globalAlpha *= 2;
   }
-  draw(canvas, scene, args) {
+  draw(canvas, scene, simple = false, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
@@ -1053,7 +1057,11 @@ var ThreeDFillLikeMObject = class extends ThreeDMObject {
       ctx.setLineDash([2, 2]);
     }
     ctx.fillStyle = this.fill_color;
-    this._draw(ctx, scene, args);
+    if (this instanceof Dot3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
     ctx.setLineDash([]);
   }
 };
@@ -1098,6 +1106,29 @@ var Dot3D = class extends ThreeDFillLikeMObject {
     this.center[1] += p[1];
     this.center[2] += p[2];
   }
+  _draw_simple(ctx, scene) {
+    let p = scene.camera_view(this.center);
+    let pr = scene.camera_view(
+      vec3_sum(
+        this.center,
+        vec3_scale(get_column(scene.get_camera_frame(), 0), this.radius)
+      )
+    );
+    let state;
+    if (p != null && pr != null) {
+      let [cx, cy] = scene.v2c(p);
+      let [rx, ry] = scene.v2c(pr);
+      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
+      ctx.beginPath();
+      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
+      ctx.stroke();
+      if (this.fill) {
+        ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
+        ctx.fill();
+        ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
+      }
+    }
+  }
   _draw(ctx, scene) {
     let p = scene.camera_view(this.center);
     let pr = scene.camera_view(
@@ -1132,6 +1163,182 @@ var Dot3D = class extends ThreeDFillLikeMObject {
         this.unset_behind_linked_mobjects(ctx);
       }
     }
+  }
+  toDraggableDot3D() {
+    return new DraggableDot3D(this.center, this.radius);
+  }
+  toDraggableDotZ3D() {
+    return new DraggableDotZ3D(this.center, this.radius);
+  }
+};
+var DraggableDot3D = class extends Dot3D {
+  constructor() {
+    super(...arguments);
+    this.isClicked = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.touch_tolerance = 2;
+    this.callbacks = [];
+  }
+  // Tests whether a chosen view point lies inside the shape. Used for click-detection.
+  is_inside(scene, view_point) {
+    let center_view = scene.camera_view(this.center);
+    let edge_view = scene.camera_view(
+      vec3_sum(this.center, [0, 0, this.radius])
+    );
+    if (center_view == null || edge_view == null) {
+      return false;
+    } else {
+      return vec2_norm(vec2_sub(view_point, center_view)) < vec2_norm(vec2_sub(edge_view, center_view));
+    }
+  }
+  // Tests whether a chosen vector lies within an enlarged version of the dot.
+  // Used for touch-detection on mobile devices, and for use by small children.
+  is_almost_inside(scene, view_point, tolerance) {
+    let center_view = scene.camera_view(this.center);
+    let edge_view = scene.camera_view(
+      vec3_sum(this.center, [0, 0, this.radius])
+    );
+    if (center_view == null || edge_view == null) {
+      return false;
+    } else {
+      return vec2_norm(vec2_sub(view_point, center_view)) < vec2_norm(vec2_sub(edge_view, center_view)) * tolerance;
+    }
+  }
+  // Adds a callback which triggers when the dot is dragged
+  add_callback(callback) {
+    this.callbacks.push(callback);
+  }
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
+  }
+  // Triggers when the canvas is clicked.
+  click(scene, event) {
+    this.dragStart = vec2_sub(mouse_event_coords(event), [
+      scene.canvas.offsetLeft,
+      scene.canvas.offsetTop
+    ]);
+    if (!scene.is_dragging) {
+      this.isClicked = this.is_inside(
+        scene,
+        scene.c2v(this.dragStart[0], this.dragStart[1])
+      );
+      if (this.isClicked) {
+        scene.click();
+      }
+    }
+  }
+  touch(scene, event) {
+    this.dragStart = [
+      event.touches[0].pageX - scene.canvas.offsetLeft,
+      event.touches[0].pageY - scene.canvas.offsetTop
+    ];
+    if (!scene.is_dragging) {
+      this.isClicked = this.is_almost_inside(
+        scene,
+        scene.c2v(this.dragStart[0], this.dragStart[1]),
+        this.touch_tolerance
+      );
+      if (this.isClicked) {
+        scene.click();
+      }
+    }
+  }
+  // Triggers when the canvas is unclicked.
+  unclick(scene, event) {
+    if (this.isClicked) {
+      scene.unclick();
+    }
+    this.isClicked = false;
+  }
+  untouch(scene, event) {
+    if (this.isClicked) {
+      scene.unclick();
+    }
+    scene.unclick();
+  }
+  // Triggers when the mouse is dragged over the canvas.
+  mouse_drag_cursor(scene, event) {
+    if (this.isClicked) {
+      this.dragEnd = vec2_sub(mouse_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop
+      ]);
+      this._drag_cursor(scene);
+    }
+  }
+  touch_drag_cursor(scene, event) {
+    if (this.isClicked) {
+      this.dragEnd = vec2_sub(touch_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop
+      ]);
+      this._drag_cursor(scene);
+    }
+  }
+  _drag_cursor(scene) {
+    let translate_vec = vec2_sub(
+      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1])
+    );
+    this.move_by(scene.v2w(translate_vec));
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
+  }
+  add(scene) {
+    let self = this;
+    scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
+    scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
+    scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self, scene)
+    );
+    scene.canvas.addEventListener("touchstart", self.touch.bind(self, scene));
+    scene.canvas.addEventListener("touchend", self.untouch.bind(self, scene));
+    scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self, scene)
+    );
+  }
+  remove(scene) {
+    let self = this;
+    scene.canvas.removeEventListener("mousedown", this.click.bind(self, scene));
+    scene.canvas.removeEventListener("mouseup", this.unclick.bind(self, scene));
+    scene.canvas.removeEventListener(
+      "mousemove",
+      this.mouse_drag_cursor.bind(self, scene)
+    );
+    scene.canvas.removeEventListener(
+      "touchstart",
+      this.click.bind(self, scene)
+    );
+    scene.canvas.removeEventListener(
+      "touchend",
+      this.unclick.bind(self, scene)
+    );
+    scene.canvas.removeEventListener(
+      "touchmove",
+      self.mouse_drag_cursor.bind(self, scene)
+    );
+  }
+  toDot3D() {
+    return new Dot3D(this.center, this.radius);
+  }
+};
+var DraggableDotZ3D = class extends DraggableDot3D {
+  _drag_cursor(scene) {
+    let translate_vec = vec2_sub(
+      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1])
+    );
+    let [mx, my, mz] = scene.v2w(translate_vec);
+    this.move_by([0, 0, mz]);
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
   }
 };
 var Line3D = class extends ThreeDLineLikeMObject {

@@ -22,6 +22,7 @@ import {
   get_column,
 } from "./matvec.js";
 import { vec2_sum, vec2_sub, vec2_scale, vec2_rot } from "./base_geom.js";
+import { Simulator } from "./statesim.js";
 
 export type Vec3D = [number, number, number];
 
@@ -121,7 +122,12 @@ export class ThreeDLineLikeMObject extends ThreeDMObject {
     ctx.globalAlpha *= 2;
     ctx.setLineDash([]);
   }
-  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
+  draw(
+    canvas: HTMLCanvasElement,
+    scene: ThreeDScene,
+    simple: boolean = false,
+    args?: any,
+  ): void {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
@@ -133,7 +139,11 @@ export class ThreeDLineLikeMObject extends ThreeDMObject {
     } else if (this.stroke_style == "dotted") {
       ctx.setLineDash([2, 2]);
     }
-    this._draw(ctx, scene, args);
+    if (this instanceof Line3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
     ctx.setLineDash([]);
   }
 }
@@ -163,7 +173,12 @@ export class ThreeDFillLikeMObject extends ThreeDMObject {
   unset_behind_linked_mobjects(ctx: CanvasRenderingContext2D) {
     ctx.globalAlpha *= 2;
   }
-  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
+  draw(
+    canvas: HTMLCanvasElement,
+    scene: ThreeDScene,
+    simple: boolean = false,
+    args?: any,
+  ): void {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
@@ -176,7 +191,11 @@ export class ThreeDFillLikeMObject extends ThreeDMObject {
       ctx.setLineDash([2, 2]);
     }
     ctx.fillStyle = this.fill_color;
-    this._draw(ctx, scene, args);
+    if (this instanceof Dot3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
     ctx.setLineDash([]);
   }
 }
@@ -226,6 +245,29 @@ export class Dot3D extends ThreeDFillLikeMObject {
     this.center[1] += p[1];
     this.center[2] += p[2];
   }
+  _draw_simple(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
+    let p = scene.camera_view(this.center);
+    let pr = scene.camera_view(
+      vec3_sum(
+        this.center,
+        vec3_scale(get_column(scene.get_camera_frame(), 0), this.radius),
+      ),
+    );
+    let state;
+    if (p != null && pr != null) {
+      let [cx, cy] = scene.v2c(p as Vec2D);
+      let [rx, ry] = scene.v2c(pr as Vec2D);
+      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
+      ctx.beginPath();
+      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
+      ctx.stroke();
+      if (this.fill) {
+        ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
+        ctx.fill();
+        ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
+      }
+    }
+  }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     // TODO Make this more efficient.
     let p = scene.camera_view(this.center);
@@ -264,6 +306,12 @@ export class Dot3D extends ThreeDFillLikeMObject {
         this.unset_behind_linked_mobjects(ctx);
       }
     }
+  }
+  toDraggableDot3D(): DraggableDot3D {
+    return new DraggableDot3D(this.center, this.radius);
+  }
+  toDraggableDotZ3D(): DraggableDotZ3D {
+    return new DraggableDotZ3D(this.center, this.radius);
   }
 }
 
@@ -428,6 +476,25 @@ export class DraggableDot3D extends Dot3D {
       "touchmove",
       self.mouse_drag_cursor.bind(self, scene),
     );
+  }
+  toDot3D(): Dot3D {
+    return new Dot3D(this.center, this.radius);
+  }
+}
+
+// Dragging only affects the z-coordinate
+export class DraggableDotZ3D extends DraggableDot3D {
+  _drag_cursor(scene: ThreeDScene) {
+    let translate_vec: Vec2D = vec2_sub(
+      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1]),
+    );
+    let [mx, my, mz] = scene.v2w(translate_vec);
+    this.move_by([0, 0, mz]);
+    this.dragStart = this.dragEnd;
+    // Perform any other MObject updates necessary.
+    this.do_callbacks();
+    scene.draw();
   }
 }
 
@@ -1164,4 +1231,105 @@ export class ThreeDScene extends Scene {
     ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
+}
+
+// Identical extension of ThreeDScene as InteractivePlayingScene is of Scene
+export abstract class InteractivePlayingThreeDScene extends ThreeDScene {
+  simulators: Record<number, Simulator>; // The internal simulator
+  num_simulators: number;
+  action_queue: Array<CallableFunction>;
+  paused: boolean;
+  time: number;
+  dt: number;
+  end_time: number | undefined; // Store a known end-time in case the simulation is paused and unpaused
+  constructor(canvas: HTMLCanvasElement, simulators: Array<Simulator>) {
+    super(canvas);
+    [this.num_simulators, this.simulators] = simulators.reduce(
+      ([ind, acc], item) => ((acc[ind] = item), [ind + 1, acc]),
+      [0, {}] as [number, Record<number, Simulator>],
+    );
+    this.action_queue = [];
+    this.paused = true;
+    this.time = 0;
+    this.dt = (simulators[0] as Simulator).dt;
+  }
+  get_simulator(ind: number = 0): Simulator {
+    return this.simulators[ind] as Simulator;
+  }
+  set_simulator_attr(
+    simulator_ind: number,
+    attr_name: string,
+    attr_val: number,
+  ) {
+    this.get_simulator(simulator_ind).set_attr(attr_name, attr_val);
+  }
+  // Restarts the simulator
+  reset(): void {
+    for (let ind = 0; ind < this.num_simulators; ind++) {
+      this.get_simulator(ind).reset();
+    }
+    this.time = 0;
+    this.draw();
+  }
+  // Switches from paused to unpaused and vice-versa.
+  toggle_pause() {
+    this.paused = !this.paused;
+    if (!this.paused) {
+      this.play(this.end_time);
+    }
+  }
+  // Adds to the action queue if the scene is currently playing,
+  // otherwise execute the callback immediately
+  add_to_queue(callback: () => void) {
+    if (this.paused) {
+      callback();
+    } else {
+      this.action_queue.push(callback);
+    }
+  }
+  // Starts animation
+  play(until: number | undefined) {
+    // If paused, record the end time and stop the loop
+    if (this.paused) {
+      this.end_time = until;
+      return;
+    }
+    // Otherwise, loop
+    else {
+      // If there are outstanding actions, perform them first
+      if (this.action_queue.length > 0) {
+        let callback = this.action_queue.shift() as () => void;
+        callback();
+      }
+      // If we have reached the end-time, stop.
+      else if (this.time > (until as number)) {
+        return;
+      } else {
+        for (let ind = 0; ind < this.num_simulators; ind++) {
+          this.get_simulator(ind).step();
+        }
+        this.time += this.get_simulator(0).dt;
+        this.draw();
+      }
+      window.requestAnimationFrame(this.play.bind(this, until));
+    }
+  }
+  // Updates all mobjects to account for the new simulator state
+  update_mobjects() {}
+  // Draws the scene without worrying about depth-sensing.
+  // TODO Sort this out later.
+  draw() {
+    this.update_mobjects();
+
+    let ctx = this.canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    Object.keys(this.mobjects).forEach((name) => {
+      let mobj = this.get_mobj(name);
+      if (mobj == undefined) throw new Error(`${name} not found`);
+      this.draw_mobject(mobj);
+    });
+  }
+  // Add drawing instructions in the subclass.
+  draw_mobject(mobj: MObject) {}
 }
