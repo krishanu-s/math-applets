@@ -228,6 +228,7 @@
             </div>
             <br />
             <div class="button" id="point-mass-spring-pause-button"></div>
+            <div class="button" id="point-mass-spring-reset-button"></div>
             <div class="slider" id="point-mass-stiffness-slider"></div>
             <div class="slider" id="point-mass-damping-slider"></div>
             <br />
@@ -254,10 +255,9 @@
                 f_{i+1}(t))$. Added together, we get the equations
             </p>
             <div id="1d-discrete-wave-equation">
-                $$f_1''(t) = -k(2f_1(t) - L- f_{2}(t))$$ $$f_2''(t) = -k(2f_2(t)
-                - f_{1}(t)- f_{3}(t))$$ $$f_3''(t) = -k(2f_3(t) - f_{2}(t)-
-                f_{4}(t))$$ $$\vdots$$ $$f_N''(t) = -k(2f_N(t) - f_{N-1}(t)-
-                R)$$
+                $$f_1''(t) = k(L-2f_1(t)+ f_2(t))$$ $$f_2''(t) =
+                k(f_1(t)-2f_2(t) + f_3(t))$$ $$f_3''(t) = k(f_2(t)-2f_3(t)+
+                f_4(t))$$ $$\vdots$$ $$f_N''(t) = k(f_{N-1}(t)-2f_N(t)+ R)$$
             </div>
             <!--TODO Need to address the normalization by distance and strength of the springs.-->
             <!--TODO Add a force diagram explaining this, showing that the pull is towards the midpoint. -->
@@ -309,7 +309,7 @@
             </p>
             <div id="1d-wave-equation">
                 $$\frac{\partial^2}{\partial t^2}f(x,t) =
-                -k\frac{\partial^2}{\partial x^2}f(x,t)$$
+                k\frac{\partial^2}{\partial x^2}f(x,t)$$
             </div>
             <p>
                 This is a consequence of the fact that for a function $g(x)$,

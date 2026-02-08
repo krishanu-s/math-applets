@@ -11502,6 +11502,32 @@ var Line = class extends LineLikeMObject {
     ctx.stroke();
   }
 };
+var LineSequence = class extends LineLikeMObject {
+  constructor(points) {
+    super();
+    this.points = points;
+  }
+  add_point(point) {
+    this.points.push(point);
+  }
+  move_point(i, new_point) {
+    this.points[i] = new_point;
+  }
+  get_point(i) {
+    return this.points[i];
+  }
+  // Draws on the canvas
+  _draw(ctx, scene) {
+    let [x, y] = scene.v2c(this.points[0]);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let i = 1; i < this.points.length; i++) {
+      [x, y] = scene.v2c(this.points[i]);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+  }
+};
 var Arrow = class extends Line {
   constructor() {
     super(...arguments);
@@ -12502,7 +12528,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
       this.add(`p_${i + 1}`, mass);
     }
     let curve = new BezierSpline(width - 1, {});
-    curve.set_stroke_width(0.01);
+    curve.set_stroke_width(0.02);
     this.add("curve", curve);
   }
   set_mode(mode) {
@@ -13229,10 +13255,60 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       }
     })();
     (function point_mass_spring(width, height) {
-      let canvas = prepare_canvas(width, height, "point-mass-spring");
+      let canvas_spring = prepare_canvas(width, height, "point-mass-spring");
+      let canvas_graph = prepare_canvas(width, height, "point-mass-graph");
+      let xmin = -4;
+      let xmax = 4;
+      let tmin = 0;
+      let tmax = 10;
+      let ymin = -4;
+      let ymax = 4;
+      let scene_graph = new Scene(canvas_graph);
+      scene_graph.set_frame_lims([tmin, tmax], [xmin, xmax]);
+      scene_graph.add(
+        "t-axis",
+        new Line([tmin, 0], [tmax, 0]).set_stroke_width(0.05).set_stroke_color("gray")
+      );
+      let tick_size = 0.2;
+      for (let i = 1; i <= 10; i++) {
+        scene_graph.add(
+          `t-axis-${i}`,
+          new Line([i, -tick_size / 2], [i, tick_size / 2]).set_stroke_width(0.05).set_stroke_color("gray")
+        );
+      }
+      for (let i = -4; i <= 4; i++) {
+        scene_graph.add(
+          `y-axis-${i}`,
+          new Line([0, i], [tick_size, i]).set_stroke_width(0.05).set_stroke_color("gray")
+        );
+      }
+      class SpringSim extends SpringSimulator {
+        constructor(stiffness, dt) {
+          super(stiffness, dt);
+          this.step_counter = 0;
+          scene_graph.add(
+            "graph",
+            new LineSequence([
+              [this.time, this.get_vals()[0]]
+            ]).set_stroke_width(0.05)
+          );
+          scene_graph.draw();
+        }
+        step() {
+          super.step();
+          this.step_counter++;
+          if (this.step_counter % 5 === 0 && this.time < scene_graph.xlims[1]) {
+            scene_graph.get_mobj("graph").add_point([
+              this.time,
+              this.get_vals()[0]
+            ]);
+            scene_graph.draw();
+          }
+        }
+      }
       class SpringScene extends InteractivePlayingScene {
-        constructor(canvas2) {
-          super(canvas2, [new SpringSimulator(3, 0.01)]);
+        constructor(canvas) {
+          super(canvas, [new SpringSim(3, 0.01)]);
           this.arrow_length_scale = 1.5;
           this.arrow_height = 0;
           let eq_line = new Line([0, -5], [0, 5]).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
@@ -13311,14 +13387,27 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
           mobj.draw(this.canvas, this);
         }
       }
-      let scene = new SpringScene(canvas);
+      let scene = new SpringScene(canvas_spring);
       scene.set_spring_stiffness(5);
       scene.set_simulator_attr(0, "dt", 0.01);
       scene.set_simulator_attr(0, "damping", 0);
       scene.set_spring_mode("spring");
       let sim = scene.get_simulator();
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       sim.set_vals([1, 0]);
-      scene.set_frame_lims([-4, 4], [-4, 4]);
+      function reset_simulation() {
+        sim.time = 0;
+        sim.set_vals([1, 0]);
+        scene_graph.remove("graph");
+        scene_graph.add(
+          "graph",
+          new LineSequence([[sim.time, sim.get_vals()[0]]]).set_stroke_width(
+            0.05
+          )
+        );
+        scene_graph.draw();
+        scene.draw();
+      }
       let w_slider = Slider(
         document.getElementById("point-mass-stiffness-slider"),
         function(val) {
@@ -13364,6 +13453,16 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       );
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
+      let resetButton = Button(
+        document.getElementById(
+          "point-mass-spring-reset-button"
+        ),
+        function() {
+          scene.add_to_queue(reset_simulation);
+        }
+      );
+      resetButton.textContent = "Reset simulation";
+      resetButton.style.padding = "15px";
       scene.draw();
       scene.play(void 0);
     })(300, 300);
