@@ -1160,6 +1160,23 @@ var ThreeDScene = class extends Scene {
       rot_matrix(axis, -angle)
     );
   }
+  // Rotates the camera view around various axes
+  rot_camera_z(angle) {
+    this.rot_z(angle);
+    this.set_camera_position(rot_z(this.camera_position, angle));
+  }
+  rot_camera_y(angle) {
+    this.rot_y(angle);
+    this.set_camera_position(rot_y(this.camera_position, angle));
+  }
+  rot_camera_x(angle) {
+    this.rot_x(angle);
+    this.set_camera_position(rot_x(this.camera_position, angle));
+  }
+  rot_camera(axis, angle) {
+    this.rot(axis, angle);
+    this.set_camera_position(rot(this.camera_position, axis, angle));
+  }
   // Modes of viewing/drawing
   set_view_mode(mode) {
     this.mode = mode;
@@ -1318,6 +1335,9 @@ function rot_x_matrix(theta) {
     [0, Math.cos(theta), -Math.sin(theta)],
     [0, Math.sin(theta), Math.cos(theta)]
   ];
+}
+function rot_x(v, theta) {
+  return matmul_vec(rot_x_matrix(theta), v);
 }
 function rot_matrix(axis, angle) {
   let [x, y, z] = normalize(axis);

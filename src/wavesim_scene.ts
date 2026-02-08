@@ -1257,6 +1257,8 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
               }
             }
           }
+          // Rotate the scene
+          this.rot_camera_z((Math.PI * this.dt) / 10);
         }
         draw_mobject(mobj: MObject) {
           mobj.draw(this.canvas, this, true);

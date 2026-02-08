@@ -12960,6 +12960,9 @@ function rot_x_matrix(theta) {
     [0, Math.sin(theta), Math.cos(theta)]
   ];
 }
+function rot_x(v, theta) {
+  return matmul_vec(rot_x_matrix(theta), v);
+}
 function rot_matrix(axis, angle2) {
   let [x, y, z] = normalize(axis);
   let theta = Math.acos(z);
@@ -13568,6 +13571,23 @@ var ThreeDScene = class extends Scene {
       this.camera_frame_inv,
       rot_matrix(axis, -angle2)
     );
+  }
+  // Rotates the camera view around various axes
+  rot_camera_z(angle2) {
+    this.rot_z(angle2);
+    this.set_camera_position(rot_z(this.camera_position, angle2));
+  }
+  rot_camera_y(angle2) {
+    this.rot_y(angle2);
+    this.set_camera_position(rot_y(this.camera_position, angle2));
+  }
+  rot_camera_x(angle2) {
+    this.rot_x(angle2);
+    this.set_camera_position(rot_x(this.camera_position, angle2));
+  }
+  rot_camera(axis, angle2) {
+    this.rot(axis, angle2);
+    this.set_camera_position(rot(this.camera_position, axis, angle2));
   }
   // Modes of viewing/drawing
   set_view_mode(mode) {
@@ -14709,6 +14729,7 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
               }
             }
           }
+          this.rot_camera_z(Math.PI * this.dt / 10);
         }
         draw_mobject(mobj) {
           mobj.draw(this.canvas, this, true);

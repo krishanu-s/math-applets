@@ -20,6 +20,10 @@ import {
   rot_matrix,
   mat_inv,
   get_column,
+  rot_z,
+  rot_y,
+  rot_x,
+  rot,
 } from "./matvec.js";
 import { vec2_sum, vec2_sub, vec2_scale, vec2_rot } from "./base_geom.js";
 import { Simulator } from "./statesim.js";
@@ -1148,6 +1152,23 @@ export class ThreeDScene extends Scene {
       this.camera_frame_inv,
       rot_matrix(axis, -angle),
     );
+  }
+  // Rotates the camera view around various axes
+  rot_camera_z(angle: number) {
+    this.rot_z(angle);
+    this.set_camera_position(rot_z(this.camera_position, angle));
+  }
+  rot_camera_y(angle: number) {
+    this.rot_y(angle);
+    this.set_camera_position(rot_y(this.camera_position, angle));
+  }
+  rot_camera_x(angle: number) {
+    this.rot_x(angle);
+    this.set_camera_position(rot_x(this.camera_position, angle));
+  }
+  rot_camera(axis: Vec3D, angle: number) {
+    this.rot(axis, angle);
+    this.set_camera_position(rot(this.camera_position, axis, angle));
   }
   // Modes of viewing/drawing
   set_view_mode(mode: "perspective" | "orthographic") {
