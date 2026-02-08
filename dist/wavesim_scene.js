@@ -10636,10 +10636,6 @@ function clamp(x, xmin, xmax) {
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
 }
-function linspace2(start, stop, num) {
-  const step = (stop - start) / (num - 1);
-  return Array.from({ length: num }, (_, i) => start + i * step);
-}
 function funspace(func, start, stop, num) {
   const step = (stop - start) / (num - 1);
   return Array.from({ length: num }, (_, i) => func(start + i * step));
@@ -10654,6 +10650,7 @@ var MObject = class {
   }
   set_alpha(alpha) {
     this.alpha = alpha;
+    return this;
   }
   add(scene) {
   }
@@ -14604,10 +14601,7 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
             for (let j = 0; j < simulator.height; j++) {
               this.add(
                 `l(${i},${j})(${i + 1},${j})`,
-                new Line3D(
-                  this.eq_position(i, j),
-                  this.eq_position(i + 1, j)
-                ).set_stroke_width(0.05)
+                new Line3D(this.eq_position(i, j), this.eq_position(i + 1, j)).set_stroke_width(0.05).set_alpha(0.3)
               );
             }
           }
@@ -14615,10 +14609,7 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
             for (let j = 0; j < simulator.height - 1; j++) {
               this.add(
                 `l(${i},${j})(${i},${j + 1})`,
-                new Line3D(
-                  this.eq_position(i, j),
-                  this.eq_position(i, j + 1)
-                ).set_stroke_width(0.05)
+                new Line3D(this.eq_position(i, j), this.eq_position(i, j + 1)).set_stroke_width(0.05).set_alpha(0.3)
               );
             }
           }
@@ -14690,12 +14681,32 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
           super.toggle_pause();
         }
         update_mobjects() {
-          let vals = this.simulator.get_uValues();
+          let vals2 = this.simulator.get_uValues();
+          let new_z;
+          let x, y, z;
+          let dot3, line;
           for (let i = 0; i < this.simulator.width; i++) {
             for (let j = 0; j < this.simulator.height; j++) {
-              let dot3 = this.get_mobj(`p(${i},${j})`);
-              let [x, y, z] = dot3.get_center();
-              dot3.move_to([x, y, vals[this.simulator.index(i, j)]]);
+              new_z = vals2[this.simulator.index(i, j)];
+              let dot4 = this.get_mobj(`p(${i},${j})`);
+              [x, y, z] = dot4.get_center();
+              dot4.move_to([x, y, new_z]);
+              if (i < this.simulator.width - 1) {
+                line = this.get_mobj(`l(${i},${j})(${i + 1},${j})`);
+                line.move_start([x, y, new_z]);
+              }
+              if (j < this.simulator.height - 1) {
+                line = this.get_mobj(`l(${i},${j})(${i},${j + 1})`);
+                line.move_start([x, y, new_z]);
+              }
+              if (i > 0) {
+                line = this.get_mobj(`l(${i - 1},${j})(${i},${j})`);
+                line.move_end([x, y, new_z]);
+              }
+              if (j > 0) {
+                line = this.get_mobj(`l(${i},${j - 1})(${i},${j})`);
+                line.move_end([x, y, new_z]);
+              }
             }
           }
         }
@@ -14703,10 +14714,9 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
           mobj.draw(this.canvas, this, true);
         }
       }
-      let sim = new WaveSimTwoDim(arr_width, arr_height, 0.02);
+      let sim = new WaveSimTwoDim(arr_width, arr_height, 0.01);
+      sim.set_attr("wave_propagation_speed", 5);
       sim.remove_pml_layers();
-      sim.set_attr("wave_propagation_speed", 20);
-      sim.set_vals(linspace2(0, 1, arr_width * arr_height));
       let zoom_ratio = 1;
       let scene = new Foo(canvas, sim);
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
@@ -14721,8 +14731,6 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
           2 * Math.PI / 3
         )
       );
-      let w = 8;
-      let a = 8;
       let pauseButton = Button(
         document.getElementById(
           "point-mass-discrete-lattice-pause-button"
@@ -14741,6 +14749,27 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
       scene.draw();
+      function foo(x) {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
+      function foo2(x, y) {
+        return (foo(x) - foo(1)) * (foo(y) - foo(1));
+      }
+      let vals = new Array(4 * arr_width * arr_height).fill(0);
+      for (let i = 0; i < arr_width; i++) {
+        for (let j = 0; j < arr_height; j++) {
+          vals[sim.index(i, j)] = 5 * foo2(i / (arr_width - 1), j / (arr_height - 1));
+        }
+      }
+      sim.set_vals(vals);
+      for (let i = 0; i < arr_width; i++) {
+        sim.add_point_source(new PointSource(i, 0, 0, 0, 0));
+        sim.add_point_source(new PointSource(i, arr_height - 1, 0, 0, 0));
+      }
+      for (let j = 1; j < arr_height - 1; j++) {
+        sim.add_point_source(new PointSource(0, j, 0, 0, 0));
+        sim.add_point_source(new PointSource(arr_width - 1, j, 0, 0, 0));
+      }
       scene.play(void 0);
     })(300, 300);
   });

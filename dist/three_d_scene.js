@@ -9,6 +9,7 @@ var MObject = class {
   }
   set_alpha(alpha) {
     this.alpha = alpha;
+    return this;
   }
   add(scene) {
   }
@@ -1683,7 +1684,7 @@ var Arcball = class {
       zoomSlider.value = `1.0`;
       scene.draw();
     })(300, 300);
-    (function three_d_graph(width, height) {
+    (async function three_d_graph(width, height) {
       let canvas = prepare_canvas(width, height, "three-d-lattice");
       let [xmin, xmax] = [-6, 6];
       let [ymin, ymax] = [-6, 6];
@@ -1763,6 +1764,7 @@ var Arcball = class {
       );
       zoomSlider.value = `1.0`;
       scene.draw();
+      let time = 0;
     })(300, 300);
     (function three_d_globe(width, height) {
       let canvas = prepare_canvas(width, height, "three-d-globe");

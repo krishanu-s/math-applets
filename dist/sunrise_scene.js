@@ -6,6 +6,7 @@ var MObject = class {
   }
   set_alpha(alpha) {
     this.alpha = alpha;
+    return this;
   }
   add(scene) {
   }

@@ -217,7 +217,7 @@ import { pick_random_step } from "./random_walk_scene.js";
       scene.draw();
     })(300, 300);
 
-    (function three_d_graph(width: number, height: number) {
+    (async function three_d_graph(width: number, height: number) {
       // Graphing a function
       let canvas = prepare_canvas(width, height, "three-d-lattice");
       let [xmin, xmax] = [-6, 6];
@@ -333,6 +333,21 @@ import { pick_random_step } from "./random_walk_scene.js";
       zoomSlider.value = `1.0`;
 
       scene.draw();
+
+      // Perform an animation
+      let time = 0;
+      // while (true) {
+      //   time += 0.01;
+      //   for (let i = 0; i < arr_width; i++) {
+      //     for (let j = 0; j < arr_height; j++) {
+      //       let dot = scene.get_mobj(`p(${i},${j})`) as Dot3D;
+      //       let [x, y, z] = eq_position(i, j);
+      //       dot.move_to([x, y, Math.sin((i + j) * time)]);
+      //     }
+      //   }
+      //   scene.draw();
+      //   await delay(10);
+      // }
     })(300, 300);
 
     (function three_d_globe(width: number, height: number) {

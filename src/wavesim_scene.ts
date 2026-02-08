@@ -1139,10 +1139,9 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
             for (let j = 0; j < simulator.height; j++) {
               this.add(
                 `l(${i},${j})(${i + 1},${j})`,
-                new Line3D(
-                  this.eq_position(i, j),
-                  this.eq_position(i + 1, j),
-                ).set_stroke_width(0.05),
+                new Line3D(this.eq_position(i, j), this.eq_position(i + 1, j))
+                  .set_stroke_width(0.05)
+                  .set_alpha(0.3),
               );
             }
           }
@@ -1151,10 +1150,9 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
             for (let j = 0; j < simulator.height - 1; j++) {
               this.add(
                 `l(${i},${j})(${i},${j + 1})`,
-                new Line3D(
-                  this.eq_position(i, j),
-                  this.eq_position(i, j + 1),
-                ).set_stroke_width(0.05),
+                new Line3D(this.eq_position(i, j), this.eq_position(i, j + 1))
+                  .set_stroke_width(0.05)
+                  .set_alpha(0.3),
               );
             }
           }
@@ -1232,11 +1230,31 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
         }
         update_mobjects() {
           let vals = this.simulator.get_uValues();
+          let new_z;
+          let x, y, z;
+          let dot, line;
           for (let i = 0; i < this.simulator.width; i++) {
             for (let j = 0; j < this.simulator.height; j++) {
+              new_z = vals[this.simulator.index(i, j)];
               let dot = this.get_mobj(`p(${i},${j})`) as Dot3D;
-              let [x, y, z] = dot.get_center();
-              dot.move_to([x, y, vals[this.simulator.index(i, j)]]);
+              [x, y, z] = dot.get_center();
+              dot.move_to([x, y, new_z]);
+              if (i < this.simulator.width - 1) {
+                line = this.get_mobj(`l(${i},${j})(${i + 1},${j})`) as Line3D;
+                line.move_start([x, y, new_z]);
+              }
+              if (j < this.simulator.height - 1) {
+                line = this.get_mobj(`l(${i},${j})(${i},${j + 1})`) as Line3D;
+                line.move_start([x, y, new_z]);
+              }
+              if (i > 0) {
+                line = this.get_mobj(`l(${i - 1},${j})(${i},${j})`) as Line3D;
+                line.move_end([x, y, new_z]);
+              }
+              if (j > 0) {
+                line = this.get_mobj(`l(${i},${j - 1})(${i},${j})`) as Line3D;
+                line.move_end([x, y, new_z]);
+              }
             }
           }
         }
@@ -1246,10 +1264,10 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       }
 
       // Prepare the simulator and scene
-      let sim = new WaveSimTwoDim(arr_width, arr_height, 0.02);
+      let sim = new WaveSimTwoDim(arr_width, arr_height, 0.01);
+      // sim.remove_pml_layers();
+      sim.set_attr("wave_propagation_speed", 5.0);
       sim.remove_pml_layers();
-      sim.set_attr("wave_propagation_speed", 20.0);
-      sim.set_vals(linspace(0, 1, arr_width * arr_height));
 
       let zoom_ratio = 1.0;
       let scene = new Foo(canvas, sim);
@@ -1276,11 +1294,6 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       // let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
       // scene.set_frame_lims([-5, 5], [-5, 5]);
 
-      let w = 8.0;
-      let a = 8.0;
-      // let [px, py] = scene.v2c([0, 0]);
-      // sim.add_point_source(new PointSource(px, py, w, a, 0.0));
-
       // Button which pauses/unpauses the simulation
       let pauseButton = Button(
         document.getElementById(
@@ -1301,6 +1314,32 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       pauseButton.style.padding = "15px";
 
       scene.draw();
+
+      // Set some initial values in the simulation
+      function foo(x: number): number {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
+      function foo2(x: number, y: number): number {
+        return (foo(x) - foo(1)) * (foo(y) - foo(1));
+      }
+      let vals = new Array(4 * arr_width * arr_height).fill(0);
+      for (let i = 0; i < arr_width; i++) {
+        for (let j = 0; j < arr_height; j++) {
+          vals[sim.index(i, j)] =
+            5 * foo2(i / (arr_width - 1), j / (arr_height - 1));
+        }
+      }
+      sim.set_vals(vals);
+
+      // Set boundary conditions
+      for (let i = 0; i < arr_width; i++) {
+        sim.add_point_source(new PointSource(i, 0, 0, 0, 0));
+        sim.add_point_source(new PointSource(i, arr_height - 1, 0, 0, 0));
+      }
+      for (let j = 1; j < arr_height - 1; j++) {
+        sim.add_point_source(new PointSource(0, j, 0, 0, 0));
+        sim.add_point_source(new PointSource(arr_width - 1, j, 0, 0, 0));
+      }
 
       scene.play(undefined);
     })(300, 300);

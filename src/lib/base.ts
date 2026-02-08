@@ -53,6 +53,7 @@ export class MObject {
   }
   set_alpha(alpha: number) {
     this.alpha = alpha;
+    return this;
   }
   add(scene: Scene) {}
 
