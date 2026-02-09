@@ -27,6 +27,10 @@ import {
 } from "./matvec.js";
 import { vec2_sum, vec2_sub, vec2_scale, vec2_rot } from "./base_geom.js";
 import { Simulator } from "./statesim.js";
+import {
+  SceneFromSimulator,
+  ThreeDSceneFromSimulator,
+} from "./interactive_handler.js";
 
 export type Vec3D = [number, number, number];
 
@@ -1263,6 +1267,7 @@ export abstract class InteractivePlayingThreeDScene extends ThreeDScene {
   time: number;
   dt: number;
   end_time: number | undefined; // Store a known end-time in case the simulation is paused and unpaused
+  linked_scenes: Array<SceneFromSimulator | ThreeDSceneFromSimulator> = [];
   constructor(canvas: HTMLCanvasElement, simulators: Array<Simulator>) {
     super(canvas);
     [this.num_simulators, this.simulators] = simulators.reduce(
@@ -1273,6 +1278,10 @@ export abstract class InteractivePlayingThreeDScene extends ThreeDScene {
     this.paused = true;
     this.time = 0;
     this.dt = (simulators[0] as Simulator).dt;
+    this.linked_scenes = [];
+  }
+  add_linked_scene(scene: SceneFromSimulator | ThreeDSceneFromSimulator) {
+    this.linked_scenes.push(scene);
   }
   get_simulator(ind: number = 0): Simulator {
     return this.simulators[ind] as Simulator;
@@ -1284,6 +1293,12 @@ export abstract class InteractivePlayingThreeDScene extends ThreeDScene {
   ) {
     this.get_simulator(simulator_ind).set_attr(attr_name, attr_val);
   }
+  update_and_draw_linked_scenes() {
+    for (let scene of this.linked_scenes) {
+      scene.update_mobjects_from_simulator(this.get_simulator(0));
+      scene.draw();
+    }
+  }
   // Restarts the simulator
   reset(): void {
     for (let ind = 0; ind < this.num_simulators; ind++) {
@@ -1291,6 +1306,7 @@ export abstract class InteractivePlayingThreeDScene extends ThreeDScene {
     }
     this.time = 0;
     this.draw();
+    this.update_and_draw_linked_scenes();
   }
   // Switches from paused to unpaused and vice-versa.
   toggle_pause() {
@@ -1331,6 +1347,7 @@ export abstract class InteractivePlayingThreeDScene extends ThreeDScene {
         }
         this.time += this.get_simulator(0).dt;
         this.draw();
+        this.update_and_draw_linked_scenes();
       }
       window.requestAnimationFrame(this.play.bind(this, until));
     }

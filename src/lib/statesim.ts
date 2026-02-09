@@ -9,6 +9,10 @@
 // user interacts, and which also handles rendering.
 
 import { Scene, MObject } from "./base.js";
+import {
+  SceneFromSimulator,
+  ThreeDSceneFromSimulator,
+} from "./interactive_handler.js";
 
 // The basic state/simulator class. The state s(t) advances according to the differential equation
 // s'(t) = dot(s(t), t)
@@ -315,6 +319,7 @@ export abstract class InteractivePlayingScene extends Scene {
   time: number;
   dt: number;
   end_time: number | undefined; // Store a known end-time in case the simulation is paused and unpaused
+  linked_scenes: Array<SceneFromSimulator | ThreeDSceneFromSimulator> = [];
   constructor(canvas: HTMLCanvasElement, simulators: Array<Simulator>) {
     super(canvas);
     [this.num_simulators, this.simulators] = simulators.reduce(
@@ -325,6 +330,9 @@ export abstract class InteractivePlayingScene extends Scene {
     this.paused = true;
     this.time = 0;
     this.dt = (simulators[0] as Simulator).dt;
+  }
+  add_linked_scene(scene: SceneFromSimulator | ThreeDSceneFromSimulator) {
+    this.linked_scenes.push(scene);
   }
   get_simulator(ind: number = 0): Simulator {
     return this.simulators[ind] as Simulator;
@@ -343,6 +351,10 @@ export abstract class InteractivePlayingScene extends Scene {
     }
     this.time = 0;
     this.draw();
+    for (let scene of this.linked_scenes) {
+      scene.update_mobjects_from_simulator(this.get_simulator(0));
+      scene.draw();
+    }
   }
   // Switches from paused to unpaused and vice-versa.
   toggle_pause() {
@@ -383,6 +395,10 @@ export abstract class InteractivePlayingScene extends Scene {
         }
         this.time += this.get_simulator(0).dt;
         this.draw();
+        for (let scene of this.linked_scenes) {
+          scene.update_mobjects_from_simulator(this.get_simulator(0));
+          scene.draw();
+        }
       }
       window.requestAnimationFrame(this.play.bind(this, until));
     }

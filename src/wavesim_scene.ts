@@ -37,7 +37,11 @@ import {
   WaveSimTwoDimDotsScene,
 } from "./lib/wavesim.js";
 import { LineSpring } from "./lib/spring.js";
-import { InteractivePlayingScene, SpringSimulator } from "./lib/statesim.js";
+import {
+  InteractivePlayingScene,
+  SpringSimulator,
+  Simulator,
+} from "./lib/statesim.js";
 import {
   ThreeDScene,
   InteractivePlayingThreeDScene,
@@ -49,7 +53,11 @@ import {
 } from "./lib/three_d.js";
 import { rot } from "./lib/matvec.js";
 import { Arcball } from "./lib/arcball.js";
+import { SceneFromSimulator } from "./lib/interactive_handler.js";
+import { rb_colormap_2, colorval_to_rgba } from "./lib/color.js";
 
+// A two-dimensional scene view of the one-dimensional wave equation, where dots lie along
+// a horizontal curve and are allowed to move vertically.
 class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
   set_dot_radius(radius: number) {
     for (let i = 0; i < this.width(); i++) {
@@ -92,6 +100,267 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       }
     }
     super.toggle_pause();
+  }
+}
+
+// A three-dimensional scene view of the two-dimensional wave equation.
+class WaveSimTwoDimThreeDScene extends InteractivePlayingThreeDScene {
+  rotation_speed: number = 0.01;
+  width: number;
+  height: number;
+  simulator: WaveSimTwoDim;
+  constructor(
+    canvas: HTMLCanvasElement,
+    simulator: WaveSimTwoDim,
+    width: number,
+    height: number,
+  ) {
+    super(canvas, [simulator]);
+    this.simulator = simulator;
+
+    this.width = width;
+    this.height = height;
+    this.construct_scene();
+  }
+  width_buffer(): number {
+    return Math.floor((this.simulator.width - this.width) / 2);
+  }
+  height_buffer(): number {
+    return Math.floor((this.simulator.height - this.height) / 2);
+  }
+  // Populates the mobjects in the scene
+  construct_scene() {
+    // Construct horizontal lines
+    for (let i = 0; i < this.width - 1; i++) {
+      for (let j = 0; j < this.height; j++) {
+        this.add(
+          `l(${i},${j})(${i + 1},${j})`,
+          new Line3D(this.eq_position(i, j), this.eq_position(i + 1, j))
+            .set_stroke_width(0.05)
+            .set_alpha(0.3),
+        );
+      }
+    }
+    // Construct vertical lines
+    for (let i = 0; i < this.width; i++) {
+      for (let j = 0; j < this.height - 1; j++) {
+        this.add(
+          `l(${i},${j})(${i},${j + 1})`,
+          new Line3D(this.eq_position(i, j), this.eq_position(i, j + 1))
+            .set_stroke_width(0.05)
+            .set_alpha(0.3),
+        );
+      }
+    }
+    // Construct draggable dots
+    for (let i = 0; i < this.width; i++) {
+      for (let j = 0; j < this.height; j++) {
+        let dot = new DraggableDotZ3D(this.eq_position(i, j), 0.1);
+        this.add_callbacks(i, j, dot);
+        this.add(`p(${i},${j})`, dot);
+      }
+    }
+  }
+  // Resets the mobjects in the scene.
+  set_frame_lims(xlims: Vec2D, ylims: Vec2D) {
+    super.set_frame_lims(xlims, ylims);
+    this.clear();
+    this.construct_scene();
+  }
+  set_rotation_speed(speed: number) {
+    this.rotation_speed = speed;
+  }
+  eq_position(i: number, j: number): Vec3D {
+    let [xmin, xmax] = this.xlims;
+    let [ymin, ymax] = this.ylims;
+    return [
+      xmin + ((i + 0.5) * (xmax - xmin)) / this.width,
+      ymin + ((j + 0.5) * (ymax - ymin)) / this.height,
+      0,
+    ];
+  }
+  add_callbacks(i: number, j: number, dot: DraggableDotZ3D) {
+    dot.add_callback(() =>
+      this.simulator.set_val(
+        this.simulator.index(i + this.width_buffer(), j + this.height_buffer()),
+        dot.get_center()[2],
+      ),
+    );
+    if (i < this.width - 1) {
+      dot.add_callback(() =>
+        (this.get_mobj(`l(${i},${j})(${i + 1},${j})`) as Line3D).move_start(
+          dot.get_center(),
+        ),
+      );
+    }
+    if (i > 0) {
+      dot.add_callback(() =>
+        (this.get_mobj(`l(${i - 1},${j})(${i},${j})`) as Line3D).move_end(
+          dot.get_center(),
+        ),
+      );
+    }
+    if (j < this.height - 1) {
+      dot.add_callback(() =>
+        (this.get_mobj(`l(${i},${j})(${i},${j + 1})`) as Line3D).move_start(
+          dot.get_center(),
+        ),
+      );
+    }
+    if (j > 0) {
+      dot.add_callback(() =>
+        (this.get_mobj(`l(${i},${j - 1})(${i},${j})`) as Line3D).move_end(
+          dot.get_center(),
+        ),
+      );
+    }
+    dot.add_callback(() => {
+      this.draw();
+      this.update_and_draw_linked_scenes();
+    });
+  }
+  get_simulator(ind: number = 0): WaveSimTwoDim {
+    return super.get_simulator(ind) as WaveSimTwoDim;
+  }
+  toggle_pause() {
+    if (this.paused) {
+      for (let i = 0; i < this.width; i++) {
+        for (let j = 0; j < this.height; j++) {
+          let dot = this.get_mobj(`p(${i},${j})`) as DraggableDotZ3D;
+          this.remove(`p(${i},${j})`);
+          this.add(`p(${i},${j})`, dot.toDot3D());
+        }
+      }
+    } else {
+      for (let i = 0; i < this.width; i++) {
+        for (let j = 0; j < this.height; j++) {
+          let dot = this.get_mobj(`p(${i},${j})`) as Dot3D;
+          this.remove(`p(${i},${j})`);
+          let new_dot = dot.toDraggableDotZ3D();
+          this.add_callbacks(i, j, new_dot);
+          this.add(`p(${i},${j})`, new_dot);
+        }
+      }
+    }
+    super.toggle_pause();
+  }
+  update_mobjects() {
+    let vals = this.simulator.get_uValues();
+    let new_z: number;
+    let x, y, z;
+    let dot, line;
+    for (let i = 0; i < this.width; i++) {
+      for (let j = 0; j < this.height; j++) {
+        new_z =
+          vals[
+            this.simulator.index(
+              i + this.width_buffer(),
+              j + this.height_buffer(),
+            )
+          ];
+        dot = this.get_mobj(`p(${i},${j})`) as Dot3D;
+        [x, y, z] = dot.get_center();
+        dot.move_to([x, y, new_z]);
+        if (i < this.width - 1) {
+          line = this.get_mobj(`l(${i},${j})(${i + 1},${j})`) as Line3D;
+          line.move_start([x, y, new_z]);
+        }
+        if (j < this.height - 1) {
+          line = this.get_mobj(`l(${i},${j})(${i},${j + 1})`) as Line3D;
+          line.move_start([x, y, new_z]);
+        }
+        if (i > 0) {
+          line = this.get_mobj(`l(${i - 1},${j})(${i},${j})`) as Line3D;
+          line.move_end([x, y, new_z]);
+        }
+        if (j > 0) {
+          line = this.get_mobj(`l(${i},${j - 1})(${i},${j})`) as Line3D;
+          line.move_end([x, y, new_z]);
+        }
+      }
+    }
+    // Rotate the scene
+    if (!this.paused) {
+      this.rot_camera_z(this.dt * this.rotation_speed);
+    }
+  }
+  draw_mobject(mobj: MObject) {
+    mobj.draw(this.canvas, this, true);
+  }
+}
+
+// A two-dimensional scene view of the two-dimensional wave equation, where dots are colored
+class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
+  width: number;
+  height: number;
+  constructor(canvas: HTMLCanvasElement, width: number, height: number) {
+    super(canvas);
+
+    this.width = width;
+    this.height = height;
+    this.construct_scene();
+  }
+  // Populates the mobjects in the scene
+  construct_scene() {
+    // Construct horizontal lines
+    for (let i = 0; i < this.width - 1; i++) {
+      for (let j = 0; j < this.height; j++) {
+        this.add(
+          `l(${i},${j})(${i + 1},${j})`,
+          new Line(this.eq_position(i, j), this.eq_position(i + 1, j))
+            .set_stroke_width(0.05)
+            .set_alpha(0.6),
+        );
+      }
+    }
+    // Construct vertical lines
+    for (let i = 0; i < this.width; i++) {
+      for (let j = 0; j < this.height - 1; j++) {
+        this.add(
+          `l(${i},${j})(${i},${j + 1})`,
+          new Line(this.eq_position(i, j), this.eq_position(i, j + 1))
+            .set_stroke_width(0.05)
+            .set_alpha(0.6),
+        );
+      }
+    }
+    // Construct dots
+    for (let i = 0; i < this.width; i++) {
+      for (let j = 0; j < this.height; j++) {
+        let dot = new Dot(this.eq_position(i, j), 0.15);
+        this.add(`p(${i},${j})`, dot);
+      }
+    }
+  }
+  // Resets the mobjects in the scene.
+  set_frame_lims(xlims: Vec2D, ylims: Vec2D) {
+    super.set_frame_lims(xlims, ylims);
+    this.clear();
+    this.construct_scene();
+  }
+  eq_position(i: number, j: number): Vec2D {
+    let [xmin, xmax] = this.xlims;
+    let [ymin, ymax] = this.ylims;
+    return [
+      xmin + ((i + 0.5) * (xmax - xmin)) / this.width,
+      ymin + ((j + 0.5) * (ymax - ymin)) / this.height,
+    ];
+  }
+  update_mobjects_from_simulator(sim: WaveSimTwoDim) {
+    let vals = sim.get_uValues();
+    let new_z, new_color;
+    let dot;
+    let width_buffer = Math.floor((sim.width - this.width) / 2);
+    let height_buffer = Math.floor((sim.height - this.height) / 2);
+    for (let i = 0; i < this.width; i++) {
+      for (let j = 0; j < this.height; j++) {
+        new_z = vals[sim.index(i + width_buffer, j + height_buffer)];
+        // Map to a color
+        let new_color = colorval_to_rgba(rb_colormap_2(2 * new_z));
+        dot = this.get_mobj(`p(${i},${j})`) as Dot3D;
+        dot.set_color(new_color);
+      }
+    }
   }
 }
 
@@ -506,7 +775,7 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       }
     })();
 
-    // *** ONE-DIMENSIONAL WAVE EQUATION ***
+    // *** ZERO-DIMENSIONAL WAVE EQUATION ***
     // This is the zero-dimensional case of the wave equation. A point mass connected to a spring
     // oscillates in one direction according to Hooke's law.
     (function point_mass_spring(width: number, height: number) {
@@ -517,7 +786,7 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       let xmin = -4;
       let xmax = 4;
       let tmin = 0;
-      let tmax = 10;
+      let tmax = 15;
       let ymin = -4;
       let ymax = 4;
 
@@ -531,7 +800,7 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
           .set_stroke_color("gray"),
       );
       let tick_size = 0.2;
-      for (let i = 1; i <= 10; i++) {
+      for (let i = 1; i <= tmax; i++) {
         scene_graph.add(
           `t-axis-${i}`,
           new Line([i, -tick_size / 2], [i, tick_size / 2])
@@ -1114,7 +1383,6 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
 
     // *** TWO-DIMENSIONAL WAVE EQUATION ***
     // A 2D lattice of point masses (say, 5x5), oscillating along a third dimension.
-    // - TODO Make this scene in 3D. At that point, we'll decide what to add.
     // - TODO Indicate height using color, to parallel the heatmap version.
     // - TODO Add draggable 3D dots. When the cursor lies inside multiple dots,
     //   drag the one with lowest depth.
@@ -1122,169 +1390,58 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       // Prepare the canvas and context for drawing
       let canvas = prepare_canvas(width, height, "point-mass-discrete-lattice");
 
+      // Parameters
       let xmin = -5;
       let xmax = 5;
       let ymin = -5;
       let ymax = 5;
-      let arr_width = 10;
-      let arr_height = 10;
-
-      class Foo extends InteractivePlayingThreeDScene {
-        rotation_speed: number = 0.01;
-        simulator: WaveSimTwoDim;
-        constructor(canvas: HTMLCanvasElement, simulator: WaveSimTwoDim) {
-          super(canvas, [simulator]);
-          this.simulator = simulator;
-          // Construct horizontal lines
-          for (let i = 0; i < simulator.width - 1; i++) {
-            for (let j = 0; j < simulator.height; j++) {
-              this.add(
-                `l(${i},${j})(${i + 1},${j})`,
-                new Line3D(this.eq_position(i, j), this.eq_position(i + 1, j))
-                  .set_stroke_width(0.05)
-                  .set_alpha(0.3),
-              );
-            }
-          }
-          // Construct vertical lines
-          for (let i = 0; i < simulator.width; i++) {
-            for (let j = 0; j < simulator.height - 1; j++) {
-              this.add(
-                `l(${i},${j})(${i},${j + 1})`,
-                new Line3D(this.eq_position(i, j), this.eq_position(i, j + 1))
-                  .set_stroke_width(0.05)
-                  .set_alpha(0.3),
-              );
-            }
-          }
-          // Construct draggable dots
-          for (let i = 0; i < simulator.width; i++) {
-            for (let j = 0; j < simulator.height; j++) {
-              let dot = new DraggableDotZ3D(this.eq_position(i, j), 0.1);
-              this.add_callbacks(i, j, dot);
-              this.add(`p(${i},${j})`, dot);
-            }
-          }
-        }
-        set_rotation_speed(speed: number) {
-          this.rotation_speed = speed;
-        }
-        eq_position(i: number, j: number): Vec3D {
-          return [
-            xmin + ((i + 0.5) * (xmax - xmin)) / arr_width,
-            ymin + ((j + 0.5) * (ymax - ymin)) / arr_height,
-            0,
-          ];
-        }
-        add_callbacks(i: number, j: number, dot: DraggableDotZ3D) {
-          dot.add_callback(() => {
-            this.simulator.set_val(
-              this.simulator.index(i, j),
-              dot.get_center()[2],
-            );
-          });
-          if (i < this.simulator.width - 1) {
-            dot.add_callback(() =>
-              (
-                this.get_mobj(`l(${i},${j})(${i + 1},${j})`) as Line3D
-              ).move_start(dot.get_center()),
-            );
-          }
-          if (i > 0) {
-            dot.add_callback(() =>
-              (this.get_mobj(`l(${i - 1},${j})(${i},${j})`) as Line3D).move_end(
-                dot.get_center(),
-              ),
-            );
-          }
-          if (j < this.simulator.height - 1) {
-            dot.add_callback(() =>
-              (
-                this.get_mobj(`l(${i},${j})(${i},${j + 1})`) as Line3D
-              ).move_start(dot.get_center()),
-            );
-          }
-          if (j > 0) {
-            dot.add_callback(() =>
-              (this.get_mobj(`l(${i},${j - 1})(${i},${j})`) as Line3D).move_end(
-                dot.get_center(),
-              ),
-            );
-          }
-          dot.add_callback(() => scene.draw());
-        }
-        get_simulator(ind: number = 0): WaveSimTwoDim {
-          return super.get_simulator(ind) as WaveSimTwoDim;
-        }
-        toggle_pause() {
-          if (this.paused) {
-            for (let i = 0; i < this.simulator.width; i++) {
-              for (let j = 0; j < this.simulator.height; j++) {
-                let dot = this.get_mobj(`p(${i},${j})`) as DraggableDotZ3D;
-                this.remove(`p(${i},${j})`);
-                this.add(`p(${i},${j})`, dot.toDot3D());
-              }
-            }
-          } else {
-            for (let i = 0; i < this.simulator.width; i++) {
-              for (let j = 0; j < this.simulator.height; j++) {
-                let dot = this.get_mobj(`p(${i},${j})`) as Dot3D;
-                this.remove(`p(${i},${j})`);
-                let new_dot = dot.toDraggableDotZ3D();
-                this.add_callbacks(i, j, new_dot);
-                this.add(`p(${i},${j})`, new_dot);
-              }
-            }
-          }
-          super.toggle_pause();
-        }
-        update_mobjects() {
-          let vals = this.simulator.get_uValues();
-          let new_z;
-          let x, y, z;
-          let dot, line;
-          for (let i = 0; i < this.simulator.width; i++) {
-            for (let j = 0; j < this.simulator.height; j++) {
-              new_z = vals[this.simulator.index(i, j)];
-              let dot = this.get_mobj(`p(${i},${j})`) as Dot3D;
-              [x, y, z] = dot.get_center();
-              dot.move_to([x, y, new_z]);
-              if (i < this.simulator.width - 1) {
-                line = this.get_mobj(`l(${i},${j})(${i + 1},${j})`) as Line3D;
-                line.move_start([x, y, new_z]);
-              }
-              if (j < this.simulator.height - 1) {
-                line = this.get_mobj(`l(${i},${j})(${i},${j + 1})`) as Line3D;
-                line.move_start([x, y, new_z]);
-              }
-              if (i > 0) {
-                line = this.get_mobj(`l(${i - 1},${j})(${i},${j})`) as Line3D;
-                line.move_end([x, y, new_z]);
-              }
-              if (j > 0) {
-                line = this.get_mobj(`l(${i},${j - 1})(${i},${j})`) as Line3D;
-                line.move_end([x, y, new_z]);
-              }
-            }
-          }
-          // Rotate the scene
-          if (!this.paused) {
-            this.rot_camera_z(this.dt * this.rotation_speed);
-          }
-        }
-        draw_mobject(mobj: MObject) {
-          mobj.draw(this.canvas, this, true);
-        }
-      }
+      let total_arr_width = 21;
+      let total_arr_height = 21;
+      let shown_arr_width = 15;
+      let shown_arr_height = 15;
 
       // Prepare the simulator and scene
-      let sim = new WaveSimTwoDim(arr_width, arr_height, 0.01);
-      // sim.remove_pml_layers();
+      let sim = new WaveSimTwoDim(total_arr_width, total_arr_height, 0.01);
       sim.set_attr("wave_propagation_speed", 5.0);
       sim.remove_pml_layers();
 
+      // Set some initial values in the simulation
+      function foo(x: number): number {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
+      function foo2(x: number, y: number): number {
+        return (foo(x) - foo(1)) * (foo(y) - foo(1));
+      }
+      function reset_simulation() {
+        let vals = new Array(4 * total_arr_width * total_arr_height).fill(0);
+        for (let i = 0; i < total_arr_width; i++) {
+          for (let j = 0; j < total_arr_height; j++) {
+            vals[sim.index(i, j)] =
+              5 * foo2(i / (total_arr_width - 1), j / (total_arr_height - 1));
+          }
+        }
+        sim.set_vals(vals);
+      }
+      reset_simulation();
+
+      // Set boundary conditions
+      for (let i = 0; i < total_arr_width; i++) {
+        sim.add_point_source(new PointSource(i, 0, 0, 0, 0));
+        sim.add_point_source(new PointSource(i, total_arr_height - 1, 0, 0, 0));
+      }
+      for (let j = 1; j < total_arr_height - 1; j++) {
+        sim.add_point_source(new PointSource(0, j, 0, 0, 0));
+        sim.add_point_source(new PointSource(total_arr_width - 1, j, 0, 0, 0));
+      }
+
+      // Set up the main scene which is interactive
       let zoom_ratio = 1.0;
-      let scene = new Foo(canvas, sim);
+      let scene = new WaveSimTwoDimThreeDScene(
+        canvas,
+        sim,
+        shown_arr_width,
+        shown_arr_height,
+      );
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       scene.set_zoom(zoom_ratio);
       scene.set_view_mode("orthographic");
@@ -1296,34 +1453,20 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
       );
       scene.set_rotation_speed(0.15);
 
-      // Set some initial values in the simulation
-      function foo(x: number): number {
-        return Math.exp(-(5 * (x - 0.5) ** 2));
-      }
-      function foo2(x: number, y: number): number {
-        return (foo(x) - foo(1)) * (foo(y) - foo(1));
-      }
-      function reset_simulation() {
-        let vals = new Array(4 * arr_width * arr_height).fill(0);
-        for (let i = 0; i < arr_width; i++) {
-          for (let j = 0; j < arr_height; j++) {
-            vals[sim.index(i, j)] =
-              5 * foo2(i / (arr_width - 1), j / (arr_height - 1));
-          }
-        }
-        sim.set_vals(vals);
-      }
-      reset_simulation();
-
-      // Set boundary conditions
-      for (let i = 0; i < arr_width; i++) {
-        sim.add_point_source(new PointSource(i, 0, 0, 0, 0));
-        sim.add_point_source(new PointSource(i, arr_height - 1, 0, 0, 0));
-      }
-      for (let j = 1; j < arr_height - 1; j++) {
-        sim.add_point_source(new PointSource(0, j, 0, 0, 0));
-        sim.add_point_source(new PointSource(arr_width - 1, j, 0, 0, 0));
-      }
+      // Set up the second scene which is a heatmap version
+      let second_canvas = prepare_canvas(
+        width,
+        height,
+        "point-mass-discrete-lattice-heatmap",
+      );
+      let second_scene = new WaveSimTwoDimPointsHeatmapScene(
+        second_canvas,
+        shown_arr_width,
+        shown_arr_height,
+      );
+      second_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      second_scene.update_mobjects_from_simulator(sim);
+      scene.add_linked_scene(second_scene);
 
       // Button which pauses/unpauses the simulation
       let pauseButton = Button(
@@ -1350,13 +1493,18 @@ class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
           "point-mass-discrete-lattice-reset-button",
         ) as HTMLElement,
         function () {
-          scene.add_to_queue(reset_simulation);
+          scene.add_to_queue(() => {
+            reset_simulation();
+            scene.update_and_draw_linked_scenes();
+            scene.draw();
+          });
         },
       );
       resetButton.textContent = "Reset simulation";
       resetButton.style.padding = "15px";
 
       scene.draw();
+      second_scene.draw();
 
       scene.play(undefined);
     })(300, 300);

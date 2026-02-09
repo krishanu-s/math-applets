@@ -135,7 +135,11 @@ export class Sector extends FillLikeMObject {
     let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), this.start_angle, this.end_angle);
-    ctx.fill();
+    if (this.fill) {
+      ctx.globalAlpha *= this.fill_alpha;
+      ctx.fill();
+      ctx.globalAlpha /= this.fill_alpha;
+    }
   }
 }
 // A filled circle which can be clicked-and-dragged
