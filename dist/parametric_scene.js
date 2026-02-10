@@ -11033,8 +11033,8 @@ var ParametricFunction = class extends LineLikeMObject {
           anchors.get([i + 1, 1])
         ]);
         ctx.lineTo(a_x, a_y);
-        ctx.stroke();
       }
+      ctx.stroke();
     } else {
       let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
       let h1_x, h1_y, h2_x, h2_y;
@@ -11052,8 +11052,8 @@ var ParametricFunction = class extends LineLikeMObject {
           anchors.get([i + 1, 1])
         ]);
         ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
-        ctx.stroke();
       }
+      ctx.stroke();
     }
   }
 };

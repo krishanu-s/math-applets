@@ -962,21 +962,42 @@ export class WaveSimTwoDimEllipticReflector extends WaveSimTwoDimReflector {
     this.point_sources = [new PointSource(x, y, 5.0, 5.0, 0.0)];
   }
   _recalculate_foci() {
-    let [focus_1_x, focus_1_y] = [
-      Math.floor(
-        this.width / 2 +
-          Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
-      ),
-      Math.floor(this.height / 2),
-    ];
-    let [focus_2_x, focus_2_y] = [
-      Math.floor(
-        this.width / 2 -
-          Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
-      ),
-      Math.floor(this.height / 2),
-    ];
-    this.point_sources = [new PointSource(focus_1_x, focus_1_y, 5.0, 5.0, 0.0)];
+    let focus_1_x: number, focus_1_y: number;
+    let focus_2_x: number, focus_2_y: number;
+    if (this.semimajor_axis > this.semiminor_axis) {
+      [focus_1_x, focus_1_y] = [
+        Math.floor(
+          this.width / 2 +
+            Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
+        ),
+        Math.floor(this.height / 2),
+      ];
+      [focus_2_x, focus_2_y] = [
+        Math.floor(
+          this.width / 2 -
+            Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2),
+        ),
+        Math.floor(this.height / 2),
+      ];
+    } else {
+      [focus_1_x, focus_1_y] = [
+        Math.floor(this.width / 2),
+        Math.floor(
+          this.height / 2 +
+            Math.sqrt(this.semiminor_axis ** 2 - this.semimajor_axis ** 2),
+        ),
+      ];
+      [focus_2_x, focus_2_y] = [
+        Math.floor(this.width / 2),
+        Math.floor(
+          this.height / 2 -
+            Math.sqrt(this.semiminor_axis ** 2 - this.semimajor_axis ** 2),
+        ),
+      ];
+    }
+    this.point_sources = {
+      0: new PointSource(focus_1_x, focus_1_y, 5.0, 5.0, 0.0),
+    };
     this.foci = [
       [focus_1_x, focus_1_y],
       [focus_2_x, focus_2_y],

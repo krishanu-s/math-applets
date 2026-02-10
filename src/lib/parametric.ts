@@ -81,8 +81,8 @@ export class ParametricFunction extends LineLikeMObject {
           anchors.get([i + 1, 1]),
         ] as Vec2D);
         ctx.lineTo(a_x, a_y);
-        ctx.stroke();
       }
+      ctx.stroke();
     } else {
       // Generate handles
       let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
@@ -103,8 +103,8 @@ export class ParametricFunction extends LineLikeMObject {
           anchors.get([i + 1, 1]),
         ] as Vec2D);
         ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
-        ctx.stroke();
       }
+      ctx.stroke();
     }
   }
 }

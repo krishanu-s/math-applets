@@ -50,6 +50,8 @@
     <body>
         <div style="text-align: center; margin: 10px auto">
             <h1>Light, sound, and propagating waves</h1>
+            This is a brief introduction to the wave equation, with some small
+            interactive demos.
             <h3>Simulating the wave equation</h3>
             <p>
                 The <b>wave equation</b> is a partial differential equation that
@@ -230,6 +232,7 @@
             <div class="slider" id="point-mass-stiffness-slider"></div>
             <div class="slider" id="point-mass-damping-slider"></div>
             <br />
+            <h2>The one-dimensional wave equation</h2>
             <p>
                 Next, let's consider a sequence of point masses, connected by
                 springs. The leftmost and rightmost masses are fixed in place at
@@ -291,22 +294,25 @@
 
             <p>
                 Now imagine the limit of the scenario above as the number $N$ of
-                point masses goes to infinity. This is a mental model for an
-                elastic object such as a rubber band or a spring. Instead of $N$
-                displacement functions $f_1(t), f_2(t), \ldots, f_N(t)$, we now
-                have an entire continuum of them, represented by a two-variable
-                function $f(x,t)$. Writing $f''(x, t)$ is now vague: do we mean
-                the second derivative with respect to $t$, or respect to $x$? We
-                therefore write these two possible second derivatives as
-                $\frac{\partial^2}{\partial t^2}f(x,t)$ and
-                $\frac{\partial^2}{\partial x^2}f(x,t)$, respectively. The
-                sequence of $N$ differential equations from before become a
-                single partial differential equation: the
+                point masses goes to infinity.<a href="./wavesim.html#footnotes"
+                    ><sup>1</sup></a
+                >
+                This is a mental model for an elastic object such as a rubber
+                band or a spring. Instead of $N$ displacement functions $f_1(t),
+                f_2(t), \ldots, f_N(t)$, we now have an entire continuum of
+                them, represented by a two-variable function $f(x,t)$. Writing
+                $f''(x, t)$ is now vague: do we mean the second derivative with
+                respect to $t$, or respect to $x$? We therefore write these two
+                possible second derivatives as $\frac{\partial^2}{\partial
+                t^2}f(x,t)$ and $\frac{\partial^2}{\partial x^2}f(x,t)$,
+                respectively. The sequence of $N$ separate differential
+                equations for the displacement functions $f_1, f_2, \ldots, f_N$
+                become a single partial differential equation: the
                 <b>one-dimensional wave equation</b>.
             </p>
             <div id="1d-wave-equation">
-                $$\frac{\partial^2}{\partial t^2}f(x,t) =
-                k\frac{\partial^2}{\partial x^2}f(x,t)$$
+                $$\boxed{\frac{\partial^2}{\partial t^2}f(x,t) =
+                k\frac{\partial^2}{\partial x^2}f(x,t)}$$
             </div>
             <p>
                 This is a consequence of the fact that for a function $g(x)$,
@@ -317,15 +323,15 @@
             <br />
             <div style="width: 100%" class="row">
                 <div
-                    style="width: 50%"
+                    style="width: 10%"
                     class="applet-container"
                     id="point-mass-continuous-sequence"
                 ></div>
-                <div
+                <!--<div
                     style="width: 50%"
                     class="applet-container"
                     id="point-mass-continuous-sequence-diagram"
-                ></div>
+                ></div>-->
             </div>
             <br />
             <div
@@ -401,8 +407,9 @@
                 ></div>
             </div>
             <br />
+            <h2>The two-dimensional wave equation</h2>
             <p>
-                With the above examples in mind, we can now derive the
+                With the above examples in mind, we can now visualize the
                 <b>two-dimensional wave equation</b>. The sequence of point
                 masses used in the one-dimensional case is replaced by a
                 two-dimensional grid of point masses, with each mass connected
@@ -437,12 +444,133 @@
                 id="point-mass-discrete-lattice-reset-button"
             ></div>
             <br />
-            <!--TODO Depict the same animation above using a heatmap at the right.-->
-            <!--TODO Explain the discrete case differential equation.-->
-            <!--TODO Explain how this becomes a continuous case differential equation, yielding the wave equation.-->
+            <p>
+                The $z$-position of the point mass at position $(i, j)$ can be
+                written as $f_{i, j}(t)$, and satisfies the differential
+                equation $$f_{i, j}''(t) = k(f_{i-1, j}(t) - 2f_{i, j}(t) +
+                f_{i+1, j}(t)) + k(f_{i, j-1}(t) - 2f_{i, j}(t) + f_{i,
+                j+1}(t))$$ For each point mass, the force from the springs to
+                its left and right neighbors produce the first term, while the
+                springs to its top and bottom neighbors produce the second term.
+                Letting the number of point masses in each direction tend to
+                infinity, and replacing $f_{i, j}(t)$ with $f(x, y, t)$, we
+                obtain the two-dimensional wave equation
+                $$\left(\frac{\partial}{\partial t}\right)^2f =
+                \left(\frac{\partial}{\partial x}\right)^2f +
+                \left(\frac{\partial}{\partial y}\right)^2f$$
+            </p>
+            <br />
+            <p>
+                Below are a few visual demonstrations. On the left is a
+                simulation of a single point isolated point source in a medium
+                with constant $k$ value, with no reflective materials. In the
+                middle is the same simulation where a reflective conic section
+                (with the point source at its focus) has been added. On the
+                right is a simulation of two point sources separated by distance
+                $d$, recreating the visual interference patterns revealed in the
+                famous double-slit experiment.
+            </p>
             <!--TODO DEMO: Show waves emanating from a point source.-->
             <!--TODO DEMO: Set up a double-slit experiment by removing the PML layer at the bottom and setting point sources of the same frequency, exhibiting an interference pattern.-->
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 33%"
+                    class="applet-container"
+                    id="wavesim-2d-point-source"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="applet-container"
+                    id="wavesim-2d-point-source-conic"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="applet-container"
+                    id="wavesim-2d-doubleslit"
+                ></div>
+            </div>
+            <br />
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="wavesim-2d-point-source-pause-button"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="slider"
+                    id="wavesim-2d-point-source-conic-pause-button"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="wavesim-2d-doubleslit-pause-button"
+                ></div>
+            </div>
+            <br />
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="wavesim-2d-point-source-reset-button"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="wavesim-2d-point-source-conic-reset-button"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="wavesim-2d-doubleslit-reset-button"
+                ></div>
+            </div>
+
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 33%"
+                    class="slider"
+                    id="wavesim-2d-point-source-slider-1"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="slider"
+                    id="wavesim-2d-point-source-conic-slider-1"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="slider"
+                    id="wavesim-2d-doubleslit-slider-1"
+                ></div>
+            </div>
+            <br />
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 33%"
+                    class="slider"
+                    id="wavesim-2d-point-source-slider-2"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="slider"
+                    id="wavesim-2d-point-source-conic-slider-2"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="slider"
+                    id="wavesim-2d-doubleslit-slider-2"
+                ></div>
+            </div>
+            <br />
             <!--TODO DEMO: Show waves reflecting off an ellipse, analogous to the pulse wave.-->
+            <h3>Footnotes</h3>
+            <div id="footnotes">
+                <sup>1</sup>It's not technically correct to take the limit as
+                $N$ goes to infinity in a countable sense, because we want to
+                imagine an uncountably infinite number of point masses,
+                corresponding to the different values of the variable $x$. But
+                this is a quibble which doesn't interfere with the intuition.
+            </div>
         </div>
         <a href="./index.html">back to main page</a>
         <br />

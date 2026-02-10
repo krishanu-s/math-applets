@@ -470,10 +470,6 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           } else {
             throw new Error();
           }
-          // // TODO Make text change state on button press, not check simulator
-          // pauseButton.textContent = waveEquationScene.paused
-          //   ? "Pause simulation"
-          //   : "Unpause simulation";
         },
       );
       pauseButton.textContent = "Unpause simulation";
@@ -1508,6 +1504,331 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
 
       scene.play(undefined);
     })(300, 300);
+
+    (function wave_sim_2d_point_source(width: number, height: number) {
+      const dt = 0.02;
+      const xmin = -5;
+      const xmax = 5;
+      const ymin = -5;
+      const ymax = 5;
+
+      const name = "wavesim-2d-point-source";
+
+      let canvas = prepare_canvas(width, height, name);
+
+      // Create ImageData object
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+
+      // Create the simulator
+      let waveSim = new WaveSimTwoDim(width, height, dt);
+      waveSim.wave_propagation_speed = 0.1 * width;
+
+      // Create a point source
+      let a = 5.0;
+      let w = 8.0;
+      waveSim.add_point_source(
+        new PointSource(
+          Math.floor(0.5 * width),
+          Math.floor(0.5 * height),
+          w,
+          a,
+          0,
+        ),
+      );
+
+      // Initialize the scene
+      let scene = new WaveSimTwoDimHeatMapScene(canvas, waveSim, imageData);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+
+      // Make a slider which controls the frequency
+      let w_slider = Slider(
+        document.getElementById(name + "-slider-1") as HTMLElement,
+        function (val: number) {
+          scene.add_to_queue(() => {
+            let sim = scene.get_simulator();
+            sim.point_sources[0].set_w(val);
+          });
+        },
+        {
+          name: "Frequency",
+          initial_value: "5.0",
+          min: 2.0,
+          max: 20.0,
+          step: 0.05,
+        },
+      );
+      w_slider.width = 200;
+
+      // Button which pauses/unpauses the simulation
+      let pauseButton = Button(
+        document.getElementById(name + "-pause-button") as HTMLElement,
+        function () {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+
+      // Button which clears the scene
+      let clearButton = Button(
+        document.getElementById(name + "-reset-button") as HTMLElement,
+        function () {
+          scene.add_to_queue(scene.reset.bind(scene));
+        },
+      );
+      clearButton.textContent = "Clear";
+      clearButton.style.padding = "15px";
+
+      scene.draw();
+      scene.play(undefined);
+    })(250, 250);
+
+    (function wave_sim_2d_point_source_conic(width: number, height: number) {
+      const dt = 0.01;
+      const xmin = -5;
+      const xmax = 5;
+      const ymin = -5;
+      const ymax = 5;
+
+      const name = "wavesim-2d-point-source-conic";
+
+      let canvas = prepare_canvas(width, height, name);
+
+      // Create ImageData object
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+
+      // Create the simulator
+      let waveSim = new WaveSimTwoDimEllipticReflector(width, height, dt);
+      waveSim.wave_propagation_speed = 0.1 * width;
+      waveSim.set_attr("w", 6.0);
+      waveSim.remove_pml_layers();
+
+      // Initialize the scene
+      let conic = new ParametricFunction(
+        (t) => [
+          (waveSim.semimajor_axis / width) * (xmax - xmin) * Math.cos(t),
+          (waveSim.semiminor_axis / height) * (ymax - ymin) * Math.sin(t),
+        ],
+        0,
+        Math.PI * 2,
+        30,
+        {},
+      );
+      conic.set_stroke_width(0.03);
+      conic.set_alpha(0.5);
+      let scene = new WaveSimTwoDimHeatMapScene(canvas, waveSim, imageData);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+
+      scene.add("conic", conic);
+
+      // Make a slider which controls the eccentricity
+      let e_slider = Slider(
+        document.getElementById(name + "-slider-1") as HTMLElement,
+        function (val: number) {
+          scene.add_to_queue(() => {
+            let sim = scene.get_simulator();
+            sim.set_attr("semiminor_axis", val);
+            conic.set_function((t) => [
+              (waveSim.semimajor_axis / width) * (xmax - xmin) * Math.cos(t),
+              (val / height) * (ymax - ymin) * Math.sin(t),
+            ]);
+          });
+        },
+        {
+          name: "Vertical size",
+          initial_value: "60",
+          min: 30,
+          max: 100,
+          step: 1,
+        },
+      );
+      e_slider.width = 200;
+
+      // Make a slider which controls the frequency
+      let w_slider = Slider(
+        document.getElementById(name + "-slider-2") as HTMLElement,
+        function (val: number) {
+          scene.add_to_queue(() => {
+            let sim = scene.get_simulator();
+            sim.set_attr("w", val);
+          });
+        },
+        {
+          name: "Frequency",
+          initial_value: "6.0",
+          min: 3.0,
+          max: 10.0,
+          step: 0.05,
+        },
+      );
+      w_slider.width = 200;
+
+      // Button which pauses/unpauses the simulation
+      let pauseButton = Button(
+        document.getElementById(name + "-pause-button") as HTMLElement,
+        function () {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+
+      // Button which clears the scene
+      let clearButton = Button(
+        document.getElementById(name + "-reset-button") as HTMLElement,
+        function () {
+          scene.add_to_queue(scene.reset.bind(scene));
+        },
+      );
+      clearButton.textContent = "Clear";
+      clearButton.style.padding = "15px";
+
+      scene.get_simulator().set_boundary_conditions(waveSim.vals, 0);
+      scene.draw();
+      scene.play(undefined);
+    })(250, 250);
+
+    (function wave_sim_2d_doubleslit(width: number, height: number) {
+      const dt = 0.02;
+      const xmin = -5;
+      const xmax = 5;
+      const ymin = -5;
+      const ymax = 5;
+
+      const name = "wavesim-2d-doubleslit";
+
+      let canvas = prepare_canvas(width, height, name);
+
+      // Create ImageData object
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+
+      // Create the simulator
+      let waveSim = new WaveSimTwoDim(width, height, dt);
+      waveSim.wave_propagation_speed = 0.1 * width;
+
+      // *** Set up the double slit experiment
+      waveSim.remove_pml_layers();
+      waveSim.set_pml_layer(true, true, 0.2, 200.0);
+      waveSim.set_pml_layer(true, false, 0.2, 200.0);
+      waveSim.set_pml_layer(false, true, 0.2, 200.0);
+
+      // Create a plane wave at the top
+      let a = 4.0;
+      let w = 8.0;
+      for (let x = 0; x < width; x++) {
+        waveSim.add_point_source(new PointSource(x, 0, w, a, 0));
+      }
+
+      // Set up two slits by putting reflectors everywhere else on a horizontal line
+      let slit_dist = 0.2;
+      let slit_width = 0.02;
+      let wall_height = 0.1;
+      function make_apertures(
+        slit_dist: number,
+        slit_width: number,
+      ): Array<PointSource> {
+        let sources: Array<PointSource> = [];
+        for (let x = 0; x < width; x++) {
+          if (Math.abs(x / width - (0.5 - slit_dist / 2)) < slit_width) {
+          } else if (Math.abs(x / width - (0.5 + slit_dist / 2)) < slit_width) {
+          } else {
+            sources.push(
+              new PointSource(x, Math.floor(height * wall_height), 0, 0, 0),
+            );
+          }
+        }
+        return sources;
+      }
+      let sources = make_apertures(slit_dist, slit_width);
+      for (let source of sources) {
+        waveSim.add_point_source(source);
+      }
+
+      // Initialize the scene
+      let scene = new WaveSimTwoDimHeatMapScene(canvas, waveSim, imageData);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+
+      // Make a slider which controls the slit distance (need to fix this!)
+      // let w_slider = Slider(
+      //   document.getElementById(name + "-slider-1") as HTMLElement,
+      //   function (val: number) {
+      //     scene.add_to_queue(() => {
+      //       let sim = scene.get_simulator();
+      //       sim.get_
+      //       while (Object.keys(sim.point_sources).length > width) {
+      //         sim.remove_point_source(width);
+      //       }
+      //       for (let source of make_apertures(val, slit_width)) {
+      //         sim.add_point_source(source);
+      //       }
+      //     });
+      //   },
+      //   {
+      //     name: "Distance between point sources",
+      //     initial_value: "4.0",
+      //     min: 1.0,
+      //     max: 9.0,
+      //     step: 0.05,
+      //   },
+      // );
+      // w_slider.width = 200;
+
+      // Button which pauses/unpauses the simulation
+      let pauseButton = Button(
+        document.getElementById(name + "-pause-button") as HTMLElement,
+        function () {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+
+      // Button which clears the scene
+      let clearButton = Button(
+        document.getElementById(name + "-reset-button") as HTMLElement,
+        function () {
+          scene.add_to_queue(scene.reset.bind(scene));
+        },
+      );
+      clearButton.textContent = "Clear";
+      clearButton.style.padding = "15px";
+
+      scene.draw();
+      scene.play(undefined);
+    })(250, 250);
 
     // (function two_dim_wave_eq_point_source(width: number, height: number) {
     //   // TODO

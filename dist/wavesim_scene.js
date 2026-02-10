@@ -11875,8 +11875,8 @@ var ParametricFunction = class extends LineLikeMObject {
           anchors.get([i + 1, 1])
         ]);
         ctx.lineTo(a_x, a_y);
-        ctx.stroke();
       }
+      ctx.stroke();
     } else {
       let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
       let h1_x, h1_y, h2_x, h2_y;
@@ -11894,8 +11894,8 @@ var ParametricFunction = class extends LineLikeMObject {
           anchors.get([i + 1, 1])
         ]);
         ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
-        ctx.stroke();
       }
+      ctx.stroke();
     }
   }
 };
@@ -12859,6 +12859,270 @@ var WaveSimTwoDim = class extends Simulator {
         this.clamp_value
       );
     }
+  }
+};
+var WaveSimTwoDimReflector = class extends WaveSimTwoDim {
+  constructor(width, height, dt) {
+    super(width, height, dt);
+    // For each point p in the domain, and each possible direction N, S, E, W,
+    // if the adjacent grid point to p in the chosen direction lies outside
+    // of the domain, then we note down the distance to the region boundary in that direction.
+    // Otherwise, we note the number 1 (which is the maximum possible value).
+    this.x_pos_mask = new Array(this.size()).fill(1);
+    this.x_neg_mask = new Array(this.size()).fill(1);
+    this.y_pos_mask = new Array(this.size()).fill(1);
+    this.y_neg_mask = new Array(this.size()).fill(1);
+    this._recalculate_masks();
+  }
+  set_attr(name, val) {
+    super.set_attr(name, val);
+    this._recalculate_masks();
+    this.zero_outside_region();
+  }
+  // *** Encodes geometry ***
+  // Returns whether the point (x, y) in array coordinates is inside the domain.
+  inside_region(x, y) {
+    return true;
+  }
+  // Helper functions which return the fraction of leeway right, left, up and down
+  // from the given array lattice point to the boundary.
+  _x_plus(x, y) {
+    return 1;
+  }
+  _x_minus(x, y) {
+    return 1;
+  }
+  _y_plus(x, y) {
+    return 1;
+  }
+  _y_minus(x, y) {
+    return 1;
+  }
+  // Recalculate mask arrays based on current geometry
+  _recalculate_masks() {
+    let ind;
+    for (let y_arr = 0; y_arr < this.height; y_arr++) {
+      for (let x_arr = 0; x_arr < this.width; x_arr++) {
+        ind = this.index(x_arr, y_arr);
+        [this.x_pos_mask[ind], this.x_neg_mask[ind]] = this._calc_bdy_dists_x(
+          x_arr,
+          y_arr
+        );
+        [this.y_pos_mask[ind], this.y_neg_mask[ind]] = this._calc_bdy_dists_y(
+          x_arr,
+          y_arr
+        );
+      }
+    }
+  }
+  // [0, 0] / [1, 1] means an exterior / interior point
+  // A value between 0 and 1 in the first coordinate means moving to the right crosses the boundary
+  // A value between 0 and 1 in the second coordinate means moving to the left crosses the boundary
+  _calc_bdy_dists_x(x_arr, y_arr) {
+    if (!this.inside_region(x_arr, y_arr)) {
+      return [0, 0];
+    } else {
+      let a_pos, a_neg;
+      if (!this.inside_region(x_arr + 1, y_arr)) {
+        a_pos = this._x_plus(x_arr, y_arr);
+      } else {
+        a_pos = 1;
+      }
+      if (!this.inside_region(x_arr - 1, y_arr)) {
+        a_neg = this._x_minus(x_arr, y_arr);
+      } else {
+        a_neg = 1;
+      }
+      return [a_pos, a_neg];
+    }
+  }
+  _calc_bdy_dists_y(x_arr, y_arr) {
+    if (!this.inside_region(x_arr, y_arr)) {
+      return [0, 0];
+    } else {
+      let a_plus, a_minus;
+      if (!this.inside_region(x_arr, y_arr + 1)) {
+        a_plus = this._y_plus(x_arr, y_arr);
+      } else {
+        a_plus = 1;
+      }
+      if (!this.inside_region(x_arr, y_arr - 1)) {
+        a_minus = this._y_minus(x_arr, y_arr);
+      } else {
+        a_minus = 1;
+      }
+      return [a_plus, a_minus];
+    }
+  }
+  // Sets all points outside the region to 0
+  zero_outside_region() {
+    let ind;
+    for (let y_arr = 0; y_arr < this.height; y_arr++) {
+      for (let x_arr = 0; x_arr < this.width; x_arr++) {
+        if (!this.inside_region(x_arr, y_arr)) {
+          ind = this.index(x_arr, y_arr);
+          this.vals[ind] = 0;
+          this.vals[ind + this.size()] = 0;
+          this.vals[ind + 2 * this.size()] = 0;
+          this.vals[ind + 3 * this.size()] = 0;
+        }
+      }
+    }
+  }
+  // *** Called during simulation ***
+  get_bdy_dists_x(x_arr, y_arr) {
+    return [
+      this.x_pos_mask[this.index(x_arr, y_arr)],
+      this.x_neg_mask[this.index(x_arr, y_arr)]
+    ];
+  }
+  get_bdy_dists_y(x_arr, y_arr) {
+    return [
+      this.y_pos_mask[this.index(x_arr, y_arr)],
+      this.y_neg_mask[this.index(x_arr, y_arr)]
+    ];
+  }
+  d_x_entry(arr, x, y) {
+    let [a_plus, a_minus] = this.get_bdy_dists_x(x, y);
+    if (a_plus == 0 && a_minus == 0) {
+      return 0;
+    } else if (a_plus == 1 && a_minus == 1) {
+      return super.d_x_entry(arr, x, y);
+    } else {
+      return (a_minus * this._two_dim_state.d_x_plus(arr, x, y) / a_plus + a_plus * this._two_dim_state.d_x_minus(arr, x, y) / a_minus) / (a_minus + a_plus);
+    }
+  }
+  d_y_entry(arr, x, y) {
+    let [a_plus, a_minus] = this.get_bdy_dists_y(x, y);
+    if (a_plus == 0 && a_minus == 0) {
+      return 0;
+    } else if (a_plus == 1 && a_minus == 1) {
+      return super.d_y_entry(arr, x, y);
+    } else {
+      return (a_minus * this._two_dim_state.d_y_plus(arr, x, y) / a_plus + a_plus * this._two_dim_state.d_y_minus(arr, x, y) / a_minus) / (a_minus + a_plus);
+    }
+  }
+  // Calculates an entry of (d/dx)(d/dx)(array)
+  l_x_entry(arr, x, y) {
+    let [a_plus, a_minus] = this.get_bdy_dists_x(x, y);
+    if (a_plus == 0 && a_minus == 0) {
+      return 0;
+    } else if (a_plus == 1 && a_minus == 1) {
+      return super.l_x_entry(arr, x, y);
+    } else {
+      return (this._two_dim_state.d_x_plus(arr, x, y) / a_plus - this._two_dim_state.d_x_minus(arr, x, y) / a_minus) / ((a_minus + a_plus) / 2);
+    }
+  }
+  // Calculates an entry of (d/dy)(d/dy)(array)
+  l_y_entry(arr, x, y) {
+    let [a_plus, a_minus] = this.get_bdy_dists_y(x, y);
+    if (a_plus == 0 && a_minus == 0) {
+      return 0;
+    } else if (a_plus == 1 && a_minus == 1) {
+      return super.l_y_entry(arr, x, y);
+    } else {
+      return (this._two_dim_state.d_y_plus(arr, x, y) / a_plus - this._two_dim_state.d_y_minus(arr, x, y) / a_minus) / ((a_minus + a_plus) / 2);
+    }
+  }
+};
+var WaveSimTwoDimEllipticReflector = class extends WaveSimTwoDimReflector {
+  constructor(width, height, dt) {
+    super(width, height, dt);
+    // TODO: Ensure PML layer doesn't interfere with the region.
+    this.semimajor_axis = 80;
+    this.semiminor_axis = 60;
+    this.w = 5;
+    // Frequency
+    this.a = 5;
+    // Amplitude
+    this.foci = [
+      [
+        Math.floor(
+          this.width / 2 + Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2)
+        ),
+        Math.floor(this.height / 2)
+      ],
+      [
+        Math.floor(
+          this.width / 2 - Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2)
+        ),
+        Math.floor(this.height / 2)
+      ]
+    ];
+    let [x, y] = this.foci[0];
+    this.point_sources = [new PointSource(x, y, 5, 5, 0)];
+  }
+  _recalculate_foci() {
+    let focus_1_x, focus_1_y;
+    let focus_2_x, focus_2_y;
+    if (this.semimajor_axis > this.semiminor_axis) {
+      [focus_1_x, focus_1_y] = [
+        Math.floor(
+          this.width / 2 + Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2)
+        ),
+        Math.floor(this.height / 2)
+      ];
+      [focus_2_x, focus_2_y] = [
+        Math.floor(
+          this.width / 2 - Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2)
+        ),
+        Math.floor(this.height / 2)
+      ];
+    } else {
+      [focus_1_x, focus_1_y] = [
+        Math.floor(this.width / 2),
+        Math.floor(
+          this.height / 2 + Math.sqrt(this.semiminor_axis ** 2 - this.semimajor_axis ** 2)
+        )
+      ];
+      [focus_2_x, focus_2_y] = [
+        Math.floor(this.width / 2),
+        Math.floor(
+          this.height / 2 - Math.sqrt(this.semiminor_axis ** 2 - this.semimajor_axis ** 2)
+        )
+      ];
+    }
+    this.point_sources = {
+      0: new PointSource(focus_1_x, focus_1_y, 5, 5, 0)
+    };
+    this.foci = [
+      [focus_1_x, focus_1_y],
+      [focus_2_x, focus_2_y]
+    ];
+  }
+  set_attr(name, val) {
+    let p = this.point_sources[0];
+    if (name == "w") {
+      p.set_w(val);
+    } else if (name == "a") {
+      p.set_a(val);
+    } else {
+      this._recalculate_foci();
+    }
+    super.set_attr(name, val);
+  }
+  inside_region(x_arr, y_arr) {
+    return ((x_arr - this.width / 2) / this.semimajor_axis) ** 2 + ((y_arr - this.height / 2) / this.semiminor_axis) ** 2 < 1;
+  }
+  _x_plus(x, y) {
+    return Math.abs(
+      this.semimajor_axis * Math.sqrt(1 - ((y - this.height / 2) / this.semiminor_axis) ** 2) - x + this.width / 2
+    );
+  }
+  _x_minus(x, y) {
+    return Math.abs(
+      this.semimajor_axis * Math.sqrt(1 - ((y - this.height / 2) / this.semiminor_axis) ** 2) + x - this.width / 2
+    );
+  }
+  _y_plus(x, y) {
+    return Math.abs(
+      this.semiminor_axis * Math.sqrt(1 - ((x - this.width / 2) / this.semimajor_axis) ** 2) - y + this.height / 2
+    );
+  }
+  _y_minus(x, y) {
+    return Math.abs(
+      this.semiminor_axis * Math.sqrt(1 - ((x - this.width / 2) / this.semimajor_axis) ** 2) + y - this.height / 2
+    );
   }
 };
 var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
@@ -14974,5 +15238,245 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
       second_scene.draw();
       scene.play(void 0);
     })(300, 300);
+    (function wave_sim_2d_point_source(width, height) {
+      const dt = 0.02;
+      const xmin = -5;
+      const xmax = 5;
+      const ymin = -5;
+      const ymax = 5;
+      const name = "wavesim-2d-point-source";
+      let canvas = prepare_canvas(width, height, name);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+      let waveSim = new WaveSimTwoDim(width, height, dt);
+      waveSim.wave_propagation_speed = 0.1 * width;
+      let a = 5;
+      let w = 8;
+      waveSim.add_point_source(
+        new PointSource(
+          Math.floor(0.5 * width),
+          Math.floor(0.5 * height),
+          w,
+          a,
+          0
+        )
+      );
+      let scene = new WaveSimTwoDimHeatMapScene(canvas, waveSim, imageData);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      let w_slider = Slider(
+        document.getElementById(name + "-slider-1"),
+        function(val) {
+          scene.add_to_queue(() => {
+            let sim = scene.get_simulator();
+            sim.point_sources[0].set_w(val);
+          });
+        },
+        {
+          name: "Frequency",
+          initial_value: "5.0",
+          min: 2,
+          max: 20,
+          step: 0.05
+        }
+      );
+      w_slider.width = 200;
+      let pauseButton = Button(
+        document.getElementById(name + "-pause-button"),
+        function() {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+      let clearButton = Button(
+        document.getElementById(name + "-reset-button"),
+        function() {
+          scene.add_to_queue(scene.reset.bind(scene));
+        }
+      );
+      clearButton.textContent = "Clear";
+      clearButton.style.padding = "15px";
+      scene.draw();
+      scene.play(void 0);
+    })(250, 250);
+    (function wave_sim_2d_point_source_conic(width, height) {
+      const dt = 0.01;
+      const xmin = -5;
+      const xmax = 5;
+      const ymin = -5;
+      const ymax = 5;
+      const name = "wavesim-2d-point-source-conic";
+      let canvas = prepare_canvas(width, height, name);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+      let waveSim = new WaveSimTwoDimEllipticReflector(width, height, dt);
+      waveSim.wave_propagation_speed = 0.1 * width;
+      waveSim.set_attr("w", 6);
+      waveSim.remove_pml_layers();
+      let conic = new ParametricFunction(
+        (t) => [
+          waveSim.semimajor_axis / width * (xmax - xmin) * Math.cos(t),
+          waveSim.semiminor_axis / height * (ymax - ymin) * Math.sin(t)
+        ],
+        0,
+        Math.PI * 2,
+        30,
+        {}
+      );
+      conic.set_stroke_width(0.03);
+      conic.set_alpha(0.5);
+      let scene = new WaveSimTwoDimHeatMapScene(canvas, waveSim, imageData);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.add("conic", conic);
+      let e_slider = Slider(
+        document.getElementById(name + "-slider-1"),
+        function(val) {
+          scene.add_to_queue(() => {
+            let sim = scene.get_simulator();
+            sim.set_attr("semiminor_axis", val);
+            conic.set_function((t) => [
+              waveSim.semimajor_axis / width * (xmax - xmin) * Math.cos(t),
+              val / height * (ymax - ymin) * Math.sin(t)
+            ]);
+          });
+        },
+        {
+          name: "Vertical size",
+          initial_value: "60",
+          min: 30,
+          max: 100,
+          step: 1
+        }
+      );
+      e_slider.width = 200;
+      let w_slider = Slider(
+        document.getElementById(name + "-slider-2"),
+        function(val) {
+          scene.add_to_queue(() => {
+            let sim = scene.get_simulator();
+            sim.set_attr("w", val);
+          });
+        },
+        {
+          name: "Frequency",
+          initial_value: "6.0",
+          min: 3,
+          max: 10,
+          step: 0.05
+        }
+      );
+      w_slider.width = 200;
+      let pauseButton = Button(
+        document.getElementById(name + "-pause-button"),
+        function() {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+      let clearButton = Button(
+        document.getElementById(name + "-reset-button"),
+        function() {
+          scene.add_to_queue(scene.reset.bind(scene));
+        }
+      );
+      clearButton.textContent = "Clear";
+      clearButton.style.padding = "15px";
+      scene.get_simulator().set_boundary_conditions(waveSim.vals, 0);
+      scene.draw();
+      scene.play(void 0);
+    })(250, 250);
+    (function wave_sim_2d_doubleslit(width, height) {
+      const dt = 0.02;
+      const xmin = -5;
+      const xmax = 5;
+      const ymin = -5;
+      const ymax = 5;
+      const name = "wavesim-2d-doubleslit";
+      let canvas = prepare_canvas(width, height, name);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+      let waveSim = new WaveSimTwoDim(width, height, dt);
+      waveSim.wave_propagation_speed = 0.1 * width;
+      waveSim.remove_pml_layers();
+      waveSim.set_pml_layer(true, true, 0.2, 200);
+      waveSim.set_pml_layer(true, false, 0.2, 200);
+      waveSim.set_pml_layer(false, true, 0.2, 200);
+      let a = 4;
+      let w = 8;
+      for (let x = 0; x < width; x++) {
+        waveSim.add_point_source(new PointSource(x, 0, w, a, 0));
+      }
+      let slit_dist = 0.2;
+      let slit_width = 0.02;
+      let wall_height = 0.1;
+      function make_apertures(slit_dist2, slit_width2) {
+        let sources2 = [];
+        for (let x = 0; x < width; x++) {
+          if (Math.abs(x / width - (0.5 - slit_dist2 / 2)) < slit_width2) {
+          } else if (Math.abs(x / width - (0.5 + slit_dist2 / 2)) < slit_width2) {
+          } else {
+            sources2.push(
+              new PointSource(x, Math.floor(height * wall_height), 0, 0, 0)
+            );
+          }
+        }
+        return sources2;
+      }
+      let sources = make_apertures(slit_dist, slit_width);
+      for (let source of sources) {
+        waveSim.add_point_source(source);
+      }
+      let scene = new WaveSimTwoDimHeatMapScene(canvas, waveSim, imageData);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      let pauseButton = Button(
+        document.getElementById(name + "-pause-button"),
+        function() {
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        }
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
+      let clearButton = Button(
+        document.getElementById(name + "-reset-button"),
+        function() {
+          scene.add_to_queue(scene.reset.bind(scene));
+        }
+      );
+      clearButton.textContent = "Clear";
+      clearButton.style.padding = "15px";
+      scene.draw();
+      scene.play(void 0);
+    })(250, 250);
   });
 })();
