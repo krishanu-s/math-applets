@@ -4,8 +4,13 @@
         <meta charset="UTF-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+        />
         <title>interactive demo</title>
         <base href="." />
+        <!-- MathJax -->
         <script>
             MathJax = {
                 tex: {
@@ -17,6 +22,14 @@
             defer
             src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
         ></script>
+        <!-- KaTeX JS -->
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+        ></script>
+        <!-- html2canvas -->
+        <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+        <!--Script for this scene-->
         <script type="module" src="interactive_scene.js"></script>
         <style>
             .applet-container {
@@ -63,6 +76,14 @@
             <div class="applet-container" id="draggable-dot-bezier"></div>
             <br />
             <div class="slider" id="draggable-dot-bezier-num-slider"></div>
+            <br />
+
+            <h3>LaTeX</h3>
+            <p>Testing Latex.</p>
+            <br />
+            <div class="applet-container" id="latex-scene"></div>
+            <br />
+            <div class="slider" id="latex-scene-slider-1"></div>
             <br />
         </div>
 
