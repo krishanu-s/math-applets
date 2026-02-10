@@ -1855,7 +1855,7 @@ var Arcball = class {
       latitude_line.link_mobject(globe);
       scene.add("latitude_line", latitude_line);
       let zoomSlider = Slider(
-        document.getElementById("three-d-globe-zoom-slider"),
+        document.getElementById("three-d-globe-slider-1"),
         function(value) {
           zoom_ratio = value;
           scene.set_zoom(value);
@@ -1869,9 +1869,8 @@ var Arcball = class {
           step: 0.02
         }
       );
-      zoomSlider.value = `1.0`;
       let latitudeSlider = Slider(
-        document.getElementById("three-d-globe-latitude-slider"),
+        document.getElementById("three-d-globe-slider-2"),
         function(value) {
           theta = Math.PI * value / 180;
           latitude_line = scene.get_mobj(
@@ -1892,7 +1891,6 @@ var Arcball = class {
           step: 1
         }
       );
-      zoomSlider.value = `1.0`;
       scene.draw();
     })(500, 500);
   });
