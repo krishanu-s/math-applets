@@ -444,7 +444,7 @@ import { pick_random_step } from "./random_walk_scene.js";
 
       // Add a slider to control the zoom level
       let zoomSlider = Slider(
-        document.getElementById("three-d-globe-zoom-slider") as HTMLElement,
+        document.getElementById("three-d-globe-slider-1") as HTMLElement,
         function (value: number) {
           zoom_ratio = value;
           scene.set_zoom(value);
@@ -458,11 +458,10 @@ import { pick_random_step } from "./random_walk_scene.js";
           step: 0.02,
         },
       );
-      zoomSlider.value = `1.0`;
 
       // Add a slider to control the latitude level
       let latitudeSlider = Slider(
-        document.getElementById("three-d-globe-latitude-slider") as HTMLElement,
+        document.getElementById("three-d-globe-slider-2") as HTMLElement,
         function (value: number) {
           theta = (Math.PI * value) / 180;
           latitude_line = scene.get_mobj(
@@ -483,7 +482,6 @@ import { pick_random_step } from "./random_walk_scene.js";
           step: 1,
         },
       );
-      zoomSlider.value = `1.0`;
 
       scene.draw();
     })(500, 500);
