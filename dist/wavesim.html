@@ -181,7 +181,7 @@
             </p>
             <p>
                 First, let's decipher the differential equation above into plain
-                English, by thinking from first principles.
+                English.
             </p>
             <h2>Origin of the wave equation: vibrating springs</h2>
 
@@ -212,6 +212,7 @@
                 time. This forward-evolution through time is analogous to the
                 forward-evolution of the wave equation.
             </p>
+            <!-- TODO Add written LaTeX into the diagram showing f(t) alongside a line segment tracking the length of the spring.-->
 
             <br />
             <div style="width: 100%" class="row">
@@ -247,11 +248,12 @@
                 because the shortest path between two points is a line.
             </p>
             <p>
-                Each point mass experiences a force from both sides. The force
-                exerted from the left on the $i$-th mass has vertical component
-                equal to $-k(f_i(t) - f_{i-1}(t))$, where $k$ is the spring
-                constant. Similarly, the force exerted from the right on the
-                $i$-th mass has vertical component equal to $-k(f_i(t) -
+                Each point mass experiences a force from both sides. If we
+                suppose that the equilibrium length of each spring is zero, then
+                the force exerted from the left on the $i$-th mass has vertical
+                component equal to $-k(f_i(t) - f_{i-1}(t))$, where $k$ is the
+                spring constant. Similarly, the force exerted from the right on
+                the $i$-th mass has vertical component equal to $-k(f_i(t) -
                 f_{i+1}(t))$. Added together, we get the equations
             </p>
             <div id="1d-discrete-wave-equation">
@@ -259,8 +261,10 @@
                 k(f_1(t)-2f_2(t) + f_3(t))$$ $$f_3''(t) = k(f_2(t)-2f_3(t)+
                 f_4(t))$$ $$\vdots$$ $$f_N''(t) = k(f_{N-1}(t)-2f_N(t)+ R)$$
             </div>
-            <!--TODO Need to address the normalization by distance and strength of the springs.-->
-            <!--TODO Add a force diagram explaining this, showing that the pull is towards the midpoint. -->
+
+            <!-- TODO As in the 0D case, add $f_1, f_2, \ldots, f_N$ into the diagram as LaTeXMObjects which track with displacement -->
+            <!-- TODO Add a force diagram which breaks the force from the spring into horizontal and vertical components and does the math to get the equations above. -->
+            <!-- TODO Add a force diagram explaining this, showing that the pull is towards the midpoint.  -->
             <br />
             <div style="width: 100%" class="row">
                 <div
@@ -319,7 +323,7 @@
                 the second derivative can be expressed as $$g''(x) =
                 \lim\limits_{h \to 0}\frac{g(x+h) - 2g(x) + g(x-h)}{h^2}$$
             </p>
-            <!--TODO This aside deserves a visualizer-->
+            <!-- TODO Need to address the normalization by distance and strength of the springs, as it's relevant as $N \to \infty$. Maybe another visualizer. -->
             <br />
             <div style="width: 100%" class="row">
                 <div
@@ -327,11 +331,6 @@
                     class="applet-container"
                     id="point-mass-continuous-sequence"
                 ></div>
-                <!--<div
-                    style="width: 50%"
-                    class="applet-container"
-                    id="point-mass-continuous-sequence-diagram"
-                ></div>-->
             </div>
             <br />
             <div
@@ -470,8 +469,6 @@
                 $d$, recreating the visual interference patterns revealed in the
                 famous double-slit experiment.
             </p>
-            <!--TODO DEMO: Show waves emanating from a point source.-->
-            <!--TODO DEMO: Set up a double-slit experiment by removing the PML layer at the bottom and setting point sources of the same frequency, exhibiting an interference pattern.-->
             <div style="width: 100%" class="row">
                 <div
                     style="width: 33%"
@@ -562,7 +559,6 @@
                 ></div>
             </div>
             <br />
-            <!--TODO DEMO: Show waves reflecting off an ellipse, analogous to the pulse wave.-->
             <h3>Footnotes</h3>
             <div id="footnotes">
                 <sup>1</sup>It's not technically correct to take the limit as

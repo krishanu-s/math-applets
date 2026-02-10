@@ -513,7 +513,6 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
       }
 
       // Make the scene
-      // TODO Make the trajectories play in real-time.
       let scene = new Scene(canvas);
       scene.set_frame_lims([-5, 5], [-5, 5]);
 
@@ -733,7 +732,7 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
                 if (conic.eccentricity == 1) {
                   current_thetas[i] = Math.PI;
                 } else {
-                  // TODO Calculate the angle in a more robust way, using local partial derivatives of the curve.
+                  // TODO If we want to be honest, we could calculate the angle in a more robust way, using local partial derivatives of the curve.
                   current_thetas[i] = vec2_angle(
                     vec2_sub(
                       conic.other_focus as Vec2D,
@@ -1149,7 +1148,6 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
 
     // Use the same scene as before, but with a large number of point masses (say, 50) drawn
     // as a Bezier-curve.
-    // - TODO Add a reset button to reset the simulation.
     (function point_mass_continuous_sequence(
       width: number,
       height: number,
@@ -1233,7 +1231,6 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
       scene.play(undefined);
     })(300, 300, 50);
 
-    // TODO
     // - A one-dimensional wave example with PML at the ends, where a point in the middle
     // is a timelike wave-source. Demonstrates how the timelike oscillation becomes spacelike oscillation.
     // - A one-dimensional example bounded at both endpoints with an impulse wave traveling back
@@ -1329,7 +1326,6 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
       let sim = scene.sim();
 
       // Set the attributes of the simulator
-      // TODO Add PML layers at the boundaries.
       sim.set_attr("wave_propagation_speed", 3.0);
       sim.set_attr("damping", 0.0);
       sim.set_pml_layer(true, 0.3, 100);
@@ -1378,10 +1374,7 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
     })(300, 300, 60);
 
     // *** TWO-DIMENSIONAL WAVE EQUATION ***
-    // A 2D lattice of point masses (say, 5x5), oscillating along a third dimension.
-    // - TODO Indicate height using color, to parallel the heatmap version.
-    // - TODO Add draggable 3D dots. When the cursor lies inside multiple dots,
-    //   drag the one with lowest depth.
+    // A 2D lattice of point masses, oscillating along a third dimension.
     (function point_mass_discrete_lattice(width: number, height: number) {
       // Prepare the canvas and context for drawing
       let canvas = prepare_canvas(width, height, "point-mass-discrete-lattice");
@@ -1829,143 +1822,5 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
       scene.draw();
       scene.play(undefined);
     })(250, 250);
-
-    // (function two_dim_wave_eq_point_source(width: number, height: number) {
-    //   // TODO
-    //   // Prepare the canvas and context for drawing
-    //   let canvas = prepare_canvas(width, height, "point-mass-discrete-lattice");
-    //   const ctx = canvas.getContext("2d");
-    //   if (!ctx) {
-    //     throw new Error("Failed to get 2D context");
-    //   }
-    //   const imageData = ctx.createImageData(width, height);
-
-    //   // Prepare the simulator and scene
-    //   let sim = new WaveSimTwoDim(width, height, 0.02);
-    //   // sim.remove_pml_layers();
-
-    //   let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
-    //   scene.set_frame_lims([-5, 5], [-5, 5]);
-
-    //   sim.set_attr("wave_propagation_speed", 20.0);
-    //   let w = 8.0;
-    //   let a = 8.0;
-    //   let [px, py] = scene.v2c([0, 0]);
-    //   sim.add_point_source(new PointSource(px, py, w, a, 0.0));
-
-    //   // Button which pauses/unpauses the simulation
-    //   let pauseButton = Button(
-    //     document.getElementById(
-    //       "point-mass-discrete-lattice-pause-button",
-    //     ) as HTMLElement,
-    //     function () {
-    //       scene.add_to_queue(scene.toggle_pause.bind(scene));
-    //       if (pauseButton.textContent == "Pause simulation") {
-    //         pauseButton.textContent = "Unpause simulation";
-    //       } else if (pauseButton.textContent == "Unpause simulation") {
-    //         pauseButton.textContent = "Pause simulation";
-    //       } else {
-    //         throw new Error();
-    //       }
-    //     },
-    //   );
-    //   pauseButton.textContent = "Unpause simulation";
-    //   pauseButton.style.padding = "15px";
-
-    //   scene.draw();
-
-    //   scene.play(undefined);
-    // })(200, 200);
-
-    // TODO A heatmap demonstration of a single point source
-
-    // *** DEMONSTRATIONS ***
-
-    // TODO A heatmap demonstration of diffraction through a single aperture
-    // TODO A heatmap demonstration of the double-slit experiment: diffraction through an aperture
-    // TODO A heatmap demonstration of reflection within a conic section
-
-    // *** EIGENFUNCTIONS *** (TODO FUTURE)
-
-    // TODO A depiction of the eigenfunctions for a one-dimensional bounded system
-    // TODO A heatmap demonstration of eigenfunctions within a circular region
-
-    // // Some animation to depict reflective elements.
-    // // Some animation to depict point sources and line sources.
-    // (function line_source_heatmap(width: number, height: number) {
-    //   // Prepare the canvas and context for drawing
-    //   let canvas = prepare_canvas(width, height, "line-source-heatmap");
-    //   const ctx = canvas.getContext("2d");
-    //   if (!ctx) {
-    //     throw new Error("Failed to get 2D context");
-    //   }
-    //   const imageData = ctx.createImageData(width, height);
-
-    //   // Prepare the simulator and scene
-    //   const ratio = 0.5;
-    //   class WaveSimTwoDimDiffraction extends WaveSimTwoDim {
-    //     // Has different wave propagation speed in two different media.
-    //     wps(x: number, y: number): number {
-    //       if (y < height / 2) {
-    //         return this.wave_propagation_speed * ratio;
-    //       } else {
-    //         return this.wave_propagation_speed;
-    //       }
-    //     }
-    //   }
-
-    //   let sim = new WaveSimTwoDimDiffraction(width, height, 0.01);
-
-    //   let scene = new WaveSimTwoDimHeatMapScene(canvas, sim, imageData);
-    //   scene.set_frame_lims([-5, 5], [-5, 5]);
-
-    //   const theta = Math.PI / 6; // Angle off vertical along which wave travels
-    //   let alpha = Math.asin(ratio * Math.sin(theta));
-    //   // Angle off vertical along which wave travels after refraction
-    //   sim.set_attr("wave_propagation_speed", 20.0);
-    //   let w = 4.0;
-    //   let a = 5.0;
-
-    //   // Turn off PML layers along the bottom and left of the scene
-    //   sim.remove_pml_layers();
-    //   sim.set_pml_layer(true, true, 0.2, 200.0);
-    //   sim.set_pml_layer(false, true, 0.2, 200.0);
-
-    //   // Set wave source at the bottom and left of the scene
-    //   // TODO Calculate correct amplitude based on angle of wave
-    //   let t;
-    //   for (let px = 0; px <= width - 10; px++) {
-    //     t = (px * Math.sin(theta)) / 20.0;
-    //     let p = new PointSource(px, height - 1, w, a, t);
-    //     p.set_turn_on_time(t);
-    //     sim.add_point_source(p);
-    //   }
-    //   for (let py = 10; py <= height; py++) {
-    //     if (py < height / 2) {
-    //       t = (py * Math.cos(theta)) / 20.0;
-    //     } else {
-    //       t =
-    //         ((height / 2) * Math.cos(theta) +
-    //           ((py - height / 2) * Math.cos(alpha)) / ratio) /
-    //         20.0;
-    //     }
-    //     let p = new PointSource(0, height - 1 - py, w, a, t);
-    //     p.set_turn_on_time(t);
-    //     sim.add_point_source(p);
-    //   }
-
-    //   // Button which pauses/unpauses the simulation
-    //   let pauseButton = PauseButton(
-    //     document.getElementById(
-    //       "line-source-heatmap-pause-button",
-    //     ) as HTMLElement,
-    //     scene,
-    //   );
-
-    //   scene.draw();
-
-    //   // Start playing
-    //   scene.play(undefined);
-    // })(200, 200);
   });
 })();
