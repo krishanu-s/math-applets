@@ -453,7 +453,7 @@ function three_d_globe(width: number, height: number) {
 
       // Slider which controls the latitude on both
       let latitudeSlider = Slider(
-        document.getElementById("latitude-slider") as HTMLElement,
+        document.getElementById("three-d-globe-slider-1") as HTMLElement,
         function (l: number) {
           sunriseScene.set_latitude(l);
           sunriseScene.draw();
@@ -474,10 +474,10 @@ function three_d_globe(width: number, height: number) {
           initial_value: "0",
           min: -90,
           max: 90,
-          step: 0.5,
+          step: 1,
         },
       );
       latitudeSlider.width = 200;
-    })(500, 500);
+    })(300, 300);
   });
 })();

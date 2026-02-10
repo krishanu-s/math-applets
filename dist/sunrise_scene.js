@@ -1758,7 +1758,7 @@ var SunriseScene = class extends Scene {
       globeScene.add("latitude_line", latitude_line);
       globeScene.draw();
       let latitudeSlider = Slider(
-        document.getElementById("latitude-slider"),
+        document.getElementById("three-d-globe-slider-1"),
         function(l) {
           sunriseScene.set_latitude(l);
           sunriseScene.draw();
@@ -1778,10 +1778,10 @@ var SunriseScene = class extends Scene {
           initial_value: "0",
           min: -90,
           max: 90,
-          step: 0.5
+          step: 1
         }
       );
       latitudeSlider.width = 200;
-    })(500, 500);
+    })(300, 300);
   });
 })();
