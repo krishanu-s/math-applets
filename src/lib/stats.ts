@@ -1,5 +1,5 @@
 import { MObject, Scene } from "./base";
-import { Vec2D, Rectangle } from "./base_geom.js";
+import { Vec2D, Rectangle, Line } from "./base_geom.js";
 
 // TODO Make space for the axes.
 export class Histogram extends MObject {
@@ -24,8 +24,37 @@ export class Histogram extends MObject {
   }
   // Create a bunch of rectangles
   draw(canvas: HTMLCanvasElement, scene: Scene) {
-    let [xmin, xmax] = scene.xlims;
-    let [ymin, ymax] = scene.ylims;
+    let [scene_xmin, scene_xmax] = scene.xlims;
+    let [scene_ymin, scene_ymax] = scene.ylims;
+
+    let xmin = scene_xmin + (scene_xmax - scene_xmin) * 0.05;
+    let xmax = scene_xmax - (scene_xmax - scene_xmin) * 0.05;
+    let ymin = scene_ymin + (scene_ymax - scene_ymin) * 0.05;
+    let ymax = scene_ymax - (scene_ymax - scene_ymin) * 0.05;
+
+    // Draw histogram axes
+    let x_axis = new Line([xmin, ymin], [xmax, ymin])
+      .set_alpha(1.0)
+      .set_stroke_width(0.5);
+    x_axis.draw(canvas, scene);
+    let y_axis = new Line([xmin, ymin], [xmin, ymax])
+      .set_alpha(1.0)
+      .set_stroke_width(0.5);
+    y_axis.draw(canvas, scene);
+
+    // Draw dotted lines at every 20%
+    for (let i = 1; i <= 5; i++) {
+      let line = new Line(
+        [xmin, ymin + (i * (ymax - ymin)) / 5],
+        [xmax, ymin + (i * (ymax - ymin)) / 5],
+      )
+        .set_alpha(1.0)
+        .set_stroke_width(0.5)
+        .set_stroke_color("gray");
+      line.set_stroke_style("dashed");
+      line.draw(canvas, scene);
+    }
+
     let bin_width = (xmax - xmin) / (this.bin_max - this.bin_min);
     let ct_height = (ymax - ymin) / (this.count_max - this.count_min);
 

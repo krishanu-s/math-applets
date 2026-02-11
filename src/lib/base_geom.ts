@@ -593,6 +593,9 @@ export class LineSequence extends LineLikeMObject {
   add_point(point: Vec2D) {
     this.points.push(point);
   }
+  remove_point(index: number) {
+    this.points.splice(index, 1);
+  }
   move_point(i: number, new_point: Vec2D) {
     this.points[i] = new_point;
   }
@@ -607,8 +610,8 @@ export class LineSequence extends LineLikeMObject {
     for (let i = 1; i < this.points.length; i++) {
       [x, y] = scene.v2c(this.points[i]);
       ctx.lineTo(x, y);
-      ctx.stroke();
     }
+    ctx.stroke();
   }
 }
 

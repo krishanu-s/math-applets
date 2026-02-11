@@ -11515,6 +11515,9 @@ var LineSequence = class extends LineLikeMObject {
   add_point(point) {
     this.points.push(point);
   }
+  remove_point(index) {
+    this.points.splice(index, 1);
+  }
   move_point(i, new_point) {
     this.points[i] = new_point;
   }
@@ -11529,8 +11532,8 @@ var LineSequence = class extends LineLikeMObject {
     for (let i = 1; i < this.points.length; i++) {
       [x, y] = scene.v2c(this.points[i]);
       ctx.lineTo(x, y);
-      ctx.stroke();
     }
+    ctx.stroke();
   }
 };
 var Arrow = class extends Line {

@@ -624,6 +624,9 @@ export class LineSequence3D extends ThreeDLineLikeMObject {
   add_point(point: Vec3D) {
     this.points.push(point);
   }
+  remove_point(index: number) {
+    this.points.splice(index, 1);
+  }
   move_point(i: number, new_point: Vec3D) {
     this.points[i] = new_point;
   }

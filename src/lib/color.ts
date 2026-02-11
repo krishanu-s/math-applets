@@ -21,6 +21,12 @@ export function rb_colormap(z: number): ColorVal {
 }
 
 // Given a value in (-inf, inf), produces a color from
+// white-to-black where -128 is white and +128 is black.
+export function grayscale_colormap(z: number): ColorVal {
+  return [128 - z, 128 - z, 128 - z, 255];
+}
+
+// Given a value in (-inf, inf), produces a color from
 // red-to-blue where +inf is red, -inf is blue, and 0 is black
 export function rb_colormap_2(z: number): ColorVal {
   const gray = sigmoid(z);
