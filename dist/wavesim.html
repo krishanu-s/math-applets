@@ -71,7 +71,10 @@
                 <font color="grey">white</font>
                 indicates zero. The applet below simulates a
                 <b>dipole</b>, where the wave equation has two point sources
-                with opposite phase.
+                with opposite phase. The slider controls the distance between
+                the two sources, which in turn affects the resulting
+                interference pattern. The two buttons allow you to pause and
+                reset the simulation, respectively.
             </p>
             <div class="applet-container" id="twodim-dipole-demo"></div>
             <br />
@@ -204,13 +207,18 @@
                 spring constant $k$ (representing the <b>stiffness</b>), the
                 equation becomes (we have normalized mass to 1) $$f''(t) = -k
                 f(t)$$ In the applet below, the point mass is represented by a
-                black square and can be dragged horizontally to change its
+                black square. Try clicking and dragging the mass to change its
                 position. Its equilibrium position is depicted by a dashed line,
                 and the force acting on the mass is shown as a red arrow. By
                 clicking the play button, you can observe how the mass moves
                 over time. To its right, the position $f(t)$ is graphed through
                 time. This forward-evolution through time is analogous to the
-                forward-evolution of the wave equation.
+                forward-evolution of the wave equation. The spring constant $k$
+                can be adjusted with the first slider below. Loss of energy to
+                friction (a reality in the physical world) can be simulated by
+                adding a damping term to the equation, which is proportional to
+                the velocity of the mass ; this is controlled by the second
+                slider.
             </p>
             <!-- TODO Add written LaTeX into the diagram showing f(t) alongside a line segment tracking the length of the spring.-->
 
@@ -261,6 +269,10 @@
                 k(f_1(t)-2f_2(t) + f_3(t))$$ $$f_3''(t) = k(f_2(t)-2f_3(t)+
                 f_4(t))$$ $$\vdots$$ $$f_N''(t) = k(f_{N-1}(t)-2f_N(t)+ R)$$
             </div>
+            <p>
+                The same simulation as before is set up below, where point
+                masses can be clicked and dragged to change their positions.
+            </p>
 
             <!-- TODO As in the 0D case, add $f_1, f_2, \ldots, f_N$ into the diagram as LaTeXMObjects which track with displacement -->
             <!-- TODO Add a force diagram which breaks the force from the spring into horizontal and vertical components and does the math to get the equations above. -->
@@ -268,15 +280,15 @@
             <br />
             <div style="width: 100%" class="row">
                 <div
-                    style="width: 50%"
+                    style="width: 100%"
                     class="applet-container"
                     id="point-mass-discrete-sequence"
                 ></div>
-                <div
+                <!--<div
                     style="width: 50%"
                     class="applet-container"
                     id="point-mass-discrete-sequence-diagram"
-                ></div>
+                ></div>-->
             </div>
             <br />
             <div
@@ -324,6 +336,13 @@
                 \lim\limits_{h \to 0}\frac{g(x+h) - 2g(x) + g(x-h)}{h^2}$$
             </p>
             <!-- TODO Need to address the normalization by distance and strength of the springs, as it's relevant as $N \to \infty$. Maybe another visualizer. -->
+            <p>
+                In the simulation below, one can click-and-drag to change the
+                view, and a slider for zooming in to a microscopic scale has
+                been added. It's also worth noting that in a continuous medium,
+                the "stiffness" is naturally analogous to the square of the
+                <b>wave propagation speed</b>.
+            </p>
             <br />
             <div style="width: 100%" class="row">
                 <div
@@ -344,15 +363,15 @@
             ></div>
             <div
                 class="button"
-                id="point-mass-discrete-sequence-reset-button"
+                id="point-mass-continuous-sequence-reset-button"
             ></div>
             <div
                 class="slider"
-                id="point-mass-discrete-sequence-stiffness-slider"
+                id="point-mass-continuous-sequence-stiffness-slider"
             ></div>
             <div
                 class="slider"
-                id="point-mass-discrete-sequence-friction-slider"
+                id="point-mass-continuous-sequence-friction-slider"
             ></div>
             <br />
             <p>

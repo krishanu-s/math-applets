@@ -1062,6 +1062,7 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
         sim.set_uValues(
           funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
         );
+        sim.set_vValues(funspace((x) => 0, 0, 1, num_points));
         scene.draw();
       }
       reset_simulation();
@@ -1132,7 +1133,7 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           );
         },
         {
-          name: "Wave propagation speed",
+          name: "Spring stiffness",
           initial_value: "3.0",
           min: 0,
           max: 20,
@@ -1174,7 +1175,15 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
       function foo(x: number): number {
         return Math.exp(-(5 * (x - 0.5) ** 2));
       }
-      sim.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points));
+      function reset_simulation() {
+        sim.time = 0;
+        sim.set_uValues(
+          funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
+        );
+        sim.set_vValues(funspace((x) => 0, 0, 1, num_points));
+        scene.draw();
+      }
+      reset_simulation();
 
       // Add SceneViewTranslator
       // ** NOTE that this must come after all objects have been added to the scene.
@@ -1225,6 +1234,63 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
       );
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
+
+      // Button which pauses/unpauses the simulation
+      let resetButton = Button(
+        document.getElementById(
+          "point-mass-continuous-sequence-reset-button",
+        ) as HTMLElement,
+        function () {
+          scene.add_to_queue(reset_simulation);
+        },
+      );
+      resetButton.textContent = "Reset simulation";
+      resetButton.style.padding = "15px";
+
+      // Slider which controls friction
+      let f_slider = Slider(
+        document.getElementById(
+          "point-mass-continuous-sequence-friction-slider",
+        ) as HTMLElement,
+        function (val: number) {
+          scene.add_to_queue(
+            scene.set_simulator_attr.bind(scene, 0, "damping", val),
+          );
+        },
+        {
+          name: "Friction",
+          initial_value: "0.0",
+          min: 0,
+          max: 5.0,
+          step: 0.01,
+        },
+      );
+      f_slider.width = 200;
+
+      // Slider which controls the propagation speed
+      let w_slider = Slider(
+        document.getElementById(
+          "point-mass-continuous-sequence-stiffness-slider",
+        ) as HTMLElement,
+        function (val: number) {
+          scene.add_to_queue(
+            scene.set_simulator_attr.bind(
+              scene,
+              0,
+              "wave_propagation_speed",
+              val,
+            ),
+          );
+        },
+        {
+          name: "Spring stiffness",
+          initial_value: "3.0",
+          min: 0,
+          max: 20,
+          step: 0.05,
+        },
+      );
+      w_slider.width = 200;
 
       // Prepare the simulation
       scene.draw();
@@ -1640,6 +1706,7 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
               (waveSim.semimajor_axis / width) * (xmax - xmin) * Math.cos(t),
               (val / height) * (ymax - ymin) * Math.sin(t),
             ]);
+            scene.draw();
           });
         },
         {
