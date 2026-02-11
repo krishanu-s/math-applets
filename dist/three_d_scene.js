@@ -753,6 +753,9 @@ var LineSequence3D = class extends ThreeDLineLikeMObject {
   add_point(point) {
     this.points.push(point);
   }
+  remove_point(index) {
+    this.points.splice(index, 1);
+  }
   move_point(i, new_point) {
     this.points[i] = new_point;
   }

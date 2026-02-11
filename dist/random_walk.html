@@ -6,6 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>random walk demo</title>
         <base href="." />
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+        />
+        <!-- MathJax -->
         <script>
             MathJax = {
                 tex: {
@@ -17,8 +22,20 @@
             defer
             src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
         ></script>
+        <!-- KaTeX JS -->
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+        ></script>
+        <!-- html2canvas -->
+        <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+        <!--Script for this scene-->
         <script type="module" src="random_walk_scene.js"></script>
         <style>
+            .row {
+                display: flex;
+                align-items: center; /* Centers vertically */
+            }
             .applet-container {
                 display: flex;
                 align-items: center; /* Centers vertically */
@@ -45,147 +62,444 @@
     <body>
         <div style="text-align: center; margin: 10px auto">
             <h1>Random Walks in Two and Three Dimensions</h1>
-            <h3>References</h3>
-            <ul>
-                <li>
-                    <a
-                        href="https://en.wikipedia.org/wiki/Random_walk#Higher_dimensions"
-                        >Random Walks</a
-                    >
-                </li>
-                <li>
-                    <a
-                        href="https://mathworld.wolfram.com/PolyasRandomWalkConstants.html"
-                        >Polya's Random Walk Constants</a
-                    >
-                </li>
-            </ul>
-
-            <h2>Introduction</h2>
 
             <p>
                 Imagine a particle moving randomly on an infinite square grid.
                 The particle begins at some initial point $P$, and at each time
                 step it moves to one of its four neighboring points each with
                 equal probability $\frac{1}{4}$. This is an example of a
-                <b>random walk</b>. Consider the following question: assuming
-                this random walk is allowed to proceed forever,
-                <i>
-                    what is the probability that the particle, at some point,
-                    revisits its starting point $P$?</i
-                >
+                <b>random walk</b>.
+            </p>
+            <p>
+                <b>Question:</b> Assuming this random walk is allowed to proceed
+                forever, what is the probability that the particle, at some
+                point, revisits its starting point $P$?
+            </p>
+            <p>
+                Below is a simulation of many individual random walk instances
+                on a two-dimensional lattice, where a random walk is stopped if
+                it ever returns to the origin, and continues to run otherwise. A
+                simpler, one-dimensional variant is also shown: in this case,
+                the particle can only move left or right, each with probability
+                $\frac{1}{2}$. The three-dimensional variant (where the particle
+                can move in any of the six directions) is also shown.
             </p>
 
-            <div class="applet-container" id="2d-random-walk"></div>
-            <div class="button" id="2d-random-walk-pause-button"></div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 33%"
+                    class="applet-container"
+                    id="1d-random-walk"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="applet-container"
+                    id="2d-random-walk"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="applet-container"
+                    id="3d-random-walk"
+                ></div>
+            </div>
+            <br />
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="1d-random-walk-pause-button"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="2d-random-walk-pause-button"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="3d-random-walk-pause-button"
+                ></div>
+            </div>
 
             <p>
-                We can simplify the model above and consider instead a
-                one-dimensional grid, i.e. a line. In this case, the particle
-                can only move left or right, each with probability
-                $\frac{1}{2}$.
-            </p>
-
-            <div class="applet-container" id="1d-random-walk"></div>
-            <div class="button" id="1d-random-walk-pause-button"></div>
-
-            <p>
-                This model can be more easily related to some real scenarios.
-                For example, you could imagine repeatedly flipping a fair coin
-                in a gambling scenario. A heads means that you gain \$1, and a
-                tails means that you lose \$1. A famous theorem says that if you
-                continue this game indefinitely (starting with a finite amount
-                of money), you will eventually go bankrupt. (See
+                The one-dimensional model can be more easily related to some
+                real scenarios. For example, you could imagine repeatedly
+                flipping a fair coin in a gambling scenario. A heads means that
+                you gain \$1, and a tails means that you lose \$1. A famous
+                theorem says that if you continue this game indefinitely
+                (starting with a finite amount of money), you will eventually go
+                bankrupt. (See
                 <a href="https://en.wikipedia.org/wiki/Gambler%27s_ruin"
                     >gambler's ruin</a
-                >.) This is similar to the statement that a random walk on a
-                one-dimensional grid always eventually returns to its starting
-                point, which turns out to be true.
+                >.)
+            </p>
+            <p>
+                This is a little stronger than the statement that a random walk
+                on a one-dimensional grid always eventually returns to its
+                starting point, which turns out to be true.
             </p>
 
             <p>
-                It turns out that a random walk on a two-dimensional grid always
-                eventually returns to its starting point, meaning that the
-                answer to the initial question is 100%. However, on a
+                It turns out that the same holds in two dimensions, meaning that
+                a random walk on a two-dimensional grid always eventually
+                returns to its starting point. However, on a
                 <i>three-dimensional</i> grid, the probability of returning to
                 the starting point drops to roughly 34%. At four, five, and six
                 dimensions, the probability drops to 19.3%, 13.5%, and 10.4%,
-                respectively.
+                respectively. The phase transition from two to three dimensions
+                is captured by the quote from mathematician Shizuo Kakutani:
             </p>
-
-            <div class="applet-container" id="3d-random-walk"></div>
-            <div class="button" id="3d-random-walk-pause-button"></div>
-
+            <p>
+                <i
+                    >"A drunk man will find his way home, but a drunk bird may
+                    get lost forever."</i
+                >
+            </p>
             <p>
                 <b>Why?</b> Intuitively, the drop in probability makes sense. In
                 higher dimensions, there are more degrees of freedom to move
                 around, so the probability of returning to the starting point
                 decreases. But why is there a sudden phase transition between
                 dimensions 2 and 3? And how does one calculate the percentage
-                values above? Lastly, <b>how long</b> does it take for a random
-                walk to return to its starting point?
+                values above?
             </p>
 
             <p>
-                An additional surprising result is the following. Although a
-                random walk on a one-dimensional or two-dimensional grid always
-                returns to its starting point, the
-                <i>expected number of steps</i> to do so is infinite. Why?
-            </p>
-
-            <p>
-                The core goals of this page are to develop an intuitive
-                understanding of the phase transition between dimensions 2 and
-                3, and for the infinite expected return time. We'll introduce
-                some mathematical tools which enable precise calculation. We
-                also will explore
-                <b>Brownian motion</b>, which is a continuous-analogue of random
-                walks which makes some appearances in nature.
-            </p>
-
-            <h2>Modeling a random walk with generating functions</h2>
-            <p>TODO</p>
-
-            <h2>The normal distribution and Brownian motion</h2>
-            <p>TODO Explain how to define Brownian motion</p>
-
-            <h1>Below: Demonstrations</h1>
-
-            <h2>Brownian motion</h2>
-
-            <p>Brownian motion in the plane, set against a pair of axis.</p>
-            <br />
-
-            <div class="applet-container" id="brownian-motion-2d"></div>
-            <div class="button" id="brownian-motion-2d-pause-button"></div>
-
-            <br />
-
-            <p>Brownian motion in 3D space.</p>
-            <br />
-
-            <div class="applet-container" id="brownian-motion-3d"></div>
-            <div class="button" id="brownian-motion-3d-pause-button"></div>
-
-            <h2>Histogram</h2>
-            <p>
-                Here, simulation runs are shown for many random walks in
-                $\mathbb{Z}^D$ beginning at the origin, for dimensions $D=2$ and
-                $D=3$. A random walk stops if it ever reaches the origin again.
-                A histogram is given, showing the distribution of the current
-                $L^1$-distance from the origin (distance from the origin shown
-                along the x-axis, percentage of walks with that distance shown
-                along the y-axis).
+                Below, data from simulation runs in one, two, three, and four
+                dimensions are depicted in histogram format to showcase these
+                statistics. The histograms show the distribution of each point's
+                $L^1$-distance from the origin, i.e. distance measured in number
+                of steps. This distance is measured on the x-axis (going from 0
+                to 100), while the percentage of walks with that distance is
+                shown along the y-axis (with the dotted lines representing 20%,
+                40%, 60%, 80%, and 100%, respectively). Interestingly, even
+                though random walks in one or two dimensions always eventually
+                return to their starting point, the expected number of steps
+                required is infinite. In two dimensions the fraction of points
+                which have returned to their starting point grows extremely
+                slowly.
             </p>
             <br />
 
-            <div class="applet-container" id="histogram-dim-one"></div>
-            <div class="applet-container" id="histogram-dim-two"></div>
-            <div class="applet-container" id="histogram-dim-three"></div>
-            <div class="applet-container" id="histogram-dim-four"></div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="histogram-dim-one"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="histogram-dim-two"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="histogram-dim-three"
+                ></div>
+
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="histogram-dim-four"
+                ></div>
+            </div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 25%"
+                    class="button"
+                    id="random-walk-count-button-1"
+                ></div>
+                <div
+                    style="width: 25%"
+                    class="button"
+                    id="random-walk-count-button-2"
+                ></div>
+                <div
+                    style="width: 25%"
+                    class="button"
+                    id="random-walk-count-button-3"
+                ></div>
+
+                <div
+                    style="width: 25%"
+                    class="button"
+                    id="random-walk-count-button-4"
+                ></div>
+            </div>
             <div class="button" id="random-walk-pause-button"></div>
+            <div class="button" id="random-walk-reset-button"></div>
+            <div class="button" id="random-walk-display-button"></div>
             <br />
+            <p>
+                The core goal of this remainder of this page is to prove the
+                theorem that the probability of returning to the origin is one
+                in dimensions $D=1$ and $D=2$, and less than one in dimensions
+                $D\ge 3$.
+            </p>
+
             <h2>Proof of the theorem</h2>
+            <h3>From combinatorics to algebra: generating functions</h3>
+            <p>
+                For simplicity, we'll start by considering the case of a
+                one-dimensional random walk, i.e. $D=1$. Then the path taken by
+                a random walk is a sequence of leftward and rightward steps
+                beginning at the origin. There are $2^n$ possible paths of
+                length $n$. Let a path be of <b>type A</b> if it ends back at
+                the origin. Let a path be of <b>type B</b> if it ends back at
+                the origin <i>and</i> it never reached the origin between the
+                starting and ending times. Let $a_n$ be the number of paths of
+                length $n$ of type A, and let $b_n$ be the number of paths of
+                length $n$ of type B. Since any path of type B is also of type
+                A, we have $b_n \le a_n \le 2^n$. These sequences start as
+                follows: \[ \begin{array}{c|cccccccc} n & 1 & 2 & 3 & 4 & 5 & 6
+                & 7 & 8 & \ldots \\ \hline a_n & 0 & 2 & 0 & 6 & 0 & 20 & 0 & 70
+                & \ldots \\ b_n & 0 & 2 & 0 & 2 & 0 & 4 & 0 & 10 & \ldots \\
+                \end{array} \]
+            </p>
+            <p>
+                These two sequences are related by the following
+                complicated-looking equation $$a_n = b_n +
+                \sum\limits_{i=1}^{n-1}b_ib_{n-i} +
+                \sum\limits_{i=1}^{n-1}\sum\limits_{j=1}^{n-i-1}b_ib_jb_{n-i-j}+\sum\limits_{i=1}^{n-1}\sum\limits_{j=1}^{n-i-1}\sum\limits_{k=1}^{n-i-j-1}b_ib_jb_kb_{n-i-j-k}+\ldots$$
+            </p>
+            <p>
+                This equation is a reflection of the fact that a path of type A
+                can be uniquely constructed by appending several subpaths of
+                type B, where the number of subpaths is determined by the number
+                of times the path of type A intersects the origin. We can see
+                this in the visualization below which depicts type A paths of
+                length 20, where the four windows from left to right correspond
+                to the four summands $b_{20}, b_8b_{12}, b_4b_9b_7$, and
+                $b_5b_3b_8b_4$, respectively.
+            </p>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 25%"
+                    class="applet-container"
+                    id="convolution-visualization-1"
+                ></div>
+                <div
+                    style="width: 25%"
+                    class="applet-container"
+                    id="convolution-visualization-2"
+                ></div>
+                <div
+                    style="width: 25%"
+                    class="applet-container"
+                    id="convolution-visualization-3"
+                ></div>
+                <div
+                    style="width: 25%"
+                    class="applet-container"
+                    id="convolution-visualization-4"
+                ></div>
+            </div>
+
+            <p>
+                This holds because the paths counted by $a_n$ can be classified
+                based on how many times they return to the origin between time
+                $t=0$ and $t=n$. The paths which never returned to the origin in
+                this time are counted by $b_n$. Those which returned to the
+                origin exactly once are counted by
+                $\sum\limits_{i=1}^{n-1}b_ib_{n-i}$. Those which returned to the
+                origin exactly twice are counted by
+                $\sum\limits_{i=1}^{n-1}\sum\limits_{j=1}^{n-i-1}b_ib_jb_{n-i-j}$,
+                etc.
+            </p>
+
+            <p>
+                The relationship between the $\{a_n\}$ sequence and the
+                $\{b_n\}$ sequence looks much simpler if we package them up into
+                power series called
+                <b>generating functions</b>: $$A(t) = 1 + a_1t + a_2t^2 + a_3t^3
+                + \cdots = 1 + 2t^2+6t^4+20t^6+70t^8+\ldots$$ $$B(t) = b_1t +
+                b_2t^2 + b_2t^3 +\cdots=2t^2+2t^4+4t^6+10t^8+\ldots$$ Then the
+                relationship described above becomes
+            </p>
+            <div id="a-b-gen-fn-equation">
+                $$A(t) = 1 + B(t) + B(t)^2 + B(t)^3 + \cdots$$
+            </div>
+            <p>
+                So long as $B(t)$ has absolute value less than $1$, we have $1 +
+                B(t) + B(t)^2 + B(t)^3 + \cdots= \frac{1}{1 - B(t)}$, and so we
+                get $A(t) = \frac{1}{1 - B(t)}$, or equivalently
+                $B(t)=1-\frac{1}{A(t)}$.
+            </p>
+
+            <p>
+                Let's relate this algebra to our probability question. There are
+                $b_n$ possible paths which return to the origin and first do so
+                after <i>exactly</i> $n$ steps. Therefore, the probability that
+                a random walk first returns to the origin after exactly $n$
+                steps is $b_n(\frac{1}{2})^n$. And so the probability $P$ that a
+                random walk eventually returns to the origin is equal to the
+                infinite sum $b_1(1/2) + b_2(1/2)^2 + b_3(1/2)^3 + \cdots$,
+                which is equal to $B(1/2)$. This probability is less than $1$ if
+                and only if $A(1/2)$ converges.
+            </p>
+            <p>
+                The same reasoning can be used in higher dimensions, where $a_n$
+                and $b_n$ must be defined accordingly for paths in
+                $D$-dimensional space, and the desired probability is equal to
+                $P=1-\frac{1}{A(1/2D)}$.
+            </p>
+            <h3>Aside: Combinatorial intuition</h3>
+            <p>
+                In the next section we can directly calculate $A(t)$ using
+                integration, but let's take a moment to intuit the size of the
+                term $a_n(1/2D)^n$ as $n$ grows, and from this prove the theorem
+                in dimensions one and two.
+            </p>
+            <p>
+                First let's consider the dimension $D=1$ case. Those familiar
+                with combinatorics will recognize that because $a_{2n}$ is the
+                number of length $2n$ paths with $n$ leftward steps and $n$
+                rightward steps, it is equal to the central binomial coefficient
+                $a_{2n}=\binom{2n}{n}=\frac{(2n)!}{n!^2}$.
+                <a
+                    href="https://en.wikipedia.org/wiki/Stirling%27s_approximation"
+                    >Stirling's approximation</a
+                >
+                tells us that $$\binom{2n}{n}\left(\frac{1}{2}\right)^{2n}
+                \approx \frac{1}{\sqrt{\pi n}}$$ Therefore, the infinite sum
+                $A(1/2)=1 + a_1(1/2)+a_2(1/2)^2+a_3(1/2)^3+\cdots$ must diverge
+                because its terms grow like $1/\sqrt{n}$, which implies that
+                $P=1$.
+            </p>
+            <p>
+                A similar argument can be applied in dimension $D=2$. Some
+                careful counting tells us that the number of paths of length
+                $2n$ in 2-dimensional space which begin and end at the origin is
+                equal to the sum $$a_n=\binom{2n}{n}\binom{n}{0}^2 +
+                \binom{2n}{n}\binom{n}{1}^2+\binom{2n}{n}\binom{n}{2}^2+\ldots+\binom{2n}{n}\binom{n}{n}^2$$
+                where the term $\binom{2n}{n}\binom{n}{i}^2$ represents the
+                number of paths with $i$ leftward steps, $n-i$ upward steps, $i$
+                rightward steps, and $n-i$ downward steps. Another careful
+                counting argument tells us that
+                $$\binom{n}{0}^2+\binom{n}{1}^2+\ldots+\binom{n}{n}^2 =
+                \binom{n}{0}\binom{n}{n} +
+                \binom{n}{1}\binom{n}{n-1}+\ldots+\binom{n}{n}\binom{n}{0}=\binom{2n}{n}$$
+                because the term $\binom{n}{i}\binom{n}{n-i}$ represents the
+                number of ways to choose $n$ elements from a sequence of $2n$
+                elements with $i$ taken from the first half and $n-i$ from the
+                second half. Putting these two together, we find that
+                $a_n=\binom{2n}{n}^2$. Again by Stirling's approximation, we
+                have $$\binom{2n}{n}^2\left(\frac{1}{4}\right)^{2n} \approx
+                \frac{1}{\pi n}$$ Therefore, the infinite sum $A(1/4)=1 +
+                a_1(1/4)+a_2(1/4)^2+a_3(1/4)^3+\cdots$ must diverge because its
+                terms grow like $1/n$, which implies that $P=1$.
+            </p>
+            <p>
+                The reasoning above would suggest that when $D=3$, the terms
+                $a_n(1/6)^n$ (which count the grows like $1/n^{3/2}$, which
+                converges. However, writing down the exact expression for $a_n$
+                is difficult. Instead, we can use a different approach.
+            </p>
+            <h3>From algebra to analysis</h3>
+            <p>
+                In this section, we'll directly calculate $A(t)$ using
+                integration. We again restrict our attention to $D=1$ to
+                simplify the algebra.
+            </p>
+            <p>
+                Let's capture <b>all</b> possible random walks in one dimension,
+                using the two-variable power series: $$F(x, t) = 1 + (x+x^{-1})t
+                + (x+x^{-1})^2t^2+\cdots = \frac{1}{1-(x+x^{-1})t}$$ where $x$
+                represents a rightward step, $x^{-1}$ a leftward step, and $t$
+                represents a time step. Then the coefficient of $x^mt^n$ in this
+                power series is equal to the number of paths of length $n$ which
+                end up at the point $m$. Below is the array of coefficients of
+                $F(x, t)$.
+            </p>
+
+            <!--<div
+                class="applet-container"
+                id="one-dim-random-walk-gen-fn-coefficients"
+            ></div>-->
+            <p>
+                The power series $A(t)$ we described before consists of all the
+                terms whose exponent of $x$ is equal to zero, shown by the red
+                strip above. One can filter out all of the other coefficients
+                using a <b>contour integral</b>. Set $x=e^{i\theta}$ and
+                integrate from $\theta=0$ to $\theta=2\pi$. Then, for any
+                integer $m$ and any nonnegative integer $n$,
+                $$\int\limits_{0}^{2\pi}x^mt^nd\theta =
+                \int\limits_{0}^{2\pi}e^{im\theta}t^n d\theta=\begin{cases}2\pi
+                t^n & \text{if } m=0 \\ 0 & \text{otherwise}\end{cases}$$ It
+                therefore follows by summing over all coefficients that
+                $$\int\limits_{0}^{2\pi}F(e^{i\theta}, t) d\theta = 2\pi A(t)$$
+                Because $F(x, t) = \frac{1}{1-(x+x^{-1})t}$, we can rewrite
+                $F(e^{i\theta}, t) = \frac{1}{1-2t\cos(\theta)}$. Thus, the
+                infinite sum $A(1/2)$ can be expressed as the integral
+                $$\boxed{A(1/2) =
+                \frac{1}{2\pi}\int\limits_{0}^{2\pi}\frac{1}{1-2t\cos(\theta)}
+                d\theta}$$
+            </p>
+            <p>
+                When we run the same argument for higher dimensions $D$, the
+                process is algebraically onerous, but conceptually identical.
+                The power series $F$ becomes a $(D+1)$-variable power series
+                $$F(x_1, x_2, \ldots, x_D,
+                t)=\frac{1}{1-t(x_1+x_1^{-1}+x_2+x_2^{-1}+\ldots+x_D+x_D^{-1})}$$
+                where $x_i$ and $x_i^{-1}$ represent a positive and negative
+                step, respectively, in the $i$-th coordinate dimension. The
+                power series $A(t)$ consists of all the terms whose exponent for
+                $x_1, x_2, \ldots, x_D$ are equal to zero, which is recovered by
+                a <b>$D$-dimensional integral</b>
+                $$A(t)=\frac{1}{(2\pi)^D}\int\limits_{0}^{2\pi}\cdots\int\limits_{0}^{2\pi}\frac{1}{1-2t(\cos(\theta_1)+\cos(\theta_2)+\cdots+\cos(\theta_D))}d\theta_1\cdots
+                d\theta_D$$
+            </p>
+            <p>
+                Plugging in $t=\frac{1}{2D}$ yields the value of interest:
+                $$\boxed{A(1/2D)=\frac{1}{(2\pi)^D}\int\limits_{0}^{2\pi}\cdots\int\limits_{0}^{2\pi}\frac{1}{1-\frac{1}{D}(\cos(\theta_1)+\cos(\theta_2)+\cdots+\cos(\theta_D))}d\theta_1\cdots
+                d\theta_D}$$
+            </p>
+            <p>
+                Our last step is to check whether the boxed integrals above
+                converge or diverge. The integrand, which is the $D$-variable
+                function $f(\theta_1, \ldots,
+                \theta_D)=\frac{1}{1-\frac{1}{D}(\cos(\theta_1)+\cos(\theta_2)+\cdots+\cos(\theta_D))}$
+                has only one singularity at
+                $\theta_1=\theta_2=\cdots=\theta_D=0$.
+            </p>
+            <p>
+                The essential point is that $\cos(\theta) = 1 -
+                \frac{\theta^2}{2} +
+                \frac{\theta^4}{24}-\frac{\theta^6}{720}+\cdots$, so around the
+                origin, $\cos(\theta) \approx 1 - \frac{\theta^2}{2}$. So near
+                this singularity, $$f(\theta_1, \ldots, \theta_D) \approx
+                \frac{2D}{\theta_1^2+\theta_2^2+\cdots+\theta_D^2}$$ This is a
+                function whose integral over a small domain around the origin
+                (say, a sphere $\mathcal{S}$ of radius $R$) converges for $D\ge
+                3$ and diverges for $D=1,2$. This is because we can
+                re-parametrize by integrating over spherical shells of radius
+                $r=\sqrt{\theta_1^2+\theta_2^2+\cdots+\theta_D^2}$, and have
+                that $$\int_{\mathcal{S}}
+                \frac{1}{\theta_1^2+\theta_2^2+\cdots+\theta_D^2}d\theta_1\cdots
+                d\theta_D = \int\limits_{0}^{R} \frac{Vdr}{r^2}$$ where $V$ is
+                the surface area of a spherical shell of radius $r$. Since this
+                volume is proportional to $r^{D-1}$, the integral converges for
+                $D\ge 3$ and diverges for $D=1, 2$.
+            </p>
+            <p>
+                The function $f$ is visualized below for $D=1$ and $D=2$,
+                centered around the point of singularity in both cases.
+            </p>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="1d-function-graph"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="2d-function-heatmap"
+                ></div>
+            </div>
+
+            <!--<h2>Proof of the theorem</h2>
             <p>
                 Below is a sketch of the proof of the following fact. Consider a
                 random walk in $\mathbb{Z}^D$ beginning at the origin, for some
@@ -251,10 +565,23 @@
                 returns to the origin in finite time with probability 1) and
                 converges when $D > 2$ (implying that $1-\frac{1}{A(1/2D)} < 1$,
                 and therefore there is a nonzero probability that a path never
-                returns to the origin). Why is this claim true? (TODO
-                Visualization in 2D, and explanation in terms of Taylor
-                expansion of cosine.)
-            </p>
+                returns to the origin). Why is this claim true?
+            </p>-->
+            <h3>References</h3>
+            <ul>
+                <li>
+                    <a
+                        href="https://en.wikipedia.org/wiki/Random_walk#Higher_dimensions"
+                        >Random Walks</a
+                    >
+                </li>
+                <li>
+                    <a
+                        href="https://mathworld.wolfram.com/PolyasRandomWalkConstants.html"
+                        >Polya's Random Walk Constants</a
+                    >
+                </li>
+            </ul>
         </div>
         <a href="./index.html">back to main page</a>
         <br />
