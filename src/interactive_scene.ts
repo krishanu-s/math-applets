@@ -126,48 +126,48 @@ import { LaTeXMObject, LatexCache } from "./lib/latex.js";
       make_scene(5);
     })(300, 300);
 
-    (function test_latex(width: number, height: number) {
-      const canvas_name = "latex-scene";
-      const canvas = prepare_canvas(width, height, canvas_name);
+    // (function test_latex(width: number, height: number) {
+    //   const canvas_name = "latex-scene";
+    //   const canvas = prepare_canvas(width, height, canvas_name);
 
-      let scene = new Scene(canvas);
-      const xmin = -5;
-      const xmax = 5;
-      const ymin = -5;
-      const ymax = 5;
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+    //   let scene = new Scene(canvas);
+    //   const xmin = -5;
+    //   const xmax = 5;
+    //   const ymin = -5;
+    //   const ymax = 5;
+    //   scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
 
-      let cache = new LatexCache();
+    //   let cache = new LatexCache();
 
-      for (let i = 1; i < 10; i++) {
-        let tex = new LaTeXMObject(
-          `\\frac{${i}}{${i + 1}}`,
-          [xmin + i, 0],
-          cache,
-        );
-        scene.add(`latex_${i}`, tex);
-      }
+    //   for (let i = 1; i < 10; i++) {
+    //     let tex = new LaTeXMObject(
+    //       `\\frac{${i}}{${i + 1}}`,
+    //       [xmin + i, 0],
+    //       cache,
+    //     );
+    //     scene.add(`latex_${i}`, tex);
+    //   }
 
-      let ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Failed to get 2D context");
-      scene.draw();
+    //   let ctx = canvas.getContext("2d");
+    //   if (!ctx) throw new Error("Failed to get 2D context");
+    //   scene.draw();
 
-      // Add a slider which controls the zoom
-      let zoom_slider = Slider(
-        document.getElementById(canvas_name + "-slider-1") as HTMLElement,
-        function (zr: number) {
-          scene.set_zoom(zr);
-          scene.draw();
-        },
-        {
-          name: "Zoom ratio",
-          initial_value: "1.0",
-          min: 0.6,
-          max: 5,
-          step: 0.05,
-        },
-      );
-      zoom_slider.width = 200;
-    })(300, 300);
+    //   // Add a slider which controls the zoom
+    //   let zoom_slider = Slider(
+    //     document.getElementById(canvas_name + "-slider-1") as HTMLElement,
+    //     function (zr: number) {
+    //       scene.set_zoom(zr);
+    //       scene.draw();
+    //     },
+    //     {
+    //       name: "Zoom ratio",
+    //       initial_value: "1.0",
+    //       min: 0.6,
+    //       max: 5,
+    //       step: 0.05,
+    //     },
+    //   );
+    //   zoom_slider.width = 200;
+    // })(300, 300);
   });
 })();

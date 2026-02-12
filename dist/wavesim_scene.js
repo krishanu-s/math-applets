@@ -12003,6 +12003,9 @@ var HeatMap = class extends MObject {
     this.valArray = valArray;
     this.colorMap = rb_colormap;
   }
+  set_color_map(colorMap) {
+    this.colorMap = colorMap;
+  }
   // Gets/sets values
   set_vals(vals) {
     this.valArray = vals;

@@ -13,29 +13,35 @@
     <body>
         <a href="https://www.ksankar.me">back to Krishanu Sankar's homepage</a>
         <p>
-            This page contains several demonstrations of the
+            This page contains several demonstrations of
             <b
                 ><a
                     href="https://github.com/krishanu-s/math-applets/tree/main/src"
                 >
-                    math applets software library</a
+                    math applets</a
                 ></b
-            >, which is used to make interactive mathematical visuals which
-            embed directly into web or desktop environments. I see this as an
-            enhancement to the traditional text-and-image-based nature of
-            written mathematics. The software is very much a work-in-progress.
+            >, which is used to make interactive mathematical visuals which can
+            be embedded directly into web or desktop environments. I have used
+            this on an ad-hoc basis to supplement math teaching, and hope to
+            build more interactive applets as an enhancement to traditionally
+            static written mathematics. This page is continuously growing.
         </p>
         <p>
             The software is heavily inspired by
             <b><a href="https://www.manim.community/">manim</a></b
-            >: in fact, several of the class names and abstractions come
-            directly from manim. The most significant difference is that this
-            library is designed for user-interactive web elements (hence written
-            in Typescript), while manim is used for rendering videos. They are
-            designed for different (but highly overlapping!) pedagogical
-            purposes.
+            >. The most significant difference is that this library is designed
+            for user-interactive web elements (hence written in Typescript),
+            while manim is used for rendering videos. Several of the class names
+            and abstractions I used come directly from manim, and I've tried to
+            keep the interfaces mutually intelligible so that applets can be
+            turned into videos and vice-versa.
         </p>
-        <h2>Demo explanations</h2>
+        <h2>Explanation pages</h2>
+        <p>
+            These pages consist of several animations arranged in narrative
+            fashion, along with written explanations, to explain mathematical
+            ideas.
+        </p>
         <p>
             <b><a href="./wavesim.html">Wave equation</a>:</b> This page builds
             an intuition for the wave equation, and depicts some phenomena of
@@ -49,32 +55,29 @@
             on a lattice of dimension 1 or 2 will always return to its starting
             point. But a random walk on a lattice of dimension 3 or higher may
             never return. Why? This page is about visualizing and proving this
-            theorem, and exploring its continuous analog (Brownian motion).
+            theorem.
         </p>
-        <p>
-            <b><a href="./sunrise_scene.html">Sunrise equation</a>:</b>
-            This page uses 3D geometry to visualize the calculation of sunrise
-            and sunset times, among other things. I was inspired to write this
-            page while thinking about how to calculate the energy absorbed by a
-            solar panel over the course of a day.
-        </p>
-        <!--<p>
-            <b
-                ><a href="./catenary.html"
-                    >Catenary simulation (CURRENTLY BROKEN)</a
-                >:</b
-            >
-            A simple simulation to show that a string suspended at two points
-            and allowed to hang under the influence of gravity forms a shape
-            identical to the graph of the hyperbolic cosine function.
-        </p>-->
 
-        <h2>Simpler test demos</h2>
-        <p><a href="./three_d.html">three-dimensional scenes demo</a></p>
+        <h2>Demos</h2>
         <p>
-            <a href="./interactive.html"
-                >bezier curve and draggable objects demo</a
-            >
+            These are one-off applets I'm using for showcasing new features of
+            the library.
+        </p>
+        <p>
+            <a href="./three_d.html">3D</a>: Showing new features for 3D scenes.
+        </p>
+        <p>
+            <a href="./interactive.html">Draggable objects</a>: Demonstrating
+            the ability to click-and-drag objects within a scene, and
+            accordingly modify connected parts of the scene.
+        </p>
+
+        <p>
+            <a href="./sunrise_scene.html">Sunrise equation</a>: This page uses
+            3D geometry to visualize the calculation of sunrise and sunset
+            times, among other things. I was inspired to write this page while
+            thinking about how to calculate the energy absorbed by a solar panel
+            over the course of a day.
         </p>
         <!--<h2>Tutorial</h2>
         <a href="./tutorial/index.html">tutorial</a>-->

@@ -59,8 +59,8 @@
             <p>
                 <b>Zenith angle</b> refers to the angle from directly overhead.
                 In the heatmap shown, white means $\theta=0^{\circ}$ (directly
-                overhead), and black means $\theta > 90^{\circ}$ (at or below
-                the horizon).
+                overhead), and black means $\theta = 180^{\circ}$ (directly
+                opposite overhead).
             </p>
             <p>
                 <b>Azimuth angle</b> refers to the angle of rotation from true
@@ -75,8 +75,21 @@
             </p>
             <br />
             <div style="width: 100%" class="row">
-                <div class="applet-container" id="sunrise-heatmap"></div>
-                <div class="applet-container" id="three-d-globe"></div>
+                <div
+                    style="width: 33%"
+                    class="applet-container"
+                    id="sunrise-heatmap-zenith"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="applet-container"
+                    id="sunrise-heatmap-azimuth"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="applet-container"
+                    id="three-d-globe"
+                ></div>
             </div>
             <br />
             <div style="width: 100%" class="row">
@@ -86,12 +99,11 @@
             <br />
 
             <p>
-                TODO Create a diagram with the earth and sun, with a slider
-                controlling the time of year which moves the earth around.
-            </p>
-            <p>
-                TODO Explain how one can use this. How it came up while
-                pondering solar panel angles.
+                This is a stub page which may eventually be expanded into a
+                guided exercise in trigonometry to derive the
+                <a href="https://en.wikipedia.org/wiki/Sunrise_equation"
+                    >sunrise equation</a
+                >.
             </p>
         </div>
         <a href="./index.html">back to math applets main page</a>

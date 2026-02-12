@@ -10947,6 +10947,9 @@ var HeatMap = class extends MObject {
     this.valArray = valArray;
     this.colorMap = rb_colormap;
   }
+  set_color_map(colorMap) {
+    this.colorMap = colorMap;
+  }
   // Gets/sets values
   set_vals(vals) {
     this.valArray = vals;
@@ -13544,6 +13547,9 @@ var HeatMapScene = class extends Scene {
         for (let j = 0; j < type_b_lengths.length; j++) {
           length = type_b_lengths[j];
           let type_b_path = gen_type_b(length);
+          if (Math.random() < 0.5) {
+            type_b_path = type_b_path.map((x) => -x);
+          }
           let line = new LineSequence([[current_point[0], current_point[1]]]).set_stroke_color(colors[j % colors.length]).set_stroke_width(0.1);
           for (let i = 0; i < type_b_path.length; i++) {
             current_point[0] += 1;

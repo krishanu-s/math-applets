@@ -12,6 +12,7 @@ import {
   spherical_to_cartesian,
   rot,
 } from "./lib/matvec.js";
+import { ColorMap } from "./lib/color.js";
 import {
   Vec3D,
   vec3_sum,
@@ -90,10 +91,7 @@ class SunriseScene extends Scene {
     this.zenith_values = new Array(this.width * this.height).fill(0);
     this.azimuth_values = new Array(this.width * this.height).fill(0);
     this.latitude = 0;
-    this.add(
-      "heatmap",
-      new TwoDimHeatMap(width, height, this.zenith_values, this.azimuth_values),
-    );
+    this._add_heatmap();
     // Lines for months
     let num_year_steps = 12;
     for (let i = 0; i < num_year_steps; i++) {
@@ -137,6 +135,11 @@ class SunriseScene extends Scene {
       );
     }
   }
+  set_color_map(color_map: ColorMap) {
+    let mobj = this.get_mobj("heatmap") as HeatMap;
+    mobj.set_color_map(color_map);
+  }
+  _add_heatmap() {}
   // Sets the latitude
   set_latitude(l: number) {
     this.latitude = l;
@@ -166,12 +169,12 @@ class SunriseScene extends Scene {
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     let mobj;
-    mobj = this.get_mobj("heatmap") as TwoDimHeatMap;
+    mobj = this.get_mobj("heatmap") as HeatMap;
     mobj.draw(this.canvas, this, this.imageData);
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.get_mobj(name);
       if (mobj == undefined) throw new Error(`${name} not found`);
-      if (!(mobj instanceof TwoDimHeatMap)) {
+      if (!(mobj instanceof HeatMap)) {
         mobj.draw(this.canvas, this);
       }
     });
@@ -180,6 +183,23 @@ class SunriseScene extends Scene {
     ctx.strokeStyle = this.border_color;
     ctx.lineWidth = this.border_thickness;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+}
+
+class SunriseSceneZenith extends SunriseScene {
+  _add_heatmap() {
+    this.add(
+      "heatmap",
+      new HeatMap(this.width, this.height, 0, 2 * Math.PI, this.zenith_values),
+    );
+  }
+}
+class SunriseSceneAzimuth extends SunriseScene {
+  _add_heatmap() {
+    this.add(
+      "heatmap",
+      new HeatMap(this.width, this.height, 0, 2 * Math.PI, this.azimuth_values),
+    );
   }
 }
 
@@ -319,27 +339,70 @@ function three_d_globe(width: number, height: number) {
   document.addEventListener("DOMContentLoaded", async function () {
     (function sunrise_heatmap(width: number, height: number) {
       // *** Make the sunrise heatmap scene
-      let canvas_1 = prepare_canvas(width, height, "sunrise-heatmap");
+      let canvas_zenith = prepare_canvas(
+        width,
+        height,
+        "sunrise-heatmap-zenith",
+      );
+      let canvas_azimuth = prepare_canvas(
+        width,
+        height,
+        "sunrise-heatmap-azimuth",
+      );
 
       // Get the context for drawing
-      const ctx = canvas_1.getContext("2d");
-      if (!ctx) {
+      const ctx_zenith = canvas_zenith.getContext("2d");
+      if (!ctx_zenith) {
+        throw new Error("Failed to get 2D context");
+      }
+      const ctx_azimuth = canvas_azimuth.getContext("2d");
+      if (!ctx_azimuth) {
         throw new Error("Failed to get 2D context");
       }
 
       // Create ImageData object
-      const imageData = ctx.createImageData(width, height);
-      let sunriseScene = new SunriseScene(canvas_1, imageData, width, height);
+      const imageData_zenith = ctx_zenith.createImageData(width, height);
+      const imageData_azimuth = ctx_azimuth.createImageData(width, height);
+
+      // Make the heatmap scenes
+      let sunriseSceneZenith = new SunriseSceneZenith(
+        canvas_zenith,
+        imageData_zenith,
+        width,
+        height,
+      );
+      let sunriseSceneAzimuth = new SunriseSceneAzimuth(
+        canvas_azimuth,
+        imageData_azimuth,
+        width,
+        height,
+      );
+      sunriseSceneZenith.set_color_map((theta) => {
+        return [0, 0, 0, 128 * (1 - Math.cos(theta))];
+      });
+      sunriseSceneAzimuth.set_color_map((phi) => {
+        let a;
+        if (phi < (2 * Math.PI) / 3) {
+          a = phi / ((2 * Math.PI) / 3);
+          return [256 * (1 - a), 256 * a, 0, 255];
+        } else if (phi < (4 * Math.PI) / 3) {
+          a = phi / ((2 * Math.PI) / 3) - 1;
+          return [0, 256 * (1 - a), 256 * a, 255];
+        } else {
+          a = phi / ((2 * Math.PI) / 3) - 2;
+          return [256 * a, 0, 256 * (1 - a), 255];
+        }
+      });
 
       // *** Make the 3D globe scene
-      let canvas_2 = prepare_canvas(width, height, "three-d-globe");
+      let canvas_globe = prepare_canvas(width, height, "three-d-globe");
       let [xmin, xmax] = [-5, 5];
       let [ymin, ymax] = [-5, 5];
       let [zmin, zmax] = [-5, 5];
 
       // Initialize three-dimensional scene, zoomed in
       let zoom_ratio = 1.0;
-      let globeScene = new ThreeDScene(canvas_2);
+      let globeScene = new ThreeDScene(canvas_globe);
       globeScene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       globeScene.set_zoom(zoom_ratio);
       globeScene.set_view_mode("orthographic");
@@ -365,7 +428,7 @@ function three_d_globe(width: number, height: number) {
 
       // Adding click-and-drag interactivity to the canvas
       let arcball = new Arcball(globeScene);
-      arcball.set_mode("Translate");
+      arcball.set_mode("Rotate");
       arcball.add();
 
       // Add a sphere to the scene
@@ -455,8 +518,11 @@ function three_d_globe(width: number, height: number) {
       let latitudeSlider = Slider(
         document.getElementById("three-d-globe-slider-1") as HTMLElement,
         function (l: number) {
-          sunriseScene.set_latitude(l);
-          sunriseScene.draw();
+          sunriseSceneZenith.set_latitude(l);
+          sunriseSceneZenith.draw();
+
+          sunriseSceneAzimuth.set_latitude(l);
+          sunriseSceneAzimuth.draw();
 
           theta = (Math.PI * l) / 180;
           latitude_line = globeScene.get_mobj(
