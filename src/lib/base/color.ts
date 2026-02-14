@@ -44,7 +44,6 @@ export function rb_colormap_2(z: number): ColorVal {
 export function spherical_colormap(theta: number, phi: number): ColorVal {
   let a;
   if (phi < 0 || phi > 2 * Math.PI) {
-    console.log(phi);
     throw new Error("Invalid longitude");
   } else if (phi < (2 * Math.PI) / 3) {
     a = phi / ((2 * Math.PI) / 3);

@@ -1,4 +1,4 @@
-import { prepare_canvas, delay, Scene } from "./lib/base";
+import { prepare_canvas, delay, Scene } from "./lib/base/base";
 import {
   Vec2D,
   vec2_sub,
@@ -11,7 +11,7 @@ import {
   Line,
 } from "./lib/base_geom.js";
 import { BezierSpline } from "./lib/bezier.js";
-import { normalize, get_column, matmul_vec, rot } from "./lib/matvec";
+import { normalize, get_column, matmul_vec, rot } from "./lib/three_d/matvec";
 import {
   Vec3D,
   vec3_sum,
@@ -26,10 +26,10 @@ import {
   TwoHeadedArrow3D,
   ParametrizedCurve3D,
 } from "./lib/three_d.js";
-import { Slider, Button, PauseButton } from "./lib/interactive.js";
-import { Arcball } from "./lib/arcball.js";
+import { Slider, Button } from "./lib/interactive.js";
+import { Arcball } from "./lib/three_d/arcball.js";
 import { pick_random_step } from "./random_walk_scene.js";
-import { LaTeXMObject, LatexCache } from "./lib/latex.js";
+import { LaTeXMObject, LatexCache } from "./lib/base/latex.js";
 
 (async function () {
   document.addEventListener("DOMContentLoaded", async function () {

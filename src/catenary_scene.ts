@@ -1,16 +1,19 @@
 // import * as np from "numpy-ts";
-import { Scene } from "./lib/base.js";
-import { Dot, Line } from "./lib/base_geom.js";
+import { Scene } from "./lib/base/base.js";
+import { Dot, Line } from "./lib/base/geometry";
 import { Slider } from "./lib/interactive.js";
 import { SmoothOpenPathBezierHandleCalculator } from "./lib/bezier.js";
 import {
   Vec2D,
-  vec2_scale,
+  vec2_norm,
   vec2_sum,
   vec2_sub,
-  vec2_norm,
+  vec2_scale,
+  vec2_rot,
+  vec2_normalize,
+  vec2_angle,
   vec2_sum_list,
-} from "./lib/base_geom.js";
+} from "./lib/base/vec2.js";
 
 // TODO Make a function F which, given vectors v1, v2, ..., vn,
 // converts to a sequence w1, w2, ..., wn such that

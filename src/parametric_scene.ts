@@ -1,7 +1,7 @@
 // TODO Graph of a parametric function
-import { MObject, Scene } from "./lib/base.js";
+import { MObject, Scene } from "./lib/base/base.js";
 import { Slider } from "./lib/interactive.js";
-import { ParametricFunction } from "./lib/parametric.js";
+import { ParametricFunction } from "./lib/bezier.js";
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
@@ -71,7 +71,6 @@ import { ParametricFunction } from "./lib/parametric.js";
     let scene = new Scene(canvas);
     scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
     scene.add("parametric_fn", parametric);
-    console.log("foo");
     scene.draw();
 
     // Make a slider which can be used to modify the mobject

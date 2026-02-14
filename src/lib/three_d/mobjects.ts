@@ -1,84 +1,50 @@
-// Three-dimensional geometry and transformations.
-// TODO Depth of ThreeDMObjects
-
+// Three-dimensional Mobjects
 import {
   MObject,
-  LineLikeMObject,
-  FillLikeMObject,
   Scene,
+  StrokeOptions,
+  FillOptions,
   mouse_event_coords,
   touch_event_coords,
-} from "./base.js";
-import { vec2_norm, Vec2D } from "./base_geom.js";
+} from "../base/base";
 import {
-  Mat3by3,
-  matmul_vec,
-  matmul_mat,
-  rot_z_matrix,
-  rot_y_matrix,
-  rot_x_matrix,
-  rot_matrix,
-  mat_inv,
+  Vec2D,
+  vec2_norm,
+  vec2_sum,
+  vec2_sub,
+  vec2_scale,
+  vec2_rot,
+  vec2_normalize,
+  vec2_angle,
+  vec2_sum_list,
+} from "../base/vec2.js";
+import { ThreeDScene } from "./scene";
+import {
+  Vec3D,
+  vec3_scale,
+  vec3_dot,
+  vec3_norm,
+  vec3_sum,
+  vec3_sub,
+  vec3_sum_list,
   get_column,
-  rot_z,
-  rot_y,
-  rot_x,
-  rot,
-} from "./matvec.js";
-import { vec2_sum, vec2_sub, vec2_scale, vec2_rot } from "./base_geom.js";
-import { Simulator } from "./statesim.js";
-import {
-  SceneFromSimulator,
-  ThreeDSceneFromSimulator,
-} from "./interactive_handler.js";
+} from "./matvec";
 
-export type Vec3D = [number, number, number];
-
-export function vec3_norm(x: Vec3D): number {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2);
-}
-
-export function vec3_dot(v: Vec3D, w: Vec3D): number {
-  let result = 0;
-  for (let i = 0; i < 3; i++) {
-    result += (v[i] as number) * (w[i] as number);
-  }
-  return result;
-}
-
-export function vec3_scale(x: Vec3D, factor: number): Vec3D {
-  return [x[0] * factor, x[1] * factor, x[2] * factor];
-}
-
-export function vec3_sum(x: Vec3D, y: Vec3D): Vec3D {
-  return [x[0] + y[0], x[1] + y[1], x[2] + y[2]];
-}
-
-export function vec3_sum_list(xs: Vec3D[]): Vec3D {
-  return xs.reduce((acc, x) => vec3_sum(acc, x), [0, 0, 0]);
-}
-
-export function vec3_sub(x: Vec3D, y: Vec3D): Vec3D {
-  return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
-}
-
-// Three-dimensional objects.
+// Base class for three-dimensional Mobjects
 export class ThreeDMObject extends MObject {
   blocked_depth_tolerance: number = 0.01;
   linked_mobjects: ThreeDFillLikeMObject[] = [];
-  stroke_width: number = 0.08;
-  stroke_color: string = "black";
-  stroke_style: "solid" | "dashed" | "dotted" = "solid";
+  stroke_options: StrokeOptions = new StrokeOptions();
   set_stroke_color(color: string) {
-    this.stroke_color = color;
+    this.stroke_options.set_stroke_color(color);
     return this;
   }
   set_stroke_width(width: number) {
-    this.stroke_width = width;
+    this.stroke_options.set_stroke_width(width);
     return this;
   }
   set_stroke_style(style: "solid" | "dashed" | "dotted") {
-    this.stroke_style = style;
+    this.stroke_options.set_stroke_style(style);
     return this;
   }
   // Return the depth of the object in the scene. Used for sorting.
@@ -112,11 +78,13 @@ export class ThreeDMObject extends MObject {
       return true;
     } else {
       return (
-        scene.depth(point) >
+        scene.camera.depth(point) >
         this.blocked_depth_at(scene, vp) + this.blocked_depth_tolerance
       );
     }
   }
+  // Simpler drawing method for 3D scenes which doesn't use local depth testing, for speed purposes.
+  _draw_simple(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {}
 }
 
 // Identical extension as MObject -> LineLikeMObject
@@ -139,40 +107,34 @@ export class ThreeDLineLikeMObject extends ThreeDMObject {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    if (this.stroke_style == "dashed") {
-      ctx.setLineDash([5, 5]);
-    } else if (this.stroke_style == "dotted") {
-      ctx.setLineDash([2, 2]);
-    }
+    this.stroke_options.apply_to(ctx, scene);
     if (this instanceof Line3D && simple) {
       this._draw_simple(ctx, scene);
     } else {
       this._draw(ctx, scene, args);
     }
-    ctx.setLineDash([]);
   }
 }
 
 // Identical extension as MObject -> FillLikeMObject
 export class ThreeDFillLikeMObject extends ThreeDMObject {
-  fill_color: string = "black";
-  fill_alpha: number = 1.0;
-  fill: boolean = true;
+  fill_options: FillOptions = new FillOptions();
   set_fill_color(color: string) {
-    this.fill_color = color;
+    this.fill_options.fill_color = color;
+    return this;
   }
   set_color(color: string) {
-    this.stroke_color = color;
-    this.fill_color = color;
+    this.stroke_options.stroke_color = color;
+    this.fill_options.fill_color = color;
+    return this;
   }
   set_fill_alpha(alpha: number) {
-    this.fill_alpha = alpha;
+    this.fill_options.fill_alpha = alpha;
+    return this;
   }
   set_fill(fill: boolean) {
-    this.fill = fill;
+    this.fill_options.fill = fill;
+    return this;
   }
   // Sets the context drawer settings for drawing behind linked FillLike objects.
   set_behind_linked_mobjects(ctx: CanvasRenderingContext2D) {
@@ -190,21 +152,13 @@ export class ThreeDFillLikeMObject extends ThreeDMObject {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    if (this.stroke_style == "dashed") {
-      ctx.setLineDash([5, 5]);
-    } else if (this.stroke_style == "dotted") {
-      ctx.setLineDash([2, 2]);
-    }
-    ctx.fillStyle = this.fill_color;
+    this.stroke_options.apply_to(ctx, scene);
+    this.fill_options.apply_to(ctx);
     if (this instanceof Dot3D && simple) {
       this._draw_simple(ctx, scene);
     } else {
       this._draw(ctx, scene, args);
     }
-    ctx.setLineDash([]);
   }
 }
 
@@ -224,7 +178,7 @@ export class Dot3D extends ThreeDFillLikeMObject {
     return this.radius;
   }
   depth(scene: ThreeDScene): number {
-    return scene.depth(this.center);
+    return scene.camera.depth(this.center);
   }
   depth_at(scene: ThreeDScene, view_point: Vec2D): number {
     if (scene.mode == "perspective") {
@@ -232,7 +186,7 @@ export class Dot3D extends ThreeDFillLikeMObject {
       return 0;
     } else if (scene.mode == "orthographic") {
       let dist = vec2_norm(
-        vec2_sub(view_point, scene.orthographic_view(this.center)),
+        vec2_sub(view_point, scene.camera.orthographic_view(this.center)),
       );
       if (dist > this.radius) {
         return Infinity;
@@ -240,7 +194,7 @@ export class Dot3D extends ThreeDFillLikeMObject {
         let depth_adjustment = Math.sqrt(
           Math.max(0, this.radius ** 2 - dist ** 2),
         );
-        return scene.depth(this.center) - depth_adjustment;
+        return scene.camera.depth(this.center) - depth_adjustment;
       }
     }
     return 0;
@@ -258,7 +212,7 @@ export class Dot3D extends ThreeDFillLikeMObject {
     let pr = scene.camera_view(
       vec3_sum(
         this.center,
-        vec3_scale(get_column(scene.get_camera_frame(), 0), this.radius),
+        vec3_scale(get_column(scene.camera.get_camera_frame(), 0), this.radius),
       ),
     );
     let state;
@@ -269,10 +223,10 @@ export class Dot3D extends ThreeDFillLikeMObject {
       ctx.beginPath();
       ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
       ctx.stroke();
-      if (this.fill) {
-        ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
+      if (this.fill_options.fill) {
+        ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;
         ctx.fill();
-        ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
+        ctx.globalAlpha = ctx.globalAlpha / this.fill_options.fill_alpha;
       }
     }
   }
@@ -282,12 +236,12 @@ export class Dot3D extends ThreeDFillLikeMObject {
     let pr = scene.camera_view(
       vec3_sum(
         this.center,
-        vec3_scale(get_column(scene.get_camera_frame(), 0), this.radius),
+        vec3_scale(get_column(scene.camera.get_camera_frame(), 0), this.radius),
       ),
     );
     let state;
     if (p != null && pr != null) {
-      let depth = scene.depth(this.center);
+      let depth = scene.camera.depth(this.center);
       if (
         depth >
         this.blocked_depth_at(scene, p) + this.blocked_depth_tolerance
@@ -305,10 +259,10 @@ export class Dot3D extends ThreeDFillLikeMObject {
       }
       ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
       ctx.stroke();
-      if (this.fill) {
-        ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
+      if (this.fill_options.fill) {
+        ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;
         ctx.fill();
-        ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
+        ctx.globalAlpha = ctx.globalAlpha / this.fill_options.fill_alpha;
       }
       if (state == "blocked") {
         this.unset_behind_linked_mobjects(ctx);
@@ -523,7 +477,7 @@ export class Line3D extends ThreeDLineLikeMObject {
     this.end = v;
   }
   depth(scene: ThreeDScene): number {
-    return scene.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
+    return scene.camera.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     let s = scene.camera_view(this.start);
@@ -637,15 +591,12 @@ export class LineSequence3D extends ThreeDLineLikeMObject {
     if (this.points.length == 0) {
       return 0;
     } else if (this.points.length == 1) {
-      return scene.depth(this.points[0]);
+      return scene.camera.depth(this.points[0]);
     } else {
-      return scene.depth(
+      return scene.camera.depth(
         vec3_scale(vec3_sum(this.points[0], this.points[1]), 0.5),
       );
     }
-    // return scene.depth(
-    //   vec3_scale(vec3_sum_list(this.points), 1 / this.points.length),
-    // );
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     ctx.beginPath();
@@ -768,7 +719,7 @@ export class Arrow3D extends Line3D {
   fill_color: string;
   constructor(start: Vec3D, end: Vec3D) {
     super(start, end);
-    this.fill_color = this.stroke_color;
+    this.fill_color = this.stroke_options.stroke_color;
   }
   set_arrow_size(size: number) {
     this.arrow_size = size;
@@ -805,7 +756,7 @@ export class TwoHeadedArrow3D extends Line3D {
   fill_color: string;
   constructor(start: Vec3D, end: Vec3D) {
     super(start, end);
-    this.fill_color = this.stroke_color;
+    this.fill_color = this.stroke_options.stroke_color;
   }
   set_arrow_size(size: number) {
     this.arrow_size = size;
@@ -859,7 +810,7 @@ export class Cube extends ThreeDLineLikeMObject {
     this.size = size;
   }
   depth(scene: ThreeDScene): number {
-    return scene.depth(this.center);
+    return scene.camera.depth(this.center);
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     // First, generate all of the vertices of the cube as Vec3D's.
@@ -977,7 +928,7 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
     let depth: number;
     for (let i = 0; i < this.points.length; i++) {
       p = scene.camera_view(this.points[i]);
-      depth = scene.depth(this.points[i]);
+      depth = scene.camera.depth(this.points[i]);
       if (p == null) {
         next_state = "out_of_frame";
         if (state == "unblocked") {
@@ -1071,306 +1022,4 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
     }
     ctx.stroke();
   }
-}
-
-// TODO Move all camera-related code from ThreeDScene into Camera3D class
-class Camera3D {
-  position: Vec3D = [0, 0, 0];
-  camera_frame: Mat3by3 = [
-    [1, 0, 0],
-    [0, 1, 0],
-    [0, 0, 1],
-  ];
-  camera_frame_inv: Mat3by3 = [
-    [1, 0, 0],
-    [0, 1, 0],
-    [0, 0, 1],
-  ];
-}
-
-// Rendering three-dimensional scenes.
-// Drawing three-dimensional objects begins with projecting them onto
-// the two-dimensional plane orthogonal to the camera's view direction.
-//
-// The camera position is given by a vector v0, and its
-// view frame is given by an orthogonal matrix A = [v1, v2, v3].
-// Here, v3 is the direction in which the camera is pointing.
-//
-// Rendering a point v first consists of computing A^{-1}(v - v0). Then the first two coordinates
-// of Av are the 2D coordinates of the rendering, while the third coordinate is the depth.
-export class ThreeDScene extends Scene {
-  mobjects: Record<string, ThreeDMObject>;
-  // Inverse of the camera matrix
-  camera_frame_inv: Mat3by3 = [
-    [1, 0, 0],
-    [0, 1, 0],
-    [0, 0, 1],
-  ];
-  camera_position: Vec3D = [0, 0, 0];
-  mode: "perspective" | "orthographic" = "perspective";
-  // Set the camera position
-  set_camera_position(position: Vec3D) {
-    this.camera_position = position;
-  }
-  // Translate the camera matrix by a given vector
-  translate(vec: Vec3D) {
-    this.camera_position = vec3_sum(this.camera_position, vec);
-  }
-  // Set the camera frame inverse
-  set_camera_frame_inv(frame_inv: Mat3by3) {
-    this.camera_frame_inv = frame_inv;
-  }
-  // Get the camera frame matrix
-  get_camera_frame() {
-    return mat_inv(this.camera_frame_inv);
-  }
-  // Converts a 2D vector in the view to world coordinates
-  v2w(v: Vec2D): Vec3D {
-    let frame = this.get_camera_frame();
-    return vec3_sum(
-      vec3_scale(get_column(frame, 0), v[0]),
-      vec3_scale(get_column(frame, 1), v[1]),
-    );
-  }
-  // Rotate the camera matrix around the z-axis.
-  rot_z(angle: number) {
-    this.camera_frame_inv = matmul_mat(
-      this.camera_frame_inv,
-      rot_z_matrix(-angle),
-    );
-  }
-  // Rotate the camera matrix around the y-axis.
-  rot_y(angle: number) {
-    this.camera_frame_inv = matmul_mat(
-      this.camera_frame_inv,
-      rot_y_matrix(-angle),
-    );
-  }
-  // Rotate the camera matrix around the x-axis.
-  rot_x(angle: number) {
-    this.camera_frame_inv = matmul_mat(
-      this.camera_frame_inv,
-      rot_x_matrix(-angle),
-    );
-  }
-  // Rotate the camera matrix around a given axis
-  rot(axis: Vec3D, angle: number) {
-    this.camera_frame_inv = matmul_mat(
-      this.camera_frame_inv,
-      rot_matrix(axis, -angle),
-    );
-  }
-  // Rotates the camera view around various axes
-  rot_camera_z(angle: number) {
-    this.rot_z(angle);
-    this.set_camera_position(rot_z(this.camera_position, angle));
-  }
-  rot_camera_y(angle: number) {
-    this.rot_y(angle);
-    this.set_camera_position(rot_y(this.camera_position, angle));
-  }
-  rot_camera_x(angle: number) {
-    this.rot_x(angle);
-    this.set_camera_position(rot_x(this.camera_position, angle));
-  }
-  rot_camera(axis: Vec3D, angle: number) {
-    this.rot(axis, angle);
-    this.set_camera_position(rot(this.camera_position, axis, angle));
-  }
-  // Modes of viewing/drawing
-  set_view_mode(mode: "perspective" | "orthographic") {
-    this.mode = mode;
-  }
-  camera_view(p: Vec3D): Vec2D | null {
-    if (this.mode == "perspective") {
-      return this.perspective_view(p);
-    } else {
-      return this.orthographic_view(p);
-    }
-  }
-  depth(p: Vec3D): number {
-    return matmul_vec(
-      this.camera_frame_inv,
-      vec3_sub(p, this.camera_position),
-    )[2];
-  }
-  // Projects a 3D point onto the camera view plane. Does not include perspective.
-  orthographic_view(p: Vec3D): Vec2D {
-    let [vx, vy, vz] = matmul_vec(
-      this.camera_frame_inv,
-      vec3_sub(p, this.camera_position),
-    );
-    return [vx, vy];
-  }
-  // Projects a 3D point onto the camera view plane, and then divides by the third coordinate.
-  // Returns null if the third coordinate is nonpositive (i.e., the point is behind the camera).
-  perspective_view(p: Vec3D): Vec2D | null {
-    let [vx, vy, vz] = matmul_vec(
-      this.camera_frame_inv,
-      vec3_sub(p, this.camera_position),
-    );
-    if (vz <= 0) {
-      return null;
-    } else {
-      return [vx / vz, vy / vz];
-    }
-  }
-  // Draw
-  draw(args?: any) {
-    let ctx = this.canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // First order the objects by depth
-    let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
-      let depth_a = this.mobjects[a].depth(this);
-      let depth_b = this.mobjects[b].depth(this);
-      return depth_b - depth_a;
-    });
-
-    // Then draw them in order: first the FillLike objects, then the LineLike objects, then others.
-    for (let name of ordered_names) {
-      let mobj = this.mobjects[name];
-      if (mobj == undefined) throw new Error(`${name} not found`);
-      if (mobj instanceof ThreeDFillLikeMObject) {
-        mobj.draw(this.canvas, this);
-      }
-    }
-    for (let name of ordered_names) {
-      let mobj = this.mobjects[name];
-      if (mobj == undefined) throw new Error(`${name} not found`);
-      if (mobj instanceof ThreeDLineLikeMObject) {
-        mobj.draw(this.canvas, this);
-      }
-    }
-    for (let name of ordered_names) {
-      let mobj = this.mobjects[name];
-      if (mobj == undefined) throw new Error(`${name} not found`);
-      if (
-        !(mobj instanceof ThreeDFillLikeMObject) &&
-        !(mobj instanceof ThreeDLineLikeMObject)
-      ) {
-        mobj.draw(this.canvas, this);
-      }
-    }
-
-    // Draw a border around the canvas
-    ctx.strokeStyle = this.border_color;
-    ctx.lineWidth = this.border_thickness;
-    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
-  }
-}
-
-// Identical extension of ThreeDScene as InteractivePlayingScene is of Scene
-export abstract class InteractivePlayingThreeDScene extends ThreeDScene {
-  simulators: Record<number, Simulator>; // The internal simulator
-  num_simulators: number;
-  action_queue: Array<CallableFunction>;
-  paused: boolean;
-  time: number;
-  dt: number;
-  end_time: number | undefined; // Store a known end-time in case the simulation is paused and unpaused
-  linked_scenes: Array<SceneFromSimulator | ThreeDSceneFromSimulator> = [];
-  constructor(canvas: HTMLCanvasElement, simulators: Array<Simulator>) {
-    super(canvas);
-    [this.num_simulators, this.simulators] = simulators.reduce(
-      ([ind, acc], item) => ((acc[ind] = item), [ind + 1, acc]),
-      [0, {}] as [number, Record<number, Simulator>],
-    );
-    this.action_queue = [];
-    this.paused = true;
-    this.time = 0;
-    this.dt = (simulators[0] as Simulator).dt;
-    this.linked_scenes = [];
-  }
-  add_linked_scene(scene: SceneFromSimulator | ThreeDSceneFromSimulator) {
-    this.linked_scenes.push(scene);
-  }
-  get_simulator(ind: number = 0): Simulator {
-    return this.simulators[ind] as Simulator;
-  }
-  set_simulator_attr(
-    simulator_ind: number,
-    attr_name: string,
-    attr_val: number,
-  ) {
-    this.get_simulator(simulator_ind).set_attr(attr_name, attr_val);
-  }
-  update_and_draw_linked_scenes() {
-    for (let scene of this.linked_scenes) {
-      scene.update_mobjects_from_simulator(this.get_simulator(0));
-      scene.draw();
-    }
-  }
-  // Restarts the simulator
-  reset(): void {
-    for (let ind = 0; ind < this.num_simulators; ind++) {
-      this.get_simulator(ind).reset();
-    }
-    this.time = 0;
-    this.draw();
-    this.update_and_draw_linked_scenes();
-  }
-  // Switches from paused to unpaused and vice-versa.
-  toggle_pause() {
-    this.paused = !this.paused;
-    if (!this.paused) {
-      this.play(this.end_time);
-    }
-  }
-  // Adds to the action queue if the scene is currently playing,
-  // otherwise execute the callback immediately
-  add_to_queue(callback: () => void) {
-    if (this.paused) {
-      callback();
-    } else {
-      this.action_queue.push(callback);
-    }
-  }
-  // Starts animation
-  play(until: number | undefined) {
-    // If paused, record the end time and stop the loop
-    if (this.paused) {
-      this.end_time = until;
-      return;
-    }
-    // Otherwise, loop
-    else {
-      // If there are outstanding actions, perform them first
-      if (this.action_queue.length > 0) {
-        let callback = this.action_queue.shift() as () => void;
-        callback();
-      }
-      // If we have reached the end-time, stop.
-      else if (this.time > (until as number)) {
-        return;
-      } else {
-        for (let ind = 0; ind < this.num_simulators; ind++) {
-          this.get_simulator(ind).step();
-        }
-        this.time += this.get_simulator(0).dt;
-        this.draw();
-        this.update_and_draw_linked_scenes();
-      }
-      window.requestAnimationFrame(this.play.bind(this, until));
-    }
-  }
-  // Updates all mobjects to account for the new simulator state
-  update_mobjects() {}
-  // Draws the scene without worrying about depth-sensing.
-  // TODO Sort this out later.
-  draw() {
-    this.update_mobjects();
-
-    let ctx = this.canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    Object.keys(this.mobjects).forEach((name) => {
-      let mobj = this.get_mobj(name);
-      if (mobj == undefined) throw new Error(`${name} not found`);
-      this.draw_mobject(mobj);
-    });
-  }
-  // Add drawing instructions in the subclass.
-  draw_mobject(mobj: MObject) {}
 }

@@ -10629,7 +10629,59 @@ var require_numpy_ts_node = __commonJS({
   }
 });
 
-// src/lib/base.ts
+// src/lib/base/base.ts
+var StrokeOptions = class {
+  constructor() {
+    this.stroke_width = 0.08;
+    this.stroke_color = "black";
+    this.stroke_style = "solid";
+  }
+  set_stroke_color(color) {
+    this.stroke_color = color;
+    return this;
+  }
+  set_stroke_width(width) {
+    this.stroke_width = width;
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_style = style;
+    return this;
+  }
+  apply_to(ctx, scene) {
+    ctx.lineWidth = this.stroke_width * scene.scale();
+    ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "solid") {
+      ctx.setLineDash([]);
+    } else if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
+  }
+};
+var FillOptions = class {
+  constructor() {
+    this.fill_color = "black";
+    this.fill_alpha = 1;
+    this.fill = true;
+  }
+  set_fill_color(color) {
+    this.fill_color = color;
+    return this;
+  }
+  set_fill_alpha(alpha) {
+    this.fill_alpha = alpha;
+    return this;
+  }
+  set_fill(fill2) {
+    this.fill = fill2;
+    return this;
+  }
+  apply_to(ctx) {
+    ctx.fillStyle = this.fill_color;
+  }
+};
 var MObject = class {
   // Opacity for drawing
   constructor() {
@@ -10653,92 +10705,70 @@ var MObject = class {
 var LineLikeMObject = class extends MObject {
   constructor() {
     super(...arguments);
-    this.stroke_width = 0.08;
-    this.stroke_color = "black";
-    this.stroke_style = "solid";
+    this.stroke_options = new StrokeOptions();
   }
   set_stroke_color(color) {
-    this.stroke_color = color;
+    this.stroke_options.set_stroke_color(color);
     return this;
   }
   set_stroke_width(width) {
-    this.stroke_width = width;
+    this.stroke_options.set_stroke_width(width);
     return this;
   }
   set_stroke_style(style) {
-    this.stroke_style = style;
+    this.stroke_options.set_stroke_style(style);
     return this;
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.view_xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    if (this.stroke_style == "dashed") {
-      ctx.setLineDash([5, 5]);
-    } else if (this.stroke_style == "dotted") {
-      ctx.setLineDash([2, 2]);
-    }
+    this.stroke_options.apply_to(ctx, scene);
     this._draw(ctx, scene, args);
-    ctx.setLineDash([]);
   }
 };
 var FillLikeMObject = class extends MObject {
   constructor() {
     super(...arguments);
-    this.stroke_width = 0.08;
-    this.stroke_color = "black";
-    this.stroke_style = "solid";
-    this.fill_color = "black";
-    this.fill_alpha = 1;
-    this.fill = true;
+    this.stroke_options = new StrokeOptions();
+    this.fill_options = new FillOptions();
   }
   set_stroke_color(color) {
-    this.stroke_color = color;
+    this.stroke_options.set_stroke_color(color);
     return this;
   }
   set_stroke_width(width) {
-    this.stroke_width = width;
+    this.stroke_options.set_stroke_width(width);
     return this;
   }
   set_stroke_style(style) {
-    this.stroke_style = style;
+    this.stroke_options.set_stroke_style(style);
     return this;
   }
   set_fill_color(color) {
-    this.fill_color = color;
+    this.fill_options.set_fill_color(color);
     return this;
   }
   set_color(color) {
-    this.stroke_color = color;
-    this.fill_color = color;
+    this.stroke_options.set_stroke_color(color);
+    this.fill_options.set_fill_color(color);
     return this;
   }
   set_fill_alpha(alpha) {
-    this.fill_alpha = alpha;
+    this.fill_options.set_fill_alpha(alpha);
     return this;
   }
   set_fill(fill2) {
-    this.fill = fill2;
+    this.fill_options.set_fill(fill2);
     return this;
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.view_xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    if (this.stroke_style == "dashed") {
-      ctx.setLineDash([5, 5]);
-    } else if (this.stroke_style == "dotted") {
-      ctx.setLineDash([2, 2]);
-    }
-    ctx.fillStyle = this.fill_color;
+    this.stroke_options.apply_to(ctx, scene);
+    this.fill_options.apply_to(ctx);
     this._draw(ctx, scene, args);
-    ctx.setLineDash([]);
   }
 };
 var Scene = class {
@@ -10805,6 +10835,11 @@ var Scene = class {
   move_view(v) {
     this.view_xlims = [this.view_xlims[0] + v[0], this.view_xlims[1] + v[0]];
     this.view_ylims = [this.view_ylims[0] + v[1], this.view_ylims[1] + v[1]];
+  }
+  // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
+  scale() {
+    let [xmin, xmax] = this.view_xlims;
+    return this.canvas.width / (xmax - xmin);
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
@@ -10920,13 +10955,15 @@ function touch_event_coords(event) {
   return [event.touches[0].pageX, event.touches[0].pageY];
 }
 
-// src/lib/base_geom.ts
+// src/lib/base/vec2.ts
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
 function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
+
+// src/lib/base_geom.ts
 var Dot = class extends FillLikeMObject {
   constructor(center, radius) {
     super();
@@ -11264,15 +11301,15 @@ var BezierSpline = class extends LineLikeMObject {
     }
     let stroke_width = kwargs.stroke_width;
     if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
+      this.stroke_options.stroke_width = 0.08;
     } else {
-      this.stroke_width = stroke_width;
+      this.stroke_options.stroke_width = stroke_width;
     }
     let stroke_color = kwargs.stroke_color;
     if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
+      this.stroke_options.stroke_color = `rgb(0, 0, 0)`;
     } else {
-      this.stroke_color = stroke_color;
+      this.stroke_options.stroke_color = stroke_color;
     }
   }
   set_anchors(new_anchors) {
@@ -11318,6 +11355,7 @@ function Slider(container, callback, kwargs) {
   slider.value = kwargs.initial_value;
   slider.classList.add("slider");
   slider.id = "floatSlider";
+  slider.width = 200;
   let name = kwargs.name;
   if (name == void 0) {
     slider.name = "Value";

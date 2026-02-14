@@ -1,4 +1,4 @@
-import { prepare_canvas, delay } from "./lib/base";
+import { prepare_canvas, delay } from "./lib/base/base.js";
 import {
   Vec2D,
   vec2_sub,
@@ -7,14 +7,19 @@ import {
   vec2_sum,
   vec2_norm,
   vec2_normalize,
-} from "./lib/base_geom.js";
-import { normalize, get_column, matmul_vec, rot } from "./lib/matvec";
+} from "./lib/base/vec2.js";
 import {
   Vec3D,
   vec3_sum,
   vec3_sum_list,
   vec3_scale,
-  ThreeDScene,
+  normalize,
+  get_column,
+  matmul_vec,
+  rot,
+} from "./lib/three_d/matvec.js";
+import { ThreeDScene } from "./lib/three_d/scene.js";
+import {
   ThreeDMObject,
   Cube,
   Dot3D,
@@ -24,9 +29,9 @@ import {
   TwoHeadedArrow3D,
   ParametrizedCurve3D,
   DraggableDot3D,
-} from "./lib/three_d.js";
-import { Slider, Button, PauseButton } from "./lib/interactive.js";
-import { Arcball } from "./lib/arcball.js";
+} from "./lib/three_d/mobjects.js";
+import { Slider, Button } from "./lib/interactive.js";
+import { Arcball } from "./lib/three_d/arcball.js";
 import { pick_random_step } from "./random_walk_scene.js";
 
 (async function () {
@@ -41,10 +46,11 @@ import { pick_random_step } from "./random_walk_scene.js";
       scene.set_zoom(zoom_ratio);
 
       // Rotate the camera angle and set the camera position
-      scene.rot_z(Math.PI / 4);
-      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
-      scene.set_camera_position(
-        rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4),
+      scene.camera.move_to([0, 0, -8]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        Math.PI / 4,
       );
 
       // Add cube and dot to the scene
@@ -99,12 +105,7 @@ import { pick_random_step } from "./random_walk_scene.js";
           axis = rot(axis, perturb_axis, perturb_axis_angle);
 
           // Rotate the camera frame and position around this new axis
-          scene.rot(axis, perturb_angle);
-          scene.camera_position = rot(
-            scene.camera_position,
-            axis,
-            perturb_angle,
-          );
+          scene.camera.rot_pos_and_view(axis, perturb_angle);
 
           // Redraw the scene
           scene.draw();
@@ -128,10 +129,11 @@ import { pick_random_step } from "./random_walk_scene.js";
       scene.set_view_mode("orthographic");
 
       // Rotate the camera angle and set the camera position
-      scene.rot_z(Math.PI / 4);
-      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4);
-      scene.set_camera_position(
-        rot([0, 0, -8], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 4),
+      scene.camera.move_to([0, 0, -8]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        Math.PI / 4,
       );
 
       // Add graph lines with ticks
@@ -364,14 +366,11 @@ import { pick_random_step } from "./random_walk_scene.js";
       scene.set_view_mode("orthographic");
 
       // Rotate the camera angle and set the camera position
-      scene.rot_z(Math.PI / 4);
-      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], (2 * Math.PI) / 3);
-      scene.set_camera_position(
-        rot(
-          [0, 0, -5],
-          [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
-          (2 * Math.PI) / 3,
-        ),
+      scene.camera.move_to([0, 0, -5]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        (2 * Math.PI) / 3,
       );
 
       // Adding click-and-drag interactivity to the canvas

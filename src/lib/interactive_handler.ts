@@ -1,6 +1,6 @@
-import { Scene } from "./base.js";
-import { ThreeDScene } from "./three_d.js";
-import { Simulator } from "./statesim.js";
+import { Scene } from "./base/base.js";
+import { ThreeDScene } from "./three_d/scene.js";
+import { Simulator } from "./simulator/sim.js";
 
 // Generic for a scene whose state can be drawn from a simulator state
 export class SceneFromSimulator extends Scene {
@@ -25,10 +25,10 @@ export class ThreeDSceneFromSimulator extends ThreeDScene {
 export class InteractiveHandler {
   simulator: Simulator;
   scenes: Array<SceneFromSimulator | ThreeDSceneFromSimulator> = [];
-  action_queue: Array<CallableFunction>;
-  paused: boolean;
-  time: number;
-  dt: number;
+  action_queue: Array<CallableFunction> = [];
+  paused: boolean = true;
+  time: number = 0;
+  dt: number = 0.01;
   end_time: number | undefined; // Store a known end-time in case the simulation is paused and unpaused
   constructor(simulator: Simulator) {
     this.simulator = simulator;
@@ -93,7 +93,6 @@ export class InteractiveHandler {
       } else {
         this.simulator.step();
         this.time += this.simulator.dt;
-        console.log(this.time);
         for (let i = 0; i < this.scenes.length; i++) {
           this.scenes[i].update_mobjects(this.simulator);
           this.scenes[i].draw();

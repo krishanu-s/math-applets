@@ -1,7 +1,17 @@
 // Click-and-drag translation on a 2D scene. This is effectively a simplified version of ArcBall.
 // TODO Refactor this with ArcBall.
-import { Scene } from "./base.js";
-import { Vec2D, vec2_normalize, vec2_sub, vec2_norm } from "./base_geom.js";
+import { Scene } from "./base/base.js";
+import {
+  Vec2D,
+  vec2_norm,
+  vec2_sum,
+  vec2_sub,
+  vec2_scale,
+  vec2_rot,
+  vec2_normalize,
+  vec2_angle,
+  vec2_sum_list,
+} from "./base/vec2.js";
 
 export class SceneViewTranslator {
   scene: Scene;

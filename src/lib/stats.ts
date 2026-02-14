@@ -1,6 +1,6 @@
-import { MObject, Scene } from "./base";
-import { Vec2D, Rectangle, Line } from "./base_geom.js";
-
+import { MObject, Scene } from "./base/base.js";
+import { Rectangle, Line } from "./base/geometry.js";
+import { Vec2D } from "./base/vec2";
 // TODO Make space for the axes.
 export class Histogram extends MObject {
   hist: Record<number, number> = {};
@@ -69,7 +69,7 @@ export class Histogram extends MObject {
       rect_height = this.hist[bin] * ct_height;
       rect_width = bin_width;
       let rect = new Rectangle(rect_center, rect_width, rect_height);
-      rect.fill_color = this.fill_color;
+      rect.fill_options.fill_color = this.fill_color;
       rect.draw(canvas, scene);
     }
   }

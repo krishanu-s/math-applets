@@ -1,4 +1,4 @@
-// Basic geometric mobjects and functions
+// MObjects representing 2D geometry. These are the "basic" ones.
 import {
   MObject,
   LineLikeMObject,
@@ -6,8 +6,8 @@ import {
   Scene,
   mouse_event_coords,
   touch_event_coords,
-} from "./base/base.js";
-import { colorval_to_rgba, rb_colormap_2 } from "./base/color.js";
+} from "./base.js";
+import { colorval_to_rgba, rb_colormap_2 } from "./color.js";
 import {
   Vec2D,
   vec2_norm,
@@ -18,9 +18,7 @@ import {
   vec2_normalize,
   vec2_angle,
   vec2_sum_list,
-} from "./base/vec2.js";
-
-// A MObject with linelike properties: in particular,
+} from "./vec2.js";
 
 // A filled circle.
 export class Dot extends FillLikeMObject {

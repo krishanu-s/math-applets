@@ -1,4 +1,4 @@
-import { Vec2D } from "./base_geom";
+import { Vec2D } from "../base_geom";
 
 // *** FUNCTIONS ***
 
@@ -43,6 +43,60 @@ export function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// *** CTX OPTIONS ***
+
+// Options for ctx.stroke() drawing.
+export class StrokeOptions {
+  stroke_width: number = 0.08;
+  stroke_color: string = "black";
+  stroke_style: "solid" | "dashed" | "dotted" = "solid";
+  set_stroke_color(color: string) {
+    this.stroke_color = color;
+    return this;
+  }
+  set_stroke_width(width: number) {
+    this.stroke_width = width;
+    return this;
+  }
+  set_stroke_style(style: "solid" | "dashed" | "dotted") {
+    this.stroke_style = style;
+    return this;
+  }
+  apply_to(ctx: CanvasRenderingContext2D, scene: Scene) {
+    ctx.lineWidth = this.stroke_width * scene.scale();
+    ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "solid") {
+      ctx.setLineDash([]);
+    } else if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
+  }
+}
+
+// Options for ctx.fill() drawing.
+export class FillOptions {
+  fill_color: string = "black";
+  fill_alpha: number = 1.0;
+  fill: boolean = true;
+  set_fill_color(color: string) {
+    this.fill_color = color;
+    return this;
+  }
+  set_fill_alpha(alpha: number) {
+    this.fill_alpha = alpha;
+    return this;
+  }
+  set_fill(fill: boolean) {
+    this.fill = fill;
+    return this;
+  }
+  apply_to(ctx: CanvasRenderingContext2D) {
+    ctx.fillStyle = this.fill_color;
+  }
+}
+
 // *** MATH OBJECTS ***
 
 // Base class for mathematical objects
@@ -69,90 +123,69 @@ export class MObject {
 // A MObject that is drawn using the ctx.stroke() command.
 // TODO Incorporate "dashed" drawing
 export class LineLikeMObject extends MObject {
-  stroke_width: number = 0.08;
-  stroke_color: string = "black";
-  stroke_style: "solid" | "dashed" | "dotted" = "solid";
+  stroke_options: StrokeOptions = new StrokeOptions();
   set_stroke_color(color: string) {
-    this.stroke_color = color;
+    this.stroke_options.set_stroke_color(color);
     return this;
   }
   set_stroke_width(width: number) {
-    this.stroke_width = width;
+    this.stroke_options.set_stroke_width(width);
     return this;
   }
   set_stroke_style(style: "solid" | "dashed" | "dotted") {
-    this.stroke_style = style;
+    this.stroke_options.set_stroke_style(style);
     return this;
   }
   draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.view_xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    if (this.stroke_style == "dashed") {
-      ctx.setLineDash([5, 5]);
-    } else if (this.stroke_style == "dotted") {
-      ctx.setLineDash([2, 2]);
-    }
+    this.stroke_options.apply_to(ctx, scene);
     this._draw(ctx, scene, args);
-    ctx.setLineDash([]);
   }
 }
 
 // A MObject that is drawn using the ctx.stroke() and ctx.fill() commands.
 export class FillLikeMObject extends MObject {
-  stroke_width: number = 0.08;
-  stroke_color: string = "black";
-  stroke_style: "solid" | "dashed" | "dotted" = "solid";
-  fill_color: string = "black";
-  fill_alpha: number = 1.0;
-  fill: boolean = true;
+  stroke_options: StrokeOptions = new StrokeOptions();
+  fill_options: FillOptions = new FillOptions();
   set_stroke_color(color: string) {
-    this.stroke_color = color;
+    this.stroke_options.set_stroke_color(color);
     return this;
   }
   set_stroke_width(width: number) {
-    this.stroke_width = width;
+    this.stroke_options.set_stroke_width(width);
     return this;
   }
   set_stroke_style(style: "solid" | "dashed" | "dotted") {
-    this.stroke_style = style;
+    this.stroke_options.set_stroke_style(style);
     return this;
   }
   set_fill_color(color: string) {
-    this.fill_color = color;
+    this.fill_options.set_fill_color(color);
     return this;
   }
   set_color(color: string) {
-    this.stroke_color = color;
-    this.fill_color = color;
+    this.stroke_options.set_stroke_color(color);
+    this.fill_options.set_fill_color(color);
     return this;
   }
   set_fill_alpha(alpha: number) {
-    this.fill_alpha = alpha;
+    this.fill_options.set_fill_alpha(alpha);
     return this;
   }
   set_fill(fill: boolean) {
-    this.fill = fill;
+    this.fill_options.set_fill(fill);
     return this;
   }
   draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.view_xlims;
-    ctx.lineWidth = (this.stroke_width * canvas.width) / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    if (this.stroke_style == "dashed") {
-      ctx.setLineDash([5, 5]);
-    } else if (this.stroke_style == "dotted") {
-      ctx.setLineDash([2, 2]);
-    }
-    ctx.fillStyle = this.fill_color;
+
+    this.stroke_options.apply_to(ctx, scene);
+    this.fill_options.apply_to(ctx);
     this._draw(ctx, scene, args);
-    ctx.setLineDash([]);
   }
 }
 
@@ -241,6 +274,11 @@ export class Scene {
   move_view(v: Vec2D) {
     this.view_xlims = [this.view_xlims[0] + v[0], this.view_xlims[1] + v[0]];
     this.view_ylims = [this.view_ylims[0] + v[1], this.view_ylims[1] + v[1]];
+  }
+  // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
+  scale() {
+    let [xmin, xmax] = this.view_xlims;
+    return this.canvas.width / (xmax - xmin);
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x: number, y: number): [number, number] {

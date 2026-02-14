@@ -41,7 +41,7 @@ var require_numpy_ts_node = __commonJS({
     };
     var ay = (r) => oy(te({}, "__esModule", { value: true }), r);
     var Ng = {};
-    ny(Ng, { Complex: () => E, DTYPE_TO_DESCR: () => At, InvalidNpyError: () => ir, NDArray: () => _, SUPPORTED_DTYPES: () => kt, UnsupportedDTypeError: () => Ir, __version__: () => Dg, abs: () => gn, absolute: () => gn, acos: () => hn, acosh: () => xn, amax: () => Mn, amin: () => Fn, angle: () => hf, append: () => $c, apply_along_axis: () => Gm, apply_over_axes: () => Wm, arange: () => Wi, arccos: () => hn, arccosh: () => xn, arcsin: () => bn, arcsinh: () => Nn, arctan: () => Sn, arctan2: () => Dn, arctanh: () => wn, argpartition: () => om, argsort: () => tm, argwhere: () => im, around: () => Rt, array: () => G, array_equal: () => Xc, array_equiv: () => Jc, array_split: () => uc, asanyarray: () => ou, asarray: () => Hr, asarray_chkfinite: () => Ji, ascontiguousarray: () => au, asfortranarray: () => su, asin: () => bn, asinh: () => Nn, atan: () => Sn, atan2: () => Dn, atanh: () => wn, atleast_1d: () => vc, atleast_2d: () => Bc, atleast_3d: () => Ec, average: () => el, bincount: () => Om, bindex: () => Zc, bitwise_and: () => ql, bitwise_count: () => Hl, bitwise_invert: () => Xl, bitwise_left_shift: () => Jl, bitwise_not: () => Pl, bitwise_or: () => Vl, bitwise_right_shift: () => Ql, bitwise_xor: () => jl, block: () => sc, broadcast_arrays: () => jc, broadcast_shapes: () => Pc, broadcast_to: () => Vc, byteswap: () => hc, can_cast: () => Jm, cbrt: () => Al, ceil: () => pm, choose: () => Hc, clip: () => vl, column_stack: () => Oc, common_type: () => Qm, compress: () => kf, concat: () => oc, concatenate: () => Tr, conj: () => vn, conjugate: () => bf, convolve: () => qm, copy: () => Ki, copysign: () => uf, copyto: () => Yc, corrcoef: () => jm, correlate: () => km, cos: () => Pu, cosh: () => Ju, count_nonzero: () => mm, cov: () => Vm, cross: () => Tm, cumprod: () => _n, cumsum: () => zn, cumulative_prod: () => _n, cumulative_sum: () => zn, deg2rad: () => Yu, degrees: () => Wu, delete: () => Rc, diag: () => yn, diag_indices: () => Pf, diag_indices_from: () => Lf, diagflat: () => iu, diagonal: () => Uu, diff: () => vm, digitize: () => Cm, divide: () => An, divmod: () => hl, dot: () => Ou, dsplit: () => Tc, dstack: () => nc, ediff1d: () => Bm, einsum: () => Mf, empty: () => mn, empty_like: () => eu, exp: () => hu, exp2: () => Su, expand_dims: () => wc, expm1: () => Du, extract: () => fm, eye: () => fn, fabs: () => bl, fill: () => dc, fill_diagonal: () => jf, fix: () => ym, flatnonzero: () => um, flatten: () => yc, flip: () => $t, fliplr: () => Ic, flipud: () => zc, float_power: () => xl, floor: () => dm, floor_divide: () => Bu, fmax: () => Tl, fmin: () => Ol, fmod: () => wl, frexp: () => Il, frombuffer: () => yu, fromfile: () => du, fromfunction: () => uu, fromiter: () => gu, fromstring: () => Au, full: () => pn, full_like: () => nu, gcd: () => zl, geomspace: () => Hi, geterr: () => Et, gradient: () => Em, heaviside: () => Nl, histogram: () => Um, histogram2d: () => $m, histogram_bin_edges: () => Pm, histogramdd: () => Rm, hsplit: () => lc, hstack: () => ec, hypot: () => Gu, i0: () => kl, identity: () => Xi, iindex: () => Wc, imag: () => Af, in1d: () => hm, indices: () => Xf, inner: () => ku, insert: () => kc, interp: () => Ul, intersect1d: () => Sm, invert: () => Ll, iscomplex: () => mf, iscomplexobj: () => pf, isdtype: () => zf, isfinite: () => nf, isfortran: () => Nf, isin: () => Dm, isinf: () => of, isnan: () => af, isnat: () => sf, isneginf: () => Sf, isposinf: () => Df, isreal: () => yf, isrealobj: () => df, isscalar: () => wf, issubdtype: () => ep, item: () => gc, iterable: () => If, ix_: () => Jf, kron: () => $u, lcm: () => _l, ldexp: () => Ml, left_shift: () => Gl, lexsort: () => em, linalg: () => Cf, linspace: () => Zi, loadNpz: () => Un, loadNpzSync: () => $n, log: () => Nu, log10: () => wu, log1p: () => Iu, log2: () => xu, logaddexp: () => zu, logaddexp2: () => _u, logical_and: () => Kl, logical_not: () => tf, logical_or: () => rf, logical_xor: () => ef, logspace: () => Yi, mask_indices: () => Hf, matrix_transpose: () => Bf, matvec: () => Tf, max: () => Mn, maximum: () => Bl, may_share_memory: () => Zm, median: () => Kc, meshgrid: () => cu, min: () => Fn, min_scalar_type: () => tp, minimum: () => El, mintypecode: () => op, mod: () => vu, modf: () => Fl, moveaxis: () => rc, nan_to_num: () => Cl, nanargmax: () => fl, nanargmin: () => ll, nancumprod: () => pl, nancumsum: () => ml, nanmax: () => cl, nanmean: () => al, nanmedian: () => yl, nanmin: () => ul, nanpercentile: () => gl, nanprod: () => ol, nanquantile: () => dl, nanstd: () => il, nansum: () => nl, nanvar: () => sl, ndim: () => Hm, negative: () => Mu, nextafter: () => lf, nonzero: () => sm, ones: () => ln, ones_like: () => tu, outer: () => qu, packbits: () => Zl, pad: () => qc, parseNpy: () => bt, parseNpyData: () => Vt, parseNpyHeader: () => qt, parseNpz: () => jt, parseNpzSync: () => Pt, partition: () => nm, percentile: () => rl, permute_dims: () => Ef, place: () => Vf, poly: () => ap, polyadd: () => sp, polyder: () => ip, polydiv: () => up, polyfit: () => cp, polyint: () => fp, polymul: () => mp, polysub: () => pp, polyval: () => yp, positive: () => Eu, pow: () => dn, power: () => dn, promote_types: () => _f, ptp: () => Qc, put: () => Gc, put_along_axis: () => $f, putmask: () => Rf, quantile: () => tl, rad2deg: () => Hu, radians: () => Zu, random: () => Sg, ravel: () => pc, ravel_multi_index: () => Qf, real: () => gf, real_if_close: () => xf, reciprocal: () => Tu, remainder: () => Dl, repeat: () => mc, require: () => Qi, reshape: () => Nc, resize: () => Uc, result_type: () => Km, right_shift: () => Wl, rint: () => gm, roll: () => Mc, rollaxis: () => Fc, roots: () => dp, rot90: () => _c, round: () => Rt, round_: () => Rt, row_stack: () => Cc, searchsorted: () => lm, select: () => qf, serializeNpy: () => Xr, serializeNpz: () => Rn, serializeNpzSync: () => kn, setdiff1d: () => Nm, seterr: () => Ve, setxor1d: () => xm, shape: () => Bn, shares_memory: () => Ym, sign: () => Fu, signbit: () => cf, sin: () => ju, sinc: () => Rl, sinh: () => Xu, size: () => Xm, sort: () => rm, sort_complex: () => am, spacing: () => ff, split: () => ic, sqrt: () => bu, square: () => Sl, squeeze: () => xc, stack: () => tc, swapaxes: () => Ku, take: () => Lc, take_along_axis: () => Uf, tan: () => Lu, tanh: () => Qu, tensordot: () => Vu, tile: () => fc, tobytes: () => bc, tofile: () => Dc, tolist: () => Ac, trace: () => Cu, transpose: () => Ru, trapezoid: () => Lm, tri: () => lu, tril: () => fu, tril_indices: () => Gf, tril_indices_from: () => Wf, trim_zeros: () => Im, triu: () => mu, triu_indices: () => Zf, triu_indices_from: () => Yf, true_divide: () => An, trunc: () => Am, typename: () => np3, union1d: () => wm, unique: () => bm, unique_all: () => zm, unique_counts: () => _m, unique_inverse: () => Mm, unique_values: () => Fm, unpackbits: () => Yl, unravel_index: () => Kf, unstack: () => ac, unwrap: () => $l, vander: () => pu, vdot: () => Ff, vecdot: () => vf, vecmat: () => Of, view: () => Sc, vsplit: () => cc, vstack: () => In, where: () => cm, zeros: () => wr, zeros_like: () => ru });
+    ny(Ng, { Complex: () => E, DTYPE_TO_DESCR: () => At, InvalidNpyError: () => ir, NDArray: () => _, SUPPORTED_DTYPES: () => kt, UnsupportedDTypeError: () => Ir, __version__: () => Dg, abs: () => gn, absolute: () => gn, acos: () => hn, acosh: () => xn, amax: () => Mn, amin: () => Fn, angle: () => hf, append: () => $c, apply_along_axis: () => Gm, apply_over_axes: () => Wm, arange: () => Wi, arccos: () => hn, arccosh: () => xn, arcsin: () => bn, arcsinh: () => Nn, arctan: () => Sn, arctan2: () => Dn, arctanh: () => wn, argpartition: () => om, argsort: () => tm, argwhere: () => im, around: () => Rt, array: () => G, array_equal: () => Xc, array_equiv: () => Jc, array_split: () => uc, asanyarray: () => ou, asarray: () => Hr, asarray_chkfinite: () => Ji, ascontiguousarray: () => au, asfortranarray: () => su, asin: () => bn, asinh: () => Nn, atan: () => Sn, atan2: () => Dn, atanh: () => wn, atleast_1d: () => vc, atleast_2d: () => Bc, atleast_3d: () => Ec, average: () => el, bincount: () => Om, bindex: () => Zc, bitwise_and: () => ql, bitwise_count: () => Hl, bitwise_invert: () => Xl, bitwise_left_shift: () => Jl, bitwise_not: () => Pl, bitwise_or: () => Vl, bitwise_right_shift: () => Ql, bitwise_xor: () => jl, block: () => sc, broadcast_arrays: () => jc, broadcast_shapes: () => Pc, broadcast_to: () => Vc, byteswap: () => hc, can_cast: () => Jm, cbrt: () => Al, ceil: () => pm, choose: () => Hc, clip: () => vl, column_stack: () => Oc, common_type: () => Qm, compress: () => kf, concat: () => oc, concatenate: () => Tr, conj: () => vn, conjugate: () => bf, convolve: () => qm, copy: () => Ki, copysign: () => uf, copyto: () => Yc, corrcoef: () => jm, correlate: () => km, cos: () => Pu, cosh: () => Ju, count_nonzero: () => mm, cov: () => Vm, cross: () => Tm, cumprod: () => _n, cumsum: () => zn, cumulative_prod: () => _n, cumulative_sum: () => zn, deg2rad: () => Yu, degrees: () => Wu, delete: () => Rc, diag: () => yn, diag_indices: () => Pf, diag_indices_from: () => Lf, diagflat: () => iu, diagonal: () => Uu, diff: () => vm, digitize: () => Cm, divide: () => An, divmod: () => hl, dot: () => Ou, dsplit: () => Tc, dstack: () => nc, ediff1d: () => Bm, einsum: () => Mf, empty: () => mn, empty_like: () => eu, exp: () => hu, exp2: () => Su, expand_dims: () => wc, expm1: () => Du, extract: () => fm, eye: () => fn, fabs: () => bl, fill: () => dc, fill_diagonal: () => jf, fix: () => ym, flatnonzero: () => um, flatten: () => yc, flip: () => $t, fliplr: () => Ic, flipud: () => zc, float_power: () => xl, floor: () => dm, floor_divide: () => Bu, fmax: () => Tl, fmin: () => Ol, fmod: () => wl, frexp: () => Il, frombuffer: () => yu, fromfile: () => du, fromfunction: () => uu, fromiter: () => gu, fromstring: () => Au, full: () => pn, full_like: () => nu, gcd: () => zl, geomspace: () => Hi, geterr: () => Et, gradient: () => Em, heaviside: () => Nl, histogram: () => Um, histogram2d: () => $m, histogram_bin_edges: () => Pm, histogramdd: () => Rm, hsplit: () => lc, hstack: () => ec, hypot: () => Gu, i0: () => kl, identity: () => Xi, iindex: () => Wc, imag: () => Af, in1d: () => hm, indices: () => Xf, inner: () => ku, insert: () => kc, interp: () => Ul, intersect1d: () => Sm, invert: () => Ll, iscomplex: () => mf, iscomplexobj: () => pf, isdtype: () => zf, isfinite: () => nf, isfortran: () => Nf, isin: () => Dm, isinf: () => of, isnan: () => af, isnat: () => sf, isneginf: () => Sf, isposinf: () => Df, isreal: () => yf, isrealobj: () => df, isscalar: () => wf, issubdtype: () => ep, item: () => gc, iterable: () => If, ix_: () => Jf, kron: () => $u, lcm: () => _l, ldexp: () => Ml, left_shift: () => Gl, lexsort: () => em, linalg: () => Cf, linspace: () => Zi, loadNpz: () => Un, loadNpzSync: () => $n, log: () => Nu, log10: () => wu, log1p: () => Iu, log2: () => xu, logaddexp: () => zu, logaddexp2: () => _u, logical_and: () => Kl, logical_not: () => tf, logical_or: () => rf, logical_xor: () => ef, logspace: () => Yi, mask_indices: () => Hf, matrix_transpose: () => Bf, matvec: () => Tf, max: () => Mn, maximum: () => Bl, may_share_memory: () => Zm, median: () => Kc, meshgrid: () => cu, min: () => Fn, min_scalar_type: () => tp, minimum: () => El, mintypecode: () => op, mod: () => vu, modf: () => Fl, moveaxis: () => rc, nan_to_num: () => Cl, nanargmax: () => fl, nanargmin: () => ll, nancumprod: () => pl, nancumsum: () => ml, nanmax: () => cl, nanmean: () => al, nanmedian: () => yl, nanmin: () => ul, nanpercentile: () => gl, nanprod: () => ol, nanquantile: () => dl, nanstd: () => il, nansum: () => nl, nanvar: () => sl, ndim: () => Hm, negative: () => Mu, nextafter: () => lf, nonzero: () => sm, ones: () => ln, ones_like: () => tu, outer: () => qu, packbits: () => Zl, pad: () => qc, parseNpy: () => bt, parseNpyData: () => Vt, parseNpyHeader: () => qt, parseNpz: () => jt, parseNpzSync: () => Pt, partition: () => nm, percentile: () => rl, permute_dims: () => Ef, place: () => Vf, poly: () => ap, polyadd: () => sp, polyder: () => ip, polydiv: () => up, polyfit: () => cp, polyint: () => fp, polymul: () => mp, polysub: () => pp, polyval: () => yp, positive: () => Eu, pow: () => dn, power: () => dn, promote_types: () => _f, ptp: () => Qc, put: () => Gc, put_along_axis: () => $f, putmask: () => Rf, quantile: () => tl, rad2deg: () => Hu, radians: () => Zu, random: () => Sg, ravel: () => pc, ravel_multi_index: () => Qf, real: () => gf, real_if_close: () => xf, reciprocal: () => Tu, remainder: () => Dl, repeat: () => mc, require: () => Qi, reshape: () => Nc, resize: () => Uc, result_type: () => Km, right_shift: () => Wl, rint: () => gm, roll: () => Mc, rollaxis: () => Fc, roots: () => dp, rot90: () => _c, round: () => Rt, round_: () => Rt, row_stack: () => Cc, searchsorted: () => lm, select: () => qf, serializeNpy: () => Xr, serializeNpz: () => Rn, serializeNpzSync: () => kn, setdiff1d: () => Nm, seterr: () => Ve, setxor1d: () => xm, shape: () => Bn, shares_memory: () => Ym, sign: () => Fu, signbit: () => cf, sin: () => ju, sinc: () => Rl, sinh: () => Xu, size: () => Xm, sort: () => rm, sort_complex: () => am, spacing: () => ff, split: () => ic, sqrt: () => bu, square: () => Sl, squeeze: () => xc, stack: () => tc, swapaxes: () => Ku, take: () => Lc, take_along_axis: () => Uf, tan: () => Lu, tanh: () => Qu, tensordot: () => Vu, tile: () => fc, tobytes: () => bc, tofile: () => Dc, tolist: () => Ac, trace: () => Cu, transpose: () => Ru, trapezoid: () => Lm, tri: () => lu, tril: () => fu, tril_indices: () => Gf, tril_indices_from: () => Wf, trim_zeros: () => Im, triu: () => mu, triu_indices: () => Zf, triu_indices_from: () => Yf, true_divide: () => An, trunc: () => Am, typename: () => np2, union1d: () => wm, unique: () => bm, unique_all: () => zm, unique_counts: () => _m, unique_inverse: () => Mm, unique_values: () => Fm, unpackbits: () => Yl, unravel_index: () => Kf, unstack: () => ac, unwrap: () => $l, vander: () => pu, vdot: () => Ff, vecdot: () => vf, vecmat: () => Of, view: () => Sc, vsplit: () => cc, vstack: () => In, where: () => cm, zeros: () => wr, zeros_like: () => ru });
     module.exports = ay(Ng);
     var E = class r {
       constructor(t, e = 0) {
@@ -9671,7 +9671,7 @@ var require_numpy_ts_node = __commonJS({
       let e = r instanceof _ ? r.dtype : r;
       return t === "integer" ? ["int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"].includes(e) : t === "signedinteger" ? ["int8", "int16", "int32", "int64"].includes(e) : t === "unsignedinteger" ? ["uint8", "uint16", "uint32", "uint64"].includes(e) : t === "floating" ? ["float32", "float64"].includes(e) : t === "complexfloating" ? ["complex64", "complex128"].includes(e) : t === "number" || t === "numeric" ? !["bool"].includes(e) : t === "inexact" ? ["float32", "float64", "complex64", "complex128"].includes(e) : e === t;
     }
-    function np3(r) {
+    function np2(r) {
       return { bool: "bool", uint8: "uint8", uint16: "uint16", uint32: "uint32", uint64: "uint64", int8: "int8", int16: "int16", int32: "int32", int64: "int64", float32: "float32", float64: "float64", complex64: "complex64", complex128: "complex128" }[r] || r;
     }
     function op(r, t = "GDFgdf", e = "d") {
@@ -10629,7 +10629,7 @@ var require_numpy_ts_node = __commonJS({
   }
 });
 
-// src/lib/base.ts
+// src/lib/base/base.ts
 function clamp(x, xmin, xmax) {
   return Math.min(xmax, Math.max(xmin, x));
 }
@@ -10643,6 +10643,58 @@ function funspace(func, start, stop, num) {
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+var StrokeOptions = class {
+  constructor() {
+    this.stroke_width = 0.08;
+    this.stroke_color = "black";
+    this.stroke_style = "solid";
+  }
+  set_stroke_color(color) {
+    this.stroke_color = color;
+    return this;
+  }
+  set_stroke_width(width) {
+    this.stroke_width = width;
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_style = style;
+    return this;
+  }
+  apply_to(ctx, scene) {
+    ctx.lineWidth = this.stroke_width * scene.scale();
+    ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "solid") {
+      ctx.setLineDash([]);
+    } else if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
+  }
+};
+var FillOptions = class {
+  constructor() {
+    this.fill_color = "black";
+    this.fill_alpha = 1;
+    this.fill = true;
+  }
+  set_fill_color(color) {
+    this.fill_color = color;
+    return this;
+  }
+  set_fill_alpha(alpha) {
+    this.fill_alpha = alpha;
+    return this;
+  }
+  set_fill(fill2) {
+    this.fill = fill2;
+    return this;
+  }
+  apply_to(ctx) {
+    ctx.fillStyle = this.fill_color;
+  }
+};
 var MObject = class {
   // Opacity for drawing
   constructor() {
@@ -10666,92 +10718,70 @@ var MObject = class {
 var LineLikeMObject = class extends MObject {
   constructor() {
     super(...arguments);
-    this.stroke_width = 0.08;
-    this.stroke_color = "black";
-    this.stroke_style = "solid";
+    this.stroke_options = new StrokeOptions();
   }
   set_stroke_color(color) {
-    this.stroke_color = color;
+    this.stroke_options.set_stroke_color(color);
     return this;
   }
   set_stroke_width(width) {
-    this.stroke_width = width;
+    this.stroke_options.set_stroke_width(width);
     return this;
   }
   set_stroke_style(style) {
-    this.stroke_style = style;
+    this.stroke_options.set_stroke_style(style);
     return this;
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.view_xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    if (this.stroke_style == "dashed") {
-      ctx.setLineDash([5, 5]);
-    } else if (this.stroke_style == "dotted") {
-      ctx.setLineDash([2, 2]);
-    }
+    this.stroke_options.apply_to(ctx, scene);
     this._draw(ctx, scene, args);
-    ctx.setLineDash([]);
   }
 };
 var FillLikeMObject = class extends MObject {
   constructor() {
     super(...arguments);
-    this.stroke_width = 0.08;
-    this.stroke_color = "black";
-    this.stroke_style = "solid";
-    this.fill_color = "black";
-    this.fill_alpha = 1;
-    this.fill = true;
+    this.stroke_options = new StrokeOptions();
+    this.fill_options = new FillOptions();
   }
   set_stroke_color(color) {
-    this.stroke_color = color;
+    this.stroke_options.set_stroke_color(color);
     return this;
   }
   set_stroke_width(width) {
-    this.stroke_width = width;
+    this.stroke_options.set_stroke_width(width);
     return this;
   }
   set_stroke_style(style) {
-    this.stroke_style = style;
+    this.stroke_options.set_stroke_style(style);
     return this;
   }
   set_fill_color(color) {
-    this.fill_color = color;
+    this.fill_options.set_fill_color(color);
     return this;
   }
   set_color(color) {
-    this.stroke_color = color;
-    this.fill_color = color;
+    this.stroke_options.set_stroke_color(color);
+    this.fill_options.set_fill_color(color);
     return this;
   }
   set_fill_alpha(alpha) {
-    this.fill_alpha = alpha;
+    this.fill_options.set_fill_alpha(alpha);
     return this;
   }
   set_fill(fill2) {
-    this.fill = fill2;
+    this.fill_options.set_fill(fill2);
     return this;
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.view_xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    if (this.stroke_style == "dashed") {
-      ctx.setLineDash([5, 5]);
-    } else if (this.stroke_style == "dotted") {
-      ctx.setLineDash([2, 2]);
-    }
-    ctx.fillStyle = this.fill_color;
+    this.stroke_options.apply_to(ctx, scene);
+    this.fill_options.apply_to(ctx);
     this._draw(ctx, scene, args);
-    ctx.setLineDash([]);
   }
 };
 var Scene = class {
@@ -10818,6 +10848,11 @@ var Scene = class {
   move_view(v) {
     this.view_xlims = [this.view_xlims[0] + v[0], this.view_xlims[1] + v[0]];
     this.view_ylims = [this.view_ylims[0] + v[1], this.view_ylims[1] + v[1]];
+  }
+  // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
+  scale() {
+    let [xmin, xmax] = this.view_xlims;
+    return this.canvas.width / (xmax - xmin);
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
@@ -10940,6 +10975,7 @@ function Slider(container, callback, kwargs) {
   slider.value = kwargs.initial_value;
   slider.classList.add("slider");
   slider.id = "floatSlider";
+  slider.width = 200;
   let name = kwargs.name;
   if (name == void 0) {
     slider.name = "Value";
@@ -10987,6 +11023,7 @@ function Button(container, callback) {
   const button = document.createElement("button");
   button.type = "button";
   button.id = "interactiveButton";
+  button.style.padding = "15px";
   container.appendChild(button);
   button.addEventListener("click", (event) => {
     callback();
@@ -10998,7 +11035,7 @@ function Button(container, callback) {
   return button;
 }
 
-// src/lib/base_geom.ts
+// src/lib/base/vec2.ts
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
@@ -11023,6 +11060,128 @@ function vec2_rot(v, angle2) {
   const sin2 = Math.sin(angle2);
   return [x * cos2 - y * sin2, x * sin2 + y * cos2];
 }
+
+// src/lib/scene_view_translator.ts
+var SceneViewTranslator = class {
+  constructor(scene) {
+    this.drag = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.scene = scene;
+  }
+  click(event) {
+    this.dragStart = [
+      event.pageX - this.scene.canvas.offsetLeft,
+      event.pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
+  }
+  touch(event) {
+    this.dragStart = [
+      event.touches[0].pageX - this.scene.canvas.offsetLeft,
+      event.touches[0].pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
+  }
+  unclick(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  untouch(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  mouse_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.pageX - this.scene.canvas.offsetLeft,
+        event.pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  touch_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.touches[0].pageX - this.scene.canvas.offsetLeft,
+        event.touches[0].pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  // Updates the scene to account for a dragged cursor position
+  _drag_cursor() {
+    let dragDiff = vec2_sub(
+      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
+      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
+    );
+    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
+      return;
+    }
+    this.scene.move_view(dragDiff);
+    this.scene.draw();
+    this.dragStart = this.dragEnd;
+  }
+  add() {
+    let self = this;
+    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
+  }
+  remove() {
+    let self = this;
+    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.removeEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.removeEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
+  }
+};
+
+// src/lib/base/color.ts
+function colorval_to_rgba(color) {
+  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
+}
+function rb_colormap(z) {
+  const gray = sigmoid(z);
+  if (gray < 0.5) {
+    return [512 * gray, 512 * gray, 255, 255];
+  } else {
+    return [255, 512 * (1 - gray), 512 * (1 - gray), 255];
+  }
+}
+function rb_colormap_2(z) {
+  const gray = sigmoid(z);
+  if (gray < 0.5) {
+    return [0, 0, 512 * (0.5 - gray), 255];
+  } else {
+    return [512 * (gray - 0.5), 0, 0, 255];
+  }
+}
+
+// src/lib/base/geometry.ts
 var Dot = class extends FillLikeMObject {
   constructor(center, radius) {
     super();
@@ -11092,10 +11251,10 @@ var Sector = class extends FillLikeMObject {
     let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), this.start_angle, this.end_angle);
-    if (this.fill) {
-      ctx.globalAlpha *= this.fill_alpha;
+    if (this.fill_options.fill) {
+      ctx.globalAlpha *= this.fill_options.fill_alpha;
       ctx.fill();
-      ctx.globalAlpha /= this.fill_alpha;
+      ctx.globalAlpha /= this.fill_options.fill_alpha;
     }
   }
 };
@@ -11547,7 +11706,7 @@ var Arrow = class extends Line {
   // Draws on the canvas
   _draw(ctx, scene) {
     super._draw(ctx, scene);
-    ctx.fillStyle = this.stroke_color;
+    ctx.fillStyle = this.stroke_options.stroke_color;
     let [end_x, end_y] = scene.v2c(this.end);
     let v = vec2_scale(
       vec2_sub(this.start, this.end),
@@ -11564,108 +11723,72 @@ var Arrow = class extends Line {
     ctx.fill();
   }
 };
-
-// src/lib/scene_view_translator.ts
-var SceneViewTranslator = class {
-  constructor(scene) {
-    this.drag = false;
-    this.dragStart = [0, 0];
-    this.dragEnd = [0, 0];
-    this.scene = scene;
+var LineSpring = class extends Line {
+  constructor(start, end) {
+    super(start, end);
+    this.mode = "color";
+    this.eq_length = 2;
   }
-  click(event) {
-    this.dragStart = [
-      event.pageX - this.scene.canvas.offsetLeft,
-      event.pageY - this.scene.canvas.offsetTop
-    ];
-    if (!this.scene.is_dragging) {
-      this.drag = true;
-      this.scene.click();
-    }
+  set_mode(mode) {
+    this.mode = mode;
   }
-  touch(event) {
-    this.dragStart = [
-      event.touches[0].pageX - this.scene.canvas.offsetLeft,
-      event.touches[0].pageY - this.scene.canvas.offsetTop
-    ];
-    if (!this.scene.is_dragging) {
-      this.drag = true;
-      this.scene.click();
-    }
+  set_eq_length(length) {
+    this.eq_length = length;
   }
-  unclick(event) {
-    this.drag = false;
-    this.scene.unclick();
+  length() {
+    let [start_x, start_y] = this.start;
+    let [end_x, end_y] = this.end;
+    return Math.sqrt((end_x - start_x) ** 2 + (end_y - start_y) ** 2);
   }
-  untouch(event) {
-    this.drag = false;
-    this.scene.unclick();
-  }
-  mouse_drag_cursor(event) {
-    if (this.drag) {
-      this.dragEnd = [
-        event.pageX - this.scene.canvas.offsetLeft,
-        event.pageY - this.scene.canvas.offsetTop
+  // alpha_scaling(): number {
+  //   return Math.min(1.0, this.eq_length / this.length());
+  // }
+  // Draws on the canvas
+  _draw(ctx, scene) {
+    let [start_x, start_y] = scene.v2c(this.start);
+    let [end_x, end_y] = scene.v2c(this.end);
+    if (this.mode == "color") {
+      ctx.strokeStyle = colorval_to_rgba(
+        rb_colormap_2(10 * Math.log(this.eq_length / this.length()))
+      );
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+    } else {
+      let v = [end_x - start_x, end_y - start_y];
+      let num_turns = 5;
+      let r = 1 - 0.4 * this.eq_length / this.length();
+      let theta = Math.atan(8 * (2 * num_turns) / (vec2_norm(v) * r));
+      let scaled_v = vec2_scale(v, r / (2 * Math.cos(theta) * num_turns));
+      let current_p = [
+        start_x + 0.5 * (1 - r) * (end_x - start_x),
+        start_y + 0.5 * (1 - r) * (end_y - start_y)
       ];
-      this._drag_cursor();
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(current_p[0], current_p[1]);
+      current_p = vec2_sum(
+        current_p,
+        vec2_rot(vec2_scale(scaled_v, 0.5), theta)
+      );
+      ctx.lineTo(current_p[0], current_p[1]);
+      for (let i = 0; i < num_turns - 1; i++) {
+        current_p = vec2_sum(current_p, vec2_rot(scaled_v, -theta));
+        ctx.lineTo(current_p[0], current_p[1]);
+        current_p = vec2_sum(current_p, vec2_rot(scaled_v, theta));
+        ctx.lineTo(current_p[0], current_p[1]);
+      }
+      current_p = vec2_sum(
+        current_p,
+        vec2_rot(vec2_scale(scaled_v, 0.5), -theta)
+      );
+      ctx.lineTo(current_p[0], current_p[1]);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
     }
-  }
-  touch_drag_cursor(event) {
-    if (this.drag) {
-      this.dragEnd = [
-        event.touches[0].pageX - this.scene.canvas.offsetLeft,
-        event.touches[0].pageY - this.scene.canvas.offsetTop
-      ];
-      this._drag_cursor();
-    }
-  }
-  // Updates the scene to account for a dragged cursor position
-  _drag_cursor() {
-    let dragDiff = vec2_sub(
-      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
-      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
-    );
-    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
-      return;
-    }
-    this.scene.move_view(dragDiff);
-    this.scene.draw();
-    this.dragStart = this.dragEnd;
-  }
-  add() {
-    let self = this;
-    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
-    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
-    this.scene.canvas.addEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self)
-    );
-    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
-    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
-    this.scene.canvas.addEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self)
-    );
-  }
-  remove() {
-    let self = this;
-    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
-    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
-    this.scene.canvas.removeEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self)
-    );
-    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
-    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
-    this.scene.canvas.removeEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self)
-    );
   }
 };
-
-// src/lib/parametric.ts
-var np2 = __toESM(require_numpy_ts_node(), 1);
 
 // src/lib/bezier.ts
 var np = __toESM(require_numpy_ts_node(), 1);
@@ -11773,15 +11896,15 @@ var BezierSpline = class extends LineLikeMObject {
     }
     let stroke_width = kwargs.stroke_width;
     if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
+      this.stroke_options.stroke_width = 0.08;
     } else {
-      this.stroke_width = stroke_width;
+      this.stroke_options.stroke_width = stroke_width;
     }
     let stroke_color = kwargs.stroke_color;
     if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
+      this.stroke_options.stroke_color = `rgb(0, 0, 0)`;
     } else {
-      this.stroke_color = stroke_color;
+      this.stroke_options.stroke_color = stroke_color;
     }
   }
   set_anchors(new_anchors) {
@@ -11819,34 +11942,15 @@ var BezierSpline = class extends LineLikeMObject {
     }
   }
 };
-
-// src/lib/parametric.ts
 var ParametricFunction = class extends LineLikeMObject {
-  constructor(f, tmin, tmax, num_steps, kwargs) {
+  constructor(f, tmin, tmax, num_steps) {
     super();
+    this.mode = "smooth";
     this.function = f;
     this.tmin = tmin;
     this.tmax = tmax;
     this.num_steps = num_steps;
     this.solver = new SmoothOpenPathBezierHandleCalculator(this.num_steps);
-    let mode = kwargs.mode;
-    if (mode == void 0) {
-      this.mode = "smooth";
-    } else {
-      this.mode = mode;
-    }
-    let stroke_width = kwargs.stroke_width;
-    if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-    let stroke_color = kwargs.stroke_color;
-    if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
   }
   // Jagged doesn't use Bezier curves. It is faster to compute and render.
   set_mode(mode) {
@@ -11856,17 +11960,17 @@ var ParametricFunction = class extends LineLikeMObject {
     this.function = new_f;
   }
   _draw(ctx, scene) {
-    let points = [np2.array(this.function(this.tmin))];
+    let points = [np.array(this.function(this.tmin))];
     for (let i = 1; i <= this.num_steps; i++) {
       points.push(
-        np2.array(
+        np.array(
           this.function(
             this.tmin + i / this.num_steps * (this.tmax - this.tmin)
           )
         )
       );
     }
-    let anchors = np2.stack(points, 0);
+    let anchors = np.stack(points, 0);
     let a_x, a_y;
     [a_x, a_y] = scene.v2c([anchors.get([0, 0]), anchors.get([0, 1])]);
     ctx.beginPath();
@@ -11898,95 +12002,6 @@ var ParametricFunction = class extends LineLikeMObject {
         ]);
         ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
       }
-      ctx.stroke();
-    }
-  }
-};
-
-// src/lib/color.ts
-function colorval_to_rgba(color) {
-  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
-}
-function rb_colormap(z) {
-  const gray = sigmoid(z);
-  if (gray < 0.5) {
-    return [512 * gray, 512 * gray, 255, 255];
-  } else {
-    return [255, 512 * (1 - gray), 512 * (1 - gray), 255];
-  }
-}
-function rb_colormap_2(z) {
-  const gray = sigmoid(z);
-  if (gray < 0.5) {
-    return [0, 0, 512 * (0.5 - gray), 255];
-  } else {
-    return [512 * (gray - 0.5), 0, 0, 255];
-  }
-}
-
-// src/lib/spring.ts
-var LineSpring = class extends Line {
-  constructor(start, end) {
-    super(start, end);
-    this.mode = "color";
-    this.eq_length = 2;
-  }
-  set_mode(mode) {
-    this.mode = mode;
-  }
-  set_eq_length(length) {
-    this.eq_length = length;
-  }
-  length() {
-    let [start_x, start_y] = this.start;
-    let [end_x, end_y] = this.end;
-    return Math.sqrt((end_x - start_x) ** 2 + (end_y - start_y) ** 2);
-  }
-  // alpha_scaling(): number {
-  //   return Math.min(1.0, this.eq_length / this.length());
-  // }
-  // Draws on the canvas
-  _draw(ctx, scene) {
-    let [start_x, start_y] = scene.v2c(this.start);
-    let [end_x, end_y] = scene.v2c(this.end);
-    if (this.mode == "color") {
-      ctx.strokeStyle = colorval_to_rgba(
-        rb_colormap_2(10 * Math.log(this.eq_length / this.length()))
-      );
-      ctx.beginPath();
-      ctx.moveTo(start_x, start_y);
-      ctx.lineTo(end_x, end_y);
-      ctx.stroke();
-    } else {
-      let v = [end_x - start_x, end_y - start_y];
-      let num_turns = 5;
-      let r = 1 - 0.4 * this.eq_length / this.length();
-      let theta = Math.atan(8 * (2 * num_turns) / (vec2_norm(v) * r));
-      let scaled_v = vec2_scale(v, r / (2 * Math.cos(theta) * num_turns));
-      let current_p = [
-        start_x + 0.5 * (1 - r) * (end_x - start_x),
-        start_y + 0.5 * (1 - r) * (end_y - start_y)
-      ];
-      ctx.beginPath();
-      ctx.moveTo(start_x, start_y);
-      ctx.lineTo(current_p[0], current_p[1]);
-      current_p = vec2_sum(
-        current_p,
-        vec2_rot(vec2_scale(scaled_v, 0.5), theta)
-      );
-      ctx.lineTo(current_p[0], current_p[1]);
-      for (let i = 0; i < num_turns - 1; i++) {
-        current_p = vec2_sum(current_p, vec2_rot(scaled_v, -theta));
-        ctx.lineTo(current_p[0], current_p[1]);
-        current_p = vec2_sum(current_p, vec2_rot(scaled_v, theta));
-        ctx.lineTo(current_p[0], current_p[1]);
-      }
-      current_p = vec2_sum(
-        current_p,
-        vec2_rot(vec2_scale(scaled_v, 0.5), -theta)
-      );
-      ctx.lineTo(current_p[0], current_p[1]);
-      ctx.lineTo(end_x, end_y);
       ctx.stroke();
     }
   }
@@ -12025,27 +12040,1049 @@ var HeatMap = class extends MObject {
   }
 };
 
-// src/lib/statesim.ts
+// src/lib/three_d/matvec.ts
+function vec3_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2);
+}
+function vec3_dot(v, w) {
+  let result = 0;
+  for (let i = 0; i < 3; i++) {
+    result += v[i] * w[i];
+  }
+  return result;
+}
+function vec3_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor, x[2] * factor];
+}
+function vec3_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1], x[2] + y[2]];
+}
+function vec3_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
+}
+function transpose2(m) {
+  return [
+    [m[0][0], m[1][0], m[2][0]],
+    [m[0][1], m[1][1], m[2][1]],
+    [m[0][2], m[1][2], m[2][2]]
+  ];
+}
+function mat_inv(m) {
+  let det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  if (det == 0) {
+    throw new Error("Can't invert a singular matrix");
+  }
+  let inv_det = 1 / det;
+  return [
+    [
+      inv_det * (m[1][1] * m[2][2] - m[1][2] * m[2][1]),
+      inv_det * (m[0][2] * m[2][1] - m[0][1] * m[2][2]),
+      inv_det * (m[0][1] * m[1][2] - m[0][2] * m[1][1])
+    ],
+    [
+      inv_det * (m[1][2] * m[2][0] - m[1][0] * m[2][2]),
+      inv_det * (m[0][0] * m[2][2] - m[0][2] * m[2][0]),
+      inv_det * (m[0][2] * m[1][0] - m[0][0] * m[1][2])
+    ],
+    [
+      inv_det * (m[1][0] * m[2][1] - m[1][1] * m[2][0]),
+      inv_det * (m[0][1] * m[2][0] - m[0][0] * m[2][1]),
+      inv_det * (m[0][0] * m[1][1] - m[0][1] * m[1][0])
+    ]
+  ];
+}
+function get_column(m, i) {
+  return [m[0][i], m[1][i], m[2][i]];
+}
+function normalize(v) {
+  let n = vec3_norm(v);
+  if (n == 0) {
+    throw new Error("Can't normalize the zero vector");
+  } else {
+    return vec3_scale(v, 1 / n);
+  }
+}
+function matmul_vec(m, v) {
+  let result = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    result[i] = vec3_dot(m[i], v);
+  }
+  return result;
+}
+function matmul_mat(m1, m2) {
+  let result = [];
+  for (let i = 0; i < 3; i++) {
+    result.push(matmul_vec(m1, [m2[0][i], m2[1][i], m2[2][i]]));
+  }
+  return transpose2(result);
+}
+function rot_z_matrix(theta) {
+  return [
+    [Math.cos(theta), -Math.sin(theta), 0],
+    [Math.sin(theta), Math.cos(theta), 0],
+    [0, 0, 1]
+  ];
+}
+function rot_z(v, theta) {
+  return matmul_vec(rot_z_matrix(theta), v);
+}
+function rot_y_matrix(theta) {
+  return [
+    [Math.cos(theta), 0, Math.sin(theta)],
+    [0, 1, 0],
+    [-Math.sin(theta), 0, Math.cos(theta)]
+  ];
+}
+function rot_y(v, theta) {
+  return matmul_vec(rot_y_matrix(theta), v);
+}
+function rot_x_matrix(theta) {
+  return [
+    [1, 0, 0],
+    [0, Math.cos(theta), -Math.sin(theta)],
+    [0, Math.sin(theta), Math.cos(theta)]
+  ];
+}
+function rot_x(v, theta) {
+  return matmul_vec(rot_x_matrix(theta), v);
+}
+function rot_matrix(axis, angle2) {
+  let [x, y, z] = normalize(axis);
+  let theta = Math.acos(z);
+  let phi = Math.acos(x / Math.sin(theta));
+  if (y / Math.sin(theta) < 0) {
+    phi = 2 * Math.PI - phi;
+  }
+  let result = rot_z_matrix(-phi);
+  result = matmul_mat(rot_y_matrix(-theta), result);
+  result = matmul_mat(rot_z_matrix(angle2), result);
+  result = matmul_mat(rot_y_matrix(theta), result);
+  result = matmul_mat(rot_z_matrix(phi), result);
+  return result;
+}
+function rot(v, axis, angle2) {
+  let [x, y, z] = normalize(axis);
+  let theta = Math.acos(z);
+  let phi = Math.acos(x / Math.sin(theta));
+  if (y / Math.sin(theta) < 0) {
+    phi = 2 * Math.PI - phi;
+  }
+  let result = rot_z(v, -phi);
+  result = rot_y(result, -theta);
+  result = rot_z(result, angle2);
+  result = rot_y(result, theta);
+  result = rot_z(result, phi);
+  return result;
+}
+
+// src/lib/three_d/mobjects.ts
+var ThreeDMObject = class extends MObject {
+  constructor() {
+    super(...arguments);
+    this.blocked_depth_tolerance = 0.01;
+    this.linked_mobjects = [];
+    this.stroke_options = new StrokeOptions();
+  }
+  set_stroke_color(color) {
+    this.stroke_options.set_stroke_color(color);
+    return this;
+  }
+  set_stroke_width(width) {
+    this.stroke_options.set_stroke_width(width);
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_options.set_stroke_style(style);
+    return this;
+  }
+  // Return the depth of the object in the scene. Used for sorting.
+  depth(scene) {
+    return 0;
+  }
+  // Return the depth of the nearest point on the object that lies along the
+  // given ray. Used for relative depth-testing between 3D objects, to determine
+  // how to draw them.
+  depth_at(scene, view_point) {
+    return 0;
+  }
+  // Add a linked Mobject. These are fill-like MObjects in the scene which might obstruct the view
+  // of the curve, and are used internally to _draw() for depth-testing.
+  link_mobject(mobject) {
+    this.linked_mobjects.push(mobject);
+  }
+  // Calculates the minimum depth value among linked FillLike objects at the given 2D scene view point.
+  blocked_depth_at(scene, view_point) {
+    return Math.min(
+      ...this.linked_mobjects.map(
+        (m) => m.depth_at(scene, view_point)
+      )
+    );
+  }
+  // Calculates whether the given 3D scene point is either obstructed by any linked FillLike objects
+  // or is out of scene
+  is_blocked(scene, point) {
+    let vp = scene.camera_view(point);
+    if (vp == null) {
+      return true;
+    } else {
+      return scene.camera.depth(point) > this.blocked_depth_at(scene, vp) + this.blocked_depth_tolerance;
+    }
+  }
+  // Simpler drawing method for 3D scenes which doesn't use local depth testing, for speed purposes.
+  _draw_simple(ctx, scene) {
+  }
+};
+var ThreeDLineLikeMObject = class extends ThreeDMObject {
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha /= 2;
+    ctx.setLineDash([5, 5]);
+  }
+  unset_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha *= 2;
+    ctx.setLineDash([]);
+  }
+  draw(canvas, scene, simple = false, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    if (this instanceof Line3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
+  }
+};
+var ThreeDFillLikeMObject = class extends ThreeDMObject {
+  constructor() {
+    super(...arguments);
+    this.fill_options = new FillOptions();
+  }
+  set_fill_color(color) {
+    this.fill_options.fill_color = color;
+    return this;
+  }
+  set_color(color) {
+    this.stroke_options.stroke_color = color;
+    this.fill_options.fill_color = color;
+    return this;
+  }
+  set_fill_alpha(alpha) {
+    this.fill_options.fill_alpha = alpha;
+    return this;
+  }
+  set_fill(fill2) {
+    this.fill_options.fill = fill2;
+    return this;
+  }
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha /= 2;
+  }
+  unset_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha *= 2;
+  }
+  draw(canvas, scene, simple = false, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    this.fill_options.apply_to(ctx);
+    if (this instanceof Dot3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
+  }
+};
+var Dot3D = class extends ThreeDFillLikeMObject {
+  constructor(center, radius) {
+    super();
+    this.center = center;
+    this.radius = radius;
+  }
+  get_center() {
+    return this.center;
+  }
+  get_radius() {
+    return this.radius;
+  }
+  depth(scene) {
+    return scene.camera.depth(this.center);
+  }
+  depth_at(scene, view_point) {
+    if (scene.mode == "perspective") {
+      return 0;
+    } else if (scene.mode == "orthographic") {
+      let dist = vec2_norm(
+        vec2_sub(view_point, scene.camera.orthographic_view(this.center))
+      );
+      if (dist > this.radius) {
+        return Infinity;
+      } else {
+        let depth_adjustment = Math.sqrt(
+          Math.max(0, this.radius ** 2 - dist ** 2)
+        );
+        return scene.camera.depth(this.center) - depth_adjustment;
+      }
+    }
+    return 0;
+  }
+  move_to(new_center) {
+    this.center = new_center;
+  }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
+    this.center[2] += p[2];
+  }
+  _draw_simple(ctx, scene) {
+    let p = scene.camera_view(this.center);
+    let pr = scene.camera_view(
+      vec3_sum(
+        this.center,
+        vec3_scale(get_column(scene.camera.get_camera_frame(), 0), this.radius)
+      )
+    );
+    let state;
+    if (p != null && pr != null) {
+      let [cx, cy] = scene.v2c(p);
+      let [rx, ry] = scene.v2c(pr);
+      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
+      ctx.beginPath();
+      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
+      ctx.stroke();
+      if (this.fill_options.fill) {
+        ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;
+        ctx.fill();
+        ctx.globalAlpha = ctx.globalAlpha / this.fill_options.fill_alpha;
+      }
+    }
+  }
+  _draw(ctx, scene) {
+    let p = scene.camera_view(this.center);
+    let pr = scene.camera_view(
+      vec3_sum(
+        this.center,
+        vec3_scale(get_column(scene.camera.get_camera_frame(), 0), this.radius)
+      )
+    );
+    let state;
+    if (p != null && pr != null) {
+      let depth = scene.camera.depth(this.center);
+      if (depth > this.blocked_depth_at(scene, p) + this.blocked_depth_tolerance) {
+        state = "blocked";
+      } else {
+        state = "unblocked";
+      }
+      let [cx, cy] = scene.v2c(p);
+      let [rx, ry] = scene.v2c(pr);
+      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
+      ctx.beginPath();
+      if (state == "blocked") {
+        this.set_behind_linked_mobjects(ctx);
+      }
+      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
+      ctx.stroke();
+      if (this.fill_options.fill) {
+        ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;
+        ctx.fill();
+        ctx.globalAlpha = ctx.globalAlpha / this.fill_options.fill_alpha;
+      }
+      if (state == "blocked") {
+        this.unset_behind_linked_mobjects(ctx);
+      }
+    }
+  }
+  toDraggableDot3D() {
+    return new DraggableDot3D(this.center, this.radius);
+  }
+  toDraggableDotZ3D() {
+    return new DraggableDotZ3D(this.center, this.radius);
+  }
+};
+var DraggableDot3D = class extends Dot3D {
+  constructor() {
+    super(...arguments);
+    this.isClicked = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.touch_tolerance = 2;
+    this.callbacks = [];
+  }
+  // Tests whether a chosen view point lies inside the shape. Used for click-detection.
+  is_inside(scene, view_point) {
+    let center_view = scene.camera_view(this.center);
+    let edge_view = scene.camera_view(
+      vec3_sum(this.center, [0, 0, this.radius])
+    );
+    if (center_view == null || edge_view == null) {
+      return false;
+    } else {
+      return vec2_norm(vec2_sub(view_point, center_view)) < vec2_norm(vec2_sub(edge_view, center_view));
+    }
+  }
+  // Tests whether a chosen vector lies within an enlarged version of the dot.
+  // Used for touch-detection on mobile devices, and for use by small children.
+  is_almost_inside(scene, view_point, tolerance) {
+    let center_view = scene.camera_view(this.center);
+    let edge_view = scene.camera_view(
+      vec3_sum(this.center, [0, 0, this.radius])
+    );
+    if (center_view == null || edge_view == null) {
+      return false;
+    } else {
+      return vec2_norm(vec2_sub(view_point, center_view)) < vec2_norm(vec2_sub(edge_view, center_view)) * tolerance;
+    }
+  }
+  // Adds a callback which triggers when the dot is dragged
+  add_callback(callback) {
+    this.callbacks.push(callback);
+  }
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
+  }
+  // Triggers when the canvas is clicked.
+  click(scene, event) {
+    this.dragStart = vec2_sub(mouse_event_coords(event), [
+      scene.canvas.offsetLeft,
+      scene.canvas.offsetTop
+    ]);
+    if (!scene.is_dragging) {
+      this.isClicked = this.is_inside(
+        scene,
+        scene.c2v(this.dragStart[0], this.dragStart[1])
+      );
+      if (this.isClicked) {
+        scene.click();
+      }
+    }
+  }
+  touch(scene, event) {
+    this.dragStart = [
+      event.touches[0].pageX - scene.canvas.offsetLeft,
+      event.touches[0].pageY - scene.canvas.offsetTop
+    ];
+    if (!scene.is_dragging) {
+      this.isClicked = this.is_almost_inside(
+        scene,
+        scene.c2v(this.dragStart[0], this.dragStart[1]),
+        this.touch_tolerance
+      );
+      if (this.isClicked) {
+        scene.click();
+      }
+    }
+  }
+  // Triggers when the canvas is unclicked.
+  unclick(scene, event) {
+    if (this.isClicked) {
+      scene.unclick();
+    }
+    this.isClicked = false;
+  }
+  untouch(scene, event) {
+    if (this.isClicked) {
+      scene.unclick();
+    }
+    scene.unclick();
+  }
+  // Triggers when the mouse is dragged over the canvas.
+  mouse_drag_cursor(scene, event) {
+    if (this.isClicked) {
+      this.dragEnd = vec2_sub(mouse_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop
+      ]);
+      this._drag_cursor(scene);
+    }
+  }
+  touch_drag_cursor(scene, event) {
+    if (this.isClicked) {
+      this.dragEnd = vec2_sub(touch_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop
+      ]);
+      this._drag_cursor(scene);
+    }
+  }
+  _drag_cursor(scene) {
+    let translate_vec = vec2_sub(
+      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1])
+    );
+    this.move_by(scene.v2w(translate_vec));
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
+  }
+  add(scene) {
+    let self = this;
+    scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
+    scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
+    scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self, scene)
+    );
+    scene.canvas.addEventListener("touchstart", self.touch.bind(self, scene));
+    scene.canvas.addEventListener("touchend", self.untouch.bind(self, scene));
+    scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self, scene)
+    );
+  }
+  remove(scene) {
+    let self = this;
+    scene.canvas.removeEventListener("mousedown", this.click.bind(self, scene));
+    scene.canvas.removeEventListener("mouseup", this.unclick.bind(self, scene));
+    scene.canvas.removeEventListener(
+      "mousemove",
+      this.mouse_drag_cursor.bind(self, scene)
+    );
+    scene.canvas.removeEventListener(
+      "touchstart",
+      this.click.bind(self, scene)
+    );
+    scene.canvas.removeEventListener(
+      "touchend",
+      this.unclick.bind(self, scene)
+    );
+    scene.canvas.removeEventListener(
+      "touchmove",
+      self.mouse_drag_cursor.bind(self, scene)
+    );
+  }
+  toDot3D() {
+    return new Dot3D(this.center, this.radius);
+  }
+};
+var DraggableDotZ3D = class extends DraggableDot3D {
+  _drag_cursor(scene) {
+    let translate_vec = vec2_sub(
+      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
+      scene.c2v(this.dragStart[0], this.dragStart[1])
+    );
+    let [mx, my, mz] = scene.v2w(translate_vec);
+    this.move_by([0, 0, mz]);
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    scene.draw();
+  }
+};
+var Line3D = class extends ThreeDLineLikeMObject {
+  constructor(start, end) {
+    super();
+    this.start = start;
+    this.end = end;
+  }
+  // Moves the start and end points
+  move_start(v) {
+    this.start = v;
+  }
+  move_end(v) {
+    this.end = v;
+  }
+  depth(scene) {
+    return scene.camera.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
+  }
+  _draw(ctx, scene) {
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
+    let start_blocked = this.is_blocked(scene, this.start);
+    let end_blocked = this.is_blocked(scene, this.end);
+    if (!start_blocked && !end_blocked) {
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+    } else if (start_blocked && end_blocked) {
+      ctx.beginPath();
+      this.set_behind_linked_mobjects(ctx);
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+      this.unset_behind_linked_mobjects(ctx);
+    } else {
+      let n = 1;
+      let v = vec3_sub(this.end, this.start);
+      let p = vec3_scale(vec3_sum(this.start, this.end), 0.5);
+      while (n < 6) {
+        n += 1;
+        if (this.is_blocked(scene, p) == start_blocked) {
+          p = vec3_sum(p, vec3_scale(v, 1 / 2 ** n));
+        } else {
+          p = vec3_sub(p, vec3_scale(v, 1 / 2 ** n));
+        }
+      }
+      let [p_x, p_y] = scene.v2c(scene.camera_view(p));
+      if (start_blocked) {
+        ctx.beginPath();
+        ctx.moveTo(start_x, start_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(end_x, end_y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(end_x, end_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(start_x, start_y);
+        ctx.stroke();
+      }
+    }
+  }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx, scene) {
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
+  }
+};
+
+// src/lib/three_d/scene.ts
+var Camera3D = class {
+  constructor() {
+    // Position of the camera in 3D space
+    this.pos = [0, 0, 0];
+    // The 0th, 1st, and 2nd columns of the camera frame matrix are the
+    // x-direction, y-direction, and z-direction of the camera view, respectively.
+    // The inverse of the camera frame matrix is the main object that is manipulated.
+    this.camera_frame_inv = [
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1]
+    ];
+    // Determines whether retrieval of the 2D view is perspective or orthographic.
+    this.mode = "perspective";
+  }
+  // Set the camera position
+  move_to(pos) {
+    this.pos = pos;
+  }
+  // Translate the camera matrix by a given vector
+  move_by(v) {
+    this.pos = vec3_sum(this.pos, v);
+  }
+  // Get the camera frame inverse matrix
+  get_camera_frame_inv() {
+    return this.camera_frame_inv;
+  }
+  // Set the camera frame inverse matrix
+  set_camera_frame_inv(frame_inv) {
+    this.camera_frame_inv = frame_inv;
+  }
+  // Get the camera frame matrix
+  get_camera_frame() {
+    return mat_inv(this.camera_frame_inv);
+  }
+  // Converts a point to camera space
+  _to_camera_space(p) {
+    return matmul_vec(this.camera_frame_inv, vec3_sub(p, this.pos));
+  }
+  // Rotate the camera matrix around the z-axis.
+  rot_view_z(angle2) {
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_z_matrix(-angle2)
+    );
+  }
+  // Rotate the camera matrix around the y-axis.
+  rot_view_y(angle2) {
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_y_matrix(-angle2)
+    );
+  }
+  // Rotate the camera matrix around the x-axis.
+  rot_view_x(angle2) {
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_x_matrix(-angle2)
+    );
+  }
+  // Rotate the camera matrix around a given axis
+  rot_view(axis, angle2) {
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_matrix(axis, -angle2)
+    );
+  }
+  // Rotates the camera view around various axes
+  rot_pos_and_view_z(angle2) {
+    this.rot_view_z(angle2);
+    this.move_to(rot_z(this.pos, angle2));
+  }
+  rot_pos_and_view_y(angle2) {
+    this.rot_view_y(angle2);
+    this.move_to(rot_y(this.pos, angle2));
+  }
+  rot_pos_and_view_x(angle2) {
+    this.rot_view_x(angle2);
+    this.move_to(rot_x(this.pos, angle2));
+  }
+  rot_pos_and_view(axis, angle2) {
+    this.rot_view(axis, angle2);
+    this.move_to(rot(this.pos, axis, angle2));
+  }
+  // Projects a 3D point onto the camera view plane. Does not include perspective.
+  orthographic_view(p) {
+    let [vx, vy, vz] = this._to_camera_space(p);
+    return [vx, vy];
+  }
+  // Projects a 3D point onto the camera view plane, and then divides by the third coordinate.
+  // Returns null if the third coordinate is nonpositive (i.e., the point is behind the camera).
+  perspective_view(p) {
+    let [vx, vy, vz] = this._to_camera_space(p);
+    if (vz <= 0) {
+      return null;
+    } else {
+      return [vx / vz, vy / vz];
+    }
+  }
+  // Returns the depth of a point in camera space
+  depth(p) {
+    let [vx, vy, vz] = this._to_camera_space(p);
+    return vz;
+  }
+};
+var ThreeDScene = class extends Scene {
+  constructor() {
+    super(...arguments);
+    this.camera = new Camera3D();
+    this.mode = "perspective";
+  }
+  // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
+  scale() {
+    let [xmin, xmax] = this.xlims;
+    return this.canvas.width / (xmax - xmin);
+  }
+  // Modes of viewing/drawing
+  set_view_mode(mode) {
+    this.mode = mode;
+  }
+  camera_view(p) {
+    if (this.mode == "perspective") {
+      return this.camera.perspective_view(p);
+    } else {
+      return this.camera.orthographic_view(p);
+    }
+  }
+  // Converts a 2D vector in the view to world coordinates
+  v2w(v) {
+    let frame = this.camera.get_camera_frame();
+    return matmul_vec(frame, [v[0], v[1], 0]);
+  }
+  // Draw
+  draw(args) {
+    let ctx = this.canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
+      let depth_a = this.mobjects[a].depth(this);
+      let depth_b = this.mobjects[b].depth(this);
+      return depth_b - depth_a;
+    });
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      if (mobj instanceof ThreeDFillLikeMObject) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      if (mobj instanceof ThreeDLineLikeMObject) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      if (!(mobj instanceof ThreeDFillLikeMObject) && !(mobj instanceof ThreeDLineLikeMObject)) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    ctx.strokeStyle = this.border_color;
+    ctx.lineWidth = this.border_thickness;
+    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+};
+
+// src/lib/interactive_handler.ts
+var SceneFromSimulator = class extends Scene {
+  constructor(canvas) {
+    super(canvas);
+  }
+  update_mobjects_from_simulator(simulator) {
+  }
+};
+
+// src/lib/simulator/sim.ts
 var Simulator = class {
   // Length of time in each simulation step
-  constructor(state_size, dt) {
-    // Size of the array of values storing the state
+  constructor(dt) {
     this.time = 0;
-    this.state_size = state_size;
-    this.vals = new Array(this.state_size).fill(0);
     this.dt = dt;
   }
-  // Resets the simulation
   reset() {
-    this.vals = new Array(this.state_size).fill(0);
     this.time = 0;
-    this.set_boundary_conditions(this.vals, 0);
+  }
+  step() {
+    this.time += this.dt;
   }
   // Generic setter.
   set_attr(name, val) {
     if (name in this) {
       this[name] = val;
     }
+  }
+};
+var InteractivePlayingScene = class extends Scene {
+  constructor(canvas, simulators) {
+    super(canvas);
+    // Store a known end-time in case the simulation is paused and unpaused
+    this.linked_scenes = [];
+    [this.num_simulators, this.simulators] = simulators.reduce(
+      ([ind, acc], item2) => (acc[ind] = item2, [ind + 1, acc]),
+      [0, {}]
+    );
+    this.action_queue = [];
+    this.paused = true;
+    this.time = 0;
+    this.dt = simulators[0].dt;
+  }
+  // Adds another scene whose state is dependent on the simulation.
+  // This scene acts as the "controller" through which the simulation can be paused and
+  // interacted with.
+  add_linked_scene(scene) {
+    this.linked_scenes.push(scene);
+  }
+  add_pause_button(container) {
+    let self = this;
+    let pauseButton = Button(container, function() {
+      self.add_to_queue(self.toggle_pause.bind(self));
+      pauseButton.textContent = pauseButton.textContent == "Pause simulation" ? "Unpause simulation" : "Pause simulation";
+    });
+    pauseButton.textContent = this.paused ? "Unpause simulation" : "Pause simulation";
+    return pauseButton;
+  }
+  get_simulator(ind = 0) {
+    return this.simulators[ind];
+  }
+  set_simulator_attr(simulator_ind, attr_name, attr_val) {
+    this.get_simulator(simulator_ind).set_attr(attr_name, attr_val);
+  }
+  // Restarts the simulator
+  reset() {
+    for (let ind = 0; ind < this.num_simulators; ind++) {
+      this.get_simulator(ind).reset();
+    }
+    this.time = 0;
+    this.draw();
+    for (let scene of this.linked_scenes) {
+      scene.update_mobjects_from_simulator(this.get_simulator(0));
+      scene.draw();
+    }
+  }
+  // Switches from paused to unpaused and vice-versa.
+  toggle_pause() {
+    this.paused = !this.paused;
+    if (!this.paused) {
+      this.play(this.end_time);
+    }
+  }
+  // Adds to the action queue if the scene is currently playing,
+  // otherwise execute the callback immediately
+  add_to_queue(callback) {
+    if (this.paused) {
+      callback();
+    } else {
+      this.action_queue.push(callback);
+    }
+  }
+  // Starts animation
+  play(until) {
+    if (this.paused) {
+      this.end_time = until;
+      return;
+    } else {
+      if (this.action_queue.length > 0) {
+        let callback = this.action_queue.shift();
+        callback();
+      } else if (this.time > until) {
+        return;
+      } else {
+        for (let ind = 0; ind < this.num_simulators; ind++) {
+          this.get_simulator(ind).step();
+        }
+        this.time += this.get_simulator(0).dt;
+        this.draw();
+        for (let scene of this.linked_scenes) {
+          scene.update_mobjects_from_simulator(this.get_simulator(0));
+          scene.draw();
+        }
+      }
+      window.requestAnimationFrame(this.play.bind(this, until));
+    }
+  }
+  // Updates all mobjects to account for the new simulator state
+  update_mobjects() {
+  }
+  // Draws the scene.
+  _draw() {
+    this.update_mobjects();
+    Object.keys(this.mobjects).forEach((name) => {
+      let mobj = this.get_mobj(name);
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      this.draw_mobject(mobj);
+    });
+  }
+  // Add drawing instructions in the subclass.
+  draw_mobject(mobj) {
+  }
+};
+var InteractivePlayingThreeDScene = class extends ThreeDScene {
+  constructor(canvas, simulators) {
+    super(canvas);
+    // Store a known end-time in case the simulation is paused and unpaused
+    this.linked_scenes = [];
+    [this.num_simulators, this.simulators] = simulators.reduce(
+      ([ind, acc], item2) => (acc[ind] = item2, [ind + 1, acc]),
+      [0, {}]
+    );
+    this.action_queue = [];
+    this.paused = true;
+    this.time = 0;
+    this.dt = simulators[0].dt;
+    this.linked_scenes = [];
+  }
+  add_linked_scene(scene) {
+    this.linked_scenes.push(scene);
+  }
+  add_pause_button(container) {
+    let self = this;
+    let pauseButton = Button(container, function() {
+      self.add_to_queue(self.toggle_pause.bind(self));
+      pauseButton.textContent = pauseButton.textContent == "Pause simulation" ? "Unpause simulation" : "Pause simulation";
+    });
+    pauseButton.textContent = this.paused ? "Unpause simulation" : "Pause simulation";
+    return pauseButton;
+  }
+  get_simulator(ind = 0) {
+    return this.simulators[ind];
+  }
+  set_simulator_attr(simulator_ind, attr_name, attr_val) {
+    this.get_simulator(simulator_ind).set_attr(attr_name, attr_val);
+  }
+  update_and_draw_linked_scenes() {
+    for (let scene of this.linked_scenes) {
+      scene.update_mobjects_from_simulator(this.get_simulator(0));
+      scene.draw();
+    }
+  }
+  // Restarts the simulator
+  reset() {
+    for (let ind = 0; ind < this.num_simulators; ind++) {
+      this.get_simulator(ind).reset();
+    }
+    this.time = 0;
+    this.draw();
+    this.update_and_draw_linked_scenes();
+  }
+  // Switches from paused to unpaused and vice-versa.
+  toggle_pause() {
+    this.paused = !this.paused;
+    if (!this.paused) {
+      this.play(this.end_time);
+    }
+  }
+  // Adds to the action queue if the scene is currently playing,
+  // otherwise execute the callback immediately
+  add_to_queue(callback) {
+    if (this.paused) {
+      callback();
+    } else {
+      this.action_queue.push(callback);
+    }
+  }
+  // Starts animation
+  play(until) {
+    if (this.paused) {
+      this.end_time = until;
+      return;
+    } else {
+      if (this.action_queue.length > 0) {
+        let callback = this.action_queue.shift();
+        callback();
+      } else if (this.time > until) {
+        return;
+      } else {
+        for (let ind = 0; ind < this.num_simulators; ind++) {
+          this.get_simulator(ind).step();
+        }
+        this.time += this.get_simulator(0).dt;
+        this.draw();
+        this.update_and_draw_linked_scenes();
+      }
+      window.requestAnimationFrame(this.play.bind(this, until));
+    }
+  }
+  // Updates all mobjects to account for the new simulator state
+  update_mobjects() {
+  }
+  // Draws the scene without worrying about depth-sensing.
+  // TODO Sort this out later.
+  draw() {
+    this.update_mobjects();
+    let ctx = this.canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    Object.keys(this.mobjects).forEach((name) => {
+      let mobj = this.get_mobj(name);
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      this.draw_mobject(mobj);
+    });
+  }
+  // Add drawing instructions in the subclass.
+  draw_mobject(mobj) {
+  }
+};
+
+// src/lib/simulator/statesim.ts
+var StateSimulator = class extends Simulator {
+  // Size of the array of values storing the state
+  constructor(state_size, dt) {
+    super(dt);
+    this.state_size = state_size;
+    this.vals = new Array(this.state_size).fill(0);
+  }
+  // Resets the simulation
+  reset() {
+    super.reset();
+    this.vals = new Array(this.state_size).fill(0);
+    this.set_boundary_conditions(this.vals, 0);
   }
   // Getter and setter for state.
   get_vals() {
@@ -12107,7 +13144,7 @@ var Simulator = class {
     return this.step_runge_kutta();
   }
 };
-var SpringSimulator = class extends Simulator {
+var SpringSimulator = class extends StateSimulator {
   constructor(stiffness, dt) {
     super(2, dt);
     this.friction = 0;
@@ -12210,100 +13247,8 @@ var TwoDimState = class {
     }
   }
 };
-var InteractivePlayingScene = class extends Scene {
-  constructor(canvas, simulators) {
-    super(canvas);
-    // Store a known end-time in case the simulation is paused and unpaused
-    this.linked_scenes = [];
-    [this.num_simulators, this.simulators] = simulators.reduce(
-      ([ind, acc], item2) => (acc[ind] = item2, [ind + 1, acc]),
-      [0, {}]
-    );
-    this.action_queue = [];
-    this.paused = true;
-    this.time = 0;
-    this.dt = simulators[0].dt;
-  }
-  add_linked_scene(scene) {
-    this.linked_scenes.push(scene);
-  }
-  get_simulator(ind = 0) {
-    return this.simulators[ind];
-  }
-  set_simulator_attr(simulator_ind, attr_name, attr_val) {
-    this.get_simulator(simulator_ind).set_attr(attr_name, attr_val);
-  }
-  // Restarts the simulator
-  reset() {
-    for (let ind = 0; ind < this.num_simulators; ind++) {
-      this.get_simulator(ind).reset();
-    }
-    this.time = 0;
-    this.draw();
-    for (let scene of this.linked_scenes) {
-      scene.update_mobjects_from_simulator(this.get_simulator(0));
-      scene.draw();
-    }
-  }
-  // Switches from paused to unpaused and vice-versa.
-  toggle_pause() {
-    this.paused = !this.paused;
-    if (!this.paused) {
-      this.play(this.end_time);
-    }
-  }
-  // Adds to the action queue if the scene is currently playing,
-  // otherwise execute the callback immediately
-  add_to_queue(callback) {
-    if (this.paused) {
-      callback();
-    } else {
-      this.action_queue.push(callback);
-    }
-  }
-  // Starts animation
-  play(until) {
-    if (this.paused) {
-      this.end_time = until;
-      return;
-    } else {
-      if (this.action_queue.length > 0) {
-        let callback = this.action_queue.shift();
-        callback();
-      } else if (this.time > until) {
-        return;
-      } else {
-        for (let ind = 0; ind < this.num_simulators; ind++) {
-          this.get_simulator(ind).step();
-        }
-        this.time += this.get_simulator(0).dt;
-        this.draw();
-        for (let scene of this.linked_scenes) {
-          scene.update_mobjects_from_simulator(this.get_simulator(0));
-          scene.draw();
-        }
-      }
-      window.requestAnimationFrame(this.play.bind(this, until));
-    }
-  }
-  // Updates all mobjects to account for the new simulator state
-  update_mobjects() {
-  }
-  // Draws the scene.
-  _draw() {
-    this.update_mobjects();
-    Object.keys(this.mobjects).forEach((name) => {
-      let mobj = this.get_mobj(name);
-      if (mobj == void 0) throw new Error(`${name} not found`);
-      this.draw_mobject(mobj);
-    });
-  }
-  // Add drawing instructions in the subclass.
-  draw_mobject(mobj) {
-  }
-};
 
-// src/lib/wavesim.ts
+// src/lib/simulator/wavesim.ts
 var PointSourceOneDim = class {
   // Time at which the source turns on
   constructor(x, w, a, p) {
@@ -12358,7 +13303,7 @@ var PointSource = class {
     this.turn_on_time = time;
   }
 };
-var WaveSimOneDim = class extends Simulator {
+var WaveSimOneDim = class extends StateSimulator {
   constructor(width, dt) {
     super(2 * width, dt);
     // Perfectly-matched layers in 1D are implemented as increasing friction coefficients at the boundaries.
@@ -12667,7 +13612,7 @@ var WaveSimOneDimScene = class extends InteractivePlayingScene {
     }
   }
 };
-var WaveSimTwoDim = class extends Simulator {
+var WaveSimTwoDim = class extends StateSimulator {
   constructor(width, height, dt) {
     super(4 * width * height, dt);
     this.pml_layers = {};
@@ -13131,935 +14076,6 @@ var WaveSimTwoDimEllipticReflector = class extends WaveSimTwoDimReflector {
     );
   }
 };
-var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
-  // Target for heatmap data
-  constructor(canvas, simulator, imageData) {
-    super(canvas, [simulator]);
-    this.simulator = simulator;
-    simulator;
-    this.add(
-      "heatmap",
-      new HeatMap(
-        simulator.width,
-        simulator.height,
-        -1,
-        1,
-        this.simulator.get_uValues()
-      )
-    );
-    this.imageData = imageData;
-  }
-  get_simulator(ind = 0) {
-    return super.get_simulator(ind);
-  }
-  update_mobjects() {
-    let mobj = this.get_mobj("heatmap");
-    mobj.set_vals(this.simulator.get_uValues());
-  }
-  draw_mobject(mobj) {
-    if (mobj instanceof HeatMap) {
-      mobj.draw(this.canvas, this, this.imageData);
-    } else {
-      mobj.draw(this.canvas, this);
-    }
-  }
-};
-
-// src/lib/matvec.ts
-function transpose2(m) {
-  return [
-    [m[0][0], m[1][0], m[2][0]],
-    [m[0][1], m[1][1], m[2][1]],
-    [m[0][2], m[1][2], m[2][2]]
-  ];
-}
-function mat_inv(m) {
-  let det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
-  if (det == 0) {
-    throw new Error("Can't invert a singular matrix");
-  }
-  let inv_det = 1 / det;
-  return [
-    [
-      inv_det * (m[1][1] * m[2][2] - m[1][2] * m[2][1]),
-      inv_det * (m[0][2] * m[2][1] - m[0][1] * m[2][2]),
-      inv_det * (m[0][1] * m[1][2] - m[0][2] * m[1][1])
-    ],
-    [
-      inv_det * (m[1][2] * m[2][0] - m[1][0] * m[2][2]),
-      inv_det * (m[0][0] * m[2][2] - m[0][2] * m[2][0]),
-      inv_det * (m[0][2] * m[1][0] - m[0][0] * m[1][2])
-    ],
-    [
-      inv_det * (m[1][0] * m[2][1] - m[1][1] * m[2][0]),
-      inv_det * (m[0][1] * m[2][0] - m[0][0] * m[2][1]),
-      inv_det * (m[0][0] * m[1][1] - m[0][1] * m[1][0])
-    ]
-  ];
-}
-function get_column(m, i) {
-  return [m[0][i], m[1][i], m[2][i]];
-}
-function normalize(v) {
-  let n = vec3_norm(v);
-  if (n == 0) {
-    throw new Error("Can't normalize the zero vector");
-  } else {
-    return vec3_scale(v, 1 / n);
-  }
-}
-function matmul_vec(m, v) {
-  let result = [0, 0, 0];
-  for (let i = 0; i < 3; i++) {
-    result[i] = vec3_dot(m[i], v);
-  }
-  return result;
-}
-function matmul_mat(m1, m2) {
-  let result = [];
-  for (let i = 0; i < 3; i++) {
-    result.push(matmul_vec(m1, [m2[0][i], m2[1][i], m2[2][i]]));
-  }
-  return transpose2(result);
-}
-function rot_z_matrix(theta) {
-  return [
-    [Math.cos(theta), -Math.sin(theta), 0],
-    [Math.sin(theta), Math.cos(theta), 0],
-    [0, 0, 1]
-  ];
-}
-function rot_z(v, theta) {
-  return matmul_vec(rot_z_matrix(theta), v);
-}
-function rot_y_matrix(theta) {
-  return [
-    [Math.cos(theta), 0, Math.sin(theta)],
-    [0, 1, 0],
-    [-Math.sin(theta), 0, Math.cos(theta)]
-  ];
-}
-function rot_y(v, theta) {
-  return matmul_vec(rot_y_matrix(theta), v);
-}
-function rot_x_matrix(theta) {
-  return [
-    [1, 0, 0],
-    [0, Math.cos(theta), -Math.sin(theta)],
-    [0, Math.sin(theta), Math.cos(theta)]
-  ];
-}
-function rot_x(v, theta) {
-  return matmul_vec(rot_x_matrix(theta), v);
-}
-function rot_matrix(axis, angle2) {
-  let [x, y, z] = normalize(axis);
-  let theta = Math.acos(z);
-  let phi = Math.acos(x / Math.sin(theta));
-  if (y / Math.sin(theta) < 0) {
-    phi = 2 * Math.PI - phi;
-  }
-  let result = rot_z_matrix(-phi);
-  result = matmul_mat(rot_y_matrix(-theta), result);
-  result = matmul_mat(rot_z_matrix(angle2), result);
-  result = matmul_mat(rot_y_matrix(theta), result);
-  result = matmul_mat(rot_z_matrix(phi), result);
-  return result;
-}
-function rot(v, axis, angle2) {
-  let [x, y, z] = normalize(axis);
-  let theta = Math.acos(z);
-  let phi = Math.acos(x / Math.sin(theta));
-  if (y / Math.sin(theta) < 0) {
-    phi = 2 * Math.PI - phi;
-  }
-  let result = rot_z(v, -phi);
-  result = rot_y(result, -theta);
-  result = rot_z(result, angle2);
-  result = rot_y(result, theta);
-  result = rot_z(result, phi);
-  return result;
-}
-
-// src/lib/three_d.ts
-function vec3_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2);
-}
-function vec3_dot(v, w) {
-  let result = 0;
-  for (let i = 0; i < 3; i++) {
-    result += v[i] * w[i];
-  }
-  return result;
-}
-function vec3_scale(x, factor) {
-  return [x[0] * factor, x[1] * factor, x[2] * factor];
-}
-function vec3_sum(x, y) {
-  return [x[0] + y[0], x[1] + y[1], x[2] + y[2]];
-}
-function vec3_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
-}
-var ThreeDMObject = class extends MObject {
-  constructor() {
-    super(...arguments);
-    this.blocked_depth_tolerance = 0.01;
-    this.linked_mobjects = [];
-    this.stroke_width = 0.08;
-    this.stroke_color = "black";
-    this.stroke_style = "solid";
-  }
-  set_stroke_color(color) {
-    this.stroke_color = color;
-    return this;
-  }
-  set_stroke_width(width) {
-    this.stroke_width = width;
-    return this;
-  }
-  set_stroke_style(style) {
-    this.stroke_style = style;
-    return this;
-  }
-  // Return the depth of the object in the scene. Used for sorting.
-  depth(scene) {
-    return 0;
-  }
-  // Return the depth of the nearest point on the object that lies along the
-  // given ray. Used for relative depth-testing between 3D objects, to determine
-  // how to draw them.
-  depth_at(scene, view_point) {
-    return 0;
-  }
-  // Add a linked Mobject. These are fill-like MObjects in the scene which might obstruct the view
-  // of the curve, and are used internally to _draw() for depth-testing.
-  link_mobject(mobject) {
-    this.linked_mobjects.push(mobject);
-  }
-  // Calculates the minimum depth value among linked FillLike objects at the given 2D scene view point.
-  blocked_depth_at(scene, view_point) {
-    return Math.min(
-      ...this.linked_mobjects.map(
-        (m) => m.depth_at(scene, view_point)
-      )
-    );
-  }
-  // Calculates whether the given 3D scene point is either obstructed by any linked FillLike objects
-  // or is out of scene
-  is_blocked(scene, point) {
-    let vp = scene.camera_view(point);
-    if (vp == null) {
-      return true;
-    } else {
-      return scene.depth(point) > this.blocked_depth_at(scene, vp) + this.blocked_depth_tolerance;
-    }
-  }
-};
-var ThreeDLineLikeMObject = class extends ThreeDMObject {
-  // Sets the context drawer settings for drawing behind linked FillLike objects.
-  set_behind_linked_mobjects(ctx) {
-    ctx.globalAlpha /= 2;
-    ctx.setLineDash([5, 5]);
-  }
-  unset_behind_linked_mobjects(ctx) {
-    ctx.globalAlpha *= 2;
-    ctx.setLineDash([]);
-  }
-  draw(canvas, scene, simple = false, args) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    if (this.stroke_style == "dashed") {
-      ctx.setLineDash([5, 5]);
-    } else if (this.stroke_style == "dotted") {
-      ctx.setLineDash([2, 2]);
-    }
-    if (this instanceof Line3D && simple) {
-      this._draw_simple(ctx, scene);
-    } else {
-      this._draw(ctx, scene, args);
-    }
-    ctx.setLineDash([]);
-  }
-};
-var ThreeDFillLikeMObject = class extends ThreeDMObject {
-  constructor() {
-    super(...arguments);
-    this.fill_color = "black";
-    this.fill_alpha = 1;
-    this.fill = true;
-  }
-  set_fill_color(color) {
-    this.fill_color = color;
-  }
-  set_color(color) {
-    this.stroke_color = color;
-    this.fill_color = color;
-  }
-  set_fill_alpha(alpha) {
-    this.fill_alpha = alpha;
-  }
-  set_fill(fill2) {
-    this.fill = fill2;
-  }
-  // Sets the context drawer settings for drawing behind linked FillLike objects.
-  set_behind_linked_mobjects(ctx) {
-    ctx.globalAlpha /= 2;
-  }
-  unset_behind_linked_mobjects(ctx) {
-    ctx.globalAlpha *= 2;
-  }
-  draw(canvas, scene, simple = false, args) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    if (this.stroke_style == "dashed") {
-      ctx.setLineDash([5, 5]);
-    } else if (this.stroke_style == "dotted") {
-      ctx.setLineDash([2, 2]);
-    }
-    ctx.fillStyle = this.fill_color;
-    if (this instanceof Dot3D && simple) {
-      this._draw_simple(ctx, scene);
-    } else {
-      this._draw(ctx, scene, args);
-    }
-    ctx.setLineDash([]);
-  }
-};
-var Dot3D = class extends ThreeDFillLikeMObject {
-  constructor(center, radius) {
-    super();
-    this.center = center;
-    this.radius = radius;
-  }
-  get_center() {
-    return this.center;
-  }
-  get_radius() {
-    return this.radius;
-  }
-  depth(scene) {
-    return scene.depth(this.center);
-  }
-  depth_at(scene, view_point) {
-    if (scene.mode == "perspective") {
-      return 0;
-    } else if (scene.mode == "orthographic") {
-      let dist = vec2_norm(
-        vec2_sub(view_point, scene.orthographic_view(this.center))
-      );
-      if (dist > this.radius) {
-        return Infinity;
-      } else {
-        let depth_adjustment = Math.sqrt(
-          Math.max(0, this.radius ** 2 - dist ** 2)
-        );
-        return scene.depth(this.center) - depth_adjustment;
-      }
-    }
-    return 0;
-  }
-  move_to(new_center) {
-    this.center = new_center;
-  }
-  move_by(p) {
-    this.center[0] += p[0];
-    this.center[1] += p[1];
-    this.center[2] += p[2];
-  }
-  _draw_simple(ctx, scene) {
-    let p = scene.camera_view(this.center);
-    let pr = scene.camera_view(
-      vec3_sum(
-        this.center,
-        vec3_scale(get_column(scene.get_camera_frame(), 0), this.radius)
-      )
-    );
-    let state;
-    if (p != null && pr != null) {
-      let [cx, cy] = scene.v2c(p);
-      let [rx, ry] = scene.v2c(pr);
-      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
-      ctx.beginPath();
-      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
-      ctx.stroke();
-      if (this.fill) {
-        ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
-        ctx.fill();
-        ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
-      }
-    }
-  }
-  _draw(ctx, scene) {
-    let p = scene.camera_view(this.center);
-    let pr = scene.camera_view(
-      vec3_sum(
-        this.center,
-        vec3_scale(get_column(scene.get_camera_frame(), 0), this.radius)
-      )
-    );
-    let state;
-    if (p != null && pr != null) {
-      let depth = scene.depth(this.center);
-      if (depth > this.blocked_depth_at(scene, p) + this.blocked_depth_tolerance) {
-        state = "blocked";
-      } else {
-        state = "unblocked";
-      }
-      let [cx, cy] = scene.v2c(p);
-      let [rx, ry] = scene.v2c(pr);
-      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
-      ctx.beginPath();
-      if (state == "blocked") {
-        this.set_behind_linked_mobjects(ctx);
-      }
-      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
-      ctx.stroke();
-      if (this.fill) {
-        ctx.globalAlpha = ctx.globalAlpha * this.fill_alpha;
-        ctx.fill();
-        ctx.globalAlpha = ctx.globalAlpha / this.fill_alpha;
-      }
-      if (state == "blocked") {
-        this.unset_behind_linked_mobjects(ctx);
-      }
-    }
-  }
-  toDraggableDot3D() {
-    return new DraggableDot3D(this.center, this.radius);
-  }
-  toDraggableDotZ3D() {
-    return new DraggableDotZ3D(this.center, this.radius);
-  }
-};
-var DraggableDot3D = class extends Dot3D {
-  constructor() {
-    super(...arguments);
-    this.isClicked = false;
-    this.dragStart = [0, 0];
-    this.dragEnd = [0, 0];
-    this.touch_tolerance = 2;
-    this.callbacks = [];
-  }
-  // Tests whether a chosen view point lies inside the shape. Used for click-detection.
-  is_inside(scene, view_point) {
-    let center_view = scene.camera_view(this.center);
-    let edge_view = scene.camera_view(
-      vec3_sum(this.center, [0, 0, this.radius])
-    );
-    if (center_view == null || edge_view == null) {
-      return false;
-    } else {
-      return vec2_norm(vec2_sub(view_point, center_view)) < vec2_norm(vec2_sub(edge_view, center_view));
-    }
-  }
-  // Tests whether a chosen vector lies within an enlarged version of the dot.
-  // Used for touch-detection on mobile devices, and for use by small children.
-  is_almost_inside(scene, view_point, tolerance) {
-    let center_view = scene.camera_view(this.center);
-    let edge_view = scene.camera_view(
-      vec3_sum(this.center, [0, 0, this.radius])
-    );
-    if (center_view == null || edge_view == null) {
-      return false;
-    } else {
-      return vec2_norm(vec2_sub(view_point, center_view)) < vec2_norm(vec2_sub(edge_view, center_view)) * tolerance;
-    }
-  }
-  // Adds a callback which triggers when the dot is dragged
-  add_callback(callback) {
-    this.callbacks.push(callback);
-  }
-  do_callbacks() {
-    for (const callback of this.callbacks) {
-      callback();
-    }
-  }
-  // Triggers when the canvas is clicked.
-  click(scene, event) {
-    this.dragStart = vec2_sub(mouse_event_coords(event), [
-      scene.canvas.offsetLeft,
-      scene.canvas.offsetTop
-    ]);
-    if (!scene.is_dragging) {
-      this.isClicked = this.is_inside(
-        scene,
-        scene.c2v(this.dragStart[0], this.dragStart[1])
-      );
-      if (this.isClicked) {
-        scene.click();
-      }
-    }
-  }
-  touch(scene, event) {
-    this.dragStart = [
-      event.touches[0].pageX - scene.canvas.offsetLeft,
-      event.touches[0].pageY - scene.canvas.offsetTop
-    ];
-    if (!scene.is_dragging) {
-      this.isClicked = this.is_almost_inside(
-        scene,
-        scene.c2v(this.dragStart[0], this.dragStart[1]),
-        this.touch_tolerance
-      );
-      if (this.isClicked) {
-        scene.click();
-      }
-    }
-  }
-  // Triggers when the canvas is unclicked.
-  unclick(scene, event) {
-    if (this.isClicked) {
-      scene.unclick();
-    }
-    this.isClicked = false;
-  }
-  untouch(scene, event) {
-    if (this.isClicked) {
-      scene.unclick();
-    }
-    scene.unclick();
-  }
-  // Triggers when the mouse is dragged over the canvas.
-  mouse_drag_cursor(scene, event) {
-    if (this.isClicked) {
-      this.dragEnd = vec2_sub(mouse_event_coords(event), [
-        scene.canvas.offsetLeft,
-        scene.canvas.offsetTop
-      ]);
-      this._drag_cursor(scene);
-    }
-  }
-  touch_drag_cursor(scene, event) {
-    if (this.isClicked) {
-      this.dragEnd = vec2_sub(touch_event_coords(event), [
-        scene.canvas.offsetLeft,
-        scene.canvas.offsetTop
-      ]);
-      this._drag_cursor(scene);
-    }
-  }
-  _drag_cursor(scene) {
-    let translate_vec = vec2_sub(
-      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
-      scene.c2v(this.dragStart[0], this.dragStart[1])
-    );
-    this.move_by(scene.v2w(translate_vec));
-    this.dragStart = this.dragEnd;
-    this.do_callbacks();
-    scene.draw();
-  }
-  add(scene) {
-    let self = this;
-    scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
-    scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
-    scene.canvas.addEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self, scene)
-    );
-    scene.canvas.addEventListener("touchstart", self.touch.bind(self, scene));
-    scene.canvas.addEventListener("touchend", self.untouch.bind(self, scene));
-    scene.canvas.addEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self, scene)
-    );
-  }
-  remove(scene) {
-    let self = this;
-    scene.canvas.removeEventListener("mousedown", this.click.bind(self, scene));
-    scene.canvas.removeEventListener("mouseup", this.unclick.bind(self, scene));
-    scene.canvas.removeEventListener(
-      "mousemove",
-      this.mouse_drag_cursor.bind(self, scene)
-    );
-    scene.canvas.removeEventListener(
-      "touchstart",
-      this.click.bind(self, scene)
-    );
-    scene.canvas.removeEventListener(
-      "touchend",
-      this.unclick.bind(self, scene)
-    );
-    scene.canvas.removeEventListener(
-      "touchmove",
-      self.mouse_drag_cursor.bind(self, scene)
-    );
-  }
-  toDot3D() {
-    return new Dot3D(this.center, this.radius);
-  }
-};
-var DraggableDotZ3D = class extends DraggableDot3D {
-  _drag_cursor(scene) {
-    let translate_vec = vec2_sub(
-      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
-      scene.c2v(this.dragStart[0], this.dragStart[1])
-    );
-    let [mx, my, mz] = scene.v2w(translate_vec);
-    this.move_by([0, 0, mz]);
-    this.dragStart = this.dragEnd;
-    this.do_callbacks();
-    scene.draw();
-  }
-};
-var Line3D = class extends ThreeDLineLikeMObject {
-  constructor(start, end) {
-    super();
-    this.start = start;
-    this.end = end;
-  }
-  // Moves the start and end points
-  move_start(v) {
-    this.start = v;
-  }
-  move_end(v) {
-    this.end = v;
-  }
-  depth(scene) {
-    return scene.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
-  }
-  _draw(ctx, scene) {
-    let s = scene.camera_view(this.start);
-    let e = scene.camera_view(this.end);
-    if (s == null || e == null) return;
-    let [start_x, start_y] = scene.v2c(s);
-    let [end_x, end_y] = scene.v2c(e);
-    let start_blocked = this.is_blocked(scene, this.start);
-    let end_blocked = this.is_blocked(scene, this.end);
-    if (!start_blocked && !end_blocked) {
-      ctx.beginPath();
-      ctx.moveTo(start_x, start_y);
-      ctx.lineTo(end_x, end_y);
-      ctx.stroke();
-    } else if (start_blocked && end_blocked) {
-      ctx.beginPath();
-      this.set_behind_linked_mobjects(ctx);
-      ctx.moveTo(start_x, start_y);
-      ctx.lineTo(end_x, end_y);
-      ctx.stroke();
-      this.unset_behind_linked_mobjects(ctx);
-    } else {
-      let n = 1;
-      let v = vec3_sub(this.end, this.start);
-      let p = vec3_scale(vec3_sum(this.start, this.end), 0.5);
-      while (n < 6) {
-        n += 1;
-        if (this.is_blocked(scene, p) == start_blocked) {
-          p = vec3_sum(p, vec3_scale(v, 1 / 2 ** n));
-        } else {
-          p = vec3_sub(p, vec3_scale(v, 1 / 2 ** n));
-        }
-      }
-      let [p_x, p_y] = scene.v2c(scene.camera_view(p));
-      if (start_blocked) {
-        ctx.beginPath();
-        ctx.moveTo(start_x, start_y);
-        this.set_behind_linked_mobjects(ctx);
-        ctx.lineTo(p_x, p_y);
-        ctx.stroke();
-        ctx.beginPath();
-        this.unset_behind_linked_mobjects(ctx);
-        ctx.moveTo(p_x, p_y);
-        ctx.lineTo(end_x, end_y);
-        ctx.stroke();
-      } else {
-        ctx.beginPath();
-        ctx.moveTo(end_x, end_y);
-        this.set_behind_linked_mobjects(ctx);
-        ctx.lineTo(p_x, p_y);
-        ctx.stroke();
-        ctx.beginPath();
-        this.unset_behind_linked_mobjects(ctx);
-        ctx.moveTo(p_x, p_y);
-        ctx.lineTo(start_x, start_y);
-        ctx.stroke();
-      }
-    }
-  }
-  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
-  _draw_simple(ctx, scene) {
-    let s = scene.camera_view(this.start);
-    let e = scene.camera_view(this.end);
-    if (s == null || e == null) return;
-    let [start_x, start_y] = scene.v2c(s);
-    let [end_x, end_y] = scene.v2c(e);
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(end_x, end_y);
-    ctx.stroke();
-  }
-};
-var ThreeDScene = class extends Scene {
-  constructor() {
-    super(...arguments);
-    // Inverse of the camera matrix
-    this.camera_frame_inv = [
-      [1, 0, 0],
-      [0, 1, 0],
-      [0, 0, 1]
-    ];
-    this.camera_position = [0, 0, 0];
-    this.mode = "perspective";
-  }
-  // Set the camera position
-  set_camera_position(position) {
-    this.camera_position = position;
-  }
-  // Translate the camera matrix by a given vector
-  translate(vec) {
-    this.camera_position = vec3_sum(this.camera_position, vec);
-  }
-  // Set the camera frame inverse
-  set_camera_frame_inv(frame_inv) {
-    this.camera_frame_inv = frame_inv;
-  }
-  // Get the camera frame matrix
-  get_camera_frame() {
-    return mat_inv(this.camera_frame_inv);
-  }
-  // Converts a 2D vector in the view to world coordinates
-  v2w(v) {
-    let frame = this.get_camera_frame();
-    return vec3_sum(
-      vec3_scale(get_column(frame, 0), v[0]),
-      vec3_scale(get_column(frame, 1), v[1])
-    );
-  }
-  // Rotate the camera matrix around the z-axis.
-  rot_z(angle2) {
-    this.camera_frame_inv = matmul_mat(
-      this.camera_frame_inv,
-      rot_z_matrix(-angle2)
-    );
-  }
-  // Rotate the camera matrix around the y-axis.
-  rot_y(angle2) {
-    this.camera_frame_inv = matmul_mat(
-      this.camera_frame_inv,
-      rot_y_matrix(-angle2)
-    );
-  }
-  // Rotate the camera matrix around the x-axis.
-  rot_x(angle2) {
-    this.camera_frame_inv = matmul_mat(
-      this.camera_frame_inv,
-      rot_x_matrix(-angle2)
-    );
-  }
-  // Rotate the camera matrix around a given axis
-  rot(axis, angle2) {
-    this.camera_frame_inv = matmul_mat(
-      this.camera_frame_inv,
-      rot_matrix(axis, -angle2)
-    );
-  }
-  // Rotates the camera view around various axes
-  rot_camera_z(angle2) {
-    this.rot_z(angle2);
-    this.set_camera_position(rot_z(this.camera_position, angle2));
-  }
-  rot_camera_y(angle2) {
-    this.rot_y(angle2);
-    this.set_camera_position(rot_y(this.camera_position, angle2));
-  }
-  rot_camera_x(angle2) {
-    this.rot_x(angle2);
-    this.set_camera_position(rot_x(this.camera_position, angle2));
-  }
-  rot_camera(axis, angle2) {
-    this.rot(axis, angle2);
-    this.set_camera_position(rot(this.camera_position, axis, angle2));
-  }
-  // Modes of viewing/drawing
-  set_view_mode(mode) {
-    this.mode = mode;
-  }
-  camera_view(p) {
-    if (this.mode == "perspective") {
-      return this.perspective_view(p);
-    } else {
-      return this.orthographic_view(p);
-    }
-  }
-  depth(p) {
-    return matmul_vec(
-      this.camera_frame_inv,
-      vec3_sub(p, this.camera_position)
-    )[2];
-  }
-  // Projects a 3D point onto the camera view plane. Does not include perspective.
-  orthographic_view(p) {
-    let [vx, vy, vz] = matmul_vec(
-      this.camera_frame_inv,
-      vec3_sub(p, this.camera_position)
-    );
-    return [vx, vy];
-  }
-  // Projects a 3D point onto the camera view plane, and then divides by the third coordinate.
-  // Returns null if the third coordinate is nonpositive (i.e., the point is behind the camera).
-  perspective_view(p) {
-    let [vx, vy, vz] = matmul_vec(
-      this.camera_frame_inv,
-      vec3_sub(p, this.camera_position)
-    );
-    if (vz <= 0) {
-      return null;
-    } else {
-      return [vx / vz, vy / vz];
-    }
-  }
-  // Draw
-  draw(args) {
-    let ctx = this.canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
-      let depth_a = this.mobjects[a].depth(this);
-      let depth_b = this.mobjects[b].depth(this);
-      return depth_b - depth_a;
-    });
-    for (let name of ordered_names) {
-      let mobj = this.mobjects[name];
-      if (mobj == void 0) throw new Error(`${name} not found`);
-      if (mobj instanceof ThreeDFillLikeMObject) {
-        mobj.draw(this.canvas, this);
-      }
-    }
-    for (let name of ordered_names) {
-      let mobj = this.mobjects[name];
-      if (mobj == void 0) throw new Error(`${name} not found`);
-      if (mobj instanceof ThreeDLineLikeMObject) {
-        mobj.draw(this.canvas, this);
-      }
-    }
-    for (let name of ordered_names) {
-      let mobj = this.mobjects[name];
-      if (mobj == void 0) throw new Error(`${name} not found`);
-      if (!(mobj instanceof ThreeDFillLikeMObject) && !(mobj instanceof ThreeDLineLikeMObject)) {
-        mobj.draw(this.canvas, this);
-      }
-    }
-    ctx.strokeStyle = this.border_color;
-    ctx.lineWidth = this.border_thickness;
-    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
-  }
-};
-var InteractivePlayingThreeDScene = class extends ThreeDScene {
-  constructor(canvas, simulators) {
-    super(canvas);
-    // Store a known end-time in case the simulation is paused and unpaused
-    this.linked_scenes = [];
-    [this.num_simulators, this.simulators] = simulators.reduce(
-      ([ind, acc], item2) => (acc[ind] = item2, [ind + 1, acc]),
-      [0, {}]
-    );
-    this.action_queue = [];
-    this.paused = true;
-    this.time = 0;
-    this.dt = simulators[0].dt;
-    this.linked_scenes = [];
-  }
-  add_linked_scene(scene) {
-    this.linked_scenes.push(scene);
-  }
-  get_simulator(ind = 0) {
-    return this.simulators[ind];
-  }
-  set_simulator_attr(simulator_ind, attr_name, attr_val) {
-    this.get_simulator(simulator_ind).set_attr(attr_name, attr_val);
-  }
-  update_and_draw_linked_scenes() {
-    for (let scene of this.linked_scenes) {
-      scene.update_mobjects_from_simulator(this.get_simulator(0));
-      scene.draw();
-    }
-  }
-  // Restarts the simulator
-  reset() {
-    for (let ind = 0; ind < this.num_simulators; ind++) {
-      this.get_simulator(ind).reset();
-    }
-    this.time = 0;
-    this.draw();
-    this.update_and_draw_linked_scenes();
-  }
-  // Switches from paused to unpaused and vice-versa.
-  toggle_pause() {
-    this.paused = !this.paused;
-    if (!this.paused) {
-      this.play(this.end_time);
-    }
-  }
-  // Adds to the action queue if the scene is currently playing,
-  // otherwise execute the callback immediately
-  add_to_queue(callback) {
-    if (this.paused) {
-      callback();
-    } else {
-      this.action_queue.push(callback);
-    }
-  }
-  // Starts animation
-  play(until) {
-    if (this.paused) {
-      this.end_time = until;
-      return;
-    } else {
-      if (this.action_queue.length > 0) {
-        let callback = this.action_queue.shift();
-        callback();
-      } else if (this.time > until) {
-        return;
-      } else {
-        for (let ind = 0; ind < this.num_simulators; ind++) {
-          this.get_simulator(ind).step();
-        }
-        this.time += this.get_simulator(0).dt;
-        this.draw();
-        this.update_and_draw_linked_scenes();
-      }
-      window.requestAnimationFrame(this.play.bind(this, until));
-    }
-  }
-  // Updates all mobjects to account for the new simulator state
-  update_mobjects() {
-  }
-  // Draws the scene without worrying about depth-sensing.
-  // TODO Sort this out later.
-  draw() {
-    this.update_mobjects();
-    let ctx = this.canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    Object.keys(this.mobjects).forEach((name) => {
-      let mobj = this.get_mobj(name);
-      if (mobj == void 0) throw new Error(`${name} not found`);
-      this.draw_mobject(mobj);
-    });
-  }
-  // Add drawing instructions in the subclass.
-  draw_mobject(mobj) {
-  }
-};
-
-// src/lib/interactive_handler.ts
-var SceneFromSimulator = class extends Scene {
-  constructor(canvas) {
-    super(canvas);
-  }
-  update_mobjects_from_simulator(simulator) {
-  }
-};
-
-// src/wavesim_scene.ts
 var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
   set_dot_radius(radius) {
     for (let i = 0; i < this.width(); i++) {
@@ -14102,6 +14118,101 @@ var WaveSimOneDimInteractiveScene = class extends WaveSimOneDimScene {
       }
     }
     super.toggle_pause();
+  }
+};
+var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
+  constructor(canvas, width, height) {
+    super(canvas);
+    this.width = width;
+    this.height = height;
+    this.construct_scene();
+  }
+  // Populates the mobjects in the scene
+  construct_scene() {
+    for (let i = 0; i < this.width - 1; i++) {
+      for (let j = 0; j < this.height; j++) {
+        this.add(
+          `l(${i},${j})(${i + 1},${j})`,
+          new Line(this.eq_position(i, j), this.eq_position(i + 1, j)).set_stroke_width(0.05).set_alpha(0.6)
+        );
+      }
+    }
+    for (let i = 0; i < this.width; i++) {
+      for (let j = 0; j < this.height - 1; j++) {
+        this.add(
+          `l(${i},${j})(${i},${j + 1})`,
+          new Line(this.eq_position(i, j), this.eq_position(i, j + 1)).set_stroke_width(0.05).set_alpha(0.6)
+        );
+      }
+    }
+    for (let i = 0; i < this.width; i++) {
+      for (let j = 0; j < this.height; j++) {
+        let dot3 = new Dot(this.eq_position(i, j), 0.15);
+        this.add(`p(${i},${j})`, dot3);
+      }
+    }
+  }
+  // Resets the mobjects in the scene.
+  set_frame_lims(xlims, ylims) {
+    super.set_frame_lims(xlims, ylims);
+    this.clear();
+    this.construct_scene();
+  }
+  eq_position(i, j) {
+    let [xmin, xmax] = this.xlims;
+    let [ymin, ymax] = this.ylims;
+    return [
+      xmin + (i + 0.5) * (xmax - xmin) / this.width,
+      ymin + (j + 0.5) * (ymax - ymin) / this.height
+    ];
+  }
+  update_mobjects_from_simulator(sim) {
+    let vals = sim.get_uValues();
+    let new_z, new_color;
+    let dot3;
+    let width_buffer = Math.floor((sim.width - this.width) / 2);
+    let height_buffer = Math.floor((sim.height - this.height) / 2);
+    for (let i = 0; i < this.width; i++) {
+      for (let j = 0; j < this.height; j++) {
+        new_z = vals[sim.index(i + width_buffer, j + height_buffer)];
+        let new_color2 = colorval_to_rgba(rb_colormap_2(2 * new_z));
+        dot3 = this.get_mobj(`p(${i},${j})`);
+        dot3.set_color(new_color2);
+      }
+    }
+  }
+};
+var WaveSimTwoDimHeatMapScene = class extends InteractivePlayingScene {
+  // Target for heatmap data
+  constructor(canvas, simulator, imageData) {
+    super(canvas, [simulator]);
+    this.simulator = simulator;
+    simulator;
+    this.add(
+      "heatmap",
+      new HeatMap(
+        simulator.width,
+        simulator.height,
+        -1,
+        1,
+        this.simulator.get_uValues()
+      )
+    );
+    this.imageData = imageData;
+  }
+  get_simulator(ind = 0) {
+    return super.get_simulator(ind);
+  }
+  update_mobjects() {
+    let mobj = this.get_mobj("heatmap");
+    mobj.set_vals(this.simulator.get_uValues());
+  }
+  draw_mobject(mobj) {
+    if (mobj instanceof HeatMap) {
+      mobj.draw(this.canvas, this, this.imageData);
+    } else {
+      mobj.draw(this.canvas, this);
+    }
   }
 };
 var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
@@ -14261,75 +14372,15 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
       }
     }
     if (!this.paused) {
-      this.rot_camera_z(this.dt * this.rotation_speed);
+      this.camera.rot_pos_and_view_z(this.dt * this.rotation_speed);
     }
   }
   draw_mobject(mobj) {
     mobj.draw(this.canvas, this, true);
   }
 };
-var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
-  constructor(canvas, width, height) {
-    super(canvas);
-    this.width = width;
-    this.height = height;
-    this.construct_scene();
-  }
-  // Populates the mobjects in the scene
-  construct_scene() {
-    for (let i = 0; i < this.width - 1; i++) {
-      for (let j = 0; j < this.height; j++) {
-        this.add(
-          `l(${i},${j})(${i + 1},${j})`,
-          new Line(this.eq_position(i, j), this.eq_position(i + 1, j)).set_stroke_width(0.05).set_alpha(0.6)
-        );
-      }
-    }
-    for (let i = 0; i < this.width; i++) {
-      for (let j = 0; j < this.height - 1; j++) {
-        this.add(
-          `l(${i},${j})(${i},${j + 1})`,
-          new Line(this.eq_position(i, j), this.eq_position(i, j + 1)).set_stroke_width(0.05).set_alpha(0.6)
-        );
-      }
-    }
-    for (let i = 0; i < this.width; i++) {
-      for (let j = 0; j < this.height; j++) {
-        let dot3 = new Dot(this.eq_position(i, j), 0.15);
-        this.add(`p(${i},${j})`, dot3);
-      }
-    }
-  }
-  // Resets the mobjects in the scene.
-  set_frame_lims(xlims, ylims) {
-    super.set_frame_lims(xlims, ylims);
-    this.clear();
-    this.construct_scene();
-  }
-  eq_position(i, j) {
-    let [xmin, xmax] = this.xlims;
-    let [ymin, ymax] = this.ylims;
-    return [
-      xmin + (i + 0.5) * (xmax - xmin) / this.width,
-      ymin + (j + 0.5) * (ymax - ymin) / this.height
-    ];
-  }
-  update_mobjects_from_simulator(sim) {
-    let vals = sim.get_uValues();
-    let new_z, new_color;
-    let dot3;
-    let width_buffer = Math.floor((sim.width - this.width) / 2);
-    let height_buffer = Math.floor((sim.height - this.height) / 2);
-    for (let i = 0; i < this.width; i++) {
-      for (let j = 0; j < this.height; j++) {
-        new_z = vals[sim.index(i + width_buffer, j + height_buffer)];
-        let new_color2 = colorval_to_rgba(rb_colormap_2(2 * new_z));
-        dot3 = this.get_mobj(`p(${i},${j})`);
-        dot3.set_color(new_color2);
-      }
-    }
-  }
-};
+
+// src/wavesim_scene.ts
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
     (function twodim_dipole_demo() {
@@ -14400,26 +14451,11 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
           step: 0.05
         }
       );
-      w_slider.width = 200;
-      let pauseButton = Button(
+      let pauseButton = waveEquationScene.add_pause_button(
         document.getElementById(
           "twodim-dipole-demo-pause-button"
-        ),
-        function() {
-          waveEquationScene.add_to_queue(
-            waveEquationScene.toggle_pause.bind(waveEquationScene)
-          );
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
+        )
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
       let clearButton = Button(
         document.getElementById(
           "twodim-dipole-demo-clear-button"
@@ -14489,17 +14525,17 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
               this.polar_function.bind(this),
               -Math.PI,
               Math.PI,
-              50,
-              { mode: "smooth", stroke_width: 0.08 }
+              50
             );
           } else if (this.eccentricity == 1) {
-            return new ParametricFunction(
+            let curve = new ParametricFunction(
               this.polar_function.bind(this),
               -Math.PI + 0.01,
               Math.PI - 0.01,
-              50,
-              { mode: "jagged", stroke_width: 0.08 }
+              50
             );
+            curve.mode = "jagged";
+            return curve;
           } else {
             return new MObject();
           }
@@ -14619,12 +14655,11 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
                 y += Math.sin(thetas[i]) * s;
                 let effect = new Sector(
                   [x, y],
+                  0.3,
                   thetas[i] - Math.PI / 2,
-                  thetas[i] + Math.PI / 2,
-                  {}
+                  thetas[i] + Math.PI / 2
                 );
                 effect.set_color("red");
-                effect.set_radius(0.3);
                 scene.add(`c_${i}`, effect);
                 if (conic.eccentricity == 1) {
                   current_thetas[i] = Math.PI;
@@ -14831,7 +14866,6 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
           step: 0.01
         }
       );
-      w_slider.width = 200;
       let f_slider = Slider(
         document.getElementById("point-mass-damping-slider"),
         function(val) {
@@ -14845,24 +14879,11 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
           step: 0.01
         }
       );
-      f_slider.width = 200;
-      let pauseButton = Button(
+      let pausebutton = scene.add_pause_button(
         document.getElementById(
           "point-mass-spring-pause-button"
-        ),
-        function() {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
+        )
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
       let resetButton = Button(
         document.getElementById(
           "point-mass-spring-reset-button"
@@ -14917,24 +14938,11 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
           step: 0.01
         }
       );
-      f_slider.width = 200;
-      let pauseButton = Button(
+      let pauseButton = scene.add_pause_button(
         document.getElementById(
           "point-mass-discrete-sequence-pause-button"
-        ),
-        function() {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
+        )
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
       let resetButton = Button(
         document.getElementById(
           "point-mass-discrete-sequence-reset-button"
@@ -14944,7 +14952,6 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
         }
       );
       resetButton.textContent = "Reset simulation";
-      resetButton.style.padding = "15px";
       let w_slider = Slider(
         document.getElementById(
           "point-mass-discrete-sequence-stiffness-slider"
@@ -14967,7 +14974,6 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
           step: 0.05
         }
       );
-      w_slider.width = 200;
       scene.draw();
       scene.play(void 0);
     })(300, 300, 10);
@@ -15023,24 +15029,11 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
           step: 0.05
         }
       );
-      zoom_slider.width = 200;
-      let pauseButton = Button(
+      let pauseButton = scene.add_pause_button(
         document.getElementById(
           "point-mass-continuous-sequence-pause-button"
-        ),
-        function() {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
+        )
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
       let resetButton = Button(
         document.getElementById(
           "point-mass-continuous-sequence-reset-button"
@@ -15068,7 +15061,6 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
           step: 0.01
         }
       );
-      f_slider.width = 200;
       let w_slider = Slider(
         document.getElementById(
           "point-mass-continuous-sequence-stiffness-slider"
@@ -15091,7 +15083,6 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
           step: 0.05
         }
       );
-      w_slider.width = 200;
       scene.draw();
       scene.play(void 0);
     })(300, 300, 50);
@@ -15124,23 +15115,11 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
         scene.draw();
       }
       reset_simulation();
-      let pauseButton = Button(
+      let pauseButton = scene.add_pause_button(
         document.getElementById(
           "wavesim-1d-impulse-pause-button"
-        ),
-        function() {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
+        )
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
       let resetButton = Button(
         document.getElementById(
           "wavesim-1d-impulse-reset-button"
@@ -15176,21 +15155,9 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
         scene.draw();
       }
       reset_simulation();
-      let pauseButton = Button(
-        document.getElementById("wavesim-1d-pml-pause-button"),
-        function() {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
+      let pauseButton = scene.add_pause_button(
+        document.getElementById("wavesim-1d-pml-pause-button")
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
       let resetButton = Button(
         document.getElementById("wavesim-1d-pml-reset-button"),
         function() {
@@ -15249,9 +15216,9 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       scene.set_zoom(zoom_ratio);
       scene.set_view_mode("orthographic");
-      scene.set_camera_position([0, 0, -10]);
-      scene.rot_camera_z(Math.PI / 4);
-      scene.rot_camera(
+      scene.camera.move_to([0, 0, -10]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
         [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
         2 * Math.PI / 3
       );
@@ -15269,23 +15236,11 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
       second_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       second_scene.update_mobjects_from_simulator(sim);
       scene.add_linked_scene(second_scene);
-      let pauseButton = Button(
+      let pauseButton = scene.add_pause_button(
         document.getElementById(
           "point-mass-discrete-lattice-pause-button"
-        ),
-        function() {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
+        )
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
       let resetButton = Button(
         document.getElementById(
           "point-mass-discrete-lattice-reset-button"
@@ -15348,22 +15303,9 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
           step: 0.05
         }
       );
-      w_slider.width = 200;
-      let pauseButton = Button(
-        document.getElementById(name + "-pause-button"),
-        function() {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
+      let pauseButton = scene.add_pause_button(
+        document.getElementById(name + "-pause-button")
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
       let clearButton = Button(
         document.getElementById(name + "-reset-button"),
         function() {
@@ -15399,8 +15341,7 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
         ],
         0,
         Math.PI * 2,
-        30,
-        {}
+        30
       );
       conic.set_stroke_width(0.03);
       conic.set_alpha(0.5);
@@ -15428,7 +15369,6 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
           step: 1
         }
       );
-      e_slider.width = 200;
       let w_slider = Slider(
         document.getElementById(name + "-slider-2"),
         function(val) {
@@ -15445,22 +15385,9 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
           step: 0.05
         }
       );
-      w_slider.width = 200;
-      let pauseButton = Button(
-        document.getElementById(name + "-pause-button"),
-        function() {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
+      let pauseButton = scene.add_pause_button(
+        document.getElementById(name + "-pause-button")
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
       let clearButton = Button(
         document.getElementById(name + "-reset-button"),
         function() {
@@ -15519,21 +15446,9 @@ var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
       }
       let scene = new WaveSimTwoDimHeatMapScene(canvas, waveSim, imageData);
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      let pauseButton = Button(
-        document.getElementById(name + "-pause-button"),
-        function() {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
+      let pauseButton = scene.add_pause_button(
+        document.getElementById(name + "-pause-button")
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
       let clearButton = Button(
         document.getElementById(name + "-reset-button"),
         function() {

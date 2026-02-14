@@ -41,7 +41,7 @@ var require_numpy_ts_node = __commonJS({
     };
     var ay = (r) => oy(te({}, "__esModule", { value: true }), r);
     var Ng = {};
-    ny(Ng, { Complex: () => E, DTYPE_TO_DESCR: () => At, InvalidNpyError: () => ir, NDArray: () => _, SUPPORTED_DTYPES: () => kt, UnsupportedDTypeError: () => Ir, __version__: () => Dg, abs: () => gn, absolute: () => gn, acos: () => hn, acosh: () => xn, amax: () => Mn, amin: () => Fn, angle: () => hf, append: () => $c, apply_along_axis: () => Gm, apply_over_axes: () => Wm, arange: () => Wi, arccos: () => hn, arccosh: () => xn, arcsin: () => bn, arcsinh: () => Nn, arctan: () => Sn, arctan2: () => Dn, arctanh: () => wn, argpartition: () => om, argsort: () => tm, argwhere: () => im, around: () => Rt, array: () => G, array_equal: () => Xc, array_equiv: () => Jc, array_split: () => uc, asanyarray: () => ou, asarray: () => Hr, asarray_chkfinite: () => Ji, ascontiguousarray: () => au, asfortranarray: () => su, asin: () => bn, asinh: () => Nn, atan: () => Sn, atan2: () => Dn, atanh: () => wn, atleast_1d: () => vc, atleast_2d: () => Bc, atleast_3d: () => Ec, average: () => el, bincount: () => Om, bindex: () => Zc, bitwise_and: () => ql, bitwise_count: () => Hl, bitwise_invert: () => Xl, bitwise_left_shift: () => Jl, bitwise_not: () => Pl, bitwise_or: () => Vl, bitwise_right_shift: () => Ql, bitwise_xor: () => jl, block: () => sc, broadcast_arrays: () => jc, broadcast_shapes: () => Pc, broadcast_to: () => Vc, byteswap: () => hc, can_cast: () => Jm, cbrt: () => Al, ceil: () => pm, choose: () => Hc, clip: () => vl, column_stack: () => Oc, common_type: () => Qm, compress: () => kf, concat: () => oc, concatenate: () => Tr, conj: () => vn, conjugate: () => bf, convolve: () => qm, copy: () => Ki, copysign: () => uf, copyto: () => Yc, corrcoef: () => jm, correlate: () => km, cos: () => Pu, cosh: () => Ju, count_nonzero: () => mm, cov: () => Vm, cross: () => Tm, cumprod: () => _n, cumsum: () => zn, cumulative_prod: () => _n, cumulative_sum: () => zn, deg2rad: () => Yu, degrees: () => Wu, delete: () => Rc, diag: () => yn, diag_indices: () => Pf, diag_indices_from: () => Lf, diagflat: () => iu, diagonal: () => Uu, diff: () => vm, digitize: () => Cm, divide: () => An, divmod: () => hl, dot: () => Ou, dsplit: () => Tc, dstack: () => nc, ediff1d: () => Bm, einsum: () => Mf, empty: () => mn, empty_like: () => eu, exp: () => hu, exp2: () => Su, expand_dims: () => wc, expm1: () => Du, extract: () => fm, eye: () => fn, fabs: () => bl, fill: () => dc, fill_diagonal: () => jf, fix: () => ym, flatnonzero: () => um, flatten: () => yc, flip: () => $t, fliplr: () => Ic, flipud: () => zc, float_power: () => xl, floor: () => dm, floor_divide: () => Bu, fmax: () => Tl, fmin: () => Ol, fmod: () => wl, frexp: () => Il, frombuffer: () => yu, fromfile: () => du, fromfunction: () => uu, fromiter: () => gu, fromstring: () => Au, full: () => pn, full_like: () => nu, gcd: () => zl, geomspace: () => Hi, geterr: () => Et, gradient: () => Em, heaviside: () => Nl, histogram: () => Um, histogram2d: () => $m, histogram_bin_edges: () => Pm, histogramdd: () => Rm, hsplit: () => lc, hstack: () => ec, hypot: () => Gu, i0: () => kl, identity: () => Xi, iindex: () => Wc, imag: () => Af, in1d: () => hm, indices: () => Xf, inner: () => ku, insert: () => kc, interp: () => Ul, intersect1d: () => Sm, invert: () => Ll, iscomplex: () => mf, iscomplexobj: () => pf, isdtype: () => zf, isfinite: () => nf, isfortran: () => Nf, isin: () => Dm, isinf: () => of, isnan: () => af, isnat: () => sf, isneginf: () => Sf, isposinf: () => Df, isreal: () => yf, isrealobj: () => df, isscalar: () => wf, issubdtype: () => ep, item: () => gc, iterable: () => If, ix_: () => Jf, kron: () => $u, lcm: () => _l, ldexp: () => Ml, left_shift: () => Gl, lexsort: () => em, linalg: () => Cf, linspace: () => Zi, loadNpz: () => Un, loadNpzSync: () => $n, log: () => Nu, log10: () => wu, log1p: () => Iu, log2: () => xu, logaddexp: () => zu, logaddexp2: () => _u, logical_and: () => Kl, logical_not: () => tf, logical_or: () => rf, logical_xor: () => ef, logspace: () => Yi, mask_indices: () => Hf, matrix_transpose: () => Bf, matvec: () => Tf, max: () => Mn, maximum: () => Bl, may_share_memory: () => Zm, median: () => Kc, meshgrid: () => cu, min: () => Fn, min_scalar_type: () => tp, minimum: () => El, mintypecode: () => op, mod: () => vu, modf: () => Fl, moveaxis: () => rc, nan_to_num: () => Cl, nanargmax: () => fl, nanargmin: () => ll, nancumprod: () => pl, nancumsum: () => ml, nanmax: () => cl, nanmean: () => al, nanmedian: () => yl, nanmin: () => ul, nanpercentile: () => gl, nanprod: () => ol, nanquantile: () => dl, nanstd: () => il, nansum: () => nl, nanvar: () => sl, ndim: () => Hm, negative: () => Mu, nextafter: () => lf, nonzero: () => sm, ones: () => ln, ones_like: () => tu, outer: () => qu, packbits: () => Zl, pad: () => qc, parseNpy: () => bt, parseNpyData: () => Vt, parseNpyHeader: () => qt, parseNpz: () => jt, parseNpzSync: () => Pt, partition: () => nm, percentile: () => rl, permute_dims: () => Ef, place: () => Vf, poly: () => ap, polyadd: () => sp, polyder: () => ip, polydiv: () => up, polyfit: () => cp, polyint: () => fp, polymul: () => mp, polysub: () => pp, polyval: () => yp, positive: () => Eu, pow: () => dn, power: () => dn, promote_types: () => _f, ptp: () => Qc, put: () => Gc, put_along_axis: () => $f, putmask: () => Rf, quantile: () => tl, rad2deg: () => Hu, radians: () => Zu, random: () => Sg, ravel: () => pc, ravel_multi_index: () => Qf, real: () => gf, real_if_close: () => xf, reciprocal: () => Tu, remainder: () => Dl, repeat: () => mc, require: () => Qi, reshape: () => Nc, resize: () => Uc, result_type: () => Km, right_shift: () => Wl, rint: () => gm, roll: () => Mc, rollaxis: () => Fc, roots: () => dp, rot90: () => _c, round: () => Rt, round_: () => Rt, row_stack: () => Cc, searchsorted: () => lm, select: () => qf, serializeNpy: () => Xr, serializeNpz: () => Rn, serializeNpzSync: () => kn, setdiff1d: () => Nm, seterr: () => Ve, setxor1d: () => xm, shape: () => Bn, shares_memory: () => Ym, sign: () => Fu, signbit: () => cf, sin: () => ju, sinc: () => Rl, sinh: () => Xu, size: () => Xm, sort: () => rm, sort_complex: () => am, spacing: () => ff, split: () => ic, sqrt: () => bu, square: () => Sl, squeeze: () => xc, stack: () => tc, swapaxes: () => Ku, take: () => Lc, take_along_axis: () => Uf, tan: () => Lu, tanh: () => Qu, tensordot: () => Vu, tile: () => fc, tobytes: () => bc, tofile: () => Dc, tolist: () => Ac, trace: () => Cu, transpose: () => Ru, trapezoid: () => Lm, tri: () => lu, tril: () => fu, tril_indices: () => Gf, tril_indices_from: () => Wf, trim_zeros: () => Im, triu: () => mu, triu_indices: () => Zf, triu_indices_from: () => Yf, true_divide: () => An, trunc: () => Am, typename: () => np3, union1d: () => wm, unique: () => bm, unique_all: () => zm, unique_counts: () => _m, unique_inverse: () => Mm, unique_values: () => Fm, unpackbits: () => Yl, unravel_index: () => Kf, unstack: () => ac, unwrap: () => $l, vander: () => pu, vdot: () => Ff, vecdot: () => vf, vecmat: () => Of, view: () => Sc, vsplit: () => cc, vstack: () => In, where: () => cm, zeros: () => wr, zeros_like: () => ru });
+    ny(Ng, { Complex: () => E, DTYPE_TO_DESCR: () => At, InvalidNpyError: () => ir, NDArray: () => _, SUPPORTED_DTYPES: () => kt, UnsupportedDTypeError: () => Ir, __version__: () => Dg, abs: () => gn, absolute: () => gn, acos: () => hn, acosh: () => xn, amax: () => Mn, amin: () => Fn, angle: () => hf, append: () => $c, apply_along_axis: () => Gm, apply_over_axes: () => Wm, arange: () => Wi, arccos: () => hn, arccosh: () => xn, arcsin: () => bn, arcsinh: () => Nn, arctan: () => Sn, arctan2: () => Dn, arctanh: () => wn, argpartition: () => om, argsort: () => tm, argwhere: () => im, around: () => Rt, array: () => G, array_equal: () => Xc, array_equiv: () => Jc, array_split: () => uc, asanyarray: () => ou, asarray: () => Hr, asarray_chkfinite: () => Ji, ascontiguousarray: () => au, asfortranarray: () => su, asin: () => bn, asinh: () => Nn, atan: () => Sn, atan2: () => Dn, atanh: () => wn, atleast_1d: () => vc, atleast_2d: () => Bc, atleast_3d: () => Ec, average: () => el, bincount: () => Om, bindex: () => Zc, bitwise_and: () => ql, bitwise_count: () => Hl, bitwise_invert: () => Xl, bitwise_left_shift: () => Jl, bitwise_not: () => Pl, bitwise_or: () => Vl, bitwise_right_shift: () => Ql, bitwise_xor: () => jl, block: () => sc, broadcast_arrays: () => jc, broadcast_shapes: () => Pc, broadcast_to: () => Vc, byteswap: () => hc, can_cast: () => Jm, cbrt: () => Al, ceil: () => pm, choose: () => Hc, clip: () => vl, column_stack: () => Oc, common_type: () => Qm, compress: () => kf, concat: () => oc, concatenate: () => Tr, conj: () => vn, conjugate: () => bf, convolve: () => qm, copy: () => Ki, copysign: () => uf, copyto: () => Yc, corrcoef: () => jm, correlate: () => km, cos: () => Pu, cosh: () => Ju, count_nonzero: () => mm, cov: () => Vm, cross: () => Tm, cumprod: () => _n, cumsum: () => zn, cumulative_prod: () => _n, cumulative_sum: () => zn, deg2rad: () => Yu, degrees: () => Wu, delete: () => Rc, diag: () => yn, diag_indices: () => Pf, diag_indices_from: () => Lf, diagflat: () => iu, diagonal: () => Uu, diff: () => vm, digitize: () => Cm, divide: () => An, divmod: () => hl, dot: () => Ou, dsplit: () => Tc, dstack: () => nc, ediff1d: () => Bm, einsum: () => Mf, empty: () => mn, empty_like: () => eu, exp: () => hu, exp2: () => Su, expand_dims: () => wc, expm1: () => Du, extract: () => fm, eye: () => fn, fabs: () => bl, fill: () => dc, fill_diagonal: () => jf, fix: () => ym, flatnonzero: () => um, flatten: () => yc, flip: () => $t, fliplr: () => Ic, flipud: () => zc, float_power: () => xl, floor: () => dm, floor_divide: () => Bu, fmax: () => Tl, fmin: () => Ol, fmod: () => wl, frexp: () => Il, frombuffer: () => yu, fromfile: () => du, fromfunction: () => uu, fromiter: () => gu, fromstring: () => Au, full: () => pn, full_like: () => nu, gcd: () => zl, geomspace: () => Hi, geterr: () => Et, gradient: () => Em, heaviside: () => Nl, histogram: () => Um, histogram2d: () => $m, histogram_bin_edges: () => Pm, histogramdd: () => Rm, hsplit: () => lc, hstack: () => ec, hypot: () => Gu, i0: () => kl, identity: () => Xi, iindex: () => Wc, imag: () => Af, in1d: () => hm, indices: () => Xf, inner: () => ku, insert: () => kc, interp: () => Ul, intersect1d: () => Sm, invert: () => Ll, iscomplex: () => mf, iscomplexobj: () => pf, isdtype: () => zf, isfinite: () => nf, isfortran: () => Nf, isin: () => Dm, isinf: () => of, isnan: () => af, isnat: () => sf, isneginf: () => Sf, isposinf: () => Df, isreal: () => yf, isrealobj: () => df, isscalar: () => wf, issubdtype: () => ep, item: () => gc, iterable: () => If, ix_: () => Jf, kron: () => $u, lcm: () => _l, ldexp: () => Ml, left_shift: () => Gl, lexsort: () => em, linalg: () => Cf, linspace: () => Zi, loadNpz: () => Un, loadNpzSync: () => $n, log: () => Nu, log10: () => wu, log1p: () => Iu, log2: () => xu, logaddexp: () => zu, logaddexp2: () => _u, logical_and: () => Kl, logical_not: () => tf, logical_or: () => rf, logical_xor: () => ef, logspace: () => Yi, mask_indices: () => Hf, matrix_transpose: () => Bf, matvec: () => Tf, max: () => Mn, maximum: () => Bl, may_share_memory: () => Zm, median: () => Kc, meshgrid: () => cu, min: () => Fn, min_scalar_type: () => tp, minimum: () => El, mintypecode: () => op, mod: () => vu, modf: () => Fl, moveaxis: () => rc, nan_to_num: () => Cl, nanargmax: () => fl, nanargmin: () => ll, nancumprod: () => pl, nancumsum: () => ml, nanmax: () => cl, nanmean: () => al, nanmedian: () => yl, nanmin: () => ul, nanpercentile: () => gl, nanprod: () => ol, nanquantile: () => dl, nanstd: () => il, nansum: () => nl, nanvar: () => sl, ndim: () => Hm, negative: () => Mu, nextafter: () => lf, nonzero: () => sm, ones: () => ln, ones_like: () => tu, outer: () => qu, packbits: () => Zl, pad: () => qc, parseNpy: () => bt, parseNpyData: () => Vt, parseNpyHeader: () => qt, parseNpz: () => jt, parseNpzSync: () => Pt, partition: () => nm, percentile: () => rl, permute_dims: () => Ef, place: () => Vf, poly: () => ap, polyadd: () => sp, polyder: () => ip, polydiv: () => up, polyfit: () => cp, polyint: () => fp, polymul: () => mp, polysub: () => pp, polyval: () => yp, positive: () => Eu, pow: () => dn, power: () => dn, promote_types: () => _f, ptp: () => Qc, put: () => Gc, put_along_axis: () => $f, putmask: () => Rf, quantile: () => tl, rad2deg: () => Hu, radians: () => Zu, random: () => Sg, ravel: () => pc, ravel_multi_index: () => Qf, real: () => gf, real_if_close: () => xf, reciprocal: () => Tu, remainder: () => Dl, repeat: () => mc, require: () => Qi, reshape: () => Nc, resize: () => Uc, result_type: () => Km, right_shift: () => Wl, rint: () => gm, roll: () => Mc, rollaxis: () => Fc, roots: () => dp, rot90: () => _c, round: () => Rt, round_: () => Rt, row_stack: () => Cc, searchsorted: () => lm, select: () => qf, serializeNpy: () => Xr, serializeNpz: () => Rn, serializeNpzSync: () => kn, setdiff1d: () => Nm, seterr: () => Ve, setxor1d: () => xm, shape: () => Bn, shares_memory: () => Ym, sign: () => Fu, signbit: () => cf, sin: () => ju, sinc: () => Rl, sinh: () => Xu, size: () => Xm, sort: () => rm, sort_complex: () => am, spacing: () => ff, split: () => ic, sqrt: () => bu, square: () => Sl, squeeze: () => xc, stack: () => tc, swapaxes: () => Ku, take: () => Lc, take_along_axis: () => Uf, tan: () => Lu, tanh: () => Qu, tensordot: () => Vu, tile: () => fc, tobytes: () => bc, tofile: () => Dc, tolist: () => Ac, trace: () => Cu, transpose: () => Ru, trapezoid: () => Lm, tri: () => lu, tril: () => fu, tril_indices: () => Gf, tril_indices_from: () => Wf, trim_zeros: () => Im, triu: () => mu, triu_indices: () => Zf, triu_indices_from: () => Yf, true_divide: () => An, trunc: () => Am, typename: () => np2, union1d: () => wm, unique: () => bm, unique_all: () => zm, unique_counts: () => _m, unique_inverse: () => Mm, unique_values: () => Fm, unpackbits: () => Yl, unravel_index: () => Kf, unstack: () => ac, unwrap: () => $l, vander: () => pu, vdot: () => Ff, vecdot: () => vf, vecmat: () => Of, view: () => Sc, vsplit: () => cc, vstack: () => In, where: () => cm, zeros: () => wr, zeros_like: () => ru });
     module.exports = ay(Ng);
     var E = class r {
       constructor(t, e = 0) {
@@ -9671,7 +9671,7 @@ var require_numpy_ts_node = __commonJS({
       let e = r instanceof _ ? r.dtype : r;
       return t === "integer" ? ["int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"].includes(e) : t === "signedinteger" ? ["int8", "int16", "int32", "int64"].includes(e) : t === "unsignedinteger" ? ["uint8", "uint16", "uint32", "uint64"].includes(e) : t === "floating" ? ["float32", "float64"].includes(e) : t === "complexfloating" ? ["complex64", "complex128"].includes(e) : t === "number" || t === "numeric" ? !["bool"].includes(e) : t === "inexact" ? ["float32", "float64", "complex64", "complex128"].includes(e) : e === t;
     }
-    function np3(r) {
+    function np2(r) {
       return { bool: "bool", uint8: "uint8", uint16: "uint16", uint32: "uint32", uint64: "uint64", int8: "int8", int16: "int16", int32: "int32", int64: "int64", float32: "float32", float64: "float64", complex64: "complex64", complex128: "complex128" }[r] || r;
     }
     function op(r, t = "GDFgdf", e = "d") {
@@ -10629,7 +10629,37 @@ var require_numpy_ts_node = __commonJS({
   }
 });
 
-// src/lib/base.ts
+// src/lib/base/base.ts
+var StrokeOptions = class {
+  constructor() {
+    this.stroke_width = 0.08;
+    this.stroke_color = "black";
+    this.stroke_style = "solid";
+  }
+  set_stroke_color(color) {
+    this.stroke_color = color;
+    return this;
+  }
+  set_stroke_width(width) {
+    this.stroke_width = width;
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_style = style;
+    return this;
+  }
+  apply_to(ctx, scene) {
+    ctx.lineWidth = this.stroke_width * scene.scale();
+    ctx.strokeStyle = this.stroke_color;
+    if (this.stroke_style == "solid") {
+      ctx.setLineDash([]);
+    } else if (this.stroke_style == "dashed") {
+      ctx.setLineDash([5, 5]);
+    } else if (this.stroke_style == "dotted") {
+      ctx.setLineDash([2, 2]);
+    }
+  }
+};
 var MObject = class {
   // Opacity for drawing
   constructor() {
@@ -10653,36 +10683,26 @@ var MObject = class {
 var LineLikeMObject = class extends MObject {
   constructor() {
     super(...arguments);
-    this.stroke_width = 0.08;
-    this.stroke_color = "black";
-    this.stroke_style = "solid";
+    this.stroke_options = new StrokeOptions();
   }
   set_stroke_color(color) {
-    this.stroke_color = color;
+    this.stroke_options.set_stroke_color(color);
     return this;
   }
   set_stroke_width(width) {
-    this.stroke_width = width;
+    this.stroke_options.set_stroke_width(width);
     return this;
   }
   set_stroke_style(style) {
-    this.stroke_style = style;
+    this.stroke_options.set_stroke_style(style);
     return this;
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    let [xmin, xmax] = scene.view_xlims;
-    ctx.lineWidth = this.stroke_width * canvas.width / (xmax - xmin);
-    ctx.strokeStyle = this.stroke_color;
-    if (this.stroke_style == "dashed") {
-      ctx.setLineDash([5, 5]);
-    } else if (this.stroke_style == "dotted") {
-      ctx.setLineDash([2, 2]);
-    }
+    this.stroke_options.apply_to(ctx, scene);
     this._draw(ctx, scene, args);
-    ctx.setLineDash([]);
   }
 };
 var Scene = class {
@@ -10749,6 +10769,11 @@ var Scene = class {
   move_view(v) {
     this.view_xlims = [this.view_xlims[0] + v[0], this.view_xlims[1] + v[0]];
     this.view_ylims = [this.view_ylims[0] + v[1], this.view_ylims[1] + v[1]];
+  }
+  // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
+  scale() {
+    let [xmin, xmax] = this.view_xlims;
+    return this.canvas.width / (xmax - xmin);
   }
   // Converts scene coordinates to canvas coordinates
   s2c(x, y) {
@@ -10832,6 +10857,7 @@ function Slider(container, callback, kwargs) {
   slider.value = kwargs.initial_value;
   slider.classList.add("slider");
   slider.id = "floatSlider";
+  slider.width = 200;
   let name = kwargs.name;
   if (name == void 0) {
     slider.name = "Value";
@@ -10875,9 +10901,6 @@ function Slider(container, callback, kwargs) {
   slider.addEventListener("input", updateDisplay);
   return slider;
 }
-
-// src/lib/parametric.ts
-var np2 = __toESM(require_numpy_ts_node(), 1);
 
 // src/lib/bezier.ts
 var np = __toESM(require_numpy_ts_node(), 1);
@@ -10974,34 +10997,15 @@ var SmoothOpenPathBezierHandleCalculator = class {
     return [h1, h2];
   }
 };
-
-// src/lib/parametric.ts
 var ParametricFunction = class extends LineLikeMObject {
-  constructor(f, tmin, tmax, num_steps, kwargs) {
+  constructor(f, tmin, tmax, num_steps) {
     super();
+    this.mode = "smooth";
     this.function = f;
     this.tmin = tmin;
     this.tmax = tmax;
     this.num_steps = num_steps;
     this.solver = new SmoothOpenPathBezierHandleCalculator(this.num_steps);
-    let mode = kwargs.mode;
-    if (mode == void 0) {
-      this.mode = "smooth";
-    } else {
-      this.mode = mode;
-    }
-    let stroke_width = kwargs.stroke_width;
-    if (stroke_width == void 0) {
-      this.stroke_width = 0.08;
-    } else {
-      this.stroke_width = stroke_width;
-    }
-    let stroke_color = kwargs.stroke_color;
-    if (stroke_color == void 0) {
-      this.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_color = stroke_color;
-    }
   }
   // Jagged doesn't use Bezier curves. It is faster to compute and render.
   set_mode(mode) {
@@ -11011,17 +11015,17 @@ var ParametricFunction = class extends LineLikeMObject {
     this.function = new_f;
   }
   _draw(ctx, scene) {
-    let points = [np2.array(this.function(this.tmin))];
+    let points = [np.array(this.function(this.tmin))];
     for (let i = 1; i <= this.num_steps; i++) {
       points.push(
-        np2.array(
+        np.array(
           this.function(
             this.tmin + i / this.num_steps * (this.tmax - this.tmin)
           )
         )
       );
     }
-    let anchors = np2.stack(points, 0);
+    let anchors = np.stack(points, 0);
     let a_x, a_y;
     [a_x, a_y] = scene.v2c([anchors.get([0, 0]), anchors.get([0, 1])]);
     ctx.beginPath();
@@ -11106,7 +11110,6 @@ var ParametricFunction = class extends LineLikeMObject {
     let scene = new Scene(canvas);
     scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
     scene.add("parametric_fn", parametric);
-    console.log("foo");
     scene.draw();
     let ecc_slider = Slider(
       document.getElementById("slider-container-1"),

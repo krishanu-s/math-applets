@@ -2,7 +2,17 @@
 import * as katex from "katex";
 import * as html2canvas from "html2canvas";
 import { MObject, Scene } from "./base.js";
-import { Vec2D } from "./base_geom.js";
+import {
+  Vec2D,
+  vec2_norm,
+  vec2_sum,
+  vec2_sub,
+  vec2_scale,
+  vec2_rot,
+  vec2_normalize,
+  vec2_angle,
+  vec2_sum_list,
+} from "../base/vec2.js";
 
 declare global {
   interface Window {

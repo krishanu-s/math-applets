@@ -1,6 +1,34 @@
-// 3D and 4D matrix operations
+// 3D matrices and vectors.
 
-import { Vec3D, vec3_dot, vec3_norm, vec3_scale } from "./three_d.js";
+export type Vec3D = [number, number, number];
+
+export function vec3_norm(x: Vec3D): number {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2);
+}
+
+export function vec3_dot(v: Vec3D, w: Vec3D): number {
+  let result = 0;
+  for (let i = 0; i < 3; i++) {
+    result += (v[i] as number) * (w[i] as number);
+  }
+  return result;
+}
+
+export function vec3_scale(x: Vec3D, factor: number): Vec3D {
+  return [x[0] * factor, x[1] * factor, x[2] * factor];
+}
+
+export function vec3_sum(x: Vec3D, y: Vec3D): Vec3D {
+  return [x[0] + y[0], x[1] + y[1], x[2] + y[2]];
+}
+
+export function vec3_sum_list(xs: Vec3D[]): Vec3D {
+  return xs.reduce((acc, x) => vec3_sum(acc, x), [0, 0, 0]);
+}
+
+export function vec3_sub(x: Vec3D, y: Vec3D): Vec3D {
+  return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
+}
 
 export type SphericalVec3D = [number, number];
 export type Mat3by3 = [Vec3D, Vec3D, Vec3D];

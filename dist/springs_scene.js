@@ -10633,9 +10633,6 @@ var require_numpy_ts_node = __commonJS({
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
 }
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 var StrokeOptions = class {
   constructor() {
     this.stroke_width = 0.08;
@@ -10961,60 +10958,89 @@ function touch_event_coords(event) {
   return [event.touches[0].pageX, event.touches[0].pageY];
 }
 
-// src/lib/base/color.ts
-function rb_colormap(z) {
-  const gray = sigmoid(z);
-  if (gray < 0.5) {
-    return [512 * gray, 512 * gray, 255, 255];
+// src/lib/interactive.ts
+function Slider(container, callback, kwargs) {
+  let slider = document.createElement("input");
+  slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  slider.width = 200;
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
   } else {
-    return [255, 512 * (1 - gray), 512 * (1 - gray), 255];
+    slider.name = name;
   }
+  let min2 = kwargs.min;
+  if (min2 == void 0) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min2}`;
+  }
+  let max2 = kwargs.max;
+  if (max2 == void 0) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max2}`;
+  }
+  let step = kwargs.step;
+  if (step == void 0) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
+  }
+  container.appendChild(slider);
+  let valueDisplay = document.createElement("span");
+  valueDisplay.classList.add("value-display");
+  valueDisplay.id = "sliderValue";
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+  container.appendChild(valueDisplay);
+  function updateDisplay() {
+    callback(slider.value);
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+    updateSliderColor(slider);
+  }
+  function updateSliderColor(sliderElement) {
+    const value = 100 * parseFloat(sliderElement.value);
+    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
+  }
+  updateDisplay();
+  slider.addEventListener("input", updateDisplay);
+  return slider;
+}
+function Button(container, callback) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "interactiveButton";
+  button.style.padding = "15px";
+  container.appendChild(button);
+  button.addEventListener("click", (event) => {
+    callback();
+    button.style.transform = "scale(0.95)";
+    setTimeout(() => {
+      button.style.transform = "scale(1)";
+    }, 100);
+  });
+  return button;
 }
 
-// src/lib/heatmap.ts
-var HeatMap = class extends MObject {
-  constructor(width, height, min_val, max_val, valArray) {
-    super();
-    this.width = width;
-    this.height = height;
-    this.min_val = min_val;
-    this.max_val = max_val;
-    this.valArray = valArray;
-    this.colorMap = rb_colormap;
+// src/lib/base/color.ts
+function colorval_to_rgba(color) {
+  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
+}
+function rb_colormap_2(z) {
+  const gray = sigmoid(z);
+  if (gray < 0.5) {
+    return [0, 0, 512 * (0.5 - gray), 255];
+  } else {
+    return [512 * (gray - 0.5), 0, 0, 255];
   }
-  set_color_map(colorMap) {
-    this.colorMap = colorMap;
-  }
-  // Gets/sets values
-  set_vals(vals) {
-    this.valArray = vals;
-  }
-  get_vals() {
-    return this.valArray;
-  }
-  // Draws on the canvas
-  _draw(ctx, scene, imageData) {
-    let data = imageData.data;
-    for (let i = 0; i < this.width * this.height; i++) {
-      const px_val = this.valArray[i];
-      const idx = i * 4;
-      [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] = this.colorMap(px_val);
-    }
-    ctx.putImageData(imageData, 0, 0);
-  }
-};
+}
 
 // src/lib/base/vec2.ts
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-function vec2_normalize(x) {
-  let n = vec2_norm(x);
-  if (n == 0) {
-    throw new Error("Can't normalize the zero vector");
-  } else {
-    return vec2_scale(x, 1 / n);
-  }
 }
 function vec2_scale(x, factor) {
   return [x[0] * factor, x[1] * factor];
@@ -11033,210 +11059,6 @@ function vec2_rot(v, angle2) {
 }
 
 // src/lib/base/geometry.ts
-var Dot = class extends FillLikeMObject {
-  constructor(center, radius) {
-    super();
-    this.radius = 0.1;
-    this.center = center;
-    this.radius = radius;
-  }
-  // Get the center coordinates
-  get_center() {
-    return this.center;
-  }
-  // Move the center of the dot to a desired location
-  move_to(p) {
-    this.center = p;
-  }
-  move_by(p) {
-    this.center[0] += p[0];
-    this.center[1] += p[1];
-  }
-  // Change the dot radius
-  set_radius(radius) {
-    this.radius = radius;
-    return this;
-  }
-  // Draws on the canvas
-  _draw(ctx, scene) {
-    let [x, y] = scene.v2c(this.center);
-    let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
-    ctx.beginPath();
-    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
-    ctx.fill();
-  }
-  // Convert to a draggable rectangle
-  toDraggableDot() {
-    return new DraggableDot(this.center, this.radius);
-  }
-  toDraggableDotX() {
-    return new DraggableDotX(this.center, this.radius);
-  }
-  toDraggableDotY() {
-    return new DraggableDotY(this.center, this.radius);
-  }
-};
-var DraggableDot = class extends Dot {
-  constructor() {
-    super(...arguments);
-    this.isClicked = false;
-    this.dragStart = [0, 0];
-    this.dragEnd = [0, 0];
-    this.touch_tolerance = 2;
-    this.callbacks = [];
-  }
-  // Tests whether a chosen vector lies inside the shape. Used for click-detection.
-  is_inside(p) {
-    return vec2_norm(vec2_sub(p, this.center)) < this.radius;
-  }
-  // Tests whether a chosen vector lies within an enlarged version of the dot.
-  // Used for touch-detection on mobile devices, and for use by small children.
-  is_almost_inside(p, tolerance) {
-    return vec2_norm(vec2_sub(p, this.center)) < this.radius * tolerance;
-  }
-  // Adds a callback which triggers when the dot is dragged
-  add_callback(callback) {
-    this.callbacks.push(callback);
-  }
-  do_callbacks() {
-    for (const callback of this.callbacks) {
-      callback();
-    }
-  }
-  // Triggers when the canvas is clicked.
-  click(scene, event) {
-    this.dragStart = vec2_sub(mouse_event_coords(event), [
-      scene.canvas.offsetLeft,
-      scene.canvas.offsetTop
-    ]);
-    if (!scene.is_dragging) {
-      this.isClicked = this.is_inside(
-        scene.c2v(this.dragStart[0], this.dragStart[1])
-      );
-      if (this.isClicked) {
-        scene.click();
-      }
-    }
-  }
-  touch(scene, event) {
-    this.dragStart = [
-      event.touches[0].pageX - scene.canvas.offsetLeft,
-      event.touches[0].pageY - scene.canvas.offsetTop
-    ];
-    if (!scene.is_dragging) {
-      this.isClicked = this.is_almost_inside(
-        scene.c2v(this.dragStart[0], this.dragStart[1]),
-        this.touch_tolerance
-      );
-      if (this.isClicked) {
-        scene.click();
-      }
-    }
-  }
-  // Triggers when the canvas is unclicked.
-  unclick(scene, event) {
-    if (this.isClicked) {
-      scene.unclick();
-    }
-    this.isClicked = false;
-  }
-  untouch(scene, event) {
-    if (this.isClicked) {
-      scene.unclick();
-    }
-    scene.unclick();
-  }
-  // Triggers when the mouse is dragged over the canvas.
-  mouse_drag_cursor(scene, event) {
-    if (this.isClicked) {
-      this.dragEnd = vec2_sub(mouse_event_coords(event), [
-        scene.canvas.offsetLeft,
-        scene.canvas.offsetTop
-      ]);
-      this._drag_cursor(scene);
-    }
-  }
-  touch_drag_cursor(scene, event) {
-    if (this.isClicked) {
-      this.dragEnd = vec2_sub(touch_event_coords(event), [
-        scene.canvas.offsetLeft,
-        scene.canvas.offsetTop
-      ]);
-      this._drag_cursor(scene);
-    }
-  }
-  _drag_cursor(scene) {
-    this.move_by(
-      vec2_sub(
-        scene.c2v(this.dragEnd[0], this.dragEnd[1]),
-        scene.c2v(this.dragStart[0], this.dragStart[1])
-      )
-    );
-    this.dragStart = this.dragEnd;
-    this.do_callbacks();
-    scene.draw();
-  }
-  add(scene) {
-    let self = this;
-    scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
-    scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
-    scene.canvas.addEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self, scene)
-    );
-    scene.canvas.addEventListener("touchstart", self.touch.bind(self, scene));
-    scene.canvas.addEventListener("touchend", self.untouch.bind(self, scene));
-    scene.canvas.addEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self, scene)
-    );
-  }
-  remove(scene) {
-    let self = this;
-    scene.canvas.removeEventListener("mousedown", this.click.bind(self, scene));
-    scene.canvas.removeEventListener("mouseup", this.unclick.bind(self, scene));
-    scene.canvas.removeEventListener(
-      "mousemove",
-      this.mouse_drag_cursor.bind(self, scene)
-    );
-    scene.canvas.removeEventListener(
-      "touchstart",
-      this.click.bind(self, scene)
-    );
-    scene.canvas.removeEventListener(
-      "touchend",
-      this.unclick.bind(self, scene)
-    );
-    scene.canvas.removeEventListener(
-      "touchmove",
-      self.mouse_drag_cursor.bind(self, scene)
-    );
-  }
-  // Remove draggability
-  toDot() {
-    return new Dot(this.center, this.radius);
-  }
-};
-var DraggableDotX = class extends DraggableDot {
-  _drag_cursor(scene) {
-    this.move_by(
-      vec2_sub(scene.c2s(this.dragEnd[0], 0), scene.c2s(this.dragStart[0], 0))
-    );
-    this.dragStart = this.dragEnd;
-    this.do_callbacks();
-    scene.draw();
-  }
-};
-var DraggableDotY = class extends DraggableDot {
-  _drag_cursor(scene) {
-    this.move_by(
-      vec2_sub(scene.c2s(0, this.dragEnd[1]), scene.c2s(0, this.dragStart[1]))
-    );
-    this.dragStart = this.dragEnd;
-    this.do_callbacks();
-    scene.draw();
-  }
-};
 var Rectangle = class extends FillLikeMObject {
   constructor(center, size_x, size_y) {
     super();
@@ -11541,133 +11363,72 @@ var Arrow = class extends Line {
     ctx.fill();
   }
 };
-var TwoHeadedArrow = class extends Line {
-  constructor() {
-    super(...arguments);
-    this.arrow_size = 0.3;
+var LineSpring = class extends Line {
+  constructor(start, end) {
+    super(start, end);
+    this.mode = "color";
+    this.eq_length = 2;
   }
-  set_arrow_size(size2) {
-    this.arrow_size = size2;
+  set_mode(mode) {
+    this.mode = mode;
   }
+  set_eq_length(length) {
+    this.eq_length = length;
+  }
+  length() {
+    let [start_x, start_y] = this.start;
+    let [end_x, end_y] = this.end;
+    return Math.sqrt((end_x - start_x) ** 2 + (end_y - start_y) ** 2);
+  }
+  // alpha_scaling(): number {
+  //   return Math.min(1.0, this.eq_length / this.length());
+  // }
   // Draws on the canvas
   _draw(ctx, scene) {
-    super._draw(ctx, scene);
-    ctx.fillStyle = this.stroke_options.stroke_color;
-    let [end_x, end_y] = scene.v2c(this.end);
     let [start_x, start_y] = scene.v2c(this.start);
-    let v;
-    let ax;
-    let ay;
-    let bx;
-    let by;
-    v = vec2_scale(
-      vec2_sub(this.start, this.end),
-      this.arrow_size / this.length()
-    );
-    [ax, ay] = scene.v2c(vec2_sum(this.end, vec2_rot(v, Math.PI / 6)));
-    [bx, by] = scene.v2c(vec2_sum(this.end, vec2_rot(v, -Math.PI / 6)));
-    ctx.beginPath();
-    ctx.moveTo(end_x, end_y);
-    ctx.lineTo(ax, ay);
-    ctx.lineTo(bx, by);
-    ctx.lineTo(end_x, end_y);
-    ctx.closePath();
-    ctx.fill();
-    v = vec2_scale(
-      vec2_sub(this.end, this.start),
-      this.arrow_size / this.length()
-    );
-    [ax, ay] = scene.v2c(vec2_sum(this.start, vec2_rot(v, Math.PI / 6)));
-    [bx, by] = scene.v2c(vec2_sum(this.start, vec2_rot(v, -Math.PI / 6)));
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(ax, ay);
-    ctx.lineTo(bx, by);
-    ctx.lineTo(start_x, start_y);
-    ctx.closePath();
-    ctx.fill();
-  }
-};
-
-// src/lib/stats.ts
-var Histogram = class extends MObject {
-  constructor() {
-    super(...arguments);
-    this.hist = {};
-    this.fill_color = "red";
-    // Min/max bin values
-    this.bin_min = 0;
-    this.bin_max = 100;
-    // Min/max counts
-    this.count_min = 0;
-    this.count_max = 100;
-  }
-  set_count_limits(min2, max2) {
-    this.count_min = min2;
-    this.count_max = max2;
-  }
-  set_bin_limits(min2, max2) {
-    this.bin_min = min2;
-    this.bin_max = max2;
-  }
-  set_hist(hist) {
-    this.hist = hist;
-  }
-  // Create a bunch of rectangles
-  draw(canvas, scene) {
-    let [scene_xmin, scene_xmax] = scene.xlims;
-    let [scene_ymin, scene_ymax] = scene.ylims;
-    let xmin = scene_xmin + (scene_xmax - scene_xmin) * 0.05;
-    let xmax = scene_xmax - (scene_xmax - scene_xmin) * 0.05;
-    let ymin = scene_ymin + (scene_ymax - scene_ymin) * 0.05;
-    let ymax = scene_ymax - (scene_ymax - scene_ymin) * 0.05;
-    let x_axis = new Line([xmin, ymin], [xmax, ymin]).set_alpha(1).set_stroke_width(0.5);
-    x_axis.draw(canvas, scene);
-    let y_axis = new Line([xmin, ymin], [xmin, ymax]).set_alpha(1).set_stroke_width(0.5);
-    y_axis.draw(canvas, scene);
-    for (let i = 1; i <= 5; i++) {
-      let line = new Line(
-        [xmin, ymin + i * (ymax - ymin) / 5],
-        [xmax, ymin + i * (ymax - ymin) / 5]
-      ).set_alpha(1).set_stroke_width(0.5).set_stroke_color("gray");
-      line.set_stroke_style("dashed");
-      line.draw(canvas, scene);
-    }
-    let bin_width = (xmax - xmin) / (this.bin_max - this.bin_min);
-    let ct_height = (ymax - ymin) / (this.count_max - this.count_min);
-    let bin;
-    let rect_center, rect_height, rect_width;
-    for (let i = 0; i < Object.keys(this.hist).length; i++) {
-      bin = Object.keys(this.hist)[i];
-      rect_center = [
-        xmin + (bin - this.bin_min + 0.5) * bin_width,
-        ymin + this.hist[bin] * 0.5 * ct_height
+    let [end_x, end_y] = scene.v2c(this.end);
+    if (this.mode == "color") {
+      ctx.strokeStyle = colorval_to_rgba(
+        rb_colormap_2(10 * Math.log(this.eq_length / this.length()))
+      );
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+    } else {
+      let v = [end_x - start_x, end_y - start_y];
+      let num_turns = 5;
+      let r = 1 - 0.4 * this.eq_length / this.length();
+      let theta = Math.atan(8 * (2 * num_turns) / (vec2_norm(v) * r));
+      let scaled_v = vec2_scale(v, r / (2 * Math.cos(theta) * num_turns));
+      let current_p = [
+        start_x + 0.5 * (1 - r) * (end_x - start_x),
+        start_y + 0.5 * (1 - r) * (end_y - start_y)
       ];
-      rect_height = this.hist[bin] * ct_height;
-      rect_width = bin_width;
-      let rect = new Rectangle(rect_center, rect_width, rect_height);
-      rect.fill_options.fill_color = this.fill_color;
-      rect.draw(canvas, scene);
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(current_p[0], current_p[1]);
+      current_p = vec2_sum(
+        current_p,
+        vec2_rot(vec2_scale(scaled_v, 0.5), theta)
+      );
+      ctx.lineTo(current_p[0], current_p[1]);
+      for (let i = 0; i < num_turns - 1; i++) {
+        current_p = vec2_sum(current_p, vec2_rot(scaled_v, -theta));
+        ctx.lineTo(current_p[0], current_p[1]);
+        current_p = vec2_sum(current_p, vec2_rot(scaled_v, theta));
+        ctx.lineTo(current_p[0], current_p[1]);
+      }
+      current_p = vec2_sum(
+        current_p,
+        vec2_rot(vec2_scale(scaled_v, 0.5), -theta)
+      );
+      ctx.lineTo(current_p[0], current_p[1]);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
     }
   }
 };
-
-// src/lib/interactive.ts
-function Button(container, callback) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.id = "interactiveButton";
-  button.style.padding = "15px";
-  container.appendChild(button);
-  button.addEventListener("click", (event) => {
-    callback();
-    button.style.transform = "scale(0.95)";
-    setTimeout(() => {
-      button.style.transform = "scale(1)";
-    }, 100);
-  });
-  return button;
-}
 
 // src/lib/bezier.ts
 var np = __toESM(require_numpy_ts_node(), 1);
@@ -11829,1176 +11590,302 @@ var ParametricFunction = class extends LineLikeMObject {
   }
 };
 
-// src/lib/three_d/matvec.ts
-function vec3_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2);
-}
-function vec3_dot(v, w) {
-  let result = 0;
-  for (let i = 0; i < 3; i++) {
-    result += v[i] * w[i];
+// src/lib/simulator/sim.ts
+var Simulator = class {
+  // Length of time in each simulation step
+  constructor(dt) {
+    this.time = 0;
+    this.dt = dt;
   }
-  return result;
-}
-function vec3_scale(x, factor) {
-  return [x[0] * factor, x[1] * factor, x[2] * factor];
-}
-function vec3_sum(x, y) {
-  return [x[0] + y[0], x[1] + y[1], x[2] + y[2]];
-}
-function vec3_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
-}
-function transpose2(m) {
-  return [
-    [m[0][0], m[1][0], m[2][0]],
-    [m[0][1], m[1][1], m[2][1]],
-    [m[0][2], m[1][2], m[2][2]]
-  ];
-}
-function mat_inv(m) {
-  let det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
-  if (det == 0) {
-    throw new Error("Can't invert a singular matrix");
+  reset() {
+    this.time = 0;
   }
-  let inv_det = 1 / det;
-  return [
-    [
-      inv_det * (m[1][1] * m[2][2] - m[1][2] * m[2][1]),
-      inv_det * (m[0][2] * m[2][1] - m[0][1] * m[2][2]),
-      inv_det * (m[0][1] * m[1][2] - m[0][2] * m[1][1])
-    ],
-    [
-      inv_det * (m[1][2] * m[2][0] - m[1][0] * m[2][2]),
-      inv_det * (m[0][0] * m[2][2] - m[0][2] * m[2][0]),
-      inv_det * (m[0][2] * m[1][0] - m[0][0] * m[1][2])
-    ],
-    [
-      inv_det * (m[1][0] * m[2][1] - m[1][1] * m[2][0]),
-      inv_det * (m[0][1] * m[2][0] - m[0][0] * m[2][1]),
-      inv_det * (m[0][0] * m[1][1] - m[0][1] * m[1][0])
-    ]
-  ];
-}
-function get_column(m, i) {
-  return [m[0][i], m[1][i], m[2][i]];
-}
-function normalize(v) {
-  let n = vec3_norm(v);
-  if (n == 0) {
-    throw new Error("Can't normalize the zero vector");
-  } else {
-    return vec3_scale(v, 1 / n);
+  step() {
+    this.time += this.dt;
   }
-}
-function matmul_vec(m, v) {
-  let result = [0, 0, 0];
-  for (let i = 0; i < 3; i++) {
-    result[i] = vec3_dot(m[i], v);
-  }
-  return result;
-}
-function matmul_mat(m1, m2) {
-  let result = [];
-  for (let i = 0; i < 3; i++) {
-    result.push(matmul_vec(m1, [m2[0][i], m2[1][i], m2[2][i]]));
-  }
-  return transpose2(result);
-}
-function rot_z_matrix(theta) {
-  return [
-    [Math.cos(theta), -Math.sin(theta), 0],
-    [Math.sin(theta), Math.cos(theta), 0],
-    [0, 0, 1]
-  ];
-}
-function rot_z(v, theta) {
-  return matmul_vec(rot_z_matrix(theta), v);
-}
-function rot_y_matrix(theta) {
-  return [
-    [Math.cos(theta), 0, Math.sin(theta)],
-    [0, 1, 0],
-    [-Math.sin(theta), 0, Math.cos(theta)]
-  ];
-}
-function rot_y(v, theta) {
-  return matmul_vec(rot_y_matrix(theta), v);
-}
-function rot_x_matrix(theta) {
-  return [
-    [1, 0, 0],
-    [0, Math.cos(theta), -Math.sin(theta)],
-    [0, Math.sin(theta), Math.cos(theta)]
-  ];
-}
-function rot_x(v, theta) {
-  return matmul_vec(rot_x_matrix(theta), v);
-}
-function rot_matrix(axis, angle2) {
-  let [x, y, z] = normalize(axis);
-  let theta = Math.acos(z);
-  let phi = Math.acos(x / Math.sin(theta));
-  if (y / Math.sin(theta) < 0) {
-    phi = 2 * Math.PI - phi;
-  }
-  let result = rot_z_matrix(-phi);
-  result = matmul_mat(rot_y_matrix(-theta), result);
-  result = matmul_mat(rot_z_matrix(angle2), result);
-  result = matmul_mat(rot_y_matrix(theta), result);
-  result = matmul_mat(rot_z_matrix(phi), result);
-  return result;
-}
-function rot(v, axis, angle2) {
-  let [x, y, z] = normalize(axis);
-  let theta = Math.acos(z);
-  let phi = Math.acos(x / Math.sin(theta));
-  if (y / Math.sin(theta) < 0) {
-    phi = 2 * Math.PI - phi;
-  }
-  let result = rot_z(v, -phi);
-  result = rot_y(result, -theta);
-  result = rot_z(result, angle2);
-  result = rot_y(result, theta);
-  result = rot_z(result, phi);
-  return result;
-}
-
-// src/lib/three_d/mobjects.ts
-var ThreeDMObject = class extends MObject {
-  constructor() {
-    super(...arguments);
-    this.blocked_depth_tolerance = 0.01;
-    this.linked_mobjects = [];
-    this.stroke_options = new StrokeOptions();
-  }
-  set_stroke_color(color) {
-    this.stroke_options.set_stroke_color(color);
-    return this;
-  }
-  set_stroke_width(width) {
-    this.stroke_options.set_stroke_width(width);
-    return this;
-  }
-  set_stroke_style(style) {
-    this.stroke_options.set_stroke_style(style);
-    return this;
-  }
-  // Return the depth of the object in the scene. Used for sorting.
-  depth(scene) {
-    return 0;
-  }
-  // Return the depth of the nearest point on the object that lies along the
-  // given ray. Used for relative depth-testing between 3D objects, to determine
-  // how to draw them.
-  depth_at(scene, view_point) {
-    return 0;
-  }
-  // Add a linked Mobject. These are fill-like MObjects in the scene which might obstruct the view
-  // of the curve, and are used internally to _draw() for depth-testing.
-  link_mobject(mobject) {
-    this.linked_mobjects.push(mobject);
-  }
-  // Calculates the minimum depth value among linked FillLike objects at the given 2D scene view point.
-  blocked_depth_at(scene, view_point) {
-    return Math.min(
-      ...this.linked_mobjects.map(
-        (m) => m.depth_at(scene, view_point)
-      )
-    );
-  }
-  // Calculates whether the given 3D scene point is either obstructed by any linked FillLike objects
-  // or is out of scene
-  is_blocked(scene, point) {
-    let vp = scene.camera_view(point);
-    if (vp == null) {
-      return true;
-    } else {
-      return scene.camera.depth(point) > this.blocked_depth_at(scene, vp) + this.blocked_depth_tolerance;
-    }
-  }
-  // Simpler drawing method for 3D scenes which doesn't use local depth testing, for speed purposes.
-  _draw_simple(ctx, scene) {
-  }
-};
-var ThreeDLineLikeMObject = class extends ThreeDMObject {
-  // Sets the context drawer settings for drawing behind linked FillLike objects.
-  set_behind_linked_mobjects(ctx) {
-    ctx.globalAlpha /= 2;
-    ctx.setLineDash([5, 5]);
-  }
-  unset_behind_linked_mobjects(ctx) {
-    ctx.globalAlpha *= 2;
-    ctx.setLineDash([]);
-  }
-  draw(canvas, scene, simple = false, args) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
-    this.stroke_options.apply_to(ctx, scene);
-    if (this instanceof Line3D && simple) {
-      this._draw_simple(ctx, scene);
-    } else {
-      this._draw(ctx, scene, args);
+  // Generic setter.
+  set_attr(name, val) {
+    if (name in this) {
+      this[name] = val;
     }
   }
 };
-var ThreeDFillLikeMObject = class extends ThreeDMObject {
-  constructor() {
-    super(...arguments);
-    this.fill_options = new FillOptions();
-  }
-  set_fill_color(color) {
-    this.fill_options.fill_color = color;
-    return this;
-  }
-  set_color(color) {
-    this.stroke_options.stroke_color = color;
-    this.fill_options.fill_color = color;
-    return this;
-  }
-  set_fill_alpha(alpha) {
-    this.fill_options.fill_alpha = alpha;
-    return this;
-  }
-  set_fill(fill2) {
-    this.fill_options.fill = fill2;
-    return this;
-  }
-  // Sets the context drawer settings for drawing behind linked FillLike objects.
-  set_behind_linked_mobjects(ctx) {
-    ctx.globalAlpha /= 2;
-  }
-  unset_behind_linked_mobjects(ctx) {
-    ctx.globalAlpha *= 2;
-  }
-  draw(canvas, scene, simple = false, args) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
-    this.stroke_options.apply_to(ctx, scene);
-    this.fill_options.apply_to(ctx);
-    if (this instanceof Dot3D && simple) {
-      this._draw_simple(ctx, scene);
-    } else {
-      this._draw(ctx, scene, args);
-    }
-  }
-};
-var Dot3D = class extends ThreeDFillLikeMObject {
-  constructor(center, radius) {
-    super();
-    this.center = center;
-    this.radius = radius;
-  }
-  get_center() {
-    return this.center;
-  }
-  get_radius() {
-    return this.radius;
-  }
-  depth(scene) {
-    return scene.camera.depth(this.center);
-  }
-  depth_at(scene, view_point) {
-    if (scene.mode == "perspective") {
-      return 0;
-    } else if (scene.mode == "orthographic") {
-      let dist = vec2_norm(
-        vec2_sub(view_point, scene.camera.orthographic_view(this.center))
-      );
-      if (dist > this.radius) {
-        return Infinity;
-      } else {
-        let depth_adjustment = Math.sqrt(
-          Math.max(0, this.radius ** 2 - dist ** 2)
-        );
-        return scene.camera.depth(this.center) - depth_adjustment;
-      }
-    }
-    return 0;
-  }
-  move_to(new_center) {
-    this.center = new_center;
-  }
-  move_by(p) {
-    this.center[0] += p[0];
-    this.center[1] += p[1];
-    this.center[2] += p[2];
-  }
-  _draw_simple(ctx, scene) {
-    let p = scene.camera_view(this.center);
-    let pr = scene.camera_view(
-      vec3_sum(
-        this.center,
-        vec3_scale(get_column(scene.camera.get_camera_frame(), 0), this.radius)
-      )
-    );
-    let state;
-    if (p != null && pr != null) {
-      let [cx, cy] = scene.v2c(p);
-      let [rx, ry] = scene.v2c(pr);
-      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
-      ctx.beginPath();
-      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
-      ctx.stroke();
-      if (this.fill_options.fill) {
-        ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;
-        ctx.fill();
-        ctx.globalAlpha = ctx.globalAlpha / this.fill_options.fill_alpha;
-      }
-    }
-  }
-  _draw(ctx, scene) {
-    let p = scene.camera_view(this.center);
-    let pr = scene.camera_view(
-      vec3_sum(
-        this.center,
-        vec3_scale(get_column(scene.camera.get_camera_frame(), 0), this.radius)
-      )
-    );
-    let state;
-    if (p != null && pr != null) {
-      let depth = scene.camera.depth(this.center);
-      if (depth > this.blocked_depth_at(scene, p) + this.blocked_depth_tolerance) {
-        state = "blocked";
-      } else {
-        state = "unblocked";
-      }
-      let [cx, cy] = scene.v2c(p);
-      let [rx, ry] = scene.v2c(pr);
-      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
-      ctx.beginPath();
-      if (state == "blocked") {
-        this.set_behind_linked_mobjects(ctx);
-      }
-      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
-      ctx.stroke();
-      if (this.fill_options.fill) {
-        ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;
-        ctx.fill();
-        ctx.globalAlpha = ctx.globalAlpha / this.fill_options.fill_alpha;
-      }
-      if (state == "blocked") {
-        this.unset_behind_linked_mobjects(ctx);
-      }
-    }
-  }
-  toDraggableDot3D() {
-    return new DraggableDot3D(this.center, this.radius);
-  }
-  toDraggableDotZ3D() {
-    return new DraggableDotZ3D(this.center, this.radius);
-  }
-};
-var DraggableDot3D = class extends Dot3D {
-  constructor() {
-    super(...arguments);
-    this.isClicked = false;
-    this.dragStart = [0, 0];
-    this.dragEnd = [0, 0];
-    this.touch_tolerance = 2;
-    this.callbacks = [];
-  }
-  // Tests whether a chosen view point lies inside the shape. Used for click-detection.
-  is_inside(scene, view_point) {
-    let center_view = scene.camera_view(this.center);
-    let edge_view = scene.camera_view(
-      vec3_sum(this.center, [0, 0, this.radius])
-    );
-    if (center_view == null || edge_view == null) {
-      return false;
-    } else {
-      return vec2_norm(vec2_sub(view_point, center_view)) < vec2_norm(vec2_sub(edge_view, center_view));
-    }
-  }
-  // Tests whether a chosen vector lies within an enlarged version of the dot.
-  // Used for touch-detection on mobile devices, and for use by small children.
-  is_almost_inside(scene, view_point, tolerance) {
-    let center_view = scene.camera_view(this.center);
-    let edge_view = scene.camera_view(
-      vec3_sum(this.center, [0, 0, this.radius])
-    );
-    if (center_view == null || edge_view == null) {
-      return false;
-    } else {
-      return vec2_norm(vec2_sub(view_point, center_view)) < vec2_norm(vec2_sub(edge_view, center_view)) * tolerance;
-    }
-  }
-  // Adds a callback which triggers when the dot is dragged
-  add_callback(callback) {
-    this.callbacks.push(callback);
-  }
-  do_callbacks() {
-    for (const callback of this.callbacks) {
-      callback();
-    }
-  }
-  // Triggers when the canvas is clicked.
-  click(scene, event) {
-    this.dragStart = vec2_sub(mouse_event_coords(event), [
-      scene.canvas.offsetLeft,
-      scene.canvas.offsetTop
-    ]);
-    if (!scene.is_dragging) {
-      this.isClicked = this.is_inside(
-        scene,
-        scene.c2v(this.dragStart[0], this.dragStart[1])
-      );
-      if (this.isClicked) {
-        scene.click();
-      }
-    }
-  }
-  touch(scene, event) {
-    this.dragStart = [
-      event.touches[0].pageX - scene.canvas.offsetLeft,
-      event.touches[0].pageY - scene.canvas.offsetTop
-    ];
-    if (!scene.is_dragging) {
-      this.isClicked = this.is_almost_inside(
-        scene,
-        scene.c2v(this.dragStart[0], this.dragStart[1]),
-        this.touch_tolerance
-      );
-      if (this.isClicked) {
-        scene.click();
-      }
-    }
-  }
-  // Triggers when the canvas is unclicked.
-  unclick(scene, event) {
-    if (this.isClicked) {
-      scene.unclick();
-    }
-    this.isClicked = false;
-  }
-  untouch(scene, event) {
-    if (this.isClicked) {
-      scene.unclick();
-    }
-    scene.unclick();
-  }
-  // Triggers when the mouse is dragged over the canvas.
-  mouse_drag_cursor(scene, event) {
-    if (this.isClicked) {
-      this.dragEnd = vec2_sub(mouse_event_coords(event), [
-        scene.canvas.offsetLeft,
-        scene.canvas.offsetTop
-      ]);
-      this._drag_cursor(scene);
-    }
-  }
-  touch_drag_cursor(scene, event) {
-    if (this.isClicked) {
-      this.dragEnd = vec2_sub(touch_event_coords(event), [
-        scene.canvas.offsetLeft,
-        scene.canvas.offsetTop
-      ]);
-      this._drag_cursor(scene);
-    }
-  }
-  _drag_cursor(scene) {
-    let translate_vec = vec2_sub(
-      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
-      scene.c2v(this.dragStart[0], this.dragStart[1])
-    );
-    this.move_by(scene.v2w(translate_vec));
-    this.dragStart = this.dragEnd;
-    this.do_callbacks();
-    scene.draw();
-  }
-  add(scene) {
-    let self = this;
-    scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
-    scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
-    scene.canvas.addEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self, scene)
-    );
-    scene.canvas.addEventListener("touchstart", self.touch.bind(self, scene));
-    scene.canvas.addEventListener("touchend", self.untouch.bind(self, scene));
-    scene.canvas.addEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self, scene)
-    );
-  }
-  remove(scene) {
-    let self = this;
-    scene.canvas.removeEventListener("mousedown", this.click.bind(self, scene));
-    scene.canvas.removeEventListener("mouseup", this.unclick.bind(self, scene));
-    scene.canvas.removeEventListener(
-      "mousemove",
-      this.mouse_drag_cursor.bind(self, scene)
-    );
-    scene.canvas.removeEventListener(
-      "touchstart",
-      this.click.bind(self, scene)
-    );
-    scene.canvas.removeEventListener(
-      "touchend",
-      this.unclick.bind(self, scene)
-    );
-    scene.canvas.removeEventListener(
-      "touchmove",
-      self.mouse_drag_cursor.bind(self, scene)
-    );
-  }
-  toDot3D() {
-    return new Dot3D(this.center, this.radius);
-  }
-};
-var DraggableDotZ3D = class extends DraggableDot3D {
-  _drag_cursor(scene) {
-    let translate_vec = vec2_sub(
-      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
-      scene.c2v(this.dragStart[0], this.dragStart[1])
-    );
-    let [mx, my, mz] = scene.v2w(translate_vec);
-    this.move_by([0, 0, mz]);
-    this.dragStart = this.dragEnd;
-    this.do_callbacks();
-    scene.draw();
-  }
-};
-var Line3D = class extends ThreeDLineLikeMObject {
-  constructor(start, end) {
-    super();
-    this.start = start;
-    this.end = end;
-  }
-  // Moves the start and end points
-  move_start(v) {
-    this.start = v;
-  }
-  move_end(v) {
-    this.end = v;
-  }
-  depth(scene) {
-    return scene.camera.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
-  }
-  _draw(ctx, scene) {
-    let s = scene.camera_view(this.start);
-    let e = scene.camera_view(this.end);
-    if (s == null || e == null) return;
-    let [start_x, start_y] = scene.v2c(s);
-    let [end_x, end_y] = scene.v2c(e);
-    let start_blocked = this.is_blocked(scene, this.start);
-    let end_blocked = this.is_blocked(scene, this.end);
-    if (!start_blocked && !end_blocked) {
-      ctx.beginPath();
-      ctx.moveTo(start_x, start_y);
-      ctx.lineTo(end_x, end_y);
-      ctx.stroke();
-    } else if (start_blocked && end_blocked) {
-      ctx.beginPath();
-      this.set_behind_linked_mobjects(ctx);
-      ctx.moveTo(start_x, start_y);
-      ctx.lineTo(end_x, end_y);
-      ctx.stroke();
-      this.unset_behind_linked_mobjects(ctx);
-    } else {
-      let n = 1;
-      let v = vec3_sub(this.end, this.start);
-      let p = vec3_scale(vec3_sum(this.start, this.end), 0.5);
-      while (n < 6) {
-        n += 1;
-        if (this.is_blocked(scene, p) == start_blocked) {
-          p = vec3_sum(p, vec3_scale(v, 1 / 2 ** n));
-        } else {
-          p = vec3_sub(p, vec3_scale(v, 1 / 2 ** n));
-        }
-      }
-      let [p_x, p_y] = scene.v2c(scene.camera_view(p));
-      if (start_blocked) {
-        ctx.beginPath();
-        ctx.moveTo(start_x, start_y);
-        this.set_behind_linked_mobjects(ctx);
-        ctx.lineTo(p_x, p_y);
-        ctx.stroke();
-        ctx.beginPath();
-        this.unset_behind_linked_mobjects(ctx);
-        ctx.moveTo(p_x, p_y);
-        ctx.lineTo(end_x, end_y);
-        ctx.stroke();
-      } else {
-        ctx.beginPath();
-        ctx.moveTo(end_x, end_y);
-        this.set_behind_linked_mobjects(ctx);
-        ctx.lineTo(p_x, p_y);
-        ctx.stroke();
-        ctx.beginPath();
-        this.unset_behind_linked_mobjects(ctx);
-        ctx.moveTo(p_x, p_y);
-        ctx.lineTo(start_x, start_y);
-        ctx.stroke();
-      }
-    }
-  }
-  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
-  _draw_simple(ctx, scene) {
-    let s = scene.camera_view(this.start);
-    let e = scene.camera_view(this.end);
-    if (s == null || e == null) return;
-    let [start_x, start_y] = scene.v2c(s);
-    let [end_x, end_y] = scene.v2c(e);
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(end_x, end_y);
-    ctx.stroke();
-  }
-};
-var LineSequence3D = class extends ThreeDLineLikeMObject {
-  constructor(points) {
-    super();
-    this.points = points;
-  }
-  add_point(point) {
-    this.points.push(point);
-  }
-  remove_point(index) {
-    this.points.splice(index, 1);
-  }
-  move_point(i, new_point) {
-    this.points[i] = new_point;
-  }
-  get_point(i) {
-    return this.points[i];
-  }
-  depth(scene) {
-    if (this.points.length == 0) {
-      return 0;
-    } else if (this.points.length == 1) {
-      return scene.camera.depth(this.points[0]);
-    } else {
-      return scene.camera.depth(
-        vec3_scale(vec3_sum(this.points[0], this.points[1]), 0.5)
-      );
-    }
-  }
-  _draw(ctx, scene) {
-    ctx.beginPath();
-    let current_point = this.points[0];
-    let current_point_camera_view = scene.camera_view(current_point);
-    let cp_x = 0, cp_y = 0;
-    if (current_point_camera_view != null) {
-      [cp_x, cp_y] = scene.v2c(current_point_camera_view);
-    }
-    let current_point_blocked = this.is_blocked(scene, current_point);
-    let midpoint;
-    let mp_x, mp_y;
-    let next_point;
-    let next_point_camera_view;
-    let np_x, np_y;
-    let next_point_blocked;
-    let v;
-    let n;
-    for (let i = 1; i < this.points.length; i++) {
-      next_point = this.points[i];
-      next_point_camera_view = scene.camera_view(next_point);
-      if (current_point_camera_view == null || next_point_camera_view == null) {
-        continue;
-      }
-      [np_x, np_y] = scene.v2c(next_point_camera_view);
-      next_point_blocked = this.is_blocked(scene, next_point);
-      if (!current_point_blocked && !next_point_blocked) {
-        ctx.beginPath();
-        ctx.moveTo(cp_x, cp_y);
-        ctx.lineTo(np_x, np_y);
-        ctx.stroke();
-      } else if (current_point_blocked && next_point_blocked) {
-        ctx.beginPath();
-        this.set_behind_linked_mobjects(ctx);
-        ctx.moveTo(cp_x, cp_y);
-        ctx.lineTo(np_x, np_y);
-        ctx.stroke();
-        this.unset_behind_linked_mobjects(ctx);
-      } else {
-        n = 1;
-        v = vec3_sub(next_point, current_point);
-        midpoint = vec3_scale(vec3_sum(next_point, current_point), 0.5);
-        while (n < 6) {
-          n += 1;
-          if (this.is_blocked(scene, midpoint) == current_point_blocked) {
-            midpoint = vec3_sum(midpoint, vec3_scale(v, 1 / 2 ** n));
-          } else {
-            midpoint = vec3_sub(midpoint, vec3_scale(v, 1 / 2 ** n));
-          }
-        }
-        [mp_x, mp_y] = scene.v2c(scene.camera_view(midpoint));
-        if (current_point_blocked) {
-          ctx.beginPath();
-          ctx.moveTo(cp_x, cp_y);
-          this.set_behind_linked_mobjects(ctx);
-          ctx.lineTo(mp_x, mp_y);
-          ctx.stroke();
-          ctx.beginPath();
-          this.unset_behind_linked_mobjects(ctx);
-          ctx.moveTo(mp_x, mp_y);
-          ctx.lineTo(np_x, np_y);
-          ctx.stroke();
-        } else {
-          ctx.beginPath();
-          ctx.moveTo(np_x, np_y);
-          this.set_behind_linked_mobjects(ctx);
-          ctx.lineTo(mp_x, mp_y);
-          ctx.stroke();
-          ctx.beginPath();
-          this.unset_behind_linked_mobjects(ctx);
-          ctx.moveTo(mp_x, mp_y);
-          ctx.lineTo(cp_x, cp_y);
-          ctx.stroke();
-        }
-      }
-      current_point = next_point;
-      current_point_camera_view = next_point_camera_view;
-      [cp_x, cp_y] = [np_x, np_y];
-      current_point_blocked = next_point_blocked;
-    }
-  }
-  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
-  _draw_simple(ctx, scene) {
-    ctx.beginPath();
-    let in_frame = false;
-    let p;
-    let x, y;
-    for (let i = 0; i < this.points.length; i++) {
-      p = scene.camera_view(this.points[i]);
-      if (p == null) {
-        in_frame = false;
-      } else {
-        [x, y] = scene.v2c(p);
-        if (in_frame) {
-          ctx.lineTo(x, y);
-        } else {
-          ctx.moveTo(x, y);
-        }
-        in_frame = true;
-      }
-    }
-    ctx.stroke();
-  }
-};
-var TwoHeadedArrow3D = class extends Line3D {
-  constructor(start, end) {
-    super(start, end);
-    this.arrow_size = 0.3;
-    this.fill_color = this.stroke_options.stroke_color;
-  }
-  set_arrow_size(size2) {
-    this.arrow_size = size2;
-  }
-  _draw(ctx, scene) {
-    super._draw(ctx, scene);
-    ctx.fillStyle = this.fill_color;
-    let s = scene.camera_view(this.start);
-    let e = scene.camera_view(this.end);
-    if (s == null || e == null) return;
-    let [end_x, end_y] = scene.v2c(e);
-    let [start_x, start_y] = scene.v2c(s);
-    let length = vec2_norm(vec2_sub(s, e));
-    let v = vec2_scale(vec2_sub(s, e), this.arrow_size / length);
-    let [ax, ay] = scene.v2c(vec2_sum(e, vec2_rot(v, Math.PI / 6)));
-    let [bx, by] = scene.v2c(vec2_sum(e, vec2_rot(v, -Math.PI / 6)));
-    ctx.beginPath();
-    ctx.moveTo(end_x, end_y);
-    ctx.lineTo(ax, ay);
-    ctx.lineTo(bx, by);
-    ctx.lineTo(end_x, end_y);
-    ctx.closePath();
-    ctx.fill();
-    v = vec2_scale(vec2_sub(e, s), this.arrow_size / length);
-    [ax, ay] = scene.v2c(vec2_sum(s, vec2_rot(v, Math.PI / 6)));
-    [bx, by] = scene.v2c(vec2_sum(s, vec2_rot(v, -Math.PI / 6)));
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(ax, ay);
-    ctx.lineTo(bx, by);
-    ctx.lineTo(start_x, start_y);
-    ctx.closePath();
-    ctx.fill();
-  }
-};
-
-// src/lib/three_d/scene.ts
-var Camera3D = class {
-  constructor() {
-    // Position of the camera in 3D space
-    this.pos = [0, 0, 0];
-    // The 0th, 1st, and 2nd columns of the camera frame matrix are the
-    // x-direction, y-direction, and z-direction of the camera view, respectively.
-    // The inverse of the camera frame matrix is the main object that is manipulated.
-    this.camera_frame_inv = [
-      [1, 0, 0],
-      [0, 1, 0],
-      [0, 0, 1]
-    ];
-    // Determines whether retrieval of the 2D view is perspective or orthographic.
-    this.mode = "perspective";
-  }
-  // Set the camera position
-  move_to(pos) {
-    this.pos = pos;
-  }
-  // Translate the camera matrix by a given vector
-  move_by(v) {
-    this.pos = vec3_sum(this.pos, v);
-  }
-  // Get the camera frame inverse matrix
-  get_camera_frame_inv() {
-    return this.camera_frame_inv;
-  }
-  // Set the camera frame inverse matrix
-  set_camera_frame_inv(frame_inv) {
-    this.camera_frame_inv = frame_inv;
-  }
-  // Get the camera frame matrix
-  get_camera_frame() {
-    return mat_inv(this.camera_frame_inv);
-  }
-  // Converts a point to camera space
-  _to_camera_space(p) {
-    return matmul_vec(this.camera_frame_inv, vec3_sub(p, this.pos));
-  }
-  // Rotate the camera matrix around the z-axis.
-  rot_view_z(angle2) {
-    this.camera_frame_inv = matmul_mat(
-      this.camera_frame_inv,
-      rot_z_matrix(-angle2)
-    );
-  }
-  // Rotate the camera matrix around the y-axis.
-  rot_view_y(angle2) {
-    this.camera_frame_inv = matmul_mat(
-      this.camera_frame_inv,
-      rot_y_matrix(-angle2)
-    );
-  }
-  // Rotate the camera matrix around the x-axis.
-  rot_view_x(angle2) {
-    this.camera_frame_inv = matmul_mat(
-      this.camera_frame_inv,
-      rot_x_matrix(-angle2)
-    );
-  }
-  // Rotate the camera matrix around a given axis
-  rot_view(axis, angle2) {
-    this.camera_frame_inv = matmul_mat(
-      this.camera_frame_inv,
-      rot_matrix(axis, -angle2)
-    );
-  }
-  // Rotates the camera view around various axes
-  rot_pos_and_view_z(angle2) {
-    this.rot_view_z(angle2);
-    this.move_to(rot_z(this.pos, angle2));
-  }
-  rot_pos_and_view_y(angle2) {
-    this.rot_view_y(angle2);
-    this.move_to(rot_y(this.pos, angle2));
-  }
-  rot_pos_and_view_x(angle2) {
-    this.rot_view_x(angle2);
-    this.move_to(rot_x(this.pos, angle2));
-  }
-  rot_pos_and_view(axis, angle2) {
-    this.rot_view(axis, angle2);
-    this.move_to(rot(this.pos, axis, angle2));
-  }
-  // Projects a 3D point onto the camera view plane. Does not include perspective.
-  orthographic_view(p) {
-    let [vx, vy, vz] = this._to_camera_space(p);
-    return [vx, vy];
-  }
-  // Projects a 3D point onto the camera view plane, and then divides by the third coordinate.
-  // Returns null if the third coordinate is nonpositive (i.e., the point is behind the camera).
-  perspective_view(p) {
-    let [vx, vy, vz] = this._to_camera_space(p);
-    if (vz <= 0) {
-      return null;
-    } else {
-      return [vx / vz, vy / vz];
-    }
-  }
-  // Returns the depth of a point in camera space
-  depth(p) {
-    let [vx, vy, vz] = this._to_camera_space(p);
-    return vz;
-  }
-};
-var ThreeDScene = class extends Scene {
-  constructor() {
-    super(...arguments);
-    this.camera = new Camera3D();
-    this.mode = "perspective";
-  }
-  // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
-  scale() {
-    let [xmin, xmax] = this.xlims;
-    return this.canvas.width / (xmax - xmin);
-  }
-  // Modes of viewing/drawing
-  set_view_mode(mode) {
-    this.mode = mode;
-  }
-  camera_view(p) {
-    if (this.mode == "perspective") {
-      return this.camera.perspective_view(p);
-    } else {
-      return this.camera.orthographic_view(p);
-    }
-  }
-  // Converts a 2D vector in the view to world coordinates
-  v2w(v) {
-    let frame = this.camera.get_camera_frame();
-    return matmul_vec(frame, [v[0], v[1], 0]);
-  }
-  // Draw
-  draw(args) {
-    let ctx = this.canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
-      let depth_a = this.mobjects[a].depth(this);
-      let depth_b = this.mobjects[b].depth(this);
-      return depth_b - depth_a;
-    });
-    for (let name of ordered_names) {
-      let mobj = this.mobjects[name];
-      if (mobj == void 0) throw new Error(`${name} not found`);
-      if (mobj instanceof ThreeDFillLikeMObject) {
-        mobj.draw(this.canvas, this);
-      }
-    }
-    for (let name of ordered_names) {
-      let mobj = this.mobjects[name];
-      if (mobj == void 0) throw new Error(`${name} not found`);
-      if (mobj instanceof ThreeDLineLikeMObject) {
-        mobj.draw(this.canvas, this);
-      }
-    }
-    for (let name of ordered_names) {
-      let mobj = this.mobjects[name];
-      if (mobj == void 0) throw new Error(`${name} not found`);
-      if (!(mobj instanceof ThreeDFillLikeMObject) && !(mobj instanceof ThreeDLineLikeMObject)) {
-        mobj.draw(this.canvas, this);
-      }
-    }
-    ctx.strokeStyle = this.border_color;
-    ctx.lineWidth = this.border_thickness;
-    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
-  }
-};
-
-// src/lib/three_d/arcball.ts
-var Arcball = class {
-  constructor(scene) {
-    this.drag = false;
-    this.dragStart = [0, 0];
-    this.dragEnd = [0, 0];
-    this.dragDiff = [0, 0];
-    this.mode = "Translate";
-    this.scene = scene;
-  }
-  set_mode(mode) {
-    this.mode = mode;
-  }
-  switch_mode() {
-    this.mode = this.mode == "Translate" ? "Rotate" : "Translate";
-  }
-  click(event) {
-    this.dragStart = [
-      event.pageX - this.scene.canvas.offsetLeft,
-      event.pageY - this.scene.canvas.offsetTop
-    ];
-    if (!this.scene.is_dragging) {
-      this.drag = true;
-      this.scene.click();
-    }
-  }
-  touch(event) {
-    this.dragStart = [
-      event.touches[0].pageX - this.scene.canvas.offsetLeft,
-      event.touches[0].pageY - this.scene.canvas.offsetTop
-    ];
-    this.drag = true;
-  }
-  unclick(event) {
-    this.drag = false;
-    this.scene.unclick();
-  }
-  untouch(event) {
-    this.drag = false;
-  }
-  mouse_drag_cursor(event) {
-    if (this.drag) {
-      this.dragEnd = [
-        event.pageX - this.scene.canvas.offsetLeft,
-        event.pageY - this.scene.canvas.offsetTop
-      ];
-      this._drag_cursor();
-    }
-  }
-  touch_drag_cursor(event) {
-    if (this.drag) {
-      this.dragEnd = [
-        event.touches[0].pageX - this.scene.canvas.offsetLeft,
-        event.touches[0].pageY - this.scene.canvas.offsetTop
-      ];
-      this._drag_cursor();
-    }
-  }
-  // Updates the scene to account for a dragged cursor position
-  _drag_cursor() {
-    let dragDiff = vec2_sub(
-      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
-      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
-    );
-    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
-      return;
-    }
-    if (this.mode == "Translate") {
-      this.scene.camera.move_by(
-        matmul_vec(this.scene.camera.get_camera_frame(), [
-          dragDiff[0],
-          dragDiff[1],
-          0
-        ])
-      );
-    } else if (this.mode == "Rotate") {
-      let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
-      let rot_axis = matmul_vec(this.scene.camera.get_camera_frame(), [
-        v[0],
-        v[1],
-        0
-      ]);
-      let n = vec2_norm(dragDiff);
-      this.scene.camera.rot_pos_and_view(rot_axis, n);
-    }
-    this.scene.draw();
-    this.dragStart = this.dragEnd;
-  }
-  add() {
-    let self = this;
-    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
-    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
-    this.scene.canvas.addEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self)
-    );
-    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
-    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
-    this.scene.canvas.addEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self)
-    );
-  }
-  remove() {
-    let self = this;
-    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
-    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
-    this.scene.canvas.removeEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self)
-    );
-    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
-    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
-    this.scene.canvas.removeEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self)
-    );
-  }
-};
-
-// src/random_walk_scene.ts
-function pick_random_step(dim) {
-  const x = 2 * dim * Math.random();
-  let output = new Array(dim).fill(0);
-  for (let i = 0; i < dim; i++) {
-    if (x < 2 * i + 1) {
-      output[i] = 1;
-      return output;
-    } else if (x < 2 * i + 2) {
-      output[i] = -1;
-      return output;
-    }
-  }
-  throw new Error("Invalid dimension");
-}
-var HeatMapScene = class extends Scene {
-  // Target for heatmap data
-  constructor(canvas, imageData) {
+var InteractivePlayingScene = class extends Scene {
+  constructor(canvas, simulators) {
     super(canvas);
-    this.imageData = imageData;
+    // Store a known end-time in case the simulation is paused and unpaused
+    this.linked_scenes = [];
+    [this.num_simulators, this.simulators] = simulators.reduce(
+      ([ind, acc], item2) => (acc[ind] = item2, [ind + 1, acc]),
+      [0, {}]
+    );
+    this.action_queue = [];
+    this.paused = true;
+    this.time = 0;
+    this.dt = simulators[0].dt;
   }
-  _draw() {
-    Object.keys(this.mobjects).forEach((name) => {
-      let mobj = this.mobjects[name];
-      if (mobj == void 0) throw new Error(`${name} not found`);
-      if (mobj instanceof HeatMap) {
-        const ctx = this.canvas.getContext("2d");
-        if (!ctx) {
-          throw new Error("Failed to get 2D context");
-        }
-        mobj._draw(ctx, this, this.imageData);
+  // Adds another scene whose state is dependent on the simulation.
+  // This scene acts as the "controller" through which the simulation can be paused and
+  // interacted with.
+  add_linked_scene(scene) {
+    this.linked_scenes.push(scene);
+  }
+  add_pause_button(container) {
+    let self = this;
+    let pauseButton = Button(container, function() {
+      self.add_to_queue(self.toggle_pause.bind(self));
+      pauseButton.textContent = pauseButton.textContent == "Pause simulation" ? "Unpause simulation" : "Pause simulation";
+    });
+    pauseButton.textContent = this.paused ? "Unpause simulation" : "Pause simulation";
+    return pauseButton;
+  }
+  get_simulator(ind = 0) {
+    return this.simulators[ind];
+  }
+  set_simulator_attr(simulator_ind, attr_name, attr_val) {
+    this.get_simulator(simulator_ind).set_attr(attr_name, attr_val);
+  }
+  // Restarts the simulator
+  reset() {
+    for (let ind = 0; ind < this.num_simulators; ind++) {
+      this.get_simulator(ind).reset();
+    }
+    this.time = 0;
+    this.draw();
+    for (let scene of this.linked_scenes) {
+      scene.update_mobjects_from_simulator(this.get_simulator(0));
+      scene.draw();
+    }
+  }
+  // Switches from paused to unpaused and vice-versa.
+  toggle_pause() {
+    this.paused = !this.paused;
+    if (!this.paused) {
+      this.play(this.end_time);
+    }
+  }
+  // Adds to the action queue if the scene is currently playing,
+  // otherwise execute the callback immediately
+  add_to_queue(callback) {
+    if (this.paused) {
+      callback();
+    } else {
+      this.action_queue.push(callback);
+    }
+  }
+  // Starts animation
+  play(until) {
+    if (this.paused) {
+      this.end_time = until;
+      return;
+    } else {
+      if (this.action_queue.length > 0) {
+        let callback = this.action_queue.shift();
+        callback();
+      } else if (this.time > until) {
+        return;
       } else {
-        mobj.draw(this.canvas, this);
+        for (let ind = 0; ind < this.num_simulators; ind++) {
+          this.get_simulator(ind).step();
+        }
+        this.time += this.get_simulator(0).dt;
+        this.draw();
+        for (let scene of this.linked_scenes) {
+          scene.update_mobjects_from_simulator(this.get_simulator(0));
+          scene.draw();
+        }
       }
+      window.requestAnimationFrame(this.play.bind(this, until));
+    }
+  }
+  // Updates all mobjects to account for the new simulator state
+  update_mobjects() {
+  }
+  // Draws the scene.
+  _draw() {
+    this.update_mobjects();
+    Object.keys(this.mobjects).forEach((name) => {
+      let mobj = this.get_mobj(name);
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      this.draw_mobject(mobj);
     });
   }
+  // Add drawing instructions in the subclass.
+  draw_mobject(mobj) {
+  }
 };
-(async function() {
+
+// src/lib/simulator/statesim.ts
+var StateSimulator = class extends Simulator {
+  // Size of the array of values storing the state
+  constructor(state_size, dt) {
+    super(dt);
+    this.state_size = state_size;
+    this.vals = new Array(this.state_size).fill(0);
+  }
+  // Resets the simulation
+  reset() {
+    super.reset();
+    this.vals = new Array(this.state_size).fill(0);
+    this.set_boundary_conditions(this.vals, 0);
+  }
+  // Getter and setter for state.
+  get_vals() {
+    return this.vals;
+  }
+  set_vals(vals) {
+    this.vals = vals;
+  }
+  set_val(index, value) {
+    this.vals[index] = value;
+  }
+  // Time-derivative of a given state and time. Overwritten in subclasses.
+  dot(vals, time) {
+    return new Array(this.state_size).fill(0);
+  }
+  // Subroutine for adding any time-evolution calculation
+  // which does not adhere to the differential equation. Used in step().
+  set_boundary_conditions(s, t) {
+  }
+  // Advances the simulation using the differential equation with
+  // s(t + dt) = s(t) + dt * s'(t)
+  step_finite_diff() {
+    let newS = new Array(this.state_size).fill(0);
+    let dS = this.dot(this.vals, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt * dS[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt);
+    this.set_vals(newS);
+    this.time += this.dt;
+  }
+  // Advances the simulation using the differential equation with the Runge-Kutta method.
+  step_runge_kutta() {
+    let newS = new Array(this.state_size).fill(0);
+    let dS_1 = this.dot(this.vals, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt / 2 * dS_1[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt / 2);
+    let dS_2 = this.dot(newS, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt / 2 * dS_2[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt / 2);
+    let dS_3 = this.dot(newS, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt * dS_3[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt);
+    let dS_4 = this.dot(newS, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt / 6 * dS_1[i] + this.dt / 3 * dS_2[i] + this.dt / 3 * dS_3[i] + this.dt / 6 * dS_4[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt);
+    this.set_vals(newS);
+    this.time += this.dt;
+  }
+  step() {
+    return this.step_runge_kutta();
+  }
+};
+var SpringSimulator = class extends StateSimulator {
+  constructor(stiffness, dt) {
+    super(2, dt);
+    this.friction = 0;
+    this.stiffness = stiffness;
+  }
+  set_stiffness(stiffness) {
+    this.stiffness = stiffness;
+  }
+  set_friction(friction) {
+    this.friction = friction;
+  }
+  // Time-derivative of a given state and time. Overwritten in subclasses.
+  dot(vals, time) {
+    return [
+      vals[1],
+      -this.stiffness * vals[0] - this.friction * vals[1]
+    ];
+  }
+};
+
+// src/springs_scene.ts
+(function() {
   document.addEventListener("DOMContentLoaded", async function() {
-    (async function two_dim_random_walk_basic(width, height, num_points, delay_time = 25, trail_length = 10) {
-      let canvas = prepare_canvas(width, height, "2d-random-walk");
-      let scene = new Scene(canvas);
-      let [xmin, xmax] = [-20, 20];
-      let [ymin, ymax] = [-20, 20];
+    (function foo(width, height) {
+      let canvas = prepare_canvas(width, height, "two-springs-circle");
+      let xmin = -2.5;
+      let xmax = 2.5;
+      let ymin = -2.5;
+      let ymax = 2.5;
+      class TwoSpringsCircleScene extends InteractivePlayingScene {
+        set_init_values() {
+          this.get_simulator(0).set_vals([1, 0]);
+          this.get_simulator(1).set_vals([0, 1]);
+        }
+        constructor(canvas2) {
+          super(canvas2, [
+            new SpringSimulator(1, 0.02),
+            new SpringSimulator(1, 0.02)
+          ]);
+          this.set_init_values();
+          let x_axis = new Line([xmin, 0], [xmax, 0]).set_stroke_width(0.02).set_alpha(0.5);
+          let y_axis = new Line([0, ymin], [0, ymax]).set_stroke_width(0.02).set_alpha(0.5);
+          this.add("x-axis", x_axis);
+          this.add("y-axis", y_axis);
+          let trajectory = new ParametricFunction(
+            (t) => [Math.cos(t), Math.sin(t)],
+            0,
+            2 * Math.PI + 0.01,
+            30
+          ).set_stroke_width(0.05).set_stroke_color("gray");
+          this.add("trajectory", trajectory);
+          let dot3 = new Rectangle([0, 0], 0.1, 0.1);
+          this.add("dot", dot3);
+          let mass_0 = new Rectangle([0, 0], 0.1, 0.1);
+          this.add("mass_0", mass_0);
+          let spring_0 = new LineSpring([-2, 0], [0, 0]);
+          spring_0.set_mode("spring");
+          this.add("spring_0", spring_0);
+          this.add("b_0", new Rectangle([-2, 0], 0.1, 2));
+          let mass_1 = new Rectangle([0, 0], 0.1, 0.1);
+          this.add("mass_1", mass_1);
+          let spring_1 = new LineSpring([0, -2], [0, 0]);
+          spring_1.set_mode("spring");
+          this.add("spring_1", spring_1);
+          this.add("b_1", new Rectangle([0, -2], 2, 0.1));
+        }
+        update_mobjects() {
+          let dot3 = this.get_mobj("dot");
+          dot3.move_to([
+            this.get_simulator(0).get_vals()[0],
+            this.get_simulator(1).get_vals()[0]
+          ]);
+          let mass_0 = this.get_mobj("mass_0");
+          mass_0.move_to([this.get_simulator(0).get_vals()[0], 0]);
+          let spring_0 = this.get_mobj("spring_0");
+          spring_0.set_mode("spring");
+          spring_0.move_end([this.get_simulator(0).get_vals()[0], 0]);
+          let mass_1 = this.get_mobj("mass_1");
+          mass_1.move_to([0, this.get_simulator(1).get_vals()[0]]);
+          let spring_1 = this.get_mobj("spring_1");
+          spring_1.set_mode("spring");
+          spring_1.move_end([0, this.get_simulator(1).get_vals()[0]]);
+        }
+        draw_mobject(mobj) {
+          mobj.draw(this.canvasWrapper, this);
+        }
+      }
+      let scene = new TwoSpringsCircleScene(canvas);
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      let tick_size = 0.1;
-      let x_axis = new TwoHeadedArrow([xmin, 0], [xmax, 0]);
-      x_axis.set_stroke_width(0.02);
-      scene.add("x-axis", x_axis);
-      scene.add(
-        `x-tick-(${0})`,
-        new Line([0, -2 * tick_size], [0, 2 * tick_size]).set_stroke_width(
-          0.04
-        )
-      );
-      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
-        if (x == 0) {
-          continue;
-        }
-        scene.add(
-          `x-tick-(${x})`,
-          new Line([x, -tick_size], [x, tick_size]).set_stroke_width(0.02)
-        );
-        let xline = new Line([x, ymin], [x, ymax]).set_stroke_width(0.01);
-        xline.set_alpha(0.3);
-        scene.add(`x-line-(${x})`, xline);
-      }
-      scene.add(
-        "y-axis",
-        new TwoHeadedArrow([0, ymin], [0, ymax]).set_stroke_width(0.02)
-      );
-      for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
-        if (y == 0) {
-          continue;
-        }
-        scene.add(
-          `y-tick-(${y})`,
-          new Line([-tick_size, y], [tick_size, y]).set_stroke_width(0.02)
-        );
-        let yline = new Line([xmin, y], [xmax, y]).set_stroke_width(0.01);
-        yline.set_alpha(0.3);
-        scene.add(`y-line-(${y})`, yline);
-      }
       scene.draw();
-      let playing = false;
       let pauseButton = Button(
-        document.getElementById("2d-random-walk-pause-button"),
+        document.getElementById(
+          "two-springs-circle-pause-button"
+        ),
         function() {
-          playing = !playing;
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
           if (pauseButton.textContent == "Pause simulation") {
             pauseButton.textContent = "Unpause simulation";
           } else if (pauseButton.textContent == "Unpause simulation") {
@@ -13010,343 +11897,194 @@ var HeatMapScene = class extends Scene {
       );
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
-      async function do_simulation() {
-        let points = [];
-        for (let i = 0; i < num_points; i++) {
-          points.push([0, 0]);
-        }
-        let x, y;
-        let dx, dy;
-        let p;
-        let line;
-        for (let i = 0; i < num_points; i++) {
-          let [x2, y2] = points[i];
-          let line2 = new LineSequence([[x2, y2]]);
-          line2.set_stroke_color("red");
-          line2.set_alpha(0.3);
-          line2.set_stroke_width(0.1);
-          scene.add(`line${i}`, line2);
-        }
-        for (let i = 0; i < num_points; i++) {
-          let [x2, y2] = points[i];
-          let p2 = new Dot([x2, y2], 0.3);
-          p2.set_color("blue");
-          scene.add(`point${i}`, p2);
-        }
-        let step_number = 0;
-        while (true) {
-          if (playing) {
-            scene.draw();
-            let done = step_number > 0;
-            for (let i = 0; i < num_points; i++) {
-              let [x2, y2] = points[i];
-              if (!(x2 == 0 && y2 == 0 && step_number > 0)) {
-                done = false;
-                [dx, dy] = pick_random_step(2);
-                [x2, y2] = [x2 + dx, y2 + dy];
-                points[i] = [x2, y2];
-                let line2 = scene.get_mobj(`line${i}`);
-                line2.add_point([x2, y2]);
-                if (line2.points.length > trail_length) {
-                  line2.remove_point(0);
-                }
-                let p2 = scene.get_mobj(`point${i}`);
-                p2.move_to([x2, y2]);
-                if (x2 == 0 && y2 == 0) {
-                  scene.remove(`point${i}`);
-                  scene.remove(`line${i}`);
-                }
-              }
-            }
-            step_number += 1;
-            if (done) {
-              await delay(1e3);
-              return true;
-            }
-          }
-          await delay(delay_time);
-        }
-      }
-      while (true) {
-        await do_simulation();
-      }
-    })(300, 300, 50);
-    (async function one_dim_random_walk_basic(width, height) {
-      let canvas = prepare_canvas(width, height, "1d-random-walk");
-      let scene = new Scene(canvas);
-      let [xmin, xmax] = [-10, 10];
-      let [ymin, ymax] = [-10, 10];
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      let tick_size = 0.2;
-      scene.add(
-        "x-axis",
-        new TwoHeadedArrow([xmin, 0], [xmax, 0]).set_stroke_width(0.02)
-      );
-      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
-        if (x == 0) {
-          continue;
-        }
-        scene.add(
-          `x-tick-(${x})`,
-          new Line([x, -tick_size], [x, tick_size]).set_stroke_width(0.02)
-        );
-      }
-      scene.draw();
-      let playing = false;
-      let pauseButton = Button(
-        document.getElementById("1d-random-walk-pause-button"),
-        function() {
-          playing = !playing;
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
-      );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
-      const max_path_length = 10;
-      async function do_simulation() {
-        let x = 0;
-        let dx;
-        let p = new Dot([x, 0], 0.3);
-        p.set_color("blue");
-        scene.add("point", p);
-        let line = new LineSequence([[x, 0]]);
-        line.set_stroke_color("red");
-        line.set_alpha(1);
-        line.set_stroke_width(0.1);
-        scene.add("line", line);
-        while (true) {
-          if (playing) {
-            [dx] = pick_random_step(1);
-            x += dx;
-            line = scene.get_mobj("line");
-            line.add_point([x, 0]);
-            if (line.points.length > max_path_length) {
-              line.remove_point(0);
-            }
-            p = scene.get_mobj("point");
-            p.move_to([x, 0]);
-            scene.draw();
-            if (x == 0) {
-              await delay(500);
-              scene.remove("line");
-              scene.remove("dot");
-              return true;
-            }
-          }
-          await delay(20);
-        }
-      }
-      while (true) {
-        await do_simulation();
-      }
+      scene.play(void 0);
     })(300, 300);
-    (async function three_dim_random_walk_basic(width, height, num_points, delay_time = 25, trail_length = 10) {
-      const name = "3d-random-walk";
-      let canvas = prepare_canvas(width, height, name);
-      let [xmin, xmax] = [-30, 30];
-      let [ymin, ymax] = [-30, 30];
-      let [zmin, zmax] = [-30, 30];
-      let zoom_ratio = 1;
-      let scene = new ThreeDScene(canvas);
+    (function point_mass_spring(width, height) {
+      let canvas_spring = prepare_canvas(width, height, "point-mass-spring");
+      let canvas_graph = prepare_canvas(width, height, "point-mass-graph");
+      let xmin = -4;
+      let xmax = 4;
+      let tmin = 0;
+      let tmax = 15;
+      let ymin = -4;
+      let ymax = 4;
+      let scene_graph = new Scene(canvas_graph);
+      scene_graph.set_frame_lims([tmin, tmax], [xmin, xmax]);
+      scene_graph.add(
+        "t-axis",
+        new Line([tmin, 0], [tmax, 0]).set_stroke_width(0.05).set_stroke_color("gray")
+      );
+      let tick_size = 0.2;
+      for (let i = 1; i <= tmax; i++) {
+        scene_graph.add(
+          `t-axis-${i}`,
+          new Line([i, -tick_size / 2], [i, tick_size / 2]).set_stroke_width(0.05).set_stroke_color("gray")
+        );
+      }
+      for (let i = -4; i <= 4; i++) {
+        scene_graph.add(
+          `y-axis-${i}`,
+          new Line([0, i], [tick_size, i]).set_stroke_width(0.05).set_stroke_color("gray")
+        );
+      }
+      class SpringSim extends SpringSimulator {
+        constructor(stiffness, dt) {
+          super(stiffness, dt);
+          this.step_counter = 0;
+          scene_graph.add(
+            "graph",
+            new LineSequence([
+              [this.time, this.get_vals()[0]]
+            ]).set_stroke_width(0.05)
+          );
+          scene_graph.draw();
+        }
+        step() {
+          super.step();
+          this.step_counter++;
+          if (this.step_counter % 5 === 0 && this.time < scene_graph.xlims[1]) {
+            scene_graph.get_mobj("graph").add_point([
+              this.time,
+              this.get_vals()[0]
+            ]);
+            scene_graph.draw();
+          }
+        }
+      }
+      class SpringScene extends InteractivePlayingScene {
+        constructor(canvas) {
+          super(canvas, [new SpringSim(3, 0.01)]);
+          this.arrow_length_scale = 1.5;
+          this.arrow_height = 0;
+          let eq_line = new Line([0, -5], [0, 5]).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
+          let spring = new LineSpring([-3, 0], [0, 0]).set_stroke_width(0.08);
+          spring.set_eq_length(3);
+          let anchor = new Rectangle([-3, 0], 0.15, 4);
+          let mass = new DraggableRectangleX([0, 0], 0.6, 0.6);
+          mass.add_callback(() => {
+            let sim2 = this.get_simulator();
+            sim2.set_vals([mass.get_center()[0], 0]);
+          });
+          let force_arrow = new Arrow(
+            [0, this.arrow_height],
+            [0, this.arrow_height]
+          ).set_stroke_width(0.1).set_stroke_color("red");
+          this.add("eq_line", eq_line);
+          this.add("spring", spring);
+          this.add("anchor", anchor);
+          this.add("mass", mass);
+          this.add("force_arrow", force_arrow);
+        }
+        set_spring_mode(mode) {
+          let spring = this.get_mobj("spring");
+          spring.set_mode(mode);
+        }
+        set_spring_stiffness(val) {
+          this.set_simulator_attr(0, "stiffness", val);
+          this.arrow_length_scale = val / 3;
+          scene.draw();
+        }
+        set_friction(val) {
+          this.set_simulator_attr(0, "friction", val);
+        }
+        toggle_pause() {
+          if (this.paused) {
+            let mass = this.get_mobj("mass");
+            this.remove("mass");
+            this.add("mass", mass.toRectangle());
+          } else {
+            let mass = this.get_mobj("mass");
+            this.remove("mass");
+            let new_mass = mass.toDraggableRectangleX();
+            new_mass.add_callback(() => {
+              let sim2 = this.get_simulator();
+              sim2.set_vals([new_mass.get_center()[0], 0]);
+            });
+            this.add("mass", new_mass);
+          }
+          super.toggle_pause();
+        }
+        // Updates all mobjects to account for the new simulator state
+        update_mobjects() {
+          let [u, v] = this.get_simulator(0).get_vals();
+          let mass = this.get_mobj("mass");
+          mass.move_to([u, 0]);
+          let spring = this.get_mobj("spring");
+          spring.move_end([u, 0]);
+          let force_arrow = this.get_mobj("force_arrow");
+          force_arrow.move_start([u, this.arrow_height]);
+          force_arrow.move_end([
+            u * (1 - this.arrow_length_scale),
+            this.arrow_height
+          ]);
+          force_arrow.set_arrow_size(Math.min(0.5, Math.sqrt(Math.abs(u)) / 2));
+        }
+        // Enforce strict order on drawing mobjects, overriding subclass behavior
+        _draw() {
+          this.update_mobjects();
+          this.draw_mobject(this.get_mobj("eq_line"));
+          this.draw_mobject(this.get_mobj("anchor"));
+          this.draw_mobject(this.get_mobj("spring"));
+          this.draw_mobject(this.get_mobj("mass"));
+          this.draw_mobject(this.get_mobj("force_arrow"));
+        }
+        draw_mobject(mobj) {
+          mobj.draw(this.canvasWrapper, this);
+        }
+      }
+      let scene = new SpringScene(canvas_spring);
+      scene.set_spring_stiffness(5);
+      scene.set_simulator_attr(0, "dt", 0.01);
+      scene.set_simulator_attr(0, "damping", 0);
+      scene.set_spring_mode("spring");
+      let sim = scene.get_simulator();
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      scene.set_zoom(zoom_ratio);
-      scene.set_view_mode("orthographic");
-      scene.camera.move_to([0, 0, -8]);
-      scene.camera.rot_pos_and_view_z(Math.PI / 4);
-      scene.camera.rot_pos_and_view(
-        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
-        Math.PI / 3
-      );
-      let tick_size = 0.1;
-      scene.add("x-axis", new TwoHeadedArrow3D([xmin, 0, 0], [xmax, 0, 0]));
-      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
-        if (x == 0) {
-          continue;
-        }
-        scene.add(
-          `x-tick-(${x})`,
-          new Line3D([x, 0, -tick_size], [x, 0, tick_size])
-        );
-      }
-      scene.add("y-axis", new TwoHeadedArrow3D([0, ymin, 0], [0, ymax, 0]));
-      for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
-        if (y == 0) {
-          continue;
-        }
-        scene.add(
-          `y-tick-(${y})`,
-          new Line3D([-tick_size, y, 0], [tick_size, y, 0])
-        );
-      }
-      scene.add("z-axis", new TwoHeadedArrow3D([0, 0, zmin], [0, 0, zmax]));
-      for (let z = Math.floor(zmin) + 1; z <= Math.ceil(zmax) - 1; z++) {
-        if (z == 0) {
-          continue;
-        }
-        scene.add(
-          `z-tick-(${z})`,
-          new Line3D([0, -tick_size, z], [0, tick_size, z])
-        );
-      }
-      scene.draw();
-      let arcball = new Arcball(scene);
-      arcball.set_mode("Translate");
-      arcball.add();
-      let playing = false;
-      let pauseButton = Button(
-        document.getElementById(name + "-pause-button"),
-        function() {
-          playing = !playing;
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
-      );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
-      async function do_simulation() {
-        let points = [];
-        for (let i = 0; i < num_points; i++) {
-          points.push([0, 0, 0]);
-        }
-        let x, y, z;
-        let dx, dy, dz;
-        let p;
-        let line;
-        for (let i = 0; i < num_points; i++) {
-          let [x2, y2, z2] = points[i];
-          let line2 = new LineSequence3D([[x2, y2, z2]]);
-          line2.set_stroke_color("red");
-          line2.set_alpha(0.3);
-          line2.set_stroke_width(0.1);
-          scene.add(`line${i}`, line2);
-        }
-        for (let i = 0; i < num_points; i++) {
-          let [x2, y2, z2] = points[i];
-          let p2 = new Dot3D([x2, y2, z2], 0.3);
-          p2.set_color("blue");
-          scene.add(`point${i}`, p2);
-        }
-        let step_number = 0;
-        while (true) {
-          if (playing) {
-            scene.draw();
-            let done = step_number > 0;
-            for (let i = 0; i < num_points; i++) {
-              let [x2, y2, z2] = points[i];
-              if (!(x2 == 0 && y2 == 0 && z2 == 0 && step_number > 0)) {
-                done = false;
-                [dx, dy, dz] = pick_random_step(3);
-                [x2, y2, z2] = [x2 + dx, y2 + dy, z2 + dz];
-                points[i] = [x2, y2, z2];
-                let line2 = scene.get_mobj(`line${i}`);
-                line2.add_point([x2, y2, z2]);
-                if (line2.points.length > trail_length) {
-                  line2.remove_point(0);
-                }
-                let p2 = scene.get_mobj(`point${i}`);
-                p2.move_to([x2, y2, z2]);
-                if (x2 == 0 && y2 == 0 && z2 == 0) {
-                  scene.remove(`point${i}`);
-                  scene.remove(`line${i}`);
-                }
-              }
-            }
-            step_number += 1;
-            scene.camera.rot_pos_and_view_z(Math.PI / 1e3);
-            if (done) {
-              await delay(1e3);
-              return true;
-            }
-          }
-          await delay(delay_time);
-        }
-      }
-      while (true) {
-        await do_simulation();
-      }
-    })(300, 300, 50);
-    (async function graph_random_walk(num_walks, num_steps) {
-      let canvas1 = prepare_canvas(250, 250, "histogram-dim-one");
-      let canvas2 = prepare_canvas(250, 250, "histogram-dim-two");
-      let canvas3 = prepare_canvas(250, 250, "histogram-dim-three");
-      let canvas4 = prepare_canvas(250, 250, "histogram-dim-four");
-      let scene1 = new Scene(canvas1);
-      let histogram1 = new Histogram();
-      histogram1.set_count_limits(0, num_walks);
-      histogram1.set_bin_limits(0, 100);
-      scene1.add("histogram", histogram1);
-      let scene2 = new Scene(canvas2);
-      let histogram2 = new Histogram();
-      histogram2.set_count_limits(0, num_walks);
-      histogram2.set_bin_limits(0, 100);
-      scene2.add("histogram", histogram2);
-      let scene3 = new Scene(canvas3);
-      let histogram3 = new Histogram();
-      histogram3.set_count_limits(0, num_walks);
-      histogram3.set_bin_limits(0, 100);
-      scene3.add("histogram", histogram3);
-      let scene4 = new Scene(canvas4);
-      let histogram4 = new Histogram();
-      histogram4.set_count_limits(0, num_walks);
-      histogram4.set_bin_limits(0, 100);
-      scene4.add("histogram", histogram4);
-      let step = 0;
-      let points1 = [];
-      let points2 = [];
-      let points3 = [];
-      let points4 = [];
-      let hist_data1 = {};
-      let hist_data2 = {};
-      let hist_data3 = {};
-      let hist_data4 = {};
+      sim.set_vals([1, 0]);
       function reset_simulation() {
-        points1 = [];
-        for (let i = 0; i < num_walks; i++) {
-          points1.push([0]);
-        }
-        points2 = [];
-        for (let i = 0; i < num_walks; i++) {
-          points2.push([0, 0]);
-        }
-        points3 = [];
-        for (let i = 0; i < num_walks; i++) {
-          points3.push([0, 0, 0]);
-        }
-        points4 = [];
-        for (let i = 0; i < num_walks; i++) {
-          points4.push([0, 0, 0, 0]);
-        }
-        hist_data1 = {};
-        hist_data2 = {};
-        hist_data3 = {};
-        hist_data4 = {};
-        step = 0;
-        scene1.get_mobj("histogram").set_hist(hist_data1);
-        scene2.get_mobj("histogram").set_hist(hist_data2);
-        scene3.get_mobj("histogram").set_hist(hist_data3);
-        scene4.get_mobj("histogram").set_hist(hist_data4);
-        scene1.draw();
-        scene2.draw();
-        scene3.draw();
-        scene4.draw();
+        sim.time = 0;
+        sim.set_vals([1, 0]);
+        scene_graph.remove("graph");
+        scene_graph.add(
+          "graph",
+          new LineSequence([[sim.time, sim.get_vals()[0]]]).set_stroke_width(
+            0.05
+          )
+        );
+        scene_graph.draw();
+        scene.draw();
       }
-      reset_simulation();
-      let playing = false;
+      let w_slider = Slider(
+        document.getElementById("point-mass-stiffness-slider"),
+        function(val) {
+          scene.add_to_queue(scene.set_spring_stiffness.bind(scene, val));
+        },
+        {
+          name: "Spring stiffness",
+          initial_value: "3.0",
+          min: 0,
+          max: 20,
+          step: 0.01
+        }
+      );
+      let f_slider = Slider(
+        document.getElementById("point-mass-damping-slider"),
+        function(val) {
+          scene.add_to_queue(scene.set_friction.bind(scene, val));
+        },
+        {
+          name: "Friction",
+          initial_value: "0.0",
+          min: 0,
+          max: 5,
+          step: 0.01
+        }
+      );
       let pauseButton = Button(
-        document.getElementById("random-walk-pause-button"),
+        document.getElementById(
+          "point-mass-spring-pause-button"
+        ),
         function() {
-          playing = !playing;
+          scene.add_to_queue(scene.toggle_pause.bind(scene));
           if (pauseButton.textContent == "Pause simulation") {
             pauseButton.textContent = "Unpause simulation";
           } else if (pauseButton.textContent == "Unpause simulation") {
@@ -13358,353 +12096,18 @@ var HeatMapScene = class extends Scene {
       );
       pauseButton.textContent = "Unpause simulation";
       pauseButton.style.padding = "15px";
-      let reset = false;
       let resetButton = Button(
-        document.getElementById("random-walk-reset-button"),
+        document.getElementById(
+          "point-mass-spring-reset-button"
+        ),
         function() {
-          reset = true;
+          scene.add_to_queue(reset_simulation);
         }
       );
       resetButton.textContent = "Reset simulation";
       resetButton.style.padding = "15px";
-      let displayButton = Button(
-        document.getElementById("random-walk-display-button"),
-        function() {
-        }
-      );
-      displayButton.textContent = "Simulation time: 0";
-      displayButton.style.padding = "15px";
-      let counterButton1 = Button(
-        document.getElementById("random-walk-count-button-1"),
-        function() {
-        }
-      );
-      counterButton1.textContent = "Fraction returned to origin: 0";
-      counterButton1.style.padding = "15px";
-      let counterButton2 = Button(
-        document.getElementById("random-walk-count-button-2"),
-        function() {
-        }
-      );
-      counterButton2.textContent = "Fraction returned to origin: 0";
-      counterButton2.style.padding = "15px";
-      let counterButton3 = Button(
-        document.getElementById("random-walk-count-button-3"),
-        function() {
-        }
-      );
-      counterButton3.textContent = "Fraction returned to origin: 0";
-      counterButton3.style.padding = "15px";
-      let counterButton4 = Button(
-        document.getElementById("random-walk-count-button-4"),
-        function() {
-        }
-      );
-      counterButton4.textContent = "Fraction returned to origin: 0";
-      counterButton4.style.padding = "15px";
-      let x, y, z, w;
-      let dx, dy, dz, dw;
-      let dist;
-      while (step < num_steps) {
-        if (reset) {
-          reset_simulation();
-          reset = false;
-        } else if (playing) {
-          hist_data1 = { 0: num_walks };
-          hist_data2 = { 0: num_walks };
-          hist_data3 = { 0: num_walks };
-          hist_data4 = { 0: num_walks };
-          for (let i = 0; i < num_walks; i++) {
-            [x] = points1[i];
-            if (x == 0 && step > 0) {
-              continue;
-            } else {
-              [dx] = pick_random_step(1);
-              points1[i] = [x + dx];
-              dist = Math.abs(x + dx);
-              hist_data1[dist] = hist_data1[dist] ? hist_data1[dist] + 1 : 1;
-              hist_data1[0] = hist_data1[0] - 1;
-            }
-          }
-          for (let i = 0; i < num_walks; i++) {
-            [x, y] = points2[i];
-            if (x == 0 && y == 0 && step > 0) {
-              continue;
-            } else {
-              [dx, dy] = pick_random_step(2);
-              points2[i] = [x + dx, y + dy];
-              dist = Math.abs(x + dx) + Math.abs(y + dy);
-              hist_data2[dist] = hist_data2[dist] ? hist_data2[dist] + 1 : 1;
-              hist_data2[0] = hist_data2[0] - 1;
-            }
-          }
-          for (let i = 0; i < num_walks; i++) {
-            [x, y, z] = points3[i];
-            if (x == 0 && y == 0 && z == 0 && step > 0) {
-              continue;
-            } else {
-              [dx, dy, dz] = pick_random_step(3);
-              points3[i] = [x + dx, y + dy, z + dz];
-              dist = Math.abs(x + dx) + Math.abs(y + dy) + Math.abs(z + dz);
-              hist_data3[dist] = hist_data3[dist] ? hist_data3[dist] + 1 : 1;
-              hist_data3[0] = hist_data3[0] - 1;
-            }
-          }
-          for (let i = 0; i < num_walks; i++) {
-            [x, y, z, w] = points4[i];
-            if (x == 0 && y == 0 && z == 0 && w == 0 && step > 0) {
-              continue;
-            } else {
-              [dx, dy, dz, dw] = pick_random_step(4);
-              points4[i] = [x + dx, y + dy, z + dz, w + dw];
-              dist = Math.abs(x + dx) + Math.abs(y + dy) + Math.abs(z + dz) + Math.abs(w + dw);
-              hist_data4[dist] = hist_data4[dist] ? hist_data4[dist] + 1 : 1;
-              hist_data4[0] = hist_data4[0] - 1;
-            }
-          }
-          counterButton1.textContent = `Fraction with distance 0: ${hist_data1[0] / num_walks}`;
-          counterButton2.textContent = `Fraction with distance 0: ${hist_data2[0] / num_walks}`;
-          counterButton3.textContent = `Fraction with distance 0: ${hist_data3[0] / num_walks}`;
-          counterButton4.textContent = `Fraction with distance 0: ${hist_data4[0] / num_walks}`;
-          if (step % 2 === 0) {
-            scene1.get_mobj("histogram").set_hist(hist_data1);
-            scene2.get_mobj("histogram").set_hist(hist_data2);
-            scene3.get_mobj("histogram").set_hist(hist_data3);
-            scene4.get_mobj("histogram").set_hist(hist_data4);
-            scene1.draw();
-            scene2.draw();
-            scene3.draw();
-            scene4.draw();
-          }
-          step += 1;
-        }
-        displayButton.textContent = `Simulation time: ${step}`;
-        await delay(0.1);
-      }
-    })(1e4, Infinity);
-    async function convolution_visualization(width, height, subpath_lengths) {
-      const scene_name = "convolution-visualization";
-      let canvas = prepare_canvas(
-        width,
-        height,
-        scene_name + `-${subpath_lengths.length}`
-      );
-      let scene = new Scene(canvas);
-      let type_b_lengths = subpath_lengths;
-      let colors = ["red", "green", "blue", "orange"];
-      let total_length = type_b_lengths.reduce((acc, val) => acc + val, 0);
-      scene.set_frame_lims(
-        [-1, 2 * total_length],
-        [-total_length, total_length]
-      );
-      let t_axis = new Arrow([-1, 0], [2 * total_length, 0]).set_stroke_width(
-        0.04
-      );
-      scene.add("t-axis", t_axis);
-      let x_axis = new TwoHeadedArrow(
-        [0, -total_length],
-        [0, total_length]
-      ).set_stroke_width(0.04);
-      scene.add("x-axis", x_axis);
-      function gen_type_a(n) {
-        let seq = [];
-        for (let i = 0; i < 2 * n; i++) {
-          seq.push(1);
-        }
-        let k = n;
-        while (k > 0) {
-          let i = Math.floor(Math.random() * 2 * n);
-          if (seq[i] == 1) {
-            seq[i] = -1;
-            k -= 1;
-          }
-        }
-        return seq;
-      }
-      function gen_type_b(n) {
-        if (n == 1) {
-          return [1, -1];
-        }
-        let seq = gen_type_a(n - 1);
-        let type_b_seqs = [];
-        let subseq = [];
-        let sum = 0;
-        for (let i = 0; i < 2 * n - 2; i++) {
-          subseq.push(seq[i]);
-          sum += seq[i];
-          if (sum == 0) {
-            type_b_seqs.push(subseq);
-            subseq = [];
-            sum = 0;
-          }
-        }
-        for (let i = 0; i < type_b_seqs.length; i++) {
-          if (type_b_seqs[i][0] == -1) {
-            type_b_seqs[i] = type_b_seqs[i].map((x) => -x);
-          }
-        }
-        let result = [1];
-        result = result.concat(
-          type_b_seqs.reduce((acc, curr) => acc.concat(curr), [])
-        );
-        result.push(-1);
-        return result;
-      }
-      while (true) {
-        let current_point = [0, 0];
-        let length;
-        for (let j = 0; j < type_b_lengths.length; j++) {
-          length = type_b_lengths[j];
-          let type_b_path = gen_type_b(length);
-          if (Math.random() < 0.5) {
-            type_b_path = type_b_path.map((x) => -x);
-          }
-          let line = new LineSequence([[current_point[0], current_point[1]]]).set_stroke_color(colors[j % colors.length]).set_stroke_width(0.1);
-          for (let i = 0; i < type_b_path.length; i++) {
-            current_point[0] += 1;
-            current_point[1] += type_b_path[i];
-            line.add_point([current_point[0], current_point[1]]);
-          }
-          scene.add(`type-b-path-${j}`, line);
-        }
-        scene.draw();
-        await delay(1e3);
-        for (let j = 0; j < type_b_lengths.length; j++) {
-          scene.remove(`type-b-path-${j}`);
-        }
-      }
-    }
-    convolution_visualization(250, 250, [20]);
-    convolution_visualization(250, 250, [8, 12]);
-    convolution_visualization(250, 250, [4, 9, 7]);
-    convolution_visualization(250, 250, [5, 3, 8, 4]);
-    (function one_dim_integral_graph(width, height) {
-      const name = "1d-function-graph";
-      const canvas = prepare_canvas(width, height, name);
-      const scene = new Scene(canvas);
-      let xmin = -Math.PI;
-      let xmax = Math.PI;
-      let ymin = -0.2;
-      let ymax = 10;
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      let tick_size = 0.1;
-      let x_axis = new TwoHeadedArrow([xmin - 1, 0], [xmax + 1, 0]);
-      x_axis.set_stroke_width(0.02);
-      scene.add("x-axis", x_axis);
-      scene.add(
-        `x-tick-(${0})`,
-        new Line([0, -2 * tick_size], [0, 2 * tick_size]).set_stroke_width(
-          0.04
-        )
-      );
-      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
-        if (x == 0) {
-          continue;
-        }
-        scene.add(
-          `x-tick-(${x})`,
-          new Line([x, -tick_size], [x, tick_size]).set_stroke_width(0.02)
-        );
-        let xline = new Line([x, ymin], [x, ymax]).set_stroke_width(0.01);
-        xline.set_alpha(0.3);
-        scene.add(`x-line-(${x})`, xline);
-      }
-      scene.add(
-        "y-axis",
-        new TwoHeadedArrow([0, ymin - 1], [0, ymax + 1]).set_stroke_width(0.02)
-      );
-      for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
-        if (y == 0) {
-          continue;
-        }
-        scene.add(
-          `y-tick-(${y})`,
-          new Line([-tick_size, y], [tick_size, y]).set_stroke_width(0.02)
-        );
-        let yline = new Line([xmin, y], [xmax, y]).set_stroke_width(0.01);
-        yline.set_alpha(0.3);
-        scene.add(`y-line-(${y})`, yline);
-      }
       scene.draw();
-      const graph_1 = new ParametricFunction(
-        (t) => {
-          return [t, 1 / (1 - Math.cos(t))];
-        },
-        -Math.PI,
-        -0.05,
-        100
-      ).set_stroke_width(0.03);
-      graph_1.set_mode("jagged");
-      const graph_2 = new ParametricFunction(
-        (t) => {
-          return [t, 1 / (1 - Math.cos(t))];
-        },
-        0.05,
-        Math.PI,
-        100
-      ).set_stroke_width(0.03);
-      graph_1.set_mode("jagged");
-      scene.add("graph_1", graph_1);
-      scene.add("graph_2", graph_2);
-      scene.draw();
-    })(300, 300);
-    (function two_dim_integral_graph(width, height) {
-      const name = "2d-function-heatmap";
-      const canvas = prepare_canvas(width, height, name);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Failed to get 2D context");
-      }
-      const imageData = ctx.createImageData(width, height);
-      const scene = new HeatMapScene(canvas, imageData);
-      let xmin = -Math.PI;
-      let xmax = Math.PI;
-      let ymin = -Math.PI;
-      let ymax = Math.PI;
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      let valArray = Array.from(
-        { length: width },
-        (_, x) => Array.from({ length: height }, (_2, y) => {
-          const xVal = xmin + (xmax - xmin) * x / width;
-          const yVal = ymin + (ymax - ymin) * y / height;
-          if (xVal == 0 && yVal == 0) {
-            return 100;
-          } else {
-            return Math.log(1 / (1 - (Math.cos(xVal) + Math.cos(yVal)) / 2));
-          }
-        })
-      );
-      let heatmap = new HeatMap(width, height, 0, 1e4, valArray.flat());
-      scene.add("heatmap", heatmap);
-      let x_axis = new TwoHeadedArrow([xmin - 0.5, 0], [xmax + 0.5, 0]);
-      x_axis.set_stroke_width(0.02);
-      scene.add("x-axis", x_axis);
-      for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
-        if (x == 0) {
-          continue;
-        }
-        let xline = new Line([x, ymin], [x, ymax]).set_stroke_width(0.01);
-        xline.set_alpha(0.3);
-        scene.add(`x-line-(${x})`, xline);
-      }
-      scene.add(
-        "y-axis",
-        new TwoHeadedArrow([0, ymin - 0.5], [0, ymax + 0.5]).set_stroke_width(
-          0.02
-        )
-      );
-      for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
-        if (y == 0) {
-          continue;
-        }
-        let yline = new Line([xmin, y], [xmax, y]).set_stroke_width(0.01);
-        yline.set_alpha(0.3);
-        scene.add(`y-line-(${y})`, yline);
-      }
-      scene.draw();
+      scene.play(void 0);
     })(300, 300);
   });
 })();
-export {
-  pick_random_step
-};

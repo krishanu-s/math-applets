@@ -1,10 +1,10 @@
-import { MObject, Scene } from "./base.js";
+import { MObject, Scene } from "./base/base.js";
 import {
   ColorMap,
   TwoDimColorMap,
   rb_colormap,
   spherical_colormap,
-} from "./color.js";
+} from "./base/color.js";
 
 // A pixel heatmap. Values are assumed to be in (-inf, inf) and are
 // mapped to colors according

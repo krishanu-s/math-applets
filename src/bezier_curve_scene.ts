@@ -1,6 +1,7 @@
 import * as np from "numpy-ts";
-import { Scene } from "./lib/base.js";
-import { Dot, Vec2D } from "./lib/base_geom.js";
+import { Scene } from "./lib/base/base.js";
+import { Dot } from "./lib/base/geometry";
+import { Vec2D } from "./lib/base/vec2";
 import {
   SmoothClosedPathBezierHandleCalculator,
   BezierCurve,

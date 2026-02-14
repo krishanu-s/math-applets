@@ -1,8 +1,12 @@
-import { Scene, prepare_canvas } from "./lib/base.js";
-import { Line } from "./lib/base_geom.js";
+import { Scene, prepare_canvas } from "./lib/base/base.js";
+import { Line } from "./lib/base/geometry.js";
 import { BezierCurve } from "./lib/bezier.js";
 import { Slider } from "./lib/interactive.js";
 import {
+  Vec3D,
+  vec3_sum,
+  vec3_sum_list,
+  vec3_scale,
   SphericalVec3D,
   matmul_vec,
   rot_y,
@@ -11,14 +15,9 @@ import {
   cartesian_to_spherical,
   spherical_to_cartesian,
   rot,
-} from "./lib/matvec.js";
-import { ColorMap } from "./lib/color.js";
+} from "./lib/three_d/matvec.js";
+import { ColorMap } from "./lib/base/color.js";
 import {
-  Vec3D,
-  vec3_sum,
-  vec3_sum_list,
-  vec3_scale,
-  ThreeDScene,
   ThreeDMObject,
   Cube,
   Dot3D,
@@ -27,9 +26,11 @@ import {
   Arrow3D,
   TwoHeadedArrow3D,
   ParametrizedCurve3D,
-} from "./lib/three_d.js";
+} from "./lib/three_d/mobjects.js";
+
+import { ThreeDScene } from "./lib/three_d/scene.js";
 import { HeatMap, TwoDimHeatMap } from "./lib/heatmap.js";
-import { Arcball } from "./lib/arcball.js";
+import { Arcball } from "./lib/three_d/arcball.js";
 
 const DEGREE = Math.PI / 180;
 const EARTH_TILT = 23 * DEGREE;
@@ -217,10 +218,11 @@ function three_d_globe(width: number, height: number) {
   scene.set_view_mode("orthographic");
 
   // Rotate the camera angle and set the camera position
-  scene.rot_z(Math.PI / 4);
-  scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], (2 * Math.PI) / 3);
-  scene.set_camera_position(
-    rot([0, 0, -5], [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], (2 * Math.PI) / 3),
+  scene.camera.move_to([0, 0, -5]);
+  scene.camera.rot_pos_and_view_z(Math.PI / 4);
+  scene.camera.rot_pos_and_view(
+    [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+    (2 * Math.PI) / 3,
   );
 
   // Adding click-and-drag interactivity to the canvas
@@ -408,13 +410,16 @@ function three_d_globe(width: number, height: number) {
       globeScene.set_view_mode("orthographic");
 
       // Rotate the camera angle and set the camera position
-      globeScene.rot_z(Math.PI / 4);
-      globeScene.rot(
+      globeScene.camera.rot_view_z(Math.PI / 4);
+      globeScene.camera.rot_view(
         [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
         (2 * Math.PI) / 3,
       );
-      globeScene.rot([1 / Math.sqrt(2), -1 / Math.sqrt(2), 0], EARTH_TILT);
-      globeScene.set_camera_position(
+      globeScene.camera.rot_view(
+        [1 / Math.sqrt(2), -1 / Math.sqrt(2), 0],
+        EARTH_TILT,
+      );
+      globeScene.camera.move_to(
         rot(
           [1 / Math.sqrt(2), -1 / Math.sqrt(2), 0],
           rot(

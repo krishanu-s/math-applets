@@ -1,6 +1,15 @@
 // Testing the direct feeding of a pixel array to the canvas
-import { MObject, Scene, prepare_canvas } from "./lib/base.js";
-import { Slider, Button, PauseButton } from "./lib/interactive.js";
+import {
+  MObject,
+  Scene,
+  prepare_canvas,
+  clamp,
+  sigmoid,
+  linspace,
+  funspace,
+  delay,
+} from "./lib/base/base.js";
+import { Slider, Button } from "./lib/interactive.js";
 import { SceneViewTranslator } from "./lib/scene_view_translator.js";
 import {
   Dot,
@@ -8,13 +17,6 @@ import {
   Rectangle,
   Line,
   LineSequence,
-  Vec2D,
-  vec2_sum,
-  vec2_sum_list,
-  vec2_sub,
-  vec2_angle,
-  vec2_scale,
-  vec2_norm,
   DraggableDot,
   DraggableDotX,
   DraggableDotY,
@@ -22,347 +24,48 @@ import {
   DraggableRectangleX,
   DraggableRectangleY,
   Arrow,
-} from "./lib/base_geom.js";
-import { clamp, sigmoid, linspace, funspace, delay } from "./lib/base.js";
-import { ParametricFunction } from "./lib/parametric.js";
+  LineSpring,
+} from "./lib/base/geometry.js";
+import {
+  Vec2D,
+  vec2_norm,
+  vec2_sum,
+  vec2_sub,
+  vec2_scale,
+  vec2_rot,
+  vec2_normalize,
+  vec2_angle,
+  vec2_sum_list,
+} from "./lib/base/vec2.js";
+import { ParametricFunction } from "./lib/bezier.js";
 import { HeatMap } from "./lib/heatmap.js";
 import {
   PointSourceOneDim,
   PointSource,
   WaveSimOneDim,
   WaveSimOneDimScene,
+  WaveSimOneDimInteractiveScene,
   WaveSimTwoDim,
   WaveSimTwoDimEllipticReflector,
   WaveSimTwoDimHeatMapScene,
-  WaveSimTwoDimDotsScene,
-} from "./lib/wavesim.js";
-import { LineSpring } from "./lib/spring.js";
+  WaveSimTwoDimThreeDScene,
+  WaveSimTwoDimPointsHeatmapScene,
+} from "./lib/simulator/wavesim.js";
+import { SpringSimulator, StateSimulator } from "./lib/simulator/statesim.js";
 import {
   InteractivePlayingScene,
-  SpringSimulator,
-  Simulator,
-} from "./lib/statesim.js";
-import {
-  ThreeDScene,
   InteractivePlayingThreeDScene,
+} from "./lib/simulator/sim.js";
+import {
   Dot3D,
   DraggableDot3D,
   DraggableDotZ3D,
   Line3D,
-  Vec3D,
 } from "./lib/three_d.js";
-import { rot } from "./lib/matvec.js";
-import { Arcball } from "./lib/arcball.js";
+import { ThreeDScene } from "./lib/three_d/scene.js";
+import { rot, Vec3D } from "./lib/three_d/matvec.js";
+import { Arcball } from "./lib/three_d/arcball.js";
 import { SceneFromSimulator } from "./lib/interactive_handler.js";
-import { rb_colormap_2, colorval_to_rgba } from "./lib/color.js";
-
-// A two-dimensional scene view of the one-dimensional wave equation, where dots lie along
-// a horizontal curve and are allowed to move vertically.
-class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
-  set_dot_radius(radius: number) {
-    for (let i = 0; i < this.width(); i++) {
-      let mass = this.get_mobj(`p_${i + 1}`) as Dot;
-      mass.set_radius(radius);
-    }
-  }
-  toggle_pause() {
-    if (this.paused) {
-      for (let i = 0; i < this.width(); i++) {
-        let mass = this.get_mobj(`p_${i + 1}`) as DraggableDotX;
-        this.remove(`p_${i + 1}`);
-        this.add(`p_${i + 1}`, mass.toDot());
-      }
-    } else {
-      for (let i = 0; i < this.width(); i++) {
-        let mass = this.get_mobj(`p_${i + 1}`) as Dot;
-        this.remove(`p_${i + 1}`);
-        let new_mass = mass.toDraggableDotY();
-        if (i == 0) {
-          new_mass.add_callback(() => {
-            let sim = this.get_simulator() as WaveSimOneDim;
-            sim.set_left_endpoint(new_mass.get_center()[1]);
-          });
-        }
-        if (i == this.width() - 1) {
-          new_mass.add_callback(() => {
-            let sim = this.get_simulator() as WaveSimOneDim;
-            sim.set_right_endpoint(new_mass.get_center()[1]);
-          });
-        }
-        new_mass.add_callback(() => {
-          let sim = this.get_simulator();
-          let vals = sim.get_vals();
-          vals[i] = new_mass.get_center()[1];
-          vals[i + this.width()] = 0;
-          sim.set_vals(vals);
-        });
-        this.add(`p_${i + 1}`, new_mass);
-      }
-    }
-    super.toggle_pause();
-  }
-}
-
-// A three-dimensional scene view of the two-dimensional wave equation.
-class WaveSimTwoDimThreeDScene extends InteractivePlayingThreeDScene {
-  rotation_speed: number = 0.01;
-  width: number;
-  height: number;
-  simulator: WaveSimTwoDim;
-  constructor(
-    canvas: HTMLCanvasElement,
-    simulator: WaveSimTwoDim,
-    width: number,
-    height: number,
-  ) {
-    super(canvas, [simulator]);
-    this.simulator = simulator;
-
-    this.width = width;
-    this.height = height;
-    this.construct_scene();
-  }
-  width_buffer(): number {
-    return Math.floor((this.simulator.width - this.width) / 2);
-  }
-  height_buffer(): number {
-    return Math.floor((this.simulator.height - this.height) / 2);
-  }
-  // Populates the mobjects in the scene
-  construct_scene() {
-    // Construct horizontal lines
-    for (let i = 0; i < this.width - 1; i++) {
-      for (let j = 0; j < this.height; j++) {
-        this.add(
-          `l(${i},${j})(${i + 1},${j})`,
-          new Line3D(this.eq_position(i, j), this.eq_position(i + 1, j))
-            .set_stroke_width(0.05)
-            .set_alpha(0.3),
-        );
-      }
-    }
-    // Construct vertical lines
-    for (let i = 0; i < this.width; i++) {
-      for (let j = 0; j < this.height - 1; j++) {
-        this.add(
-          `l(${i},${j})(${i},${j + 1})`,
-          new Line3D(this.eq_position(i, j), this.eq_position(i, j + 1))
-            .set_stroke_width(0.05)
-            .set_alpha(0.3),
-        );
-      }
-    }
-    // Construct draggable dots
-    for (let i = 0; i < this.width; i++) {
-      for (let j = 0; j < this.height; j++) {
-        let dot = new DraggableDotZ3D(this.eq_position(i, j), 0.1);
-        this.add_callbacks(i, j, dot);
-        this.add(`p(${i},${j})`, dot);
-      }
-    }
-  }
-  // Resets the mobjects in the scene.
-  set_frame_lims(xlims: Vec2D, ylims: Vec2D) {
-    super.set_frame_lims(xlims, ylims);
-    this.clear();
-    this.construct_scene();
-  }
-  set_rotation_speed(speed: number) {
-    this.rotation_speed = speed;
-  }
-  eq_position(i: number, j: number): Vec3D {
-    let [xmin, xmax] = this.xlims;
-    let [ymin, ymax] = this.ylims;
-    return [
-      xmin + ((i + 0.5) * (xmax - xmin)) / this.width,
-      ymin + ((j + 0.5) * (ymax - ymin)) / this.height,
-      0,
-    ];
-  }
-  add_callbacks(i: number, j: number, dot: DraggableDotZ3D) {
-    dot.add_callback(() =>
-      this.simulator.set_val(
-        this.simulator.index(i + this.width_buffer(), j + this.height_buffer()),
-        dot.get_center()[2],
-      ),
-    );
-    if (i < this.width - 1) {
-      dot.add_callback(() =>
-        (this.get_mobj(`l(${i},${j})(${i + 1},${j})`) as Line3D).move_start(
-          dot.get_center(),
-        ),
-      );
-    }
-    if (i > 0) {
-      dot.add_callback(() =>
-        (this.get_mobj(`l(${i - 1},${j})(${i},${j})`) as Line3D).move_end(
-          dot.get_center(),
-        ),
-      );
-    }
-    if (j < this.height - 1) {
-      dot.add_callback(() =>
-        (this.get_mobj(`l(${i},${j})(${i},${j + 1})`) as Line3D).move_start(
-          dot.get_center(),
-        ),
-      );
-    }
-    if (j > 0) {
-      dot.add_callback(() =>
-        (this.get_mobj(`l(${i},${j - 1})(${i},${j})`) as Line3D).move_end(
-          dot.get_center(),
-        ),
-      );
-    }
-    dot.add_callback(() => {
-      this.draw();
-      this.update_and_draw_linked_scenes();
-    });
-  }
-  get_simulator(ind: number = 0): WaveSimTwoDim {
-    return super.get_simulator(ind) as WaveSimTwoDim;
-  }
-  toggle_pause() {
-    if (this.paused) {
-      for (let i = 0; i < this.width; i++) {
-        for (let j = 0; j < this.height; j++) {
-          let dot = this.get_mobj(`p(${i},${j})`) as DraggableDotZ3D;
-          this.remove(`p(${i},${j})`);
-          this.add(`p(${i},${j})`, dot.toDot3D());
-        }
-      }
-    } else {
-      for (let i = 0; i < this.width; i++) {
-        for (let j = 0; j < this.height; j++) {
-          let dot = this.get_mobj(`p(${i},${j})`) as Dot3D;
-          this.remove(`p(${i},${j})`);
-          let new_dot = dot.toDraggableDotZ3D();
-          this.add_callbacks(i, j, new_dot);
-          this.add(`p(${i},${j})`, new_dot);
-        }
-      }
-    }
-    super.toggle_pause();
-  }
-  update_mobjects() {
-    let vals = this.simulator.get_uValues();
-    let new_z: number;
-    let x, y, z;
-    let dot, line;
-    for (let i = 0; i < this.width; i++) {
-      for (let j = 0; j < this.height; j++) {
-        new_z =
-          vals[
-            this.simulator.index(
-              i + this.width_buffer(),
-              j + this.height_buffer(),
-            )
-          ];
-        dot = this.get_mobj(`p(${i},${j})`) as Dot3D;
-        [x, y, z] = dot.get_center();
-        dot.move_to([x, y, new_z]);
-        if (i < this.width - 1) {
-          line = this.get_mobj(`l(${i},${j})(${i + 1},${j})`) as Line3D;
-          line.move_start([x, y, new_z]);
-        }
-        if (j < this.height - 1) {
-          line = this.get_mobj(`l(${i},${j})(${i},${j + 1})`) as Line3D;
-          line.move_start([x, y, new_z]);
-        }
-        if (i > 0) {
-          line = this.get_mobj(`l(${i - 1},${j})(${i},${j})`) as Line3D;
-          line.move_end([x, y, new_z]);
-        }
-        if (j > 0) {
-          line = this.get_mobj(`l(${i},${j - 1})(${i},${j})`) as Line3D;
-          line.move_end([x, y, new_z]);
-        }
-      }
-    }
-    // Rotate the scene
-    if (!this.paused) {
-      this.rot_camera_z(this.dt * this.rotation_speed);
-    }
-  }
-  draw_mobject(mobj: MObject) {
-    mobj.draw(this.canvas, this, true);
-  }
-}
-
-// A two-dimensional scene view of the two-dimensional wave equation, where dots are colored
-class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
-  width: number;
-  height: number;
-  constructor(canvas: HTMLCanvasElement, width: number, height: number) {
-    super(canvas);
-
-    this.width = width;
-    this.height = height;
-    this.construct_scene();
-  }
-  // Populates the mobjects in the scene
-  construct_scene() {
-    // Construct horizontal lines
-    for (let i = 0; i < this.width - 1; i++) {
-      for (let j = 0; j < this.height; j++) {
-        this.add(
-          `l(${i},${j})(${i + 1},${j})`,
-          new Line(this.eq_position(i, j), this.eq_position(i + 1, j))
-            .set_stroke_width(0.05)
-            .set_alpha(0.6),
-        );
-      }
-    }
-    // Construct vertical lines
-    for (let i = 0; i < this.width; i++) {
-      for (let j = 0; j < this.height - 1; j++) {
-        this.add(
-          `l(${i},${j})(${i},${j + 1})`,
-          new Line(this.eq_position(i, j), this.eq_position(i, j + 1))
-            .set_stroke_width(0.05)
-            .set_alpha(0.6),
-        );
-      }
-    }
-    // Construct dots
-    for (let i = 0; i < this.width; i++) {
-      for (let j = 0; j < this.height; j++) {
-        let dot = new Dot(this.eq_position(i, j), 0.15);
-        this.add(`p(${i},${j})`, dot);
-      }
-    }
-  }
-  // Resets the mobjects in the scene.
-  set_frame_lims(xlims: Vec2D, ylims: Vec2D) {
-    super.set_frame_lims(xlims, ylims);
-    this.clear();
-    this.construct_scene();
-  }
-  eq_position(i: number, j: number): Vec2D {
-    let [xmin, xmax] = this.xlims;
-    let [ymin, ymax] = this.ylims;
-    return [
-      xmin + ((i + 0.5) * (xmax - xmin)) / this.width,
-      ymin + ((j + 0.5) * (ymax - ymin)) / this.height,
-    ];
-  }
-  update_mobjects_from_simulator(sim: WaveSimTwoDim) {
-    let vals = sim.get_uValues();
-    let new_z, new_color;
-    let dot;
-    let width_buffer = Math.floor((sim.width - this.width) / 2);
-    let height_buffer = Math.floor((sim.height - this.height) / 2);
-    for (let i = 0; i < this.width; i++) {
-      for (let j = 0; j < this.height; j++) {
-        new_z = vals[sim.index(i + width_buffer, j + height_buffer)];
-        // Map to a color
-        let new_color = colorval_to_rgba(rb_colormap_2(2 * new_z));
-        dot = this.get_mobj(`p(${i},${j})`) as Dot3D;
-        dot.set_color(new_color);
-      }
-    }
-  }
-}
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
@@ -452,28 +155,13 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           step: 0.05,
         },
       );
-      w_slider.width = 200;
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = Button(
+      let pauseButton = waveEquationScene.add_pause_button(
         document.getElementById(
           "twodim-dipole-demo-pause-button",
         ) as HTMLElement,
-        function () {
-          waveEquationScene.add_to_queue(
-            waveEquationScene.toggle_pause.bind(waveEquationScene),
-          );
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        },
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
 
       // Button which clears the scene
       let clearButton = Button(
@@ -567,16 +255,16 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
               -Math.PI,
               Math.PI,
               50,
-              { mode: "smooth", stroke_width: 0.08 },
             );
           } else if (this.eccentricity == 1) {
-            return new ParametricFunction(
+            let curve = new ParametricFunction(
               this.polar_function.bind(this),
               -Math.PI + 0.01,
               Math.PI - 0.01,
               50,
-              { mode: "jagged", stroke_width: 0.08 },
             );
+            curve.mode = "jagged";
+            return curve;
           } else {
             return new MObject();
           }
@@ -720,12 +408,11 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
                 // Add a little collision effect
                 let effect = new Sector(
                   [x, y],
+                  0.3,
                   thetas[i] - Math.PI / 2,
                   thetas[i] + Math.PI / 2,
-                  {},
                 );
                 effect.set_color("red");
-                effect.set_radius(0.3);
                 scene.add(`c_${i}`, effect);
 
                 // Set new trajectory angle after reflection
@@ -857,7 +544,7 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           // the state of the point mass.
           let mass = new DraggableRectangleX([0, 0], 0.6, 0.6);
           mass.add_callback(() => {
-            let sim = this.get_simulator();
+            let sim = this.get_simulator() as StateSimulator;
             sim.set_vals([mass.get_center()[0], 0]);
           });
 
@@ -976,7 +663,6 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           step: 0.01,
         },
       );
-      w_slider.width = 200;
 
       // Slider which controls friction
       let f_slider = Slider(
@@ -992,26 +678,13 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           step: 0.01,
         },
       );
-      f_slider.width = 200;
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = Button(
+      let pausebutton = scene.add_pause_button(
         document.getElementById(
           "point-mass-spring-pause-button",
         ) as HTMLElement,
-        function () {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        },
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
 
       // Button which resets the simulation
       let resetButton = Button(
@@ -1084,26 +757,13 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           step: 0.01,
         },
       );
-      f_slider.width = 200;
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = Button(
+      let pauseButton = scene.add_pause_button(
         document.getElementById(
           "point-mass-discrete-sequence-pause-button",
         ) as HTMLElement,
-        function () {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        },
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
 
       // Button which resets the simulation
       let resetButton = Button(
@@ -1115,7 +775,6 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
         },
       );
       resetButton.textContent = "Reset simulation";
-      resetButton.style.padding = "15px";
 
       // Slider which controls the propagation speed
       let w_slider = Slider(
@@ -1140,7 +799,6 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           step: 0.05,
         },
       );
-      w_slider.width = 200;
 
       // Prepare the simulation
       scene.draw();
@@ -1214,26 +872,13 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           step: 0.05,
         },
       );
-      zoom_slider.width = 200;
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = Button(
+      let pauseButton = scene.add_pause_button(
         document.getElementById(
           "point-mass-continuous-sequence-pause-button",
         ) as HTMLElement,
-        function () {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        },
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
 
       // Button which pauses/unpauses the simulation
       let resetButton = Button(
@@ -1265,7 +910,6 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           step: 0.01,
         },
       );
-      f_slider.width = 200;
 
       // Slider which controls the propagation speed
       let w_slider = Slider(
@@ -1290,7 +934,6 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           step: 0.05,
         },
       );
-      w_slider.width = 200;
 
       // Prepare the simulation
       scene.draw();
@@ -1341,23 +984,11 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
       }
       reset_simulation();
       // Button which pauses/unpauses the simulation
-      let pauseButton = Button(
+      let pauseButton = scene.add_pause_button(
         document.getElementById(
           "wavesim-1d-impulse-pause-button",
         ) as HTMLElement,
-        function () {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        },
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
 
       // Button which resets the simulation
       let resetButton = Button(
@@ -1408,21 +1039,9 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
       }
       reset_simulation();
       // Button which pauses/unpauses the simulation
-      let pauseButton = Button(
+      let pauseButton = scene.add_pause_button(
         document.getElementById("wavesim-1d-pml-pause-button") as HTMLElement,
-        function () {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        },
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
 
       // Button which resets the simulation
       let resetButton = Button(
@@ -1500,9 +1119,9 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
       scene.set_zoom(zoom_ratio);
       scene.set_view_mode("orthographic");
-      scene.set_camera_position([0, 0, -10]);
-      scene.rot_camera_z(Math.PI / 4);
-      scene.rot_camera(
+      scene.camera.move_to([0, 0, -10]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
         [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
         (2 * Math.PI) / 3,
       );
@@ -1524,23 +1143,11 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
       scene.add_linked_scene(second_scene);
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = Button(
+      let pauseButton = scene.add_pause_button(
         document.getElementById(
           "point-mass-discrete-lattice-pause-button",
         ) as HTMLElement,
-        function () {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        },
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
 
       // Button which resets the simulation
       let resetButton = Button(
@@ -1620,24 +1227,11 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           step: 0.05,
         },
       );
-      w_slider.width = 200;
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = Button(
+      let pauseButton = scene.add_pause_button(
         document.getElementById(name + "-pause-button") as HTMLElement,
-        function () {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        },
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
 
       // Button which clears the scene
       let clearButton = Button(
@@ -1686,7 +1280,6 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
         0,
         Math.PI * 2,
         30,
-        {},
       );
       conic.set_stroke_width(0.03);
       conic.set_alpha(0.5);
@@ -1717,7 +1310,6 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           step: 1,
         },
       );
-      e_slider.width = 200;
 
       // Make a slider which controls the frequency
       let w_slider = Slider(
@@ -1736,24 +1328,11 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
           step: 0.05,
         },
       );
-      w_slider.width = 200;
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = Button(
+      let pauseButton = scene.add_pause_button(
         document.getElementById(name + "-pause-button") as HTMLElement,
-        function () {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        },
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
 
       // Button which clears the scene
       let clearButton = Button(
@@ -1860,21 +1439,9 @@ class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
       // w_slider.width = 200;
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = Button(
+      let pauseButton = scene.add_pause_button(
         document.getElementById(name + "-pause-button") as HTMLElement,
-        function () {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        },
       );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
 
       // Button which clears the scene
       let clearButton = Button(

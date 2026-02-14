@@ -4,7 +4,7 @@ import {
   prepare_canvas,
   delay,
   gaussianRandom,
-} from "./lib/base.js";
+} from "./lib/base/base.js";
 import { HeatMap } from "./lib/heatmap.js";
 import { Histogram } from "./lib/stats.js";
 import { Button, Slider } from "./lib/interactive.js";
@@ -13,24 +13,23 @@ import {
   Line,
   Arrow,
   TwoHeadedArrow,
-  Vec2D,
   Rectangle,
   LineSequence,
-} from "./lib/base_geom.js";
+} from "./lib/base/geometry.js";
+import { Vec2D } from "./lib/base/vec2.js";
 import { BezierSpline } from "./lib/bezier.js";
-import { ParametricFunction } from "./lib/parametric.js";
-import { rot, rot_z } from "./lib/matvec.js";
+import { ParametricFunction } from "./lib/bezier.js";
+import { rot, rot_z, Vec3D } from "./lib/three_d/matvec.js";
 import {
-  Vec3D,
-  ThreeDScene,
   Dot3D,
   Line3D,
   LineSequence3D,
   TwoHeadedArrow3D,
   ParametrizedCurve3D,
-} from "./lib/three_d.js";
-import { Arcball } from "./lib/arcball.js";
-import { LaTeXMObject, LatexCache } from "./lib/latex.js";
+} from "./lib/three_d/mobjects.js";
+import { ThreeDScene } from "./lib/three_d/scene.js";
+import { Arcball } from "./lib/three_d/arcball.js";
+import { LaTeXMObject, LatexCache } from "./lib/base/latex.js";
 import { rot90 } from "numpy-ts";
 
 export function pick_random_step(dim: number): number[] {
@@ -351,12 +350,10 @@ class HeatMapScene extends Scene {
       scene.set_zoom(zoom_ratio);
       scene.set_view_mode("orthographic");
 
-      // Rotate the camera angle and set the camera position
-      scene.rot_z(Math.PI / 4);
-      scene.rot([1 / Math.sqrt(2), 1 / Math.sqrt(2), 0], Math.PI / 3);
-      scene.set_camera_position([0, 0, -8]);
-      scene.camera_position = rot(
-        scene.camera_position,
+      // Set the camera position and rotate
+      scene.camera.move_to([0, 0, -8]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
         [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
         Math.PI / 3,
       );
@@ -483,11 +480,7 @@ class HeatMapScene extends Scene {
             step_number += 1;
 
             // Rotate the camera angle and set the camera position
-            scene.rot_z(Math.PI / 1000);
-            scene.camera_position = rot_z(
-              scene.camera_position,
-              Math.PI / 1000,
-            );
+            scene.camera.rot_pos_and_view_z(Math.PI / 1000);
             if (done) {
               await delay(1000);
               return true;
@@ -1022,7 +1015,6 @@ class HeatMapScene extends Scene {
         -Math.PI,
         -0.05,
         100,
-        {},
       ).set_stroke_width(0.03);
       graph_1.set_mode("jagged");
       const graph_2 = new ParametricFunction(
@@ -1032,7 +1024,6 @@ class HeatMapScene extends Scene {
         0.05,
         Math.PI,
         100,
-        {},
       ).set_stroke_width(0.03);
       graph_1.set_mode("jagged");
       scene.add("graph_1", graph_1);
