@@ -23,7 +23,7 @@ import {
 } from "./mobjects.js";
 
 // Functionality related to the 3D scene camera
-class Camera3D {
+export class Camera3D {
   // Position of the camera in 3D space
   pos: Vec3D = [0, 0, 0];
   // The 0th, 1st, and 2nd columns of the camera frame matrix are the

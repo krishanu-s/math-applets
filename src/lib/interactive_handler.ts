@@ -1,11 +1,15 @@
 import { Scene } from "./base";
 import { ThreeDScene } from "./three_d/scene.js";
 import { Simulator } from "./simulator/sim.js";
+import { Button } from "./interactive.js";
 
-// Generic for a scene whose state can be drawn from a simulator state
+// Generic for a scene whose mobjects
 export class SceneFromSimulator extends Scene {
   constructor(canvas: HTMLCanvasElement) {
     super(canvas);
+  }
+  reset() {
+    // Implement reset logic
   }
   update_mobjects_from_simulator(simulator: Simulator) {
     // Implement update logic, calling from the simulator
@@ -14,6 +18,9 @@ export class SceneFromSimulator extends Scene {
 export class ThreeDSceneFromSimulator extends ThreeDScene {
   constructor(canvas: HTMLCanvasElement) {
     super(canvas);
+  }
+  reset() {
+    // Implement reset logic
   }
   update_mobjects_from_simulator(simulator: Simulator) {
     // Implement update logic, calling from the simulator
@@ -35,7 +42,14 @@ export class InteractiveHandler {
   }
   // Adds a scene
   add_scene(scene: SceneFromSimulator | ThreeDSceneFromSimulator) {
+    scene.update_mobjects_from_simulator(this.simulator);
     this.scenes.push(scene);
+  }
+  // Draws all scenes
+  draw() {
+    for (let scene of this.scenes) {
+      scene.draw();
+    }
   }
   // Set and modify the simulator
   get_simulator(): Simulator {
@@ -48,13 +62,28 @@ export class InteractiveHandler {
   ) {
     this.simulator.set_attr(attr_name, attr_val);
   }
+  add_pause_button(container: HTMLElement): HTMLButtonElement {
+    let self = this;
+    let pauseButton = Button(container, function () {
+      self.add_to_queue(self.toggle_pause.bind(self));
+      pauseButton.textContent =
+        pauseButton.textContent == "Pause simulation"
+          ? "Unpause simulation"
+          : "Pause simulation";
+    });
+    pauseButton.textContent = this.paused
+      ? "Unpause simulation"
+      : "Pause simulation";
+    return pauseButton;
+  }
   // Restarts the simulator
   reset(): void {
     this.simulator.reset();
     this.time = 0;
-    for (let i = 0; i < this.scenes.length; i++) {
-      this.scenes[i].update_mobjects(this.simulator);
-      this.scenes[i].draw();
+    for (let scene of this.scenes) {
+      scene.reset();
+      scene.update_mobjects_from_simulator(this.simulator);
+      scene.draw();
     }
   }
   // Switches from paused to unpaused and vice-versa.
@@ -93,9 +122,9 @@ export class InteractiveHandler {
       } else {
         this.simulator.step();
         this.time += this.simulator.dt;
-        for (let i = 0; i < this.scenes.length; i++) {
-          this.scenes[i].update_mobjects(this.simulator);
-          this.scenes[i].draw();
+        for (let scene of this.scenes) {
+          scene.update_mobjects_from_simulator(this.simulator);
+          scene.draw();
         }
       }
       window.requestAnimationFrame(this.play.bind(this, until));

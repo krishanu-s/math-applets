@@ -12835,7 +12835,95 @@ var SceneFromSimulator = class extends Scene {
   constructor(canvas) {
     super(canvas);
   }
+  reset() {
+  }
   update_mobjects_from_simulator(simulator) {
+  }
+};
+var InteractiveHandler = class {
+  // Store a known end-time in case the simulation is paused and unpaused
+  constructor(simulator) {
+    this.scenes = [];
+    this.action_queue = [];
+    this.paused = true;
+    this.time = 0;
+    this.dt = 0.01;
+    this.simulator = simulator;
+  }
+  // Adds a scene
+  add_scene(scene) {
+    scene.update_mobjects_from_simulator(this.simulator);
+    this.scenes.push(scene);
+  }
+  // Draws all scenes
+  draw() {
+    for (let scene of this.scenes) {
+      scene.draw();
+    }
+  }
+  // Set and modify the simulator
+  get_simulator() {
+    return this.simulator;
+  }
+  set_simulator_attr(simulator_ind, attr_name, attr_val) {
+    this.simulator.set_attr(attr_name, attr_val);
+  }
+  add_pause_button(container) {
+    let self = this;
+    let pauseButton = Button(container, function() {
+      self.add_to_queue(self.toggle_pause.bind(self));
+      pauseButton.textContent = pauseButton.textContent == "Pause simulation" ? "Unpause simulation" : "Pause simulation";
+    });
+    pauseButton.textContent = this.paused ? "Unpause simulation" : "Pause simulation";
+    return pauseButton;
+  }
+  // Restarts the simulator
+  reset() {
+    this.simulator.reset();
+    this.time = 0;
+    for (let scene of this.scenes) {
+      scene.reset();
+      scene.update_mobjects_from_simulator(this.simulator);
+      scene.draw();
+    }
+  }
+  // Switches from paused to unpaused and vice-versa.
+  toggle_pause() {
+    this.paused = !this.paused;
+    if (!this.paused) {
+      this.play(this.end_time);
+    }
+  }
+  // Adds to the action queue if the scene is currently playing,
+  // otherwise execute the callback immediately
+  add_to_queue(callback) {
+    if (this.paused) {
+      callback();
+    } else {
+      this.action_queue.push(callback);
+    }
+  }
+  // Starts animation
+  play(until) {
+    if (this.paused) {
+      this.end_time = until;
+      return;
+    } else {
+      if (this.action_queue.length > 0) {
+        let callback = this.action_queue.shift();
+        callback();
+      } else if (this.time > until) {
+        return;
+      } else {
+        this.simulator.step();
+        this.time += this.simulator.dt;
+        for (let scene of this.scenes) {
+          scene.update_mobjects_from_simulator(this.simulator);
+          scene.draw();
+        }
+      }
+      window.requestAnimationFrame(this.play.bind(this, until));
+    }
   }
 };
 
@@ -14699,7 +14787,7 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
         await do_simulation(10, 0.06);
       }
     })();
-    (function point_mass_spring(width, height) {
+    (function foo(width, height) {
       let canvas_spring = prepare_canvas(width, height, "point-mass-spring");
       let canvas_graph = prepare_canvas(width, height, "point-mass-graph");
       let xmin = -4;
@@ -14708,52 +14796,70 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
       let tmax = 15;
       let ymin = -4;
       let ymax = 4;
-      let scene_graph = new Scene(canvas_graph);
-      scene_graph.set_frame_lims([tmin, tmax], [xmin, xmax]);
-      scene_graph.add(
-        "t-axis",
-        new Line([tmin, 0], [tmax, 0]).set_stroke_width(0.05).set_stroke_color("gray")
-      );
-      let tick_size = 0.2;
-      for (let i = 1; i <= tmax; i++) {
-        scene_graph.add(
-          `t-axis-${i}`,
-          new Line([i, -tick_size / 2], [i, tick_size / 2]).set_stroke_width(0.05).set_stroke_color("gray")
-        );
-      }
-      for (let i = -4; i <= 4; i++) {
-        scene_graph.add(
-          `y-axis-${i}`,
-          new Line([0, i], [tick_size, i]).set_stroke_width(0.05).set_stroke_color("gray")
-        );
-      }
       class SpringSim extends SpringSimulator {
-        constructor(stiffness, dt) {
-          super(stiffness, dt);
+        reset() {
+          super.reset();
+          sim.set_vals([1, 0]);
+        }
+      }
+      let sim = new SpringSim(5, 0.01);
+      sim.set_vals([1, 0]);
+      let handler = new InteractiveHandler(sim);
+      class GraphScene extends SceneFromSimulator {
+        constructor(canvas) {
+          super(canvas);
           this.step_counter = 0;
-          scene_graph.add(
+          this.set_frame_lims([tmin, tmax], [xmin, xmax]);
+          this.add(
+            "t-axis",
+            new Line([tmin, 0], [tmax, 0]).set_stroke_width(0.05).set_stroke_color("gray")
+          );
+          let tick_size = 0.2;
+          for (let i = 1; i <= tmax; i++) {
+            this.add(
+              `t-axis-${i}`,
+              new Line([i, -tick_size / 2], [i, tick_size / 2]).set_stroke_width(0.05).set_stroke_color("gray")
+            );
+          }
+          for (let i = -4; i <= 4; i++) {
+            this.add(
+              `y-axis-${i}`,
+              new Line([0, i], [tick_size, i]).set_stroke_width(0.05).set_stroke_color("gray")
+            );
+          }
+          this.add(
             "graph",
             new LineSequence([
-              [this.time, this.get_vals()[0]]
+              [0, sim.get_vals()[0]]
             ]).set_stroke_width(0.05)
           );
-          scene_graph.draw();
+          this.draw();
         }
-        step() {
-          super.step();
-          this.step_counter++;
-          if (this.step_counter % 5 === 0 && this.time < scene_graph.xlims[1]) {
-            scene_graph.get_mobj("graph").add_point([
-              this.time,
-              this.get_vals()[0]
+        reset() {
+          this.remove("graph");
+          this.add(
+            "graph",
+            new LineSequence([
+              [0, sim.get_vals()[0]]
+            ]).set_stroke_width(0.05)
+          );
+        }
+        update_mobjects_from_simulator(simulator) {
+          let vals = simulator.get_vals();
+          let time = simulator.time;
+          this.step_counter += 1;
+          if (this.step_counter % 5 === 0 && time < this.xlims[1]) {
+            this.get_mobj("graph").add_point([
+              time,
+              vals[0]
             ]);
-            scene_graph.draw();
           }
         }
       }
-      class SpringScene extends InteractivePlayingScene {
+      let graph_scene = new GraphScene(canvas_graph);
+      class SpringScene extends SceneFromSimulator {
         constructor(canvas) {
-          super(canvas, [new SpringSim(3, 0.01)]);
+          super(canvas);
           this.arrow_length_scale = 1.5;
           this.arrow_height = 0;
           let eq_line = new Line([0, -5], [0, 5]).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
@@ -14761,10 +14867,6 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
           spring.set_eq_length(3);
           let anchor = new Rectangle([-3, 0], 0.15, 4);
           let mass = new DraggableRectangleX([0, 0], 0.6, 0.6);
-          mass.add_callback(() => {
-            let sim2 = this.get_simulator();
-            sim2.set_vals([mass.get_center()[0], 0]);
-          });
           let force_arrow = new Arrow(
             [0, this.arrow_height],
             [0, this.arrow_height]
@@ -14774,39 +14876,27 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
           this.add("anchor", anchor);
           this.add("mass", mass);
           this.add("force_arrow", force_arrow);
+          this.add_callbacks();
+        }
+        // Callback which affects the simulator and is removed when simulation is paused
+        add_callbacks() {
+          let mass = this.get_mobj("mass");
+          mass.add_callback(() => {
+            sim.set_vals([mass.get_center()[0], 0]);
+            this.update_mobjects_from_simulator(sim);
+          });
         }
         set_spring_mode(mode) {
           let spring = this.get_mobj("spring");
           spring.set_mode(mode);
         }
         set_spring_stiffness(val) {
-          this.set_simulator_attr(0, "stiffness", val);
           this.arrow_length_scale = val / 3;
-          scene.draw();
         }
-        set_friction(val) {
-          this.set_simulator_attr(0, "friction", val);
-        }
-        toggle_pause() {
-          if (this.paused) {
-            let mass = this.get_mobj("mass");
-            this.remove("mass");
-            this.add("mass", mass.toRectangle());
-          } else {
-            let mass = this.get_mobj("mass");
-            this.remove("mass");
-            let new_mass = mass.toDraggableRectangleX();
-            new_mass.add_callback(() => {
-              let sim2 = this.get_simulator();
-              sim2.set_vals([new_mass.get_center()[0], 0]);
-            });
-            this.add("mass", new_mass);
-          }
-          super.toggle_pause();
-        }
+        // TODO Add turn on/off of draggability.
         // Updates all mobjects to account for the new simulator state
-        update_mobjects() {
-          let [u, v] = this.get_simulator(0).get_vals();
+        update_mobjects_from_simulator(simulator) {
+          let [u, v] = simulator.get_vals();
           let mass = this.get_mobj("mass");
           mass.move_to([u, 0]);
           let spring = this.get_mobj("spring");
@@ -14821,7 +14911,6 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
         }
         // Enforce strict order on drawing mobjects, overriding subclass behavior
         _draw() {
-          this.update_mobjects();
           this.draw_mobject(this.get_mobj("eq_line"));
           this.draw_mobject(this.get_mobj("anchor"));
           this.draw_mobject(this.get_mobj("spring"));
@@ -14832,31 +14921,34 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
           mobj.draw(this.canvas, this);
         }
       }
-      let scene = new SpringScene(canvas_spring);
-      scene.set_spring_stiffness(5);
-      scene.set_simulator_attr(0, "dt", 0.01);
-      scene.set_simulator_attr(0, "damping", 0);
-      scene.set_spring_mode("spring");
-      let sim = scene.get_simulator();
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      sim.set_vals([1, 0]);
-      function reset_simulation() {
-        sim.time = 0;
-        sim.set_vals([1, 0]);
-        scene_graph.remove("graph");
-        scene_graph.add(
-          "graph",
-          new LineSequence([[sim.time, sim.get_vals()[0]]]).set_stroke_width(
-            0.05
-          )
-        );
-        scene_graph.draw();
-        scene.draw();
-      }
+      let spring_scene = new SpringScene(canvas_spring);
+      spring_scene.set_spring_mode("spring");
+      spring_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      handler.add_scene(graph_scene);
+      handler.add_scene(spring_scene);
+      let pausebutton = handler.add_pause_button(
+        document.getElementById(
+          "point-mass-spring-pause-button"
+        )
+      );
+      let resetButton = Button(
+        document.getElementById(
+          "point-mass-spring-reset-button"
+        ),
+        function() {
+          handler.add_to_queue(handler.reset.bind(handler));
+        }
+      );
+      resetButton.textContent = "Reset simulation";
       let w_slider = Slider(
         document.getElementById("point-mass-stiffness-slider"),
         function(val) {
-          scene.add_to_queue(scene.set_spring_stiffness.bind(scene, val));
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "stiffness", val)
+          );
+          handler.add_to_queue(
+            spring_scene.set_spring_stiffness.bind(spring_scene, val)
+          );
         },
         {
           name: "Spring stiffness",
@@ -14869,7 +14961,9 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
       let f_slider = Slider(
         document.getElementById("point-mass-damping-slider"),
         function(val) {
-          scene.add_to_queue(scene.set_friction.bind(scene, val));
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "friction", val)
+          );
         },
         {
           name: "Friction",
@@ -14879,23 +14973,8 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
           step: 0.01
         }
       );
-      let pausebutton = scene.add_pause_button(
-        document.getElementById(
-          "point-mass-spring-pause-button"
-        )
-      );
-      let resetButton = Button(
-        document.getElementById(
-          "point-mass-spring-reset-button"
-        ),
-        function() {
-          scene.add_to_queue(reset_simulation);
-        }
-      );
-      resetButton.textContent = "Reset simulation";
-      resetButton.style.padding = "15px";
-      scene.draw();
-      scene.play(void 0);
+      handler.draw();
+      handler.play(void 0);
     })(300, 300);
     (function point_mass_discrete_sequence(width, height, num_points) {
       let canvas = prepare_canvas(
