@@ -1,6 +1,5 @@
-import { MObject, Scene } from "./base/base.js";
-import { Rectangle, Line } from "./base/geometry.js";
-import { Vec2D } from "./base/vec2";
+import { MObject, Scene, Rectangle, Line, Vec2D } from "./base";
+
 // TODO Make space for the axes.
 export class Histogram extends MObject {
   hist: Record<number, number> = {};

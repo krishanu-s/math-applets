@@ -1,4 +1,4 @@
-import { Scene } from "./base/base.js";
+import { Scene } from "./base";
 import { ThreeDScene } from "./three_d/scene.js";
 import { Simulator } from "./simulator/sim.js";
 

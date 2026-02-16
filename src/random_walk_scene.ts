@@ -4,21 +4,20 @@ import {
   prepare_canvas,
   delay,
   gaussianRandom,
-} from "./lib/base/base.js";
-import { HeatMap } from "./lib/heatmap.js";
-import { Histogram } from "./lib/stats.js";
-import { Button, Slider } from "./lib/interactive.js";
-import {
   Dot,
   Line,
   Arrow,
   TwoHeadedArrow,
   Rectangle,
   LineSequence,
-} from "./lib/base/geometry.js";
-import { Vec2D } from "./lib/base/vec2.js";
-import { BezierSpline } from "./lib/bezier.js";
-import { ParametricFunction } from "./lib/bezier.js";
+  Vec2D,
+  LaTeXMObject,
+  LatexCache,
+} from "./lib/base";
+import { HeatMap } from "./lib/heatmap.js";
+import { Histogram } from "./lib/stats.js";
+import { Button, Slider } from "./lib/interactive.js";
+import { ParametricFunction, BezierSpline } from "./lib/bezier.js";
 import { rot, rot_z, Vec3D } from "./lib/three_d/matvec.js";
 import {
   Dot3D,
@@ -29,7 +28,6 @@ import {
 } from "./lib/three_d/mobjects.js";
 import { ThreeDScene } from "./lib/three_d/scene.js";
 import { Arcball } from "./lib/three_d/arcball.js";
-import { LaTeXMObject, LatexCache } from "./lib/base/latex.js";
 import { rot90 } from "numpy-ts";
 
 export function pick_random_step(dim: number): number[] {

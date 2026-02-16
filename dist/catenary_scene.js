@@ -10629,6 +10629,78 @@ var require_numpy_ts_node = __commonJS({
   }
 });
 
+// src/lib/interactive.ts
+function Slider(container, callback, kwargs) {
+  let slider = document.createElement("input");
+  slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  slider.width = 200;
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
+  }
+  let min2 = kwargs.min;
+  if (min2 == void 0) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min2}`;
+  }
+  let max2 = kwargs.max;
+  if (max2 == void 0) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max2}`;
+  }
+  let step = kwargs.step;
+  if (step == void 0) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
+  }
+  container.appendChild(slider);
+  let valueDisplay = document.createElement("span");
+  valueDisplay.classList.add("value-display");
+  valueDisplay.id = "sliderValue";
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+  container.appendChild(valueDisplay);
+  function updateDisplay() {
+    callback(slider.value);
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+    updateSliderColor(slider);
+  }
+  function updateSliderColor(sliderElement) {
+    const value = 100 * parseFloat(sliderElement.value);
+    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
+  }
+  updateDisplay();
+  slider.addEventListener("input", updateDisplay);
+  return slider;
+}
+
+// src/lib/bezier.ts
+var np = __toESM(require_numpy_ts_node(), 1);
+
+// src/lib/base/vec2.ts
+function vec2_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec2_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
+function vec2_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
+function vec2_sum_list(xs) {
+  return xs.reduce((acc, x) => vec2_sum(acc, x), [0, 0]);
+}
+function vec2_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
+
 // src/lib/base/base.ts
 var StrokeOptions = class {
   constructor() {
@@ -10850,23 +10922,6 @@ var Scene = class {
   }
 };
 
-// src/lib/base/vec2.ts
-function vec2_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-function vec2_scale(x, factor) {
-  return [x[0] * factor, x[1] * factor];
-}
-function vec2_sum(x, y) {
-  return [x[0] + y[0], x[1] + y[1]];
-}
-function vec2_sum_list(xs) {
-  return xs.reduce((acc, x) => vec2_sum(acc, x), [0, 0]);
-}
-function vec2_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1]];
-}
-
 // src/lib/base/geometry.ts
 var Line = class extends LineLikeMObject {
   constructor(start, end) {
@@ -10895,60 +10950,7 @@ var Line = class extends LineLikeMObject {
   }
 };
 
-// src/lib/interactive.ts
-function Slider(container, callback, kwargs) {
-  let slider = document.createElement("input");
-  slider.type = "range";
-  slider.value = kwargs.initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
-  slider.width = 200;
-  let name = kwargs.name;
-  if (name == void 0) {
-    slider.name = "Value";
-  } else {
-    slider.name = name;
-  }
-  let min2 = kwargs.min;
-  if (min2 == void 0) {
-    slider.min = "0";
-  } else {
-    slider.min = `${min2}`;
-  }
-  let max2 = kwargs.max;
-  if (max2 == void 0) {
-    slider.max = "10";
-  } else {
-    slider.max = `${max2}`;
-  }
-  let step = kwargs.step;
-  if (step == void 0) {
-    slider.step = ".01";
-  } else {
-    slider.step = `${step}`;
-  }
-  container.appendChild(slider);
-  let valueDisplay = document.createElement("span");
-  valueDisplay.classList.add("value-display");
-  valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-  container.appendChild(valueDisplay);
-  function updateDisplay() {
-    callback(slider.value);
-    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-    updateSliderColor(slider);
-  }
-  function updateSliderColor(sliderElement) {
-    const value = 100 * parseFloat(sliderElement.value);
-    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
-  }
-  updateDisplay();
-  slider.addEventListener("input", updateDisplay);
-  return slider;
-}
-
 // src/lib/bezier.ts
-var np = __toESM(require_numpy_ts_node(), 1);
 var SmoothOpenPathBezierHandleCalculator = class {
   constructor(n) {
     this.n = n;
@@ -11250,7 +11252,7 @@ var CatenaryScene = class extends Scene {
 };
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
-    function prepare_canvas(width2, height2, name) {
+    function prepare_canvas2(width2, height2, name) {
       const container = document.getElementById(name);
       if (container == null) throw new Error(`${name} not found`);
       container.style.width = `${width2}px`;
@@ -11274,7 +11276,7 @@ var CatenaryScene = class extends Scene {
     }
     let width = 300;
     let height = 300;
-    let canvas = prepare_canvas(width, height, "scene-container");
+    let canvas = prepare_canvas2(width, height, "scene-container");
     let p0 = [-2, 2];
     let p1 = [2, 3];
     let length = 6;

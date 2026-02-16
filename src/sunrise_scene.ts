@@ -1,5 +1,4 @@
-import { Scene, prepare_canvas } from "./lib/base/base.js";
-import { Line } from "./lib/base/geometry.js";
+import { Scene, prepare_canvas, Line } from "./lib/base";
 import { BezierCurve } from "./lib/bezier.js";
 import { Slider } from "./lib/interactive.js";
 import {

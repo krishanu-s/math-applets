@@ -10632,6 +10632,14 @@ var require_numpy_ts_node = __commonJS({
 // src/bezier_curve_scene.ts
 var np2 = __toESM(require_numpy_ts_node(), 1);
 
+// src/lib/base/vec2.ts
+function vec2_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec2_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
+
 // src/lib/base/base.ts
 var StrokeOptions = class {
   constructor() {
@@ -10923,14 +10931,6 @@ function mouse_event_coords(event) {
 }
 function touch_event_coords(event) {
   return [event.touches[0].pageX, event.touches[0].pageY];
-}
-
-// src/lib/base/vec2.ts
-function vec2_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-function vec2_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1]];
 }
 
 // src/lib/base/geometry.ts
@@ -11363,7 +11363,7 @@ var ClosedCurveScene = class extends Scene {
 };
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
-    function prepare_canvas(width2, height2, name) {
+    function prepare_canvas2(width2, height2, name) {
       const container = document.getElementById(name);
       if (container == null) throw new Error(`${name} not found`);
       container.style.width = `${width2}px`;
@@ -11387,7 +11387,7 @@ var ClosedCurveScene = class extends Scene {
     }
     let width = 500;
     let height = 500;
-    let canvas = prepare_canvas(width, height, "scene-container");
+    let canvas = prepare_canvas2(width, height, "scene-container");
     let scene = new ClosedCurveScene(canvas, 20);
     let xlims = [-5, 5];
     let ylims = [-5, 5];

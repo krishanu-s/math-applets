@@ -10629,6 +10629,93 @@ var require_numpy_ts_node = __commonJS({
   }
 });
 
+// src/lib/interactive.ts
+function Slider(container, callback, kwargs) {
+  let slider = document.createElement("input");
+  slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  slider.width = 200;
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
+  }
+  let min2 = kwargs.min;
+  if (min2 == void 0) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min2}`;
+  }
+  let max2 = kwargs.max;
+  if (max2 == void 0) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max2}`;
+  }
+  let step = kwargs.step;
+  if (step == void 0) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
+  }
+  container.appendChild(slider);
+  let valueDisplay = document.createElement("span");
+  valueDisplay.classList.add("value-display");
+  valueDisplay.id = "sliderValue";
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+  container.appendChild(valueDisplay);
+  function updateDisplay() {
+    callback(slider.value);
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+    updateSliderColor(slider);
+  }
+  function updateSliderColor(sliderElement) {
+    const value = 100 * parseFloat(sliderElement.value);
+    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
+  }
+  updateDisplay();
+  slider.addEventListener("input", updateDisplay);
+  return slider;
+}
+function Button(container, callback) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "interactiveButton";
+  button.style.padding = "15px";
+  container.appendChild(button);
+  button.addEventListener("click", (event) => {
+    callback();
+    button.style.transform = "scale(0.95)";
+    setTimeout(() => {
+      button.style.transform = "scale(1)";
+    }, 100);
+  });
+  return button;
+}
+
+// src/lib/base/vec2.ts
+function vec2_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec2_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
+function vec2_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
+function vec2_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
+function vec2_rot(v, angle2) {
+  const [x, y] = v;
+  const cos2 = Math.cos(angle2);
+  const sin2 = Math.sin(angle2);
+  return [x * cos2 - y * sin2, x * sin2 + y * cos2];
+}
+
 // src/lib/base/base.ts
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
@@ -10958,73 +11045,6 @@ function touch_event_coords(event) {
   return [event.touches[0].pageX, event.touches[0].pageY];
 }
 
-// src/lib/interactive.ts
-function Slider(container, callback, kwargs) {
-  let slider = document.createElement("input");
-  slider.type = "range";
-  slider.value = kwargs.initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
-  slider.width = 200;
-  let name = kwargs.name;
-  if (name == void 0) {
-    slider.name = "Value";
-  } else {
-    slider.name = name;
-  }
-  let min2 = kwargs.min;
-  if (min2 == void 0) {
-    slider.min = "0";
-  } else {
-    slider.min = `${min2}`;
-  }
-  let max2 = kwargs.max;
-  if (max2 == void 0) {
-    slider.max = "10";
-  } else {
-    slider.max = `${max2}`;
-  }
-  let step = kwargs.step;
-  if (step == void 0) {
-    slider.step = ".01";
-  } else {
-    slider.step = `${step}`;
-  }
-  container.appendChild(slider);
-  let valueDisplay = document.createElement("span");
-  valueDisplay.classList.add("value-display");
-  valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-  container.appendChild(valueDisplay);
-  function updateDisplay() {
-    callback(slider.value);
-    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-    updateSliderColor(slider);
-  }
-  function updateSliderColor(sliderElement) {
-    const value = 100 * parseFloat(sliderElement.value);
-    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
-  }
-  updateDisplay();
-  slider.addEventListener("input", updateDisplay);
-  return slider;
-}
-function Button(container, callback) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.id = "interactiveButton";
-  button.style.padding = "15px";
-  container.appendChild(button);
-  button.addEventListener("click", (event) => {
-    callback();
-    button.style.transform = "scale(0.95)";
-    setTimeout(() => {
-      button.style.transform = "scale(1)";
-    }, 100);
-  });
-  return button;
-}
-
 // src/lib/base/color.ts
 function colorval_to_rgba(color) {
   return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
@@ -11036,26 +11056,6 @@ function rb_colormap_2(z) {
   } else {
     return [512 * (gray - 0.5), 0, 0, 255];
   }
-}
-
-// src/lib/base/vec2.ts
-function vec2_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-function vec2_scale(x, factor) {
-  return [x[0] * factor, x[1] * factor];
-}
-function vec2_sum(x, y) {
-  return [x[0] + y[0], x[1] + y[1]];
-}
-function vec2_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1]];
-}
-function vec2_rot(v, angle2) {
-  const [x, y] = v;
-  const cos2 = Math.cos(angle2);
-  const sin2 = Math.sin(angle2);
-  return [x * cos2 - y * sin2, x * sin2 + y * cos2];
 }
 
 // src/lib/base/geometry.ts

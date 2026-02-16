@@ -8,10 +8,6 @@ import {
   linspace,
   funspace,
   delay,
-} from "./lib/base/base.js";
-import { Slider, Button } from "./lib/interactive.js";
-import { SceneViewTranslator } from "./lib/scene_view_translator.js";
-import {
   Dot,
   Sector,
   Rectangle,
@@ -25,8 +21,6 @@ import {
   DraggableRectangleY,
   Arrow,
   LineSpring,
-} from "./lib/base/geometry.js";
-import {
   Vec2D,
   vec2_norm,
   vec2_sum,
@@ -36,7 +30,9 @@ import {
   vec2_normalize,
   vec2_angle,
   vec2_sum_list,
-} from "./lib/base/vec2.js";
+} from "./lib/base";
+import { Slider, Button } from "./lib/interactive.js";
+import { SceneViewTranslator } from "./lib/scene_view_translator.js";
 import { ParametricFunction } from "./lib/bezier.js";
 import { HeatMap } from "./lib/heatmap.js";
 import {

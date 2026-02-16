@@ -10629,6 +10629,34 @@ var require_numpy_ts_node = __commonJS({
   }
 });
 
+// src/lib/base/vec2.ts
+function vec2_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec2_normalize(x) {
+  let n = vec2_norm(x);
+  if (n == 0) {
+    throw new Error("Can't normalize the zero vector");
+  } else {
+    return vec2_scale(x, 1 / n);
+  }
+}
+function vec2_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
+function vec2_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
+function vec2_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
+function vec2_rot(v, angle2) {
+  const [x, y] = v;
+  const cos2 = Math.cos(angle2);
+  const sin2 = Math.sin(angle2);
+  return [x * cos2 - y * sin2, x * sin2 + y * cos2];
+}
+
 // src/lib/base/base.ts
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
@@ -10969,67 +10997,6 @@ function rb_colormap(z) {
   } else {
     return [255, 512 * (1 - gray), 512 * (1 - gray), 255];
   }
-}
-
-// src/lib/heatmap.ts
-var HeatMap = class extends MObject {
-  constructor(width, height, min_val, max_val, valArray) {
-    super();
-    this.width = width;
-    this.height = height;
-    this.min_val = min_val;
-    this.max_val = max_val;
-    this.valArray = valArray;
-    this.colorMap = rb_colormap;
-  }
-  set_color_map(colorMap) {
-    this.colorMap = colorMap;
-  }
-  // Gets/sets values
-  set_vals(vals) {
-    this.valArray = vals;
-  }
-  get_vals() {
-    return this.valArray;
-  }
-  // Draws on the canvas
-  _draw(ctx, scene, imageData) {
-    let data = imageData.data;
-    for (let i = 0; i < this.width * this.height; i++) {
-      const px_val = this.valArray[i];
-      const idx = i * 4;
-      [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] = this.colorMap(px_val);
-    }
-    ctx.putImageData(imageData, 0, 0);
-  }
-};
-
-// src/lib/base/vec2.ts
-function vec2_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-function vec2_normalize(x) {
-  let n = vec2_norm(x);
-  if (n == 0) {
-    throw new Error("Can't normalize the zero vector");
-  } else {
-    return vec2_scale(x, 1 / n);
-  }
-}
-function vec2_scale(x, factor) {
-  return [x[0] * factor, x[1] * factor];
-}
-function vec2_sum(x, y) {
-  return [x[0] + y[0], x[1] + y[1]];
-}
-function vec2_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1]];
-}
-function vec2_rot(v, angle2) {
-  const [x, y] = v;
-  const cos2 = Math.cos(angle2);
-  const sin2 = Math.sin(angle2);
-  return [x * cos2 - y * sin2, x * sin2 + y * cos2];
 }
 
 // src/lib/base/geometry.ts
@@ -11586,6 +11553,39 @@ var TwoHeadedArrow = class extends Line {
     ctx.lineTo(start_x, start_y);
     ctx.closePath();
     ctx.fill();
+  }
+};
+
+// src/lib/heatmap.ts
+var HeatMap = class extends MObject {
+  constructor(width, height, min_val, max_val, valArray) {
+    super();
+    this.width = width;
+    this.height = height;
+    this.min_val = min_val;
+    this.max_val = max_val;
+    this.valArray = valArray;
+    this.colorMap = rb_colormap;
+  }
+  set_color_map(colorMap) {
+    this.colorMap = colorMap;
+  }
+  // Gets/sets values
+  set_vals(vals) {
+    this.valArray = vals;
+  }
+  get_vals() {
+    return this.valArray;
+  }
+  // Draws on the canvas
+  _draw(ctx, scene, imageData) {
+    let data = imageData.data;
+    for (let i = 0; i < this.width * this.height; i++) {
+      const px_val = this.valArray[i];
+      const idx = i * 4;
+      [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] = this.colorMap(px_val);
+    }
+    ctx.putImageData(imageData, 0, 0);
   }
 };
 

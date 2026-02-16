@@ -10629,6 +10629,32 @@ var require_numpy_ts_node = __commonJS({
   }
 });
 
+// src/lib/base/vec2.ts
+function vec2_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec2_angle(v) {
+  return Math.atan2(v[1], v[0]);
+}
+function vec2_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
+function vec2_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
+function vec2_sum_list(xs) {
+  return xs.reduce((acc, x) => vec2_sum(acc, x), [0, 0]);
+}
+function vec2_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
+function vec2_rot(v, angle2) {
+  const [x, y] = v;
+  const cos2 = Math.cos(angle2);
+  const sin2 = Math.sin(angle2);
+  return [x * cos2 - y * sin2, x * sin2 + y * cos2];
+}
+
 // src/lib/base/base.ts
 function clamp(x, xmin, xmax) {
   return Math.min(xmax, Math.max(xmin, x));
@@ -10967,198 +10993,6 @@ function mouse_event_coords(event) {
 function touch_event_coords(event) {
   return [event.touches[0].pageX, event.touches[0].pageY];
 }
-
-// src/lib/interactive.ts
-function Slider(container, callback, kwargs) {
-  let slider = document.createElement("input");
-  slider.type = "range";
-  slider.value = kwargs.initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
-  slider.width = 200;
-  let name = kwargs.name;
-  if (name == void 0) {
-    slider.name = "Value";
-  } else {
-    slider.name = name;
-  }
-  let min2 = kwargs.min;
-  if (min2 == void 0) {
-    slider.min = "0";
-  } else {
-    slider.min = `${min2}`;
-  }
-  let max2 = kwargs.max;
-  if (max2 == void 0) {
-    slider.max = "10";
-  } else {
-    slider.max = `${max2}`;
-  }
-  let step = kwargs.step;
-  if (step == void 0) {
-    slider.step = ".01";
-  } else {
-    slider.step = `${step}`;
-  }
-  container.appendChild(slider);
-  let valueDisplay = document.createElement("span");
-  valueDisplay.classList.add("value-display");
-  valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-  container.appendChild(valueDisplay);
-  function updateDisplay() {
-    callback(slider.value);
-    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-    updateSliderColor(slider);
-  }
-  function updateSliderColor(sliderElement) {
-    const value = 100 * parseFloat(sliderElement.value);
-    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
-  }
-  updateDisplay();
-  slider.addEventListener("input", updateDisplay);
-  return slider;
-}
-function Button(container, callback) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.id = "interactiveButton";
-  button.style.padding = "15px";
-  container.appendChild(button);
-  button.addEventListener("click", (event) => {
-    callback();
-    button.style.transform = "scale(0.95)";
-    setTimeout(() => {
-      button.style.transform = "scale(1)";
-    }, 100);
-  });
-  return button;
-}
-
-// src/lib/base/vec2.ts
-function vec2_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-function vec2_angle(v) {
-  return Math.atan2(v[1], v[0]);
-}
-function vec2_scale(x, factor) {
-  return [x[0] * factor, x[1] * factor];
-}
-function vec2_sum(x, y) {
-  return [x[0] + y[0], x[1] + y[1]];
-}
-function vec2_sum_list(xs) {
-  return xs.reduce((acc, x) => vec2_sum(acc, x), [0, 0]);
-}
-function vec2_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1]];
-}
-function vec2_rot(v, angle2) {
-  const [x, y] = v;
-  const cos2 = Math.cos(angle2);
-  const sin2 = Math.sin(angle2);
-  return [x * cos2 - y * sin2, x * sin2 + y * cos2];
-}
-
-// src/lib/scene_view_translator.ts
-var SceneViewTranslator = class {
-  constructor(scene) {
-    this.drag = false;
-    this.dragStart = [0, 0];
-    this.dragEnd = [0, 0];
-    this.scene = scene;
-  }
-  click(event) {
-    this.dragStart = [
-      event.pageX - this.scene.canvas.offsetLeft,
-      event.pageY - this.scene.canvas.offsetTop
-    ];
-    if (!this.scene.is_dragging) {
-      this.drag = true;
-      this.scene.click();
-    }
-  }
-  touch(event) {
-    this.dragStart = [
-      event.touches[0].pageX - this.scene.canvas.offsetLeft,
-      event.touches[0].pageY - this.scene.canvas.offsetTop
-    ];
-    if (!this.scene.is_dragging) {
-      this.drag = true;
-      this.scene.click();
-    }
-  }
-  unclick(event) {
-    this.drag = false;
-    this.scene.unclick();
-  }
-  untouch(event) {
-    this.drag = false;
-    this.scene.unclick();
-  }
-  mouse_drag_cursor(event) {
-    if (this.drag) {
-      this.dragEnd = [
-        event.pageX - this.scene.canvas.offsetLeft,
-        event.pageY - this.scene.canvas.offsetTop
-      ];
-      this._drag_cursor();
-    }
-  }
-  touch_drag_cursor(event) {
-    if (this.drag) {
-      this.dragEnd = [
-        event.touches[0].pageX - this.scene.canvas.offsetLeft,
-        event.touches[0].pageY - this.scene.canvas.offsetTop
-      ];
-      this._drag_cursor();
-    }
-  }
-  // Updates the scene to account for a dragged cursor position
-  _drag_cursor() {
-    let dragDiff = vec2_sub(
-      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
-      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
-    );
-    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
-      return;
-    }
-    this.scene.move_view(dragDiff);
-    this.scene.draw();
-    this.dragStart = this.dragEnd;
-  }
-  add() {
-    let self = this;
-    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
-    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
-    this.scene.canvas.addEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self)
-    );
-    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
-    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
-    this.scene.canvas.addEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self)
-    );
-  }
-  remove() {
-    let self = this;
-    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
-    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
-    this.scene.canvas.removeEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self)
-    );
-    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
-    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
-    this.scene.canvas.removeEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self)
-    );
-  }
-};
 
 // src/lib/base/color.ts
 function colorval_to_rgba(color) {
@@ -11787,6 +11621,172 @@ var LineSpring = class extends Line {
       ctx.lineTo(end_x, end_y);
       ctx.stroke();
     }
+  }
+};
+
+// src/lib/interactive.ts
+function Slider(container, callback, kwargs) {
+  let slider = document.createElement("input");
+  slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  slider.width = 200;
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
+  }
+  let min2 = kwargs.min;
+  if (min2 == void 0) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min2}`;
+  }
+  let max2 = kwargs.max;
+  if (max2 == void 0) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max2}`;
+  }
+  let step = kwargs.step;
+  if (step == void 0) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
+  }
+  container.appendChild(slider);
+  let valueDisplay = document.createElement("span");
+  valueDisplay.classList.add("value-display");
+  valueDisplay.id = "sliderValue";
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+  container.appendChild(valueDisplay);
+  function updateDisplay() {
+    callback(slider.value);
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+    updateSliderColor(slider);
+  }
+  function updateSliderColor(sliderElement) {
+    const value = 100 * parseFloat(sliderElement.value);
+    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
+  }
+  updateDisplay();
+  slider.addEventListener("input", updateDisplay);
+  return slider;
+}
+function Button(container, callback) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "interactiveButton";
+  button.style.padding = "15px";
+  container.appendChild(button);
+  button.addEventListener("click", (event) => {
+    callback();
+    button.style.transform = "scale(0.95)";
+    setTimeout(() => {
+      button.style.transform = "scale(1)";
+    }, 100);
+  });
+  return button;
+}
+
+// src/lib/scene_view_translator.ts
+var SceneViewTranslator = class {
+  constructor(scene) {
+    this.drag = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.scene = scene;
+  }
+  click(event) {
+    this.dragStart = [
+      event.pageX - this.scene.canvas.offsetLeft,
+      event.pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
+  }
+  touch(event) {
+    this.dragStart = [
+      event.touches[0].pageX - this.scene.canvas.offsetLeft,
+      event.touches[0].pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
+  }
+  unclick(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  untouch(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  mouse_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.pageX - this.scene.canvas.offsetLeft,
+        event.pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  touch_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.touches[0].pageX - this.scene.canvas.offsetLeft,
+        event.touches[0].pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  // Updates the scene to account for a dragged cursor position
+  _drag_cursor() {
+    let dragDiff = vec2_sub(
+      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
+      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
+    );
+    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
+      return;
+    }
+    this.scene.move_view(dragDiff);
+    this.scene.draw();
+    this.dragStart = this.dragEnd;
+  }
+  add() {
+    let self = this;
+    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
+  }
+  remove() {
+    let self = this;
+    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.removeEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.removeEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
   }
 };
 

@@ -11,7 +11,7 @@ import {
   vec2_normalize,
   vec2_angle,
   vec2_sum_list,
-} from "../base/vec2.js";
+} from "../base";
 import { ThreeDScene } from "./scene.js";
 import {
   normalize,

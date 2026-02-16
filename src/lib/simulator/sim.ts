@@ -8,7 +8,7 @@
 // This is housed within an "InteractivePlayingScene", through which the
 // user interacts, and which also handles rendering.
 
-import { Scene, MObject } from "../base/base.js";
+import { Scene, MObject } from "../base";
 import { Button } from "../interactive.js";
 import {
   SceneFromSimulator,

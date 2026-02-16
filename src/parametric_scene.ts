@@ -1,5 +1,5 @@
 // TODO Graph of a parametric function
-import { MObject, Scene } from "./lib/base/base.js";
+import { MObject, Scene } from "./lib/base";
 import { Slider } from "./lib/interactive.js";
 import { ParametricFunction } from "./lib/bezier.js";
 

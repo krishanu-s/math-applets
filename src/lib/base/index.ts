@@ -1,0 +1,52 @@
+export {
+  Vec2D,
+  vec2_norm,
+  vec2_angle,
+  vec2_normalize,
+  vec2_scale,
+  vec2_sum,
+  vec2_sum_list,
+  vec2_sub,
+  vec2_rot,
+} from "./vec2";
+export {
+  clamp,
+  sigmoid,
+  linspace,
+  funspace,
+  gaussianRandom,
+  delay,
+  StrokeOptions,
+  FillOptions,
+  MObject,
+  LineLikeMObject,
+  FillLikeMObject,
+  Scene,
+  prepare_canvas,
+  mouse_event_coords,
+  touch_event_coords,
+} from "./base";
+export {
+  colorval_to_rgba,
+  rb_colormap,
+  rb_colormap_2,
+  grayscale_colormap,
+  spherical_colormap,
+} from "./color";
+export { LaTeXMObject, LatexCache } from "./latex";
+export {
+  Dot,
+  Sector,
+  DraggableDot,
+  DraggableDotX,
+  DraggableDotY,
+  Rectangle,
+  DraggableRectangle,
+  DraggableRectangleX,
+  DraggableRectangleY,
+  Line,
+  LineSequence,
+  LineSpring,
+  Arrow,
+  TwoHeadedArrow,
+} from "./geometry";

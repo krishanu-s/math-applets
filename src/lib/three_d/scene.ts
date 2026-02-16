@@ -15,8 +15,7 @@ import {
   rot_y,
   rot_z,
 } from "./matvec.js";
-import { Scene } from "../base/base.js";
-import { Vec2D } from "../base/vec2.js";
+import { Scene, Vec2D } from "../base";
 import {
   ThreeDMObject,
   ThreeDLineLikeMObject,

@@ -1,7 +1,9 @@
 // Testing the direct feeding of a pixel array to the canvas
-import { MObject, Scene, prepare_canvas } from "./lib/base/base.js";
 import { Slider, Button } from "./lib/interactive.js";
 import {
+  MObject,
+  Scene,
+  prepare_canvas,
   Dot,
   Sector,
   Rectangle,
@@ -15,8 +17,8 @@ import {
   DraggableRectangleY,
   Arrow,
   LineSpring,
-} from "./lib/base/geometry.js";
-import { Vec2D } from "./lib/base/vec2.js";
+  Vec2D,
+} from "./lib/base";
 import { ParametricFunction } from "./lib/bezier.js";
 import { SpringSimulator } from "./lib/simulator/statesim.js";
 import { InteractivePlayingScene } from "./lib/simulator/sim.js";

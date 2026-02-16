@@ -1,13 +1,12 @@
-import { MObject, clamp } from "../base/base.js";
 import {
+  MObject,
+  clamp,
   Dot,
   Line,
   LineSpring,
   Arrow,
   DraggableDotX,
   DraggableDotY,
-} from "../base/geometry.js";
-import {
   Vec2D,
   vec2_norm,
   vec2_sum,
@@ -17,7 +16,9 @@ import {
   vec2_normalize,
   vec2_angle,
   vec2_sum_list,
-} from "../base/vec2.js";
+  rb_colormap_2,
+  colorval_to_rgba,
+} from "../base";
 import { BezierSpline } from "../bezier.js";
 import { HeatMap } from "../heatmap.js";
 import { SceneFromSimulator } from "../interactive_handler.js";
@@ -26,7 +27,6 @@ import { InteractivePlayingScene } from "./sim.js";
 import { Dot3D, DraggableDotZ3D, Line3D } from "../three_d/mobjects.js";
 import { InteractivePlayingThreeDScene } from "./sim.js";
 import { Vec3D } from "../three_d/matvec.js";
-import { rb_colormap_2, colorval_to_rgba } from "../base/color.js";
 
 // A one-dimensional point source.
 export class PointSourceOneDim {

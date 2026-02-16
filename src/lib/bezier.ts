@@ -1,6 +1,5 @@
 import * as np from "numpy-ts";
-import { MObject, LineLikeMObject, Scene } from "./base/base.js";
-import { Vec2D } from "./base/vec2.js";
+import { MObject, LineLikeMObject, Scene, Vec2D } from "./base";
 
 // TODO Make a smooth Bezier spline class
 

@@ -6,8 +6,6 @@ import {
   FillOptions,
   mouse_event_coords,
   touch_event_coords,
-} from "../base/base";
-import {
   Vec2D,
   vec2_norm,
   vec2_sum,
@@ -17,7 +15,7 @@ import {
   vec2_normalize,
   vec2_angle,
   vec2_sum_list,
-} from "../base/vec2.js";
+} from "../base";
 import { ThreeDScene } from "./scene";
 import {
   Vec3D,
@@ -926,9 +924,9 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
     let last_x: number = 0;
     let last_y: number = 0;
     let depth: number;
-    for (let i = 0; i < this.points.length; i++) {
-      p = scene.camera_view(this.points[i]);
-      depth = scene.camera.depth(this.points[i]);
+    for (let pt of this.points) {
+      p = scene.camera_view(pt);
+      depth = scene.camera.depth(pt);
       if (p == null) {
         next_state = "out_of_frame";
         if (state == "unblocked") {

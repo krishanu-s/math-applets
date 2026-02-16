@@ -1,3 +1,31 @@
+// src/lib/base/vec2.ts
+function vec2_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec2_normalize(x) {
+  let n = vec2_norm(x);
+  if (n == 0) {
+    throw new Error("Can't normalize the zero vector");
+  } else {
+    return vec2_scale(x, 1 / n);
+  }
+}
+function vec2_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
+function vec2_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
+function vec2_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
+function vec2_rot(v, angle) {
+  const [x, y] = v;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return [x * cos - y * sin, x * sin + y * cos];
+}
+
 // src/lib/base/base.ts
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -391,34 +419,6 @@ function rot(v, axis, angle) {
   result = rot_y(result, theta);
   result = rot_z(result, phi);
   return result;
-}
-
-// src/lib/base/vec2.ts
-function vec2_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-function vec2_normalize(x) {
-  let n = vec2_norm(x);
-  if (n == 0) {
-    throw new Error("Can't normalize the zero vector");
-  } else {
-    return vec2_scale(x, 1 / n);
-  }
-}
-function vec2_scale(x, factor) {
-  return [x[0] * factor, x[1] * factor];
-}
-function vec2_sum(x, y) {
-  return [x[0] + y[0], x[1] + y[1]];
-}
-function vec2_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1]];
-}
-function vec2_rot(v, angle) {
-  const [x, y] = v;
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  return [x * cos - y * sin, x * sin + y * cos];
 }
 
 // src/lib/three_d/mobjects.ts
@@ -1172,9 +1172,9 @@ var ParametrizedCurve3D = class extends ThreeDLineLikeMObject {
     let last_x = 0;
     let last_y = 0;
     let depth;
-    for (let i = 0; i < this.points.length; i++) {
-      p = scene.camera_view(this.points[i]);
-      depth = scene.camera.depth(this.points[i]);
+    for (let pt of this.points) {
+      p = scene.camera_view(pt);
+      depth = scene.camera.depth(pt);
       if (p == null) {
         next_state = "out_of_frame";
         if (state == "unblocked") {

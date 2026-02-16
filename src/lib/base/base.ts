@@ -1,4 +1,4 @@
-import { Vec2D } from "../base_geom";
+import { Vec2D } from "./vec2";
 
 // *** FUNCTIONS ***
 

@@ -11065,7 +11065,7 @@ var ParametricFunction = class extends LineLikeMObject {
 // src/parametric_scene.ts
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
-    function prepare_canvas(width2, height2, name) {
+    function prepare_canvas2(width2, height2, name) {
       const container = document.getElementById(name);
       if (container == null) throw new Error(`${name} not found`);
       container.style.width = `${width2}px`;
@@ -11093,7 +11093,7 @@ var ParametricFunction = class extends LineLikeMObject {
     const ymax = 5;
     let width = 300;
     let height = 300;
-    let canvas = prepare_canvas(width, height, "scene-container");
+    let canvas = prepare_canvas2(width, height, "scene-container");
     const ctx = canvas.getContext("2d");
     if (!ctx) {
       throw new Error("Failed to get 2D context");

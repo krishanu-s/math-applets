@@ -1,3 +1,11 @@
+// src/lib/base/vec2.ts
+function vec2_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec2_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
+
 // src/lib/base/base.ts
 var StrokeOptions = class {
   constructor() {
@@ -291,66 +299,6 @@ function touch_event_coords(event) {
   return [event.touches[0].pageX, event.touches[0].pageY];
 }
 
-// src/lib/interactive.ts
-function Slider(container, callback, kwargs) {
-  let slider = document.createElement("input");
-  slider.type = "range";
-  slider.value = kwargs.initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
-  slider.width = 200;
-  let name = kwargs.name;
-  if (name == void 0) {
-    slider.name = "Value";
-  } else {
-    slider.name = name;
-  }
-  let min = kwargs.min;
-  if (min == void 0) {
-    slider.min = "0";
-  } else {
-    slider.min = `${min}`;
-  }
-  let max = kwargs.max;
-  if (max == void 0) {
-    slider.max = "10";
-  } else {
-    slider.max = `${max}`;
-  }
-  let step = kwargs.step;
-  if (step == void 0) {
-    slider.step = ".01";
-  } else {
-    slider.step = `${step}`;
-  }
-  container.appendChild(slider);
-  let valueDisplay = document.createElement("span");
-  valueDisplay.classList.add("value-display");
-  valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-  container.appendChild(valueDisplay);
-  function updateDisplay() {
-    callback(slider.value);
-    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-    updateSliderColor(slider);
-  }
-  function updateSliderColor(sliderElement) {
-    const value = 100 * parseFloat(sliderElement.value);
-    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
-  }
-  updateDisplay();
-  slider.addEventListener("input", updateDisplay);
-  return slider;
-}
-
-// src/lib/base/vec2.ts
-function vec2_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-function vec2_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1]];
-}
-
 // src/lib/base/geometry.ts
 var Dot = class extends FillLikeMObject {
   constructor(center, radius) {
@@ -583,6 +531,58 @@ var Line = class extends LineLikeMObject {
   }
 };
 
+// src/lib/interactive.ts
+function Slider(container, callback, kwargs) {
+  let slider = document.createElement("input");
+  slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  slider.width = 200;
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
+  }
+  let min = kwargs.min;
+  if (min == void 0) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min}`;
+  }
+  let max = kwargs.max;
+  if (max == void 0) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max}`;
+  }
+  let step = kwargs.step;
+  if (step == void 0) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
+  }
+  container.appendChild(slider);
+  let valueDisplay = document.createElement("span");
+  valueDisplay.classList.add("value-display");
+  valueDisplay.id = "sliderValue";
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+  container.appendChild(valueDisplay);
+  function updateDisplay() {
+    callback(slider.value);
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+    updateSliderColor(slider);
+  }
+  function updateSliderColor(sliderElement) {
+    const value = 100 * parseFloat(sliderElement.value);
+    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
+  }
+  updateDisplay();
+  slider.addEventListener("input", updateDisplay);
+  return slider;
+}
+
 // src/pendulum_scene.ts
 var GRAV_CONSTANT = 1;
 var PendulumScene = class extends Scene {
@@ -676,7 +676,7 @@ var PendulumScene = class extends Scene {
 };
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
-    function prepare_canvas(width2, height2, name) {
+    function prepare_canvas2(width2, height2, name) {
       const container = document.getElementById(name);
       if (container == null) throw new Error(`${name} not found`);
       container.style.width = `${width2}px`;
@@ -700,7 +700,7 @@ var PendulumScene = class extends Scene {
     }
     let width = 300;
     let height = 300;
-    let canvas = prepare_canvas(width, height, "scene-container");
+    let canvas = prepare_canvas2(width, height, "scene-container");
     let length = 6;
     let top = [0, 4];
     let scene = new PendulumScene(canvas, length, top, 0.05, 0.3);

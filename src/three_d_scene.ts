@@ -1,5 +1,6 @@
-import { prepare_canvas, delay } from "./lib/base/base.js";
 import {
+  prepare_canvas,
+  delay,
   Vec2D,
   vec2_sub,
   vec2_scale,
@@ -7,7 +8,7 @@ import {
   vec2_sum,
   vec2_norm,
   vec2_normalize,
-} from "./lib/base/vec2.js";
+} from "./lib/base";
 import {
   Vec3D,
   vec3_sum,

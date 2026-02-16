@@ -10629,6 +10629,14 @@ var require_numpy_ts_node = __commonJS({
   }
 });
 
+// src/lib/base/vec2.ts
+function vec2_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
+}
+function vec2_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1]];
+}
+
 // src/lib/base/base.ts
 var StrokeOptions = class {
   constructor() {
@@ -10955,15 +10963,7 @@ function touch_event_coords(event) {
   return [event.touches[0].pageX, event.touches[0].pageY];
 }
 
-// src/lib/base/vec2.ts
-function vec2_norm(x) {
-  return Math.sqrt(x[0] ** 2 + x[1] ** 2);
-}
-function vec2_sub(x, y) {
-  return [x[0] - y[0], x[1] - y[1]];
-}
-
-// src/lib/base_geom.ts
+// src/lib/base/geometry.ts
 var Dot = class extends FillLikeMObject {
   constructor(center, radius) {
     super();

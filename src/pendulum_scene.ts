@@ -1,6 +1,5 @@
-import { Scene } from "./lib/base/base.js";
+import { Scene, Dot, Line } from "./lib/base";
 import { Slider } from "./lib/interactive.js";
-import { Dot, Line } from "./lib/base/geometry.js";
 
 // A pendulum
 const GRAV_CONSTANT = 1.0;
