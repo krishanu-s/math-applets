@@ -30,8 +30,8 @@ import {
   TwoHeadedArrow3D,
   ParametrizedCurve3D,
 } from "./lib/three_d.js";
-import { Slider, Button } from "./lib/interactive.js";
-import { Arcball } from "./lib/three_d/arcball.js";
+import { Slider, Button } from "./lib/interactive";
+import { Arcball } from "./lib/interactive/arcball.js";
 import { pick_random_step } from "./random_walk_scene.js";
 
 (async function () {

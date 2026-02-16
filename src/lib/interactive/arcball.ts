@@ -12,7 +12,7 @@ import {
   vec2_angle,
   vec2_sum_list,
 } from "../base";
-import { ThreeDScene } from "./scene.js";
+import { ThreeDScene } from "../three_d/scene.js";
 import {
   normalize,
   get_column,
@@ -21,7 +21,7 @@ import {
   rot,
   vec3_sum,
   vec3_scale,
-} from "./matvec.js";
+} from "../three_d/matvec.js";
 
 export class Arcball {
   scene: ThreeDScene;

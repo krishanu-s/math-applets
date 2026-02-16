@@ -1,6 +1,6 @@
 import { Scene, prepare_canvas, Line } from "./lib/base";
 import { BezierCurve } from "./lib/bezier.js";
-import { Slider } from "./lib/interactive.js";
+import { Slider } from "./lib/interactive";
 import {
   Vec3D,
   vec3_sum,
@@ -29,7 +29,7 @@ import {
 
 import { ThreeDScene } from "./lib/three_d/scene.js";
 import { HeatMap, TwoDimHeatMap } from "./lib/heatmap.js";
-import { Arcball } from "./lib/three_d/arcball.js";
+import { Arcball } from "./lib/interactive/arcball.js";
 
 const DEGREE = Math.PI / 180;
 const EARTH_TILT = 23 * DEGREE;

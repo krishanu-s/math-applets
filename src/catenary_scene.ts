@@ -1,5 +1,5 @@
 // import * as np from "numpy-ts";
-import { Slider } from "./lib/interactive.js";
+import { Slider } from "./lib/interactive";
 import { SmoothOpenPathBezierHandleCalculator } from "./lib/bezier.js";
 import {
   Scene,

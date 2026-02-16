@@ -1,4 +1,4 @@
-export { Arcball } from "./arcball";
+export { Arcball } from "../interactive/arcball";
 export {
   Vec3D,
   vec3_dot,
@@ -27,7 +27,7 @@ export {
   ThreeDFillLikeMObject,
   Dot3D,
   DraggableDot3D,
-  DraggableDotZ3D,
+  // DraggableDotZ3D,
   Line3D,
   LineSequence3D,
   Arrow3D,

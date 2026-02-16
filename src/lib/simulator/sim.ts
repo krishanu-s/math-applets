@@ -9,7 +9,7 @@
 // user interacts, and which also handles rendering.
 
 import { Scene, MObject } from "../base";
-import { Button } from "../interactive.js";
+import { Button } from "../interactive";
 import {
   SceneFromSimulator,
   ThreeDSceneFromSimulator,

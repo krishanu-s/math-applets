@@ -27,6 +27,7 @@ import {
   vec3_sum_list,
   get_column,
 } from "./matvec";
+import { DraggableMObject3D, makeDraggable3D } from "../interactive/draggable";
 
 // Base class for three-dimensional Mobjects
 export class ThreeDMObject extends MObject {
@@ -161,7 +162,7 @@ export class ThreeDFillLikeMObject extends ThreeDMObject {
 }
 
 // A dot.
-export class Dot3D extends ThreeDFillLikeMObject {
+export class Dot3D extends ThreeDFillLikeMObject implements DraggableMObject3D {
   center: Vec3D;
   radius: number;
   constructor(center: Vec3D, radius: number) {
@@ -174,6 +175,37 @@ export class Dot3D extends ThreeDFillLikeMObject {
   }
   get_radius(): number {
     return this.radius;
+  }
+  // Tests whether a chosen view point lies inside the shape. Used for click-detection.
+  is_inside(scene: ThreeDScene, view_point: Vec2D) {
+    let center_view = scene.camera_view(this.center);
+    let edge_view = scene.camera_view(
+      vec3_sum(this.center, [0, 0, this.radius]),
+    );
+    if (center_view == null || edge_view == null) {
+      return false;
+    } else {
+      return (
+        vec2_norm(vec2_sub(view_point, center_view)) <
+        vec2_norm(vec2_sub(edge_view, center_view))
+      );
+    }
+  }
+  // Tests whether a chosen vector lies within an enlarged version of the dot.
+  // Used for touch-detection on mobile devices, and for use by small children.
+  is_almost_inside(scene: ThreeDScene, view_point: Vec2D, tolerance: number) {
+    let center_view = scene.camera_view(this.center);
+    let edge_view = scene.camera_view(
+      vec3_sum(this.center, [0, 0, this.radius]),
+    );
+    if (center_view == null || edge_view == null) {
+      return false;
+    } else {
+      return (
+        vec2_norm(vec2_sub(view_point, center_view)) <
+        vec2_norm(vec2_sub(edge_view, center_view)) * tolerance
+      );
+    }
   }
   depth(scene: ThreeDScene): number {
     return scene.camera.depth(this.center);
@@ -267,196 +299,16 @@ export class Dot3D extends ThreeDFillLikeMObject {
       }
     }
   }
-  toDraggableDot3D(): DraggableDot3D {
-    return new DraggableDot3D(this.center, this.radius);
-  }
-  toDraggableDotZ3D(): DraggableDotZ3D {
-    return new DraggableDotZ3D(this.center, this.radius);
-  }
+  // toDraggableDot3D(): DraggableDot3D {
+  //   return new DraggableDot3D(this.center, this.radius);
+  // }
+  // toDraggableDotZ3D(): DraggableDotZ3D {
+  //   return new DraggableDotZ3D(this.center, this.radius);
+  // }
 }
 
 // A draggable 3D dot.
-export class DraggableDot3D extends Dot3D {
-  isClicked: boolean = false;
-  dragStart: Vec2D = [0, 0];
-  dragEnd: Vec2D = [0, 0];
-  touch_tolerance: number = 2.0;
-  callbacks: (() => void)[] = [];
-  // Tests whether a chosen view point lies inside the shape. Used for click-detection.
-  is_inside(scene: ThreeDScene, view_point: Vec2D) {
-    let center_view = scene.camera_view(this.center);
-    let edge_view = scene.camera_view(
-      vec3_sum(this.center, [0, 0, this.radius]),
-    );
-    if (center_view == null || edge_view == null) {
-      return false;
-    } else {
-      return (
-        vec2_norm(vec2_sub(view_point, center_view)) <
-        vec2_norm(vec2_sub(edge_view, center_view))
-      );
-    }
-  }
-  // Tests whether a chosen vector lies within an enlarged version of the dot.
-  // Used for touch-detection on mobile devices, and for use by small children.
-  is_almost_inside(scene: ThreeDScene, view_point: Vec2D, tolerance: number) {
-    let center_view = scene.camera_view(this.center);
-    let edge_view = scene.camera_view(
-      vec3_sum(this.center, [0, 0, this.radius]),
-    );
-    if (center_view == null || edge_view == null) {
-      return false;
-    } else {
-      return (
-        vec2_norm(vec2_sub(view_point, center_view)) <
-        vec2_norm(vec2_sub(edge_view, center_view)) * tolerance
-      );
-    }
-  }
-  // Adds a callback which triggers when the dot is dragged
-  add_callback(callback: () => void) {
-    this.callbacks.push(callback);
-  }
-  do_callbacks() {
-    for (const callback of this.callbacks) {
-      callback();
-    }
-  }
-  // Triggers when the canvas is clicked.
-  click(scene: ThreeDScene, event: MouseEvent) {
-    this.dragStart = vec2_sub(mouse_event_coords(event), [
-      scene.canvas.offsetLeft,
-      scene.canvas.offsetTop,
-    ]);
-    if (!scene.is_dragging) {
-      this.isClicked = this.is_inside(
-        scene,
-        scene.c2v(this.dragStart[0], this.dragStart[1]),
-      );
-      if (this.isClicked) {
-        scene.click();
-      }
-    }
-  }
-  touch(scene: ThreeDScene, event: TouchEvent) {
-    this.dragStart = [
-      event.touches[0].pageX - scene.canvas.offsetLeft,
-      event.touches[0].pageY - scene.canvas.offsetTop,
-    ];
-    if (!scene.is_dragging) {
-      this.isClicked = this.is_almost_inside(
-        scene,
-        scene.c2v(this.dragStart[0], this.dragStart[1]),
-        this.touch_tolerance,
-      );
-      if (this.isClicked) {
-        scene.click();
-      }
-    }
-  }
-  // Triggers when the canvas is unclicked.
-  unclick(scene: Scene, event: MouseEvent) {
-    if (this.isClicked) {
-      scene.unclick();
-    }
-    this.isClicked = false;
-  }
-  untouch(scene: ThreeDScene, event: TouchEvent) {
-    if (this.isClicked) {
-      scene.unclick();
-    }
-    scene.unclick();
-  }
-  // Triggers when the mouse is dragged over the canvas.
-  mouse_drag_cursor(scene: ThreeDScene, event: MouseEvent) {
-    if (this.isClicked) {
-      this.dragEnd = vec2_sub(mouse_event_coords(event), [
-        scene.canvas.offsetLeft,
-        scene.canvas.offsetTop,
-      ]);
-      this._drag_cursor(scene);
-    }
-  }
-  touch_drag_cursor(scene: ThreeDScene, event: TouchEvent) {
-    if (this.isClicked) {
-      this.dragEnd = vec2_sub(touch_event_coords(event), [
-        scene.canvas.offsetLeft,
-        scene.canvas.offsetTop,
-      ]);
-      this._drag_cursor(scene);
-    }
-  }
-  _drag_cursor(scene: ThreeDScene) {
-    let translate_vec: Vec2D = vec2_sub(
-      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
-      scene.c2v(this.dragStart[0], this.dragStart[1]),
-    );
-    this.move_by(scene.v2w(translate_vec));
-    this.dragStart = this.dragEnd;
-    // Perform any other MObject updates necessary.
-    this.do_callbacks();
-    scene.draw();
-  }
-  add(scene: Scene) {
-    let self = this;
-    // For desktop
-    scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
-    scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
-    scene.canvas.addEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self, scene),
-    );
-    // For mobile
-    scene.canvas.addEventListener("touchstart", self.touch.bind(self, scene));
-    scene.canvas.addEventListener("touchend", self.untouch.bind(self, scene));
-    scene.canvas.addEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self, scene),
-    );
-  }
-  remove(scene: Scene) {
-    let self = this;
-    // For desktop
-    scene.canvas.removeEventListener("mousedown", this.click.bind(self, scene));
-    scene.canvas.removeEventListener("mouseup", this.unclick.bind(self, scene));
-    scene.canvas.removeEventListener(
-      "mousemove",
-      this.mouse_drag_cursor.bind(self, scene),
-    );
-    // For mobile
-    scene.canvas.removeEventListener(
-      "touchstart",
-      this.click.bind(self, scene),
-    );
-    scene.canvas.removeEventListener(
-      "touchend",
-      this.unclick.bind(self, scene),
-    );
-    scene.canvas.removeEventListener(
-      "touchmove",
-      self.mouse_drag_cursor.bind(self, scene),
-    );
-  }
-  toDot3D(): Dot3D {
-    return new Dot3D(this.center, this.radius);
-  }
-}
-
-// Dragging only affects the z-coordinate
-export class DraggableDotZ3D extends DraggableDot3D {
-  _drag_cursor(scene: ThreeDScene) {
-    let translate_vec: Vec2D = vec2_sub(
-      scene.c2v(this.dragEnd[0], this.dragEnd[1]),
-      scene.c2v(this.dragStart[0], this.dragStart[1]),
-    );
-    let [mx, my, mz] = scene.v2w(translate_vec);
-    this.move_by([0, 0, mz]);
-    this.dragStart = this.dragEnd;
-    // Perform any other MObject updates necessary.
-    this.do_callbacks();
-    scene.draw();
-  }
-}
+export const DraggableDot3D = makeDraggable3D(Dot3D);
 
 // A line
 export class Line3D extends ThreeDLineLikeMObject {

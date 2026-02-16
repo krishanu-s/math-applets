@@ -1,5 +1,5 @@
 // Testing the direct feeding of a pixel array to the canvas
-import { Slider, Button } from "./lib/interactive.js";
+import { Slider, Button } from "./lib/interactive";
 import {
   MObject,
   Scene,
@@ -10,11 +10,7 @@ import {
   Line,
   LineSequence,
   DraggableDot,
-  DraggableDotX,
-  DraggableDotY,
   DraggableRectangle,
-  DraggableRectangleX,
-  DraggableRectangleY,
   Arrow,
   LineSpring,
   Vec2D,
@@ -220,9 +216,11 @@ import { InteractivePlayingScene } from "./lib/simulator/sim.js";
           // While the scene is paused, the point mass is an interactive element which can be dragged
           // to update the simulator state. While the scene is unpaused, the simulator runs and updates
           // the state of the point mass.
-          let mass = new DraggableRectangleX([0, 0], 0.6, 0.6);
+          let mass = new DraggableRectangle([0, 0], 0.6, 0.6);
+          mass.draggable_x = true;
+          mass.draggable_y = false;
           mass.add_callback(() => {
-            let sim = this.get_simulator();
+            let sim = this.get_simulator() as SpringSim;
             sim.set_vals([mass.get_center()[0], 0]);
           });
 
@@ -255,18 +253,9 @@ import { InteractivePlayingScene } from "./lib/simulator/sim.js";
         }
         toggle_pause() {
           if (this.paused) {
-            let mass = this.get_mobj("mass") as DraggableRectangleX;
-            this.remove("mass");
-            this.add("mass", mass.toRectangle());
+            (this.get_mobj("mass") as DraggableRectangle).draggable_x = false;
           } else {
-            let mass = this.get_mobj("mass") as Rectangle;
-            this.remove("mass");
-            let new_mass = mass.toDraggableRectangleX();
-            new_mass.add_callback(() => {
-              let sim = this.get_simulator();
-              sim.set_vals([new_mass.get_center()[0], 0]);
-            });
-            this.add("mass", new_mass);
+            (this.get_mobj("mass") as DraggableRectangle).draggable_x = true;
           }
           super.toggle_pause();
         }

@@ -5,8 +5,7 @@ import {
   Line,
   LineSpring,
   Arrow,
-  DraggableDotX,
-  DraggableDotY,
+  DraggableDot,
   Vec2D,
   vec2_norm,
   vec2_sum,
@@ -24,7 +23,7 @@ import { HeatMap } from "../heatmap.js";
 import { SceneFromSimulator } from "../interactive_handler.js";
 import { StateSimulator, TwoDimDrawable, TwoDimState } from "./statesim.js";
 import { InteractivePlayingScene } from "./sim.js";
-import { Dot3D, DraggableDotZ3D, Line3D } from "../three_d/mobjects.js";
+import { Dot3D, Line3D, DraggableDot3D } from "../three_d/mobjects.js";
 import { InteractivePlayingThreeDScene } from "./sim.js";
 import { Vec3D } from "../three_d/matvec.js";
 
@@ -298,7 +297,9 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     // Add dots which track with uValues in simulator
     for (let i = 0; i < width; i++) {
       pos = this.eq_position(i + 1);
-      let mass = new DraggableDotY(pos, 0.5 / Math.sqrt(width));
+      let mass = new DraggableDot(pos, 0.5 / Math.sqrt(width));
+      mass.draggable_x = false;
+      mass.draggable_y = true;
       if (i == 0) {
         mass.add_callback(() => {
           let sim = this.get_simulator() as WaveSimOneDim;
@@ -1073,35 +1074,11 @@ export class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
   toggle_pause() {
     if (this.paused) {
       for (let i = 0; i < this.width(); i++) {
-        let mass = this.get_mobj(`p_${i + 1}`) as DraggableDotX;
-        this.remove(`p_${i + 1}`);
-        this.add(`p_${i + 1}`, mass.toDot());
+        (this.get_mobj(`p_${i + 1}`) as DraggableDot).draggable_y = false;
       }
     } else {
       for (let i = 0; i < this.width(); i++) {
-        let mass = this.get_mobj(`p_${i + 1}`) as Dot;
-        this.remove(`p_${i + 1}`);
-        let new_mass = mass.toDraggableDotY();
-        if (i == 0) {
-          new_mass.add_callback(() => {
-            let sim = this.get_simulator() as WaveSimOneDim;
-            sim.set_left_endpoint(new_mass.get_center()[1]);
-          });
-        }
-        if (i == this.width() - 1) {
-          new_mass.add_callback(() => {
-            let sim = this.get_simulator() as WaveSimOneDim;
-            sim.set_right_endpoint(new_mass.get_center()[1]);
-          });
-        }
-        new_mass.add_callback(() => {
-          let sim = this.get_simulator() as WaveSimOneDim;
-          let vals = sim.get_vals();
-          vals[i] = new_mass.get_center()[1];
-          vals[i + this.width()] = 0;
-          sim.set_vals(vals);
-        });
-        this.add(`p_${i + 1}`, new_mass);
+        (this.get_mobj(`p_${i + 1}`) as DraggableDot).draggable_y = true;
       }
     }
     super.toggle_pause();
@@ -1278,7 +1255,10 @@ export class WaveSimTwoDimThreeDScene extends InteractivePlayingThreeDScene {
     // Construct draggable dots
     for (let i = 0; i < this.width; i++) {
       for (let j = 0; j < this.height; j++) {
-        let dot = new DraggableDotZ3D(this.eq_position(i, j), 0.1);
+        let dot = new DraggableDot3D(this.eq_position(i, j), 0.1);
+        dot.draggable_x = false;
+        dot.draggable_y = false;
+        dot.draggable_z = true;
         this.add_callbacks(i, j, dot);
         this.add(`p(${i},${j})`, dot);
       }
@@ -1302,7 +1282,7 @@ export class WaveSimTwoDimThreeDScene extends InteractivePlayingThreeDScene {
       0,
     ];
   }
-  add_callbacks(i: number, j: number, dot: DraggableDotZ3D) {
+  add_callbacks(i: number, j: number, dot: DraggableDot3D) {
     dot.add_callback(() =>
       this.simulator.set_val(
         this.simulator.index(i + this.width_buffer(), j + this.height_buffer()),
@@ -1349,19 +1329,21 @@ export class WaveSimTwoDimThreeDScene extends InteractivePlayingThreeDScene {
     if (this.paused) {
       for (let i = 0; i < this.width; i++) {
         for (let j = 0; j < this.height; j++) {
-          let dot = this.get_mobj(`p(${i},${j})`) as DraggableDotZ3D;
-          this.remove(`p(${i},${j})`);
-          this.add(`p(${i},${j})`, dot.toDot3D());
+          let dot = this.get_mobj(`p(${i},${j})`) as DraggableDot3D;
+          dot.draggable_z = false;
+          // this.remove(`p(${i},${j})`);
+          // this.add(`p(${i},${j})`, dot.toDot3D());
         }
       }
     } else {
       for (let i = 0; i < this.width; i++) {
         for (let j = 0; j < this.height; j++) {
-          let dot = this.get_mobj(`p(${i},${j})`) as Dot3D;
-          this.remove(`p(${i},${j})`);
-          let new_dot = dot.toDraggableDotZ3D();
-          this.add_callbacks(i, j, new_dot);
-          this.add(`p(${i},${j})`, new_dot);
+          let dot = this.get_mobj(`p(${i},${j})`) as DraggableDot3D;
+          dot.draggable_z = true;
+          // this.remove(`p(${i},${j})`);
+          // let new_dot = dot.toDraggableDotZ3D();
+          // this.add_callbacks(i, j, new_dot);
+          // this.add(`p(${i},${j})`, new_dot);
         }
       }
     }

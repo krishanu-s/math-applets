@@ -16,7 +16,7 @@ import {
 } from "./lib/base";
 import { HeatMap } from "./lib/heatmap.js";
 import { Histogram } from "./lib/stats.js";
-import { Button, Slider } from "./lib/interactive.js";
+import { Button, Slider } from "./lib/interactive";
 import { ParametricFunction, BezierSpline } from "./lib/bezier.js";
 import { rot, rot_z, Vec3D } from "./lib/three_d/matvec.js";
 import {
@@ -27,7 +27,7 @@ import {
   ParametrizedCurve3D,
 } from "./lib/three_d/mobjects.js";
 import { ThreeDScene } from "./lib/three_d/scene.js";
-import { Arcball } from "./lib/three_d/arcball.js";
+import { Arcball } from "./lib/interactive/arcball.js";
 import { rot90 } from "numpy-ts";
 
 export function pick_random_step(dim: number): number[] {

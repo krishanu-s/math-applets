@@ -14,11 +14,7 @@ import {
   Line,
   LineSequence,
   DraggableDot,
-  DraggableDotX,
-  DraggableDotY,
   DraggableRectangle,
-  DraggableRectangleX,
-  DraggableRectangleY,
   Arrow,
   LineSpring,
   Vec2D,
@@ -31,7 +27,7 @@ import {
   vec2_angle,
   vec2_sum_list,
 } from "./lib/base";
-import { Slider, Button } from "./lib/interactive.js";
+import { Slider, Button } from "./lib/interactive";
 import { SceneViewTranslator } from "./lib/scene_view_translator.js";
 import { ParametricFunction } from "./lib/bezier.js";
 import { HeatMap } from "./lib/heatmap.js";
@@ -52,15 +48,10 @@ import {
   InteractivePlayingScene,
   InteractivePlayingThreeDScene,
 } from "./lib/simulator/sim.js";
-import {
-  Dot3D,
-  DraggableDot3D,
-  DraggableDotZ3D,
-  Line3D,
-} from "./lib/three_d.js";
+import { Dot3D, DraggableDot3D, Line3D } from "./lib/three_d";
 import { ThreeDScene } from "./lib/three_d/scene.js";
 import { rot, Vec3D } from "./lib/three_d/matvec.js";
-import { Arcball } from "./lib/three_d/arcball.js";
+import { Arcball } from "./lib/interactive/arcball.js";
 import { SceneFromSimulator } from "./lib/interactive_handler.js";
 
 (function () {
@@ -538,7 +529,9 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
           // While the scene is paused, the point mass is an interactive element which can be dragged
           // to update the simulator state. While the scene is unpaused, the simulator runs and updates
           // the state of the point mass.
-          let mass = new DraggableRectangleX([0, 0], 0.6, 0.6);
+          let mass = new DraggableRectangle([0, 0], 0.6, 0.6);
+          mass.draggable_x = true;
+          mass.draggable_y = false;
           mass.add_callback(() => {
             let sim = this.get_simulator() as StateSimulator;
             sim.set_vals([mass.get_center()[0], 0]);
@@ -573,18 +566,11 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
         }
         toggle_pause() {
           if (this.paused) {
-            let mass = this.get_mobj("mass") as DraggableRectangleX;
-            this.remove("mass");
-            this.add("mass", mass.toRectangle());
+            let mass = this.get_mobj("mass") as DraggableRectangle;
+            mass.draggable_x = false;
           } else {
-            let mass = this.get_mobj("mass") as Rectangle;
-            this.remove("mass");
-            let new_mass = mass.toDraggableRectangleX();
-            new_mass.add_callback(() => {
-              let sim = this.get_simulator();
-              sim.set_vals([new_mass.get_center()[0], 0]);
-            });
-            this.add("mass", new_mass);
+            let mass = this.get_mobj("mass") as DraggableRectangle;
+            mass.draggable_x = true;
           }
           super.toggle_pause();
         }
