@@ -109,6 +109,9 @@ export class ThreeDMObjectGroup extends ThreeDMObject {
   add_mobj(name: string, child: ThreeDMObject) {
     this.children[name] = child;
   }
+  remove_mobj(name: string) {
+    delete this.children[name];
+  }
   get_mobj(name: string): ThreeDMObject {
     if (!this.children[name]) {
       throw new Error(`Child with name ${name} not found`);

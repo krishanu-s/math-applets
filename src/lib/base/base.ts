@@ -136,6 +136,9 @@ export class MObjectGroup extends MObject {
   add_mobj(name: string, child: MObject) {
     this.children[name] = child;
   }
+  remove_mobj(name: string) {
+    delete this.children[name];
+  }
   get_mobj(name: string): MObject {
     if (!this.children[name]) {
       throw new Error(`Child with name ${name} not found`);

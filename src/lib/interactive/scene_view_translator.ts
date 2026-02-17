@@ -18,8 +18,19 @@ export class SceneViewTranslator {
   drag: boolean = false;
   dragStart: Vec2D = [0, 0];
   dragEnd: Vec2D = [0, 0];
+  callbacks: (() => void)[] = []; // Callbacks which trigger when the object is dragged.
   constructor(scene: Scene) {
     this.scene = scene;
+  }
+  // Adds a callback which triggers when the object is dragged
+  add_callback(callback: () => void) {
+    this.callbacks.push(callback);
+  }
+  // Performs all callbacks (called when the object is dragged)
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
   }
   click(event: MouseEvent) {
     this.dragStart = [
@@ -83,6 +94,9 @@ export class SceneViewTranslator {
     this.scene.move_view(dragDiff);
     this.scene.draw();
     this.dragStart = this.dragEnd;
+
+    // Do callbacks
+    this.do_callbacks();
   }
   add() {
     let self = this;

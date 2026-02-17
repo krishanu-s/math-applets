@@ -18,39 +18,89 @@ import {
   ThreeDLineLikeMObject,
 } from "../three_d/mobjects";
 
+class AxisOptions {
+  stroke_width: number = 0.1;
+  arrow_size: number = 0.3;
+  update(options: Partial<AxisOptions>) {
+    Object.assign(this, options);
+  }
+}
+
+class TickOptions {
+  distance: number = 1;
+  size: number = 0.5;
+  alpha: number = 1.0;
+  stroke_width: number = 0.08;
+  update(options: Partial<AxisOptions>) {
+    Object.assign(this, options);
+  }
+}
+
+class GridOptions {
+  distance: number = 1;
+  alpha: number = 0.2;
+  stroke_width: number = 0.05;
+  update(options: Partial<AxisOptions>) {
+    Object.assign(this, options);
+  }
+}
+
 // An axis with evenly-spaced ticks, in 2D space.
 // Consists of a double-headed arrow, and a group of ticks.
 export class Axis extends MObjectGroup {
   lims: Vec2D;
   type: "x" | "y";
-  tick_size: number = 0.1;
-  stroke_options: StrokeOptions = new StrokeOptions();
+  axis_options: AxisOptions = new AxisOptions();
+  tick_options: TickOptions = new TickOptions();
   constructor(lims: Vec2D, type: "x" | "y") {
     super();
     this.lims = lims;
     this.type = type;
 
-    let [cmin, cmax] = lims;
+    this._make_axis();
+    this._make_ticks();
+  }
+  _make_axis() {
+    let [cmin, cmax] = this.lims;
     let axis;
-    if (type === "x") {
+    if (this.type === "x") {
       axis = new TwoHeadedArrow([cmin, 0], [cmax, 0]);
     } else {
       axis = new TwoHeadedArrow([0, cmin], [0, cmax]);
     }
-    axis.set_arrow_size(0.2);
+    axis.set_stroke_width(this.axis_options.stroke_width);
+    axis.set_arrow_size(this.axis_options.arrow_size);
     this.add_mobj("axis", axis);
-
-    let ticks = new LineLikeMObjectGroup().set_alpha(0.3);
-    for (let c = Math.floor(cmin) + 1; c <= Math.ceil(cmax) - 1; c++) {
-      if (type == "x") {
+  }
+  _make_ticks() {
+    let [cmin, cmax] = this.lims;
+    let ticks = new LineLikeMObjectGroup()
+      .set_alpha(this.tick_options.alpha)
+      .set_stroke_width(this.tick_options.stroke_width);
+    for (
+      let c =
+        this.tick_options.distance *
+        Math.ceil(cmin / this.tick_options.distance);
+      c <
+      this.tick_options.distance *
+        Math.floor(cmax / this.tick_options.distance);
+      c++
+    ) {
+      if (this.type == "x") {
         ticks.add_mobj(
           `tick-(${c})`,
-          new Line([c, -this.tick_size / 2], [c, this.tick_size / 2]),
+          new Line(
+            [c, -this.tick_options.size / 2],
+            [c, this.tick_options.size / 2],
+          ),
         );
       } else {
         ticks.add_mobj(
           `tick-(${c})`,
-          new Line([-this.tick_size / 2, c], [this.tick_size / 2, c]),
+          new Line(
+            [-this.tick_options.size / 2, c],
+            [this.tick_options.size / 2, c],
+          ),
         );
       }
     }
@@ -62,20 +112,30 @@ export class Axis extends MObjectGroup {
   ticks() {
     return this.get_mobj("ticks") as LineLikeMObjectGroup;
   }
+  set_lims(lims: Vec2D) {
+    this.lims = lims;
+    this.remove_mobj("axis");
+    this.remove_mobj("ticks");
+    this._make_axis();
+    this._make_ticks();
+  }
+  set_axis_options(options: Record<string, any>) {
+    this.axis_options.update(options);
+    this.remove_mobj("axis");
+    this._make_axis();
+  }
+  set_tick_options(options: Record<string, any>) {
+    this.tick_options.update(options);
+    this.remove_mobj("ticks");
+    this._make_ticks();
+  }
+  set_tick_distance(distance: number) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
+  }
   set_tick_size(size: number) {
-    this.tick_size = size;
-    let ticks = this.get_mobj("ticks") as MObjectGroup;
-    Object.values(ticks.children).forEach((child) => {
-      if (child instanceof Line) {
-        if (this.type == "x") {
-          child.move_start([child.start[0], -size / 2]);
-          child.move_end([child.end[0], size / 2]);
-        } else {
-          child.move_start([-size / 2, child.start[1]]);
-          child.move_end([size / 2, child.end[1]]);
-        }
-      }
-    });
+    this.tick_options.size = size;
+    this.set_tick_options(this.tick_options);
   }
 }
 
@@ -83,26 +143,62 @@ export class Axis extends MObjectGroup {
 export class CoordinateAxes2d extends MObjectGroup {
   xlims: Vec2D;
   ylims: Vec2D;
-  tick_size: number = 0.1;
+  axis_options: AxisOptions = new AxisOptions();
+  tick_options: TickOptions = new TickOptions();
+  grid_options: GridOptions = new GridOptions();
   constructor(xlims: Vec2D, ylims: Vec2D) {
     super();
     this.xlims = xlims;
     this.ylims = ylims;
-    this.add_mobj("x-axis", new Axis(xlims, "x"));
-    this.add_mobj("y-axis", new Axis(ylims, "y"));
+    this._make_axes();
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
+  }
+  _make_axes() {
+    let x_axis = new Axis(this.xlims, "x");
+    x_axis.set_axis_options(this.axis_options);
+    x_axis.set_tick_options(this.tick_options);
+    this.add_mobj("x-axis", x_axis);
 
-    // Add grid lines
-    let [xmin, xmax] = xlims;
-    let [ymin, ymax] = ylims;
+    let y_axis = new Axis(this.ylims, "y");
+    y_axis.set_axis_options(this.axis_options);
+    y_axis.set_tick_options(this.tick_options);
+    this.add_mobj("y-axis", y_axis);
+  }
+  _make_x_grid_lines() {
+    let [xmin, xmax] = this.xlims;
+    let [ymin, ymax] = this.ylims;
 
-    let x_grid = new LineLikeMObjectGroup().set_alpha(0.2);
-    for (let x = Math.floor(xmin) + 1; x <= Math.ceil(xmax) - 1; x++) {
+    let x_grid = new LineLikeMObjectGroup()
+      .set_alpha(this.grid_options.alpha)
+      .set_stroke_width(this.grid_options.stroke_width);
+    for (
+      let x =
+        this.grid_options.distance *
+        Math.floor(xmin / this.grid_options.distance);
+      x <
+      this.grid_options.distance * Math.ceil(xmax / this.grid_options.distance);
+      x += this.grid_options.distance
+    ) {
       x_grid.add_mobj(`line-(${x})`, new Line([x, ymin], [x, ymax]));
     }
     this.add_mobj("x-grid", x_grid);
+  }
+  _make_y_grid_lines() {
+    let [xmin, xmax] = this.xlims;
+    let [ymin, ymax] = this.ylims;
 
-    let y_grid = new LineLikeMObjectGroup().set_alpha(0.2);
-    for (let y = Math.floor(ymin) + 1; y <= Math.ceil(ymax) - 1; y++) {
+    let y_grid = new LineLikeMObjectGroup()
+      .set_alpha(this.grid_options.alpha)
+      .set_stroke_width(this.grid_options.stroke_width);
+    for (
+      let y =
+        this.grid_options.distance *
+        Math.floor(ymin / this.grid_options.distance);
+      y <
+      this.grid_options.distance * Math.ceil(ymax / this.grid_options.distance);
+      y += this.grid_options.distance
+    ) {
       y_grid.add_mobj(`line-(${y})`, new Line([xmin, y], [xmax, y]));
     }
     this.add_mobj("y-grid", y_grid);
@@ -119,12 +215,58 @@ export class CoordinateAxes2d extends MObjectGroup {
   y_grid(): LineLikeMObjectGroup {
     return this.get_mobj("y-grid") as LineLikeMObjectGroup;
   }
+  set_axis_options(options: Record<string, any>) {
+    this.axis_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+  }
+  set_axis_stroke_width(width: number) {
+    this.axis_options.stroke_width = width;
+    this.set_axis_options(this.axis_options);
+  }
+  set_tick_options(options: Record<string, any>) {
+    this.tick_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+  }
   set_tick_size(size: number) {
-    Object.values(this.children).forEach((child) => {
-      if (child instanceof Axis) {
-        child.set_tick_size(size);
-      }
-    });
+    this.tick_options.size = size;
+    this.set_tick_options(this.tick_options);
+  }
+  set_tick_distance(distance: number) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
+  }
+  set_grid_options(options: Record<string, any>) {
+    this.grid_options.update(options);
+    this.remove_mobj("x-grid");
+    this.remove_mobj("y-grid");
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
+  }
+  set_grid_distance(distance: number) {
+    this.grid_options.distance = distance;
+    this.set_grid_options(this.grid_options);
+  }
+  set_grid_alpha(alpha: number) {
+    this.grid_options.alpha = alpha;
+    this.set_grid_options(this.grid_options);
+  }
+  set_grid_stroke_width(width: number) {
+    this.grid_options.stroke_width = width;
+    this.set_grid_options(this.grid_options);
+  }
+  set_lims(xlims: Vec2D, ylims: Vec2D) {
+    this.xlims = xlims;
+    this.ylims = ylims;
+    this.x_axis().set_lims(xlims);
+    this.y_axis().set_lims(ylims);
+    this.remove_mobj("x-grid");
+    this.remove_mobj("y-grid");
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
   }
 }
 
@@ -133,36 +275,47 @@ export class Axis3D extends ThreeDMObjectGroup {
   lims: Vec2D;
   type: "x" | "y" | "z";
   tick_size: number = 0.1;
+  tick_distance: number = 1;
   constructor(lims: Vec2D, type: "x" | "y" | "z") {
     super();
     this.lims = lims;
     this.type = type;
+    this._make_axis();
+    this._make_ticks();
+  }
 
-    let [cmin, cmax] = lims;
+  _make_axis() {
+    let [cmin, cmax] = this.lims;
     let axis;
-    if (type === "x") {
+    if (this.type === "x") {
       axis = new TwoHeadedArrow3D([cmin, 0, 0], [cmax, 0, 0]);
-    } else if (type === "y") {
+    } else if (this.type === "y") {
       axis = new TwoHeadedArrow3D([0, cmin, 0], [0, cmax, 0]);
     } else {
       axis = new TwoHeadedArrow3D([0, 0, cmin], [0, 0, cmax]);
     }
     axis.set_arrow_size(0.2);
     this.add_mobj("axis", axis);
-
+  }
+  _make_ticks() {
+    let [cmin, cmax] = this.lims;
     let ticks = new ThreeDLineLikeMObjectGroup().set_alpha(0.3);
-    for (let c = Math.floor(cmin) + 1; c <= Math.ceil(cmax) - 1; c++) {
-      if (type == "x") {
+    for (
+      let c = this.tick_distance * Math.ceil(cmin / this.tick_distance);
+      c < this.tick_distance * Math.floor(cmax / this.tick_distance);
+      c++
+    ) {
+      if (this.type == "x") {
         ticks.add_mobj(
           `tick-(${c})`,
           new Line3D([c, -this.tick_size / 2, 0], [c, this.tick_size / 2, 0]),
         );
-      } else if (type == "y") {
+      } else if (this.type == "y") {
         ticks.add_mobj(
           `tick-(${c})`,
           new Line3D([0, c, -this.tick_size / 2], [0, c, this.tick_size / 2]),
         );
-      } else if (type == "z") {
+      } else if (this.type == "z") {
         ticks.add_mobj(
           `tick-(${c})`,
           new Line3D([-this.tick_size / 2, 0, c], [this.tick_size / 2, 0, c]),
@@ -177,22 +330,15 @@ export class Axis3D extends ThreeDMObjectGroup {
   ticks() {
     return this.get_mobj("ticks") as ThreeDLineLikeMObjectGroup;
   }
+  set_tick_distance(distance: number) {
+    this.tick_distance = distance;
+    this.remove_mobj("ticks");
+    this._make_ticks();
+  }
   set_tick_size(size: number) {
-    let ticks = this.get_mobj("ticks") as ThreeDMObjectGroup;
-    Object.values(ticks.children).forEach((child) => {
-      if (child instanceof Line3D) {
-        if (this.type == "x") {
-          child.move_start([child.start[0], -size / 2, 0]);
-          child.move_end([child.end[0], size / 2, 0]);
-        } else if (this.type == "y") {
-          child.move_start([0, child.start[1], -size / 2]);
-          child.move_end([0, child.end[1], size / 2]);
-        } else if (this.type == "z") {
-          child.move_start([-size / 2, 0, child.start[1]]);
-          child.move_end([size / 2, 0, child.end[1]]);
-        }
-      }
-    });
+    this.tick_size = size;
+    this.remove_mobj("ticks");
+    this._make_ticks();
   }
 }
 

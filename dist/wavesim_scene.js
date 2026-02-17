@@ -11755,11 +11755,23 @@ function Slider(container, callback, kwargs) {
 
 // src/lib/interactive/scene_view_translator.ts
 var SceneViewTranslator = class {
+  // Callbacks which trigger when the object is dragged.
   constructor(scene) {
     this.drag = false;
     this.dragStart = [0, 0];
     this.dragEnd = [0, 0];
+    this.callbacks = [];
     this.scene = scene;
+  }
+  // Adds a callback which triggers when the object is dragged
+  add_callback(callback) {
+    this.callbacks.push(callback);
+  }
+  // Performs all callbacks (called when the object is dragged)
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
   }
   click(event) {
     this.dragStart = [
@@ -11819,6 +11831,7 @@ var SceneViewTranslator = class {
     this.scene.move_view(dragDiff);
     this.scene.draw();
     this.dragStart = this.dragEnd;
+    this.do_callbacks();
   }
   add() {
     let self = this;

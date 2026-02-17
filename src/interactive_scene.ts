@@ -168,16 +168,7 @@ import {
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
 
       let axes = new CoordinateAxes2d([xmin, xmax], [ymin, ymax]);
-      axes.x_axis().axis().set_stroke_width(0.05);
-      axes.y_axis().axis().set_stroke_width(0.05);
-      axes.set_tick_size(0.2);
-      axes.x_axis().axis().set_arrow_size(0.3);
-      axes.y_axis().axis().set_arrow_size(0.3);
-
-      axes.x_grid().set_alpha(0.1);
-      axes.x_grid().set_stroke_width(0.05);
-      axes.y_grid().set_alpha(0.1);
-      axes.y_grid().set_stroke_width(0.05);
+      scene.add("axes", axes);
 
       // The integral of a function
       let x = 4;
@@ -186,10 +177,46 @@ import {
       integral.set_fill_alpha(0.3);
       scene.add("integral", integral);
 
-      // Slider to change the integral bounds
-      // Make a slider which controls the dipole distance
-      let w_slider = Slider(
+      // Zoom slider
+      let z_slider = Slider(
         document.getElementById(name + "-slider-1") as HTMLElement,
+        function (log_zr: number) {
+          let zr = Math.exp(log_zr * Math.LN10);
+
+          // Zoom into the center of the scene
+          scene.zoom_in_on(zr / scene.zoom_ratio, scene.get_view_center());
+
+          // Reset the coordinate system display
+          axes.set_lims(scene.view_xlims, scene.view_ylims);
+          axes.set_axis_options({
+            stroke_width: 0.05 / zr,
+            arrow_size: 0.3 / zr,
+          });
+          axes.set_tick_options({
+            distance: 1,
+            size: 0.2 / zr,
+            alpha: 1,
+            stroke_width: 0.08 / zr,
+          });
+          axes.set_grid_options({
+            distance: Math.exp(Math.LN2 * Math.ceil(-Math.log2(zr))),
+            alpha: 0.2,
+            stroke_width: 0.05 / zr,
+          });
+          scene.draw();
+        },
+        {
+          name: "zoom ratio (log base 10 scale)",
+          initial_value: "0.0",
+          min: -1.0,
+          max: 1.0,
+          step: 0.01,
+        },
+      );
+
+      // Slider to change the integral bounds
+      let w_slider = Slider(
+        document.getElementById(name + "-slider-2") as HTMLElement,
         function (d: number) {
           integral.set_left_endpoint(Number(d));
           integral.set_right_endpoint(Number(d) * x);
@@ -205,9 +232,11 @@ import {
       );
 
       let translator = new SceneViewTranslator(scene);
+      translator.add_callback(() =>
+        axes.set_lims(scene.view_xlims, scene.view_ylims),
+      );
       translator.add();
 
-      scene.add("axes", axes);
       scene.draw();
     })(300, 300);
 
