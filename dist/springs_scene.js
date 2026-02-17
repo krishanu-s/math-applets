@@ -10997,8 +10997,11 @@ var Scene = class {
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.mobjects[name];
       if (mobj == void 0) throw new Error(`${name} not found`);
-      mobj.draw(this.canvas, this);
+      this.draw_mobject(mobj);
     });
+  }
+  draw_mobject(mobj) {
+    mobj.draw(this.canvas, this);
   }
   // Draw a border around the canvas
   draw_border(ctx) {
@@ -12067,6 +12070,209 @@ var Simulator = class {
     }
   }
 };
+var SceneFromSimulator = class extends Scene {
+  constructor(canvas) {
+    super(canvas);
+  }
+  reset() {
+  }
+  update_mobjects_from_simulator(simulator) {
+  }
+  toggle_pause() {
+  }
+  toggle_unpause() {
+  }
+};
+var InteractiveHandler = class {
+  // Store a known end-time in case the simulation is paused and unpaused
+  constructor(simulator) {
+    this.scenes = [];
+    this.action_queue = [];
+    this.paused = true;
+    this.time = 0;
+    this.dt = 0.01;
+    this.simulator = simulator;
+  }
+  // Adds a scene
+  add_scene(scene) {
+    scene.update_mobjects_from_simulator(this.simulator);
+    this.scenes.push(scene);
+  }
+  // Draws all scenes
+  draw() {
+    for (let scene of this.scenes) {
+      scene.draw();
+    }
+  }
+  // Set and modify the simulator
+  get_simulator() {
+    return this.simulator;
+  }
+  set_simulator_attr(simulator_ind, attr_name, attr_val) {
+    this.simulator.set_attr(attr_name, attr_val);
+  }
+  add_pause_button(container) {
+    let self = this;
+    let pauseButton = Button(container, function() {
+      self.add_to_queue(self.toggle_pause.bind(self));
+      pauseButton.textContent = pauseButton.textContent == "Pause simulation" ? "Unpause simulation" : "Pause simulation";
+    });
+    pauseButton.textContent = this.paused ? "Unpause simulation" : "Pause simulation";
+    return pauseButton;
+  }
+  // Restarts the simulator
+  reset() {
+    this.simulator.reset();
+    this.time = 0;
+    for (let scene of this.scenes) {
+      scene.reset();
+      scene.update_mobjects_from_simulator(this.simulator);
+      scene.draw();
+    }
+  }
+  // Switches from paused to unpaused and vice-versa.
+  toggle_pause() {
+    this.paused = !this.paused;
+    if (!this.paused) {
+      for (let scene of this.scenes) {
+        scene.toggle_unpause();
+      }
+      this.play(this.end_time);
+    } else {
+      for (let scene of this.scenes) {
+        scene.toggle_pause();
+      }
+    }
+  }
+  // Adds to the action queue if the scene is currently playing,
+  // otherwise execute the callback immediately
+  add_to_queue(callback) {
+    if (this.paused) {
+      callback();
+    } else {
+      this.action_queue.push(callback);
+    }
+  }
+  // Starts animation
+  play(until) {
+    if (this.paused) {
+      this.end_time = until;
+      return;
+    } else {
+      if (this.action_queue.length > 0) {
+        let callback = this.action_queue.shift();
+        callback();
+      } else if (this.time > until) {
+        return;
+      } else {
+        this.simulator.step();
+        this.time += this.simulator.dt;
+        for (let scene of this.scenes) {
+          scene.update_mobjects_from_simulator(this.simulator);
+          scene.draw();
+        }
+      }
+      window.requestAnimationFrame(this.play.bind(this, until));
+    }
+  }
+};
+
+// src/lib/simulator/statesim.ts
+var StateSimulator = class extends Simulator {
+  // Size of the array of values storing the state
+  constructor(state_size, dt) {
+    super(dt);
+    this.state_size = state_size;
+    this.vals = new Array(this.state_size).fill(0);
+  }
+  // Resets the simulation
+  reset() {
+    super.reset();
+    this.vals = new Array(this.state_size).fill(0);
+    this.set_boundary_conditions(this.vals, 0);
+  }
+  // Getter and setter for state.
+  get_vals() {
+    return this.vals;
+  }
+  set_vals(vals) {
+    this.vals = vals;
+  }
+  set_val(index, value) {
+    this.vals[index] = value;
+  }
+  // Time-derivative of a given state and time. Overwritten in subclasses.
+  dot(vals, time) {
+    return new Array(this.state_size).fill(0);
+  }
+  // Subroutine for adding any time-evolution calculation
+  // which does not adhere to the differential equation. Used in step().
+  set_boundary_conditions(s, t) {
+  }
+  // Advances the simulation using the differential equation with
+  // s(t + dt) = s(t) + dt * s'(t)
+  step_finite_diff() {
+    let newS = new Array(this.state_size).fill(0);
+    let dS = this.dot(this.vals, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt * dS[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt);
+    this.set_vals(newS);
+    this.time += this.dt;
+  }
+  // Advances the simulation using the differential equation with the Runge-Kutta method.
+  step_runge_kutta() {
+    let newS = new Array(this.state_size).fill(0);
+    let dS_1 = this.dot(this.vals, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt / 2 * dS_1[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt / 2);
+    let dS_2 = this.dot(newS, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt / 2 * dS_2[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt / 2);
+    let dS_3 = this.dot(newS, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt * dS_3[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt);
+    let dS_4 = this.dot(newS, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt / 6 * dS_1[i] + this.dt / 3 * dS_2[i] + this.dt / 3 * dS_3[i] + this.dt / 6 * dS_4[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt);
+    this.set_vals(newS);
+    this.time += this.dt;
+  }
+  step() {
+    return this.step_runge_kutta();
+  }
+};
+var SpringSimulator = class extends StateSimulator {
+  constructor(stiffness, dt) {
+    super(2, dt);
+    this.friction = 0;
+    this.stiffness = stiffness;
+  }
+  set_stiffness(stiffness) {
+    this.stiffness = stiffness;
+  }
+  set_friction(friction) {
+    this.friction = friction;
+  }
+  // Time-derivative of a given state and time. Overwritten in subclasses.
+  dot(vals, time) {
+    return [
+      vals[1],
+      -this.stiffness * vals[0] - this.friction * vals[1]
+    ];
+  }
+};
+
+// src/springs_scene.ts
 var InteractivePlayingScene = class extends Scene {
   constructor(canvas, simulators) {
     super(canvas);
@@ -12171,103 +12377,6 @@ var InteractivePlayingScene = class extends Scene {
   draw_mobject(mobj) {
   }
 };
-
-// src/lib/simulator/statesim.ts
-var StateSimulator = class extends Simulator {
-  // Size of the array of values storing the state
-  constructor(state_size, dt) {
-    super(dt);
-    this.state_size = state_size;
-    this.vals = new Array(this.state_size).fill(0);
-  }
-  // Resets the simulation
-  reset() {
-    super.reset();
-    this.vals = new Array(this.state_size).fill(0);
-    this.set_boundary_conditions(this.vals, 0);
-  }
-  // Getter and setter for state.
-  get_vals() {
-    return this.vals;
-  }
-  set_vals(vals) {
-    this.vals = vals;
-  }
-  set_val(index, value) {
-    this.vals[index] = value;
-  }
-  // Time-derivative of a given state and time. Overwritten in subclasses.
-  dot(vals, time) {
-    return new Array(this.state_size).fill(0);
-  }
-  // Subroutine for adding any time-evolution calculation
-  // which does not adhere to the differential equation. Used in step().
-  set_boundary_conditions(s, t) {
-  }
-  // Advances the simulation using the differential equation with
-  // s(t + dt) = s(t) + dt * s'(t)
-  step_finite_diff() {
-    let newS = new Array(this.state_size).fill(0);
-    let dS = this.dot(this.vals, this.time);
-    for (let i = 0; i < this.state_size; i++) {
-      newS[i] = this.vals[i] + this.dt * dS[i];
-    }
-    this.set_boundary_conditions(newS, this.time + this.dt);
-    this.set_vals(newS);
-    this.time += this.dt;
-  }
-  // Advances the simulation using the differential equation with the Runge-Kutta method.
-  step_runge_kutta() {
-    let newS = new Array(this.state_size).fill(0);
-    let dS_1 = this.dot(this.vals, this.time);
-    for (let i = 0; i < this.state_size; i++) {
-      newS[i] = this.vals[i] + this.dt / 2 * dS_1[i];
-    }
-    this.set_boundary_conditions(newS, this.time + this.dt / 2);
-    let dS_2 = this.dot(newS, this.time);
-    for (let i = 0; i < this.state_size; i++) {
-      newS[i] = this.vals[i] + this.dt / 2 * dS_2[i];
-    }
-    this.set_boundary_conditions(newS, this.time + this.dt / 2);
-    let dS_3 = this.dot(newS, this.time);
-    for (let i = 0; i < this.state_size; i++) {
-      newS[i] = this.vals[i] + this.dt * dS_3[i];
-    }
-    this.set_boundary_conditions(newS, this.time + this.dt);
-    let dS_4 = this.dot(newS, this.time);
-    for (let i = 0; i < this.state_size; i++) {
-      newS[i] = this.vals[i] + this.dt / 6 * dS_1[i] + this.dt / 3 * dS_2[i] + this.dt / 3 * dS_3[i] + this.dt / 6 * dS_4[i];
-    }
-    this.set_boundary_conditions(newS, this.time + this.dt);
-    this.set_vals(newS);
-    this.time += this.dt;
-  }
-  step() {
-    return this.step_runge_kutta();
-  }
-};
-var SpringSimulator = class extends StateSimulator {
-  constructor(stiffness, dt) {
-    super(2, dt);
-    this.friction = 0;
-    this.stiffness = stiffness;
-  }
-  set_stiffness(stiffness) {
-    this.stiffness = stiffness;
-  }
-  set_friction(friction) {
-    this.friction = friction;
-  }
-  // Time-derivative of a given state and time. Overwritten in subclasses.
-  dot(vals, time) {
-    return [
-      vals[1],
-      -this.stiffness * vals[0] - this.friction * vals[1]
-    ];
-  }
-};
-
-// src/springs_scene.ts
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
     (function foo(width, height) {
@@ -12365,53 +12474,72 @@ var SpringSimulator = class extends StateSimulator {
       let tmax = 15;
       let ymin = -4;
       let ymax = 4;
-      let scene_graph = new Scene(canvas_graph);
-      scene_graph.set_frame_lims([tmin, tmax], [xmin, xmax]);
-      scene_graph.add(
-        "t-axis",
-        new Line([tmin, 0], [tmax, 0]).set_stroke_width(0.05).set_stroke_color("gray")
-      );
-      let tick_size = 0.2;
-      for (let i = 1; i <= tmax; i++) {
-        scene_graph.add(
-          `t-axis-${i}`,
-          new Line([i, -tick_size / 2], [i, tick_size / 2]).set_stroke_width(0.05).set_stroke_color("gray")
-        );
-      }
-      for (let i = -4; i <= 4; i++) {
-        scene_graph.add(
-          `y-axis-${i}`,
-          new Line([0, i], [tick_size, i]).set_stroke_width(0.05).set_stroke_color("gray")
-        );
-      }
+      let w = 5;
       class SpringSim extends SpringSimulator {
-        constructor(stiffness, dt) {
-          super(stiffness, dt);
+        reset() {
+          super.reset();
+          sim.set_vals([1, 0]);
+        }
+      }
+      let sim = new SpringSim(w, 0.01);
+      sim.set_vals([1, 0]);
+      let handler = new InteractiveHandler(sim);
+      class GraphScene extends SceneFromSimulator {
+        constructor(canvas) {
+          super(canvas);
           this.step_counter = 0;
-          scene_graph.add(
+          this.set_frame_lims([tmin, tmax], [xmin, xmax]);
+          this.add(
+            "t-axis",
+            new Line([tmin, 0], [tmax, 0]).set_stroke_width(0.05).set_stroke_color("gray")
+          );
+          let tick_size = 0.2;
+          for (let i = 1; i <= tmax; i++) {
+            this.add(
+              `t-axis-${i}`,
+              new Line([i, -tick_size / 2], [i, tick_size / 2]).set_stroke_width(0.05).set_stroke_color("gray")
+            );
+          }
+          for (let i = -4; i <= 4; i++) {
+            this.add(
+              `y-axis-${i}`,
+              new Line([0, i], [tick_size, i]).set_stroke_width(0.05).set_stroke_color("gray")
+            );
+          }
+          this.add(
             "graph",
             new LineSequence([
-              [this.time, this.get_vals()[0]]
+              [0, sim.get_vals()[0]]
             ]).set_stroke_width(0.05)
           );
-          scene_graph.draw();
+          this.draw();
         }
-        step() {
-          super.step();
-          this.step_counter++;
-          if (this.step_counter % 5 === 0 && this.time < scene_graph.xlims[1]) {
-            scene_graph.get_mobj("graph").add_point([
-              this.time,
-              this.get_vals()[0]
+        reset() {
+          this.remove("graph");
+          this.add(
+            "graph",
+            new LineSequence([
+              [0, sim.get_vals()[0]]
+            ]).set_stroke_width(0.05)
+          );
+        }
+        update_mobjects_from_simulator(simulator) {
+          let vals = simulator.get_vals();
+          let time = simulator.time;
+          this.step_counter += 1;
+          if (this.step_counter % 5 === 0 && time < this.xlims[1]) {
+            this.get_mobj("graph").add_point([
+              time,
+              vals[0]
             ]);
-            scene_graph.draw();
           }
         }
       }
-      class SpringScene extends InteractivePlayingScene {
+      let graph_scene = new GraphScene(canvas_graph);
+      class SpringScene extends SceneFromSimulator {
         constructor(canvas) {
-          super(canvas, [new SpringSim(3, 0.01)]);
-          this.arrow_length_scale = 1.5;
+          super(canvas);
+          this.arrow_length_scale = w / 3;
           this.arrow_height = 0;
           let eq_line = new Line([0, -5], [0, 5]).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
           let spring = new LineSpring([-3, 0], [0, 0]).set_stroke_width(0.08);
@@ -12420,10 +12548,6 @@ var SpringSimulator = class extends StateSimulator {
           let mass = new DraggableRectangle([0, 0], 0.6, 0.6);
           mass.draggable_x = true;
           mass.draggable_y = false;
-          mass.add_callback(() => {
-            let sim2 = this.get_simulator();
-            sim2.set_vals([mass.get_center()[0], 0]);
-          });
           let force_arrow = new Arrow(
             [0, this.arrow_height],
             [0, this.arrow_height]
@@ -12433,45 +12557,51 @@ var SpringSimulator = class extends StateSimulator {
           this.add("anchor", anchor);
           this.add("mass", mass);
           this.add("force_arrow", force_arrow);
+          this.add_callbacks();
+        }
+        // Callback which affects the simulator and is removed when simulation is paused
+        add_callbacks() {
+          let mass = this.get_mobj("mass");
+          mass.add_callback(() => {
+            sim.set_vals([mass.get_center()[0], 0]);
+            this.update_mobjects_from_simulator(sim);
+          });
         }
         set_spring_mode(mode) {
           let spring = this.get_mobj("spring");
           spring.set_mode(mode);
         }
         set_spring_stiffness(val) {
-          this.set_simulator_attr(0, "stiffness", val);
           this.arrow_length_scale = val / 3;
-          scene.draw();
         }
-        set_friction(val) {
-          this.set_simulator_attr(0, "friction", val);
-        }
-        toggle_pause() {
-          if (this.paused) {
-            this.get_mobj("mass").draggable_x = false;
-          } else {
-            this.get_mobj("mass").draggable_x = true;
-          }
-          super.toggle_pause();
-        }
+        // TODO Add turn on/off of draggability.
         // Updates all mobjects to account for the new simulator state
-        update_mobjects() {
-          let [u, v] = this.get_simulator(0).get_vals();
-          let mass = this.get_mobj("mass");
-          mass.move_to([u, 0]);
-          let spring = this.get_mobj("spring");
-          spring.move_end([u, 0]);
+        update_mobjects_from_simulator(simulator) {
+          let vals = simulator.get_vals();
+          this._update_mass(vals);
+          this._update_spring(vals);
+          this._update_force_arrow(vals);
+        }
+        // Specific to this scene and simulator
+        _update_mass(vals) {
+          this.get_mobj("mass").move_to([vals[0], 0]);
+        }
+        _update_spring(vals) {
+          this.get_mobj("spring").move_end([vals[0], 0]);
+        }
+        _update_force_arrow(vals) {
           let force_arrow = this.get_mobj("force_arrow");
-          force_arrow.move_start([u, this.arrow_height]);
+          force_arrow.move_start([vals[0], this.arrow_height]);
           force_arrow.move_end([
-            u * (1 - this.arrow_length_scale),
+            vals[0] * (1 - this.arrow_length_scale),
             this.arrow_height
           ]);
-          force_arrow.set_arrow_size(Math.min(0.5, Math.sqrt(Math.abs(u)) / 2));
+          force_arrow.set_arrow_size(
+            Math.min(0.5, Math.sqrt(Math.abs(vals[0])) / 2)
+          );
         }
         // Enforce strict order on drawing mobjects, overriding subclass behavior
         _draw() {
-          this.update_mobjects();
           this.draw_mobject(this.get_mobj("eq_line"));
           this.draw_mobject(this.get_mobj("anchor"));
           this.draw_mobject(this.get_mobj("spring"));
@@ -12479,38 +12609,48 @@ var SpringSimulator = class extends StateSimulator {
           this.draw_mobject(this.get_mobj("force_arrow"));
         }
         draw_mobject(mobj) {
-          mobj.draw(this.canvasWrapper, this);
+          mobj.draw(this.canvas, this);
         }
       }
-      let scene = new SpringScene(canvas_spring);
-      scene.set_spring_stiffness(5);
-      scene.set_simulator_attr(0, "dt", 0.01);
-      scene.set_simulator_attr(0, "damping", 0);
-      scene.set_spring_mode("spring");
-      let sim = scene.get_simulator();
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      sim.set_vals([1, 0]);
-      function reset_simulation() {
-        sim.time = 0;
-        sim.set_vals([1, 0]);
-        scene_graph.remove("graph");
-        scene_graph.add(
-          "graph",
-          new LineSequence([[sim.time, sim.get_vals()[0]]]).set_stroke_width(
-            0.05
-          )
-        );
-        scene_graph.draw();
-        scene.draw();
-      }
+      let spring_scene = new SpringScene(canvas_spring);
+      spring_scene.set_spring_mode("spring");
+      spring_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      handler.add_scene(graph_scene);
+      handler.add_scene(spring_scene);
+      let pausebutton = handler.add_pause_button(
+        document.getElementById(
+          "point-mass-spring-pause-button"
+        )
+      );
+      let resetButton = Button(
+        document.getElementById(
+          "point-mass-spring-reset-button"
+        ),
+        function() {
+          handler.add_to_queue(handler.reset.bind(handler));
+        }
+      );
+      resetButton.textContent = "Reset simulation";
       let w_slider = Slider(
         document.getElementById("point-mass-stiffness-slider"),
         function(val) {
-          scene.add_to_queue(scene.set_spring_stiffness.bind(scene, val));
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "stiffness", val)
+          );
+          handler.add_to_queue(
+            spring_scene.set_spring_stiffness.bind(spring_scene, val)
+          );
+          handler.add_to_queue(
+            spring_scene.update_mobjects_from_simulator.bind(
+              spring_scene,
+              handler.simulator
+            )
+          );
+          handler.add_to_queue(handler.draw.bind(handler));
         },
         {
           name: "Spring stiffness",
-          initial_value: "3.0",
+          initial_value: `${sim.stiffness}`,
           min: 0,
           max: 20,
           step: 0.01
@@ -12519,7 +12659,9 @@ var SpringSimulator = class extends StateSimulator {
       let f_slider = Slider(
         document.getElementById("point-mass-damping-slider"),
         function(val) {
-          scene.add_to_queue(scene.set_friction.bind(scene, val));
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "friction", val)
+          );
         },
         {
           name: "Friction",
@@ -12529,35 +12671,11 @@ var SpringSimulator = class extends StateSimulator {
           step: 0.01
         }
       );
-      let pauseButton = Button(
-        document.getElementById(
-          "point-mass-spring-pause-button"
-        ),
-        function() {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        }
-      );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
-      let resetButton = Button(
-        document.getElementById(
-          "point-mass-spring-reset-button"
-        ),
-        function() {
-          scene.add_to_queue(reset_simulation);
-        }
-      );
-      resetButton.textContent = "Reset simulation";
-      resetButton.style.padding = "15px";
-      scene.draw();
-      scene.play(void 0);
+      handler.draw();
+      handler.play(void 0);
     })(300, 300);
   });
 })();
+export {
+  InteractivePlayingScene
+};

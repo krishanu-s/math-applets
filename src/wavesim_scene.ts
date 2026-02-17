@@ -36,7 +36,6 @@ import {
   PointSource,
   WaveSimOneDim,
   WaveSimOneDimScene,
-  WaveSimOneDimInteractiveScene,
   WaveSimTwoDim,
   WaveSimTwoDimEllipticReflector,
   WaveSimTwoDimHeatMapScene,
@@ -44,21 +43,19 @@ import {
   WaveSimTwoDimPointsHeatmapScene,
 } from "./lib/simulator/wavesim.js";
 import { SpringSimulator, StateSimulator } from "./lib/simulator/statesim.js";
-import {
-  InteractivePlayingScene,
-  InteractivePlayingThreeDScene,
-} from "./lib/simulator/sim.js";
+import { InteractivePlayingThreeDScene } from "./lib/simulator/sim.js";
 import { Dot3D, DraggableDot3D, Line3D } from "./lib/three_d";
 import { ThreeDScene } from "./lib/three_d/scene.js";
 import { rot, Vec3D } from "./lib/three_d/matvec.js";
 import { Arcball } from "./lib/interactive/arcball.js";
-import { SceneFromSimulator } from "./lib/interactive_handler.js";
+import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
     // *** INTRODUCTION SECTION ***
     // Demonstration of wave propagation in two dimensions. This particular one shows a dipole.
     (function twodim_dipole_demo() {
+      let name = "twodim-dipole-demo";
       // Prepare the canvas and scene
       let width = 200;
       let height = 200;
@@ -68,7 +65,7 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       const ymin = -5;
       const ymax = 5;
 
-      let canvas = prepare_canvas(width, height, "twodim-dipole-demo");
+      let canvas = prepare_canvas(width, height, name);
 
       // Get the context for drawing
       const ctx = canvas.getContext("2d");
@@ -112,24 +109,27 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       waveSim.set_pml_layer(false, true, 0.2, 200.0);
       waveSim.set_pml_layer(false, false, 0.2, 200.0);
 
+      let handler = new InteractiveHandler(waveSim);
+
       // Initialize the scene
       let waveEquationScene = new WaveSimTwoDimHeatMapScene(
         canvas,
-        waveSim,
         imageData,
+        width,
+        height,
       );
       waveEquationScene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      handler.add_scene(waveEquationScene);
 
       // Make a slider which controls the dipole distance
       let w_slider = Slider(
-        document.getElementById("twodim-dipole-demo-slider-1") as HTMLElement,
+        document.getElementById(name + "-slider-1") as HTMLElement,
         function (d: number) {
-          waveEquationScene.add_to_queue(() => {
-            let sim = waveEquationScene.get_simulator();
-            sim.point_sources[0].set_x(
+          handler.add_to_queue(() => {
+            waveSim.point_sources[0].set_x(
               Math.floor(0.5 * (1 + d / (xmax - xmin)) * width),
             );
-            sim.point_sources[1].set_x(
+            waveSim.point_sources[1].set_x(
               Math.floor(0.5 * (1 - d / (xmax - xmin)) * width),
             );
           });
@@ -144,34 +144,26 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       );
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = waveEquationScene.add_pause_button(
-        document.getElementById(
-          "twodim-dipole-demo-pause-button",
-        ) as HTMLElement,
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(name + "-pause-button") as HTMLElement,
       );
 
       // Button which clears the scene
       let clearButton = Button(
-        document.getElementById(
-          "twodim-dipole-demo-clear-button",
-        ) as HTMLElement,
+        document.getElementById(name + "-clear-button") as HTMLElement,
         function () {
-          waveEquationScene.add_to_queue(
-            waveEquationScene.reset.bind(waveEquationScene),
-          );
+          handler.add_to_queue(waveSim.reset.bind(waveSim));
         },
       );
       clearButton.textContent = "Clear";
       clearButton.style.padding = "15px";
 
       // Set up the simulation
-      waveEquationScene
-        .get_simulator()
-        .set_boundary_conditions(waveSim.vals, 0);
-      waveEquationScene.draw();
+      waveSim.set_boundary_conditions(waveSim.vals, 0);
+      handler.draw();
 
       // Start the simulation when unpaused
-      waveEquationScene.play(undefined);
+      handler.play(undefined);
     })();
 
     // This demonstration shows an example of light propagation in a two-dimensional medium using
@@ -458,65 +450,85 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       let tmax = 15;
       let ymin = -4;
       let ymax = 4;
+      let w = 5;
 
-      // Make the scene with the graph
-      let scene_graph = new Scene(canvas_graph);
-      scene_graph.set_frame_lims([tmin, tmax], [xmin, xmax]);
-      scene_graph.add(
-        "t-axis",
-        new Line([tmin, 0], [tmax, 0])
-          .set_stroke_width(0.05)
-          .set_stroke_color("gray"),
-      );
-      let tick_size = 0.2;
-      for (let i = 1; i <= tmax; i++) {
-        scene_graph.add(
-          `t-axis-${i}`,
-          new Line([i, -tick_size / 2], [i, tick_size / 2])
-            .set_stroke_width(0.05)
-            .set_stroke_color("gray"),
-        );
-      }
-      for (let i = -4; i <= 4; i++) {
-        scene_graph.add(
-          `y-axis-${i}`,
-          new Line([0, i], [tick_size, i])
-            .set_stroke_width(0.05)
-            .set_stroke_color("gray"),
-        );
-      }
-
-      // Extension of spring simulator which increments graph
+      // Make the simulator with reset condition
       class SpringSim extends SpringSimulator {
+        reset() {
+          super.reset();
+          sim.set_vals([1, 0]);
+        }
+      }
+      let sim = new SpringSim(w, 0.01);
+      sim.set_vals([1, 0]);
+      let handler = new InteractiveHandler(sim);
+
+      // Add the two scenes, with callbacks
+      class GraphScene extends SceneFromSimulator {
         step_counter: number = 0;
-        constructor(stiffness: number, dt: number) {
-          super(stiffness, dt);
-          scene_graph.add(
+        constructor(canvas: HTMLCanvasElement) {
+          super(canvas);
+          this.set_frame_lims([tmin, tmax], [xmin, xmax]);
+          this.add(
+            "t-axis",
+            new Line([tmin, 0], [tmax, 0])
+              .set_stroke_width(0.05)
+              .set_stroke_color("gray"),
+          );
+          let tick_size = 0.2;
+          for (let i = 1; i <= tmax; i++) {
+            this.add(
+              `t-axis-${i}`,
+              new Line([i, -tick_size / 2], [i, tick_size / 2])
+                .set_stroke_width(0.05)
+                .set_stroke_color("gray"),
+            );
+          }
+          for (let i = -4; i <= 4; i++) {
+            this.add(
+              `y-axis-${i}`,
+              new Line([0, i], [tick_size, i])
+                .set_stroke_width(0.05)
+                .set_stroke_color("gray"),
+            );
+          }
+          this.add(
             "graph",
             new LineSequence([
-              [this.time, this.get_vals()[0]],
+              [0, sim.get_vals()[0] as number],
             ]).set_stroke_width(0.05),
           );
-          scene_graph.draw();
+          this.draw();
         }
-        step() {
-          super.step();
-          this.step_counter++;
-          if (this.step_counter % 5 === 0 && this.time < scene_graph.xlims[1]) {
-            (scene_graph.get_mobj("graph") as LineSequence).add_point([
-              this.time,
-              this.get_vals()[0],
+        reset() {
+          this.remove("graph");
+          this.add(
+            "graph",
+            new LineSequence([
+              [0, sim.get_vals()[0] as number],
+            ]).set_stroke_width(0.05),
+          );
+        }
+        update_mobjects_from_simulator(simulator: SpringSimulator) {
+          let vals = simulator.get_vals();
+          let time = simulator.time;
+          this.step_counter += 1;
+          // Implement update logic, calling from the simulator
+          if (this.step_counter % 5 === 0 && time < this.xlims[1]) {
+            (this.get_mobj("graph") as LineSequence).add_point([
+              time,
+              vals[0] as number,
             ]);
-            scene_graph.draw();
           }
         }
       }
+      let graph_scene = new GraphScene(canvas_graph);
 
-      class SpringScene extends InteractivePlayingScene {
-        arrow_length_scale: number = 1.5;
+      class SpringScene extends SceneFromSimulator {
+        arrow_length_scale: number = w / 3;
         arrow_height: number = 0;
         constructor(canvas: HTMLCanvasElement) {
-          super(canvas, [new SpringSim(3.0, 0.01)]);
+          super(canvas);
           // TODO Set coordinates in terms of scene frame limits
           let eq_line = new Line([0, -5], [0, 5])
             .set_stroke_width(0.05)
@@ -532,10 +544,6 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
           let mass = new DraggableRectangle([0, 0], 0.6, 0.6);
           mass.draggable_x = true;
           mass.draggable_y = false;
-          mass.add_callback(() => {
-            let sim = this.get_simulator() as StateSimulator;
-            sim.set_vals([mass.get_center()[0], 0]);
-          });
 
           let force_arrow = new Arrow(
             [0, this.arrow_height],
@@ -551,50 +559,52 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
           this.add("mass", mass);
           // this.add("velocity_arrow", velocity_arrow);
           this.add("force_arrow", force_arrow);
+
+          this.add_callbacks();
+        }
+        // Callback which affects the simulator and is removed when simulation is paused
+        add_callbacks() {
+          let mass = this.get_mobj("mass") as DraggableRectangle;
+          mass.add_callback(() => {
+            sim.set_vals([mass.get_center()[0], 0]);
+            this.update_mobjects_from_simulator(sim);
+          });
         }
         set_spring_mode(mode: "color" | "spring") {
           let spring = this.get_mobj("spring") as LineSpring;
           spring.set_mode(mode);
         }
         set_spring_stiffness(val: number) {
-          this.set_simulator_attr(0, "stiffness", val);
           this.arrow_length_scale = val / 3;
-          scene.draw();
         }
-        set_friction(val: number) {
-          this.set_simulator_attr(0, "friction", val);
-        }
-        toggle_pause() {
-          if (this.paused) {
-            let mass = this.get_mobj("mass") as DraggableRectangle;
-            mass.draggable_x = false;
-          } else {
-            let mass = this.get_mobj("mass") as DraggableRectangle;
-            mass.draggable_x = true;
-          }
-          super.toggle_pause();
-        }
+        // TODO Add turn on/off of draggability.
         // Updates all mobjects to account for the new simulator state
-        update_mobjects() {
-          let [u, v] = this.get_simulator(0).get_vals() as Vec2D;
-
-          let mass = this.get_mobj("mass") as Rectangle;
-          mass.move_to([u, 0]);
-
-          let spring = this.get_mobj("spring") as Line;
-          spring.move_end([u, 0]);
-
+        update_mobjects_from_simulator(simulator: SpringSimulator) {
+          let vals = simulator.get_vals() as Vec2D;
+          this._update_mass(vals);
+          this._update_spring(vals);
+          this._update_force_arrow(vals);
+        }
+        // Specific to this scene and simulator
+        _update_mass(vals: Vec2D) {
+          (this.get_mobj("mass") as Rectangle).move_to([vals[0], 0]);
+        }
+        _update_spring(vals: Vec2D) {
+          (this.get_mobj("spring") as LineSpring).move_end([vals[0], 0]);
+        }
+        _update_force_arrow(vals: Vec2D) {
           let force_arrow = this.get_mobj("force_arrow") as Arrow;
-          force_arrow.move_start([u, this.arrow_height]);
+          force_arrow.move_start([vals[0], this.arrow_height]);
           force_arrow.move_end([
-            u * (1 - this.arrow_length_scale),
+            vals[0] * (1 - this.arrow_length_scale),
             this.arrow_height,
           ]);
-          force_arrow.set_arrow_size(Math.min(0.5, Math.sqrt(Math.abs(u)) / 2));
+          force_arrow.set_arrow_size(
+            Math.min(0.5, Math.sqrt(Math.abs(vals[0])) / 2),
+          );
         }
         // Enforce strict order on drawing mobjects, overriding subclass behavior
         _draw() {
-          this.update_mobjects();
           this.draw_mobject(this.get_mobj("eq_line") as Line);
           this.draw_mobject(this.get_mobj("anchor") as Rectangle);
           this.draw_mobject(this.get_mobj("spring") as LineSpring);
@@ -605,64 +615,15 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
           mobj.draw(this.canvas, this);
         }
       }
+      let spring_scene = new SpringScene(canvas_spring);
+      spring_scene.set_spring_mode("spring");
+      spring_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
 
-      // Make the scene and set initial conditions
-      let scene = new SpringScene(canvas_spring);
-      scene.set_spring_stiffness(5.0);
-      scene.set_simulator_attr(0, "dt", 0.01);
-      scene.set_simulator_attr(0, "damping", 0.0);
-      scene.set_spring_mode("spring");
-      let sim = scene.get_simulator();
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      sim.set_vals([1, 0]);
-
-      // Reset the simulation
-      function reset_simulation() {
-        sim.time = 0;
-        sim.set_vals([1, 0]);
-        scene_graph.remove("graph");
-        scene_graph.add(
-          "graph",
-          new LineSequence([[sim.time, sim.get_vals()[0]]]).set_stroke_width(
-            0.05,
-          ),
-        );
-        scene_graph.draw();
-        scene.draw();
-      }
-
-      // Slider which controls the propagation speed
-      let w_slider = Slider(
-        document.getElementById("point-mass-stiffness-slider") as HTMLElement,
-        function (val: number) {
-          scene.add_to_queue(scene.set_spring_stiffness.bind(scene, val));
-        },
-        {
-          name: "Spring stiffness",
-          initial_value: "3.0",
-          min: 0,
-          max: 20,
-          step: 0.01,
-        },
-      );
-
-      // Slider which controls friction
-      let f_slider = Slider(
-        document.getElementById("point-mass-damping-slider") as HTMLElement,
-        function (val: number) {
-          scene.add_to_queue(scene.set_friction.bind(scene, val));
-        },
-        {
-          name: "Friction",
-          initial_value: "0.0",
-          min: 0,
-          max: 5.0,
-          step: 0.01,
-        },
-      );
+      handler.add_scene(graph_scene);
+      handler.add_scene(spring_scene);
 
       // Button which pauses/unpauses the simulation
-      let pausebutton = scene.add_pause_button(
+      let pausebutton = handler.add_pause_button(
         document.getElementById(
           "point-mass-spring-pause-button",
         ) as HTMLElement,
@@ -674,15 +635,57 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
           "point-mass-spring-reset-button",
         ) as HTMLElement,
         function () {
-          scene.add_to_queue(reset_simulation);
+          handler.add_to_queue(handler.reset.bind(handler));
         },
       );
       resetButton.textContent = "Reset simulation";
-      resetButton.style.padding = "15px";
 
-      // Play the scene
-      scene.draw();
-      scene.play(undefined);
+      // Slider which controls the propagation speed
+      let w_slider = Slider(
+        document.getElementById("point-mass-stiffness-slider") as HTMLElement,
+        function (val: number) {
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "stiffness", val),
+          );
+          handler.add_to_queue(
+            spring_scene.set_spring_stiffness.bind(spring_scene, val),
+          );
+          handler.add_to_queue(
+            spring_scene.update_mobjects_from_simulator.bind(
+              spring_scene,
+              handler.simulator as SpringSimulator,
+            ),
+          );
+          handler.add_to_queue(handler.draw.bind(handler));
+        },
+        {
+          name: "Spring stiffness",
+          initial_value: `${sim.stiffness}`,
+          min: 0,
+          max: 20,
+          step: 0.01,
+        },
+      );
+
+      // Slider which controls friction
+      let f_slider = Slider(
+        document.getElementById("point-mass-damping-slider") as HTMLElement,
+        function (val: number) {
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "friction", val),
+          );
+        },
+        {
+          name: "Friction",
+          initial_value: "0.0",
+          min: 0,
+          max: 5.0,
+          step: 0.01,
+        },
+      );
+
+      handler.draw();
+      handler.play(undefined);
     })(300, 300);
 
     // One-dimensional case of the wave equation. A sequence of point masses (say, 5-10)
@@ -701,47 +704,74 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
         "point-mass-discrete-sequence",
       );
 
-      let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
-      scene.set_mode("dots");
-      scene.set_dot_radius(0.1);
-      let sim = scene.sim();
-
-      // Set the attributes of the simulator
-      sim.set_attr("wave_propagation_speed", 3.0);
       function foo(x: number): number {
         return Math.exp(-(5 * (x - 0.5) ** 2));
       }
-      function reset_simulation() {
-        sim.time = 0;
-        sim.set_uValues(
+
+      // Prepare the simulator
+      class WaveSimulator extends WaveSimOneDim {
+        reset() {
+          super.reset();
+          this.set_uValues(
+            funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
+          );
+          this.set_vValues(funspace((x) => 0, 0, 1, num_points));
+        }
+      }
+
+      let w = 3.0;
+      let sim = new WaveSimOneDim(num_points, 0.01);
+      sim.set_attr("wave_propagation_speed", w);
+      sim.reset = function () {
+        this.time = 0;
+        this.set_uValues(
           funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
         );
-        sim.set_vValues(funspace((x) => 0, 0, 1, num_points));
-        scene.draw();
+        this.set_vValues(funspace((x) => 0, 0, 1, num_points));
+      };
+      sim.reset();
+
+      // Prepare the handler
+      let handler = new InteractiveHandler(sim);
+
+      // Prepare the scene and add
+      class WaveScene extends WaveSimOneDimScene {
+        constructor(canvas: HTMLCanvasElement, num_points: number) {
+          super(canvas, num_points);
+          for (let i = 0; i < num_points; i++) {
+            let mass = this.get_mobj(`p_${i + 1}`) as DraggableDot;
+            this.add_callback(i, mass);
+          }
+        }
+        add_callback(i: number, mass: DraggableDot) {
+          let self = this;
+          if (i == 0) {
+            mass.add_callback(() => {
+              sim.set_left_endpoint(mass.get_center()[1]);
+            });
+          }
+          if (i == width - 1) {
+            mass.add_callback(() => {
+              sim.set_right_endpoint(mass.get_center()[1]);
+            });
+          }
+          mass.add_callback(() => {
+            let vals = sim.get_vals();
+            vals[i] = mass.get_center()[1];
+            vals[i + this.width] = 0;
+            sim.set_vals(vals);
+            self.update_mobjects_from_simulator(sim);
+          });
+        }
       }
-      reset_simulation();
-      // Slider which controls friction
-      let f_slider = Slider(
-        document.getElementById(
-          "point-mass-discrete-sequence-friction-slider",
-        ) as HTMLElement,
-        function (val: number) {
-          scene.add_to_queue(
-            scene.set_simulator_attr.bind(scene, 0, "damping", val),
-          );
-        },
-        {
-          name: "Friction",
-          initial_value: "0.0",
-          min: 0,
-          max: 5.0,
-          step: 0.01,
-        },
-      );
+      let scene = new WaveScene(canvas, num_points);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("dots");
+      scene.set_dot_radius(0.1);
+      handler.add_scene(scene);
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = scene.add_pause_button(
+      let pauseButton = handler.add_pause_button(
         document.getElementById(
           "point-mass-discrete-sequence-pause-button",
         ) as HTMLElement,
@@ -753,10 +783,29 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
           "point-mass-discrete-sequence-reset-button",
         ) as HTMLElement,
         function () {
-          scene.add_to_queue(reset_simulation);
+          handler.add_to_queue(handler.reset.bind(handler));
         },
       );
       resetButton.textContent = "Reset simulation";
+
+      // Slider which controls friction
+      let f_slider = Slider(
+        document.getElementById(
+          "point-mass-discrete-sequence-friction-slider",
+        ) as HTMLElement,
+        function (val: number) {
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "damping", val),
+          );
+        },
+        {
+          name: "Friction",
+          initial_value: "0.0",
+          min: 0,
+          max: 5.0,
+          step: 0.01,
+        },
+      );
 
       // Slider which controls the propagation speed
       let w_slider = Slider(
@@ -764,18 +813,28 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
           "point-mass-discrete-sequence-stiffness-slider",
         ) as HTMLElement,
         function (val: number) {
-          scene.add_to_queue(
-            scene.set_simulator_attr.bind(
-              scene,
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(
+              handler,
               0,
               "wave_propagation_speed",
               val,
             ),
           );
+          handler.add_to_queue(
+            scene.set_arrow_length_scale.bind(scene, val / 2),
+          );
+          handler.add_to_queue(
+            scene.update_mobjects_from_simulator.bind(
+              scene,
+              handler.simulator as WaveSimulator,
+            ),
+          );
+          handler.add_to_queue(handler.draw.bind(handler));
         },
         {
           name: "Spring stiffness",
-          initial_value: "3.0",
+          initial_value: `${w}`,
           min: 0,
           max: 20,
           step: 0.05,
@@ -783,8 +842,8 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       );
 
       // Prepare the simulation
-      scene.draw();
-      scene.play(undefined);
+      handler.draw();
+      handler.play(undefined);
     })(300, 300, 10);
 
     // Use the same scene as before, but with a large number of point masses (say, 50) drawn
@@ -801,29 +860,75 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
         "point-mass-continuous-sequence",
       );
 
-      let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
-      scene.set_mode("dots");
-      scene.set_dot_radius(0.05);
-      scene.set_arrow_length_scale(0.1);
-      let sim = scene.sim();
-
-      // Set the attributes of the simulator
-      sim.set_attr("wave_propagation_speed", 3.0);
-      sim.set_attr("damping", 0.05);
-      sim.set_attr("dt", 0.05);
       function foo(x: number): number {
         return Math.exp(-(5 * (x - 0.5) ** 2));
       }
-      function reset_simulation() {
-        sim.time = 0;
-        sim.set_uValues(
+
+      // Prepare the simulator
+      class WaveSimulator extends WaveSimOneDim {
+        reset() {
+          super.reset();
+          this.set_uValues(
+            funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
+          );
+          this.set_vValues(funspace((x) => 0, 0, 1, num_points));
+        }
+      }
+
+      let w = 3.0;
+      let sim = new WaveSimOneDim(num_points, 0.01);
+      sim.reset();
+      sim.set_attr("wave_propagation_speed", 3.0);
+      sim.set_attr("damping", 0.05);
+      sim.set_attr("dt", 0.05);
+      sim.reset = function () {
+        this.time = 0;
+        this.set_uValues(
           funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
         );
-        sim.set_vValues(funspace((x) => 0, 0, 1, num_points));
-        scene.draw();
+        this.set_vValues(funspace((x) => 0, 0, 1, num_points));
+      };
+      sim.reset();
+
+      // Prepare the handler
+      let handler = new InteractiveHandler(sim);
+
+      // Prepare the scene and add
+      class WaveScene extends WaveSimOneDimScene {
+        constructor(canvas: HTMLCanvasElement, num_points: number) {
+          super(canvas, num_points);
+          for (let i = 0; i < num_points; i++) {
+            let mass = this.get_mobj(`p_${i + 1}`) as DraggableDot;
+            this.add_callback(i, mass);
+          }
+        }
+        add_callback(i: number, mass: DraggableDot) {
+          let self = this;
+          if (i == 0) {
+            mass.add_callback(() => {
+              sim.set_left_endpoint(mass.get_center()[1]);
+            });
+          }
+          if (i == width - 1) {
+            mass.add_callback(() => {
+              sim.set_right_endpoint(mass.get_center()[1]);
+            });
+          }
+          mass.add_callback(() => {
+            let vals = sim.get_vals();
+            vals[i] = mass.get_center()[1];
+            vals[i + this.width] = 0;
+            sim.set_vals(vals);
+            self.update_mobjects_from_simulator(sim);
+          });
+        }
       }
-      reset_simulation();
+      let scene = new WaveScene(canvas, num_points);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("dots");
+      scene.set_dot_radius(0.05);
+      scene.set_arrow_length_scale(0.05);
+      handler.add_scene(scene);
 
       // Add SceneViewTranslator
       // ** NOTE that this must come after all objects have been added to the scene.
@@ -836,13 +941,14 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
           "point-mass-continuous-sequence-zoom-slider",
         ) as HTMLElement,
         function (zr: number) {
-          scene.add_to_queue(() => {
+          handler.add_to_queue(() => {
             scene.zoom_in_on(zr / scene.zoom_ratio, scene.get_view_center());
             if (zr > 3) {
               scene.set_mode("dots");
             } else {
               scene.set_mode("curve");
             }
+            scene.update_mobjects_from_simulator(sim);
             scene.draw();
           });
         },
@@ -856,23 +962,22 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       );
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = scene.add_pause_button(
+      let pauseButton = handler.add_pause_button(
         document.getElementById(
           "point-mass-continuous-sequence-pause-button",
         ) as HTMLElement,
       );
 
-      // Button which pauses/unpauses the simulation
+      // Button which resets the simulation
       let resetButton = Button(
         document.getElementById(
           "point-mass-continuous-sequence-reset-button",
         ) as HTMLElement,
         function () {
-          scene.add_to_queue(reset_simulation);
+          handler.add_to_queue(handler.reset.bind(handler));
         },
       );
       resetButton.textContent = "Reset simulation";
-      resetButton.style.padding = "15px";
 
       // Slider which controls friction
       let f_slider = Slider(
@@ -880,8 +985,8 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
           "point-mass-continuous-sequence-friction-slider",
         ) as HTMLElement,
         function (val: number) {
-          scene.add_to_queue(
-            scene.set_simulator_attr.bind(scene, 0, "damping", val),
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "damping", val),
           );
         },
         {
@@ -899,18 +1004,28 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
           "point-mass-continuous-sequence-stiffness-slider",
         ) as HTMLElement,
         function (val: number) {
-          scene.add_to_queue(
-            scene.set_simulator_attr.bind(
-              scene,
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(
+              handler,
               0,
               "wave_propagation_speed",
               val,
             ),
           );
+          handler.add_to_queue(
+            scene.set_arrow_length_scale.bind(scene, val / 2),
+          );
+          handler.add_to_queue(
+            scene.update_mobjects_from_simulator.bind(
+              scene,
+              handler.simulator as WaveSimulator,
+            ),
+          );
+          handler.add_to_queue(handler.draw.bind(handler));
         },
         {
           name: "Spring stiffness",
-          initial_value: "3.0",
+          initial_value: `${w}`,
           min: 0,
           max: 20,
           step: 0.05,
@@ -918,8 +1033,8 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       );
 
       // Prepare the simulation
-      scene.draw();
-      scene.play(undefined);
+      handler.draw();
+      handler.play(undefined);
     })(300, 300, 50);
 
     // - A one-dimensional wave example with PML at the ends, where a point in the middle
@@ -931,20 +1046,9 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       height: number,
       num_points: number,
     ) {
+      const name = "wavesim-1d-impulse";
       // Prepare the canvas
-      let canvas = prepare_canvas(width, height, "wavesim-1d-impulse");
-
-      let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
-      scene.set_mode("dots");
-      scene.set_dot_radius(0.05);
-      scene.include_arrows = false;
-      let sim = scene.sim();
-
-      // Set the attributes of the simulator
-      sim.set_attr("wave_propagation_speed", 5.0);
-      sim.set_attr("damping", 0.0);
-      sim.set_attr("dt", 0.02);
+      let canvas = prepare_canvas(width, height, name);
 
       // Initial conditions
       const sigma = 0.1;
@@ -956,88 +1060,100 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       function pulse_deriv(x: number): number {
         return ((-2 * (x - mu)) / sigma ** 2) * pulse(x);
       }
-      function reset_simulation() {
+
+      // Prepare the simulator
+      let sim = new WaveSimOneDim(num_points, 0.01);
+      sim.set_attr("wave_propagation_speed", 5.0);
+      sim.set_attr("damping", 0.0);
+      sim.set_attr("dt", 0.02);
+      sim.reset = function () {
         sim.time = 0;
         sim.set_uValues(funspace((x) => pulse(x) - pulse(1), 0, 1, num_points));
         sim.set_vValues(
           funspace((x) => -0.1 * pulse_deriv(x), 0, 1, num_points),
         );
-        scene.draw();
-      }
-      reset_simulation();
-      // Button which pauses/unpauses the simulation
-      let pauseButton = scene.add_pause_button(
-        document.getElementById(
-          "wavesim-1d-impulse-pause-button",
-        ) as HTMLElement,
-      );
+      };
+      sim.reset();
 
+      // Prepare the handler
+      let handler = new InteractiveHandler(sim);
+
+      // Prepare the scene and add
+      let scene = new WaveSimOneDimScene(canvas, num_points);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("dots");
+      scene.set_dot_radius(0.05);
+      scene.include_arrows = false;
+      handler.add_scene(scene);
+
+      // Button which pauses/unpauses the simulation
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(name + "-pause-button") as HTMLElement,
+      );
       // Button which resets the simulation
       let resetButton = Button(
-        document.getElementById(
-          "wavesim-1d-impulse-reset-button",
-        ) as HTMLElement,
+        document.getElementById(name + "-reset-button") as HTMLElement,
         function () {
-          scene.add_to_queue(reset_simulation);
+          handler.add_to_queue(handler.reset.bind(handler));
         },
       );
       resetButton.textContent = "Reset simulation";
-      resetButton.style.padding = "15px";
 
       // Prepare the simulation
-      scene.draw();
-      scene.play(undefined);
+      handler.draw();
+      handler.play(undefined);
     })(300, 300, 50);
     (function wavesim_one_dimensional_demo_pml(
       width: number,
       height: number,
       num_points: number,
     ) {
+      const name = "wavesim-1d-pml";
       // Prepare the canvas
-      let canvas = prepare_canvas(width, height, "wavesim-1d-pml");
-
-      let scene = new WaveSimOneDimInteractiveScene(canvas, num_points);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
-      scene.set_mode("curve");
-      scene.set_zoom(1.5);
-      scene.set_dot_radius(0.05);
-      scene.include_arrows = false;
-      let sim = scene.sim();
+      let canvas = prepare_canvas(width, height, name);
 
       // Set the attributes of the simulator
+      let sim = new WaveSimOneDim(num_points, 0.01);
       sim.set_attr("wave_propagation_speed", 3.0);
       sim.set_attr("damping", 0.0);
       sim.set_pml_layer(true, 0.3, 100);
       sim.set_pml_layer(false, 0.3, 100);
       sim.set_attr("dt", 0.02);
       sim.add_point_source(new PointSourceOneDim(num_points / 2, 3.0, 1.0, 0));
-
-      // Initial conditions
-      function reset_simulation() {
+      sim.reset = function () {
         sim.time = 0;
         sim.set_uValues(funspace((x) => 0, 0, 1, num_points));
         sim.set_vValues(funspace((x) => 0, 0, 1, num_points));
-        scene.draw();
-      }
-      reset_simulation();
-      // Button which pauses/unpauses the simulation
-      let pauseButton = scene.add_pause_button(
-        document.getElementById("wavesim-1d-pml-pause-button") as HTMLElement,
-      );
+      };
+      sim.reset();
 
+      // Prepare the handler
+      let handler = new InteractiveHandler(sim);
+
+      // Prepare the scene and add
+      let scene = new WaveSimOneDimScene(canvas, num_points);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("curve");
+      scene.set_dot_radius(0.05);
+      scene.include_arrows = false;
+      handler.add_scene(scene);
+
+      // Button which pauses/unpauses the simulation
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(name + "-pause-button") as HTMLElement,
+      );
       // Button which resets the simulation
       let resetButton = Button(
-        document.getElementById("wavesim-1d-pml-reset-button") as HTMLElement,
+        document.getElementById(name + "-reset-button") as HTMLElement,
         function () {
-          scene.add_to_queue(reset_simulation);
+          handler.add_to_queue(handler.reset.bind(handler));
         },
       );
       resetButton.textContent = "Reset simulation";
-      resetButton.style.padding = "15px";
 
       // Prepare the simulation
-      scene.draw();
-      scene.play(undefined);
+      handler.draw();
+      handler.play(undefined);
     })(300, 300, 60);
 
     // *** TWO-DIMENSIONAL WAVE EQUATION ***
@@ -1172,13 +1288,13 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       const imageData = ctx.createImageData(width, height);
 
       // Create the simulator
-      let waveSim = new WaveSimTwoDim(width, height, dt);
-      waveSim.wave_propagation_speed = 0.1 * width;
+      let sim = new WaveSimTwoDim(width, height, dt);
+      sim.wave_propagation_speed = 0.1 * width;
 
       // Create a point source
       let a = 5.0;
       let w = 8.0;
-      waveSim.add_point_source(
+      sim.add_point_source(
         new PointSource(
           Math.floor(0.5 * width),
           Math.floor(0.5 * height),
@@ -1188,16 +1304,25 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
         ),
       );
 
+      // Create a handler
+      let handler = new InteractiveHandler(sim);
+
       // Initialize the scene
-      let scene = new WaveSimTwoDimHeatMapScene(canvas, waveSim, imageData);
+      let scene = new WaveSimTwoDimHeatMapScene(
+        canvas,
+        imageData,
+        width,
+        height,
+      );
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.draw();
+      handler.add_scene(scene);
 
       // Make a slider which controls the frequency
       let w_slider = Slider(
         document.getElementById(name + "-slider-1") as HTMLElement,
         function (val: number) {
-          scene.add_to_queue(() => {
-            let sim = scene.get_simulator();
+          handler.add_to_queue(() => {
             sim.point_sources[0].set_w(val);
           });
         },
@@ -1211,7 +1336,7 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       );
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = scene.add_pause_button(
+      let pauseButton = handler.add_pause_button(
         document.getElementById(name + "-pause-button") as HTMLElement,
       );
 
@@ -1219,14 +1344,14 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       let clearButton = Button(
         document.getElementById(name + "-reset-button") as HTMLElement,
         function () {
-          scene.add_to_queue(scene.reset.bind(scene));
+          handler.add_to_queue(sim.reset.bind(sim));
         },
       );
       clearButton.textContent = "Clear";
       clearButton.style.padding = "15px";
 
-      scene.draw();
-      scene.play(undefined);
+      handler.draw();
+      handler.play(undefined);
     })(250, 250);
 
     (function wave_sim_2d_point_source_conic(width: number, height: number) {
@@ -1248,16 +1373,19 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       const imageData = ctx.createImageData(width, height);
 
       // Create the simulator
-      let waveSim = new WaveSimTwoDimEllipticReflector(width, height, dt);
-      waveSim.wave_propagation_speed = 0.1 * width;
-      waveSim.set_attr("w", 6.0);
-      waveSim.remove_pml_layers();
+      let sim = new WaveSimTwoDimEllipticReflector(width, height, dt);
+      sim.wave_propagation_speed = 0.1 * width;
+      sim.set_attr("w", 6.0);
+      sim.remove_pml_layers();
+
+      // Create a handler
+      let handler = new InteractiveHandler(sim);
 
       // Initialize the scene
       let conic = new ParametricFunction(
         (t) => [
-          (waveSim.semimajor_axis / width) * (xmax - xmin) * Math.cos(t),
-          (waveSim.semiminor_axis / height) * (ymax - ymin) * Math.sin(t),
+          (sim.semimajor_axis / width) * (xmax - xmin) * Math.cos(t),
+          (sim.semiminor_axis / height) * (ymax - ymin) * Math.sin(t),
         ],
         0,
         Math.PI * 2,
@@ -1265,20 +1393,25 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       );
       conic.set_stroke_width(0.03);
       conic.set_alpha(0.5);
-      let scene = new WaveSimTwoDimHeatMapScene(canvas, waveSim, imageData);
+      let scene = new WaveSimTwoDimHeatMapScene(
+        canvas,
+        imageData,
+        width,
+        height,
+      );
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-
       scene.add("conic", conic);
+      scene.draw();
+      handler.add_scene(scene);
 
       // Make a slider which controls the eccentricity
       let e_slider = Slider(
         document.getElementById(name + "-slider-1") as HTMLElement,
         function (val: number) {
-          scene.add_to_queue(() => {
-            let sim = scene.get_simulator();
+          handler.add_to_queue(() => {
             sim.set_attr("semiminor_axis", val);
             conic.set_function((t) => [
-              (waveSim.semimajor_axis / width) * (xmax - xmin) * Math.cos(t),
+              (sim.semimajor_axis / width) * (xmax - xmin) * Math.cos(t),
               (val / height) * (ymax - ymin) * Math.sin(t),
             ]);
             scene.draw();
@@ -1297,8 +1430,7 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       let w_slider = Slider(
         document.getElementById(name + "-slider-2") as HTMLElement,
         function (val: number) {
-          scene.add_to_queue(() => {
-            let sim = scene.get_simulator();
+          handler.add_to_queue(() => {
             sim.set_attr("w", val);
           });
         },
@@ -1312,7 +1444,7 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       );
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = scene.add_pause_button(
+      let pauseButton = handler.add_pause_button(
         document.getElementById(name + "-pause-button") as HTMLElement,
       );
 
@@ -1320,15 +1452,14 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       let clearButton = Button(
         document.getElementById(name + "-reset-button") as HTMLElement,
         function () {
-          scene.add_to_queue(scene.reset.bind(scene));
+          handler.add_to_queue(sim.reset.bind(sim));
         },
       );
       clearButton.textContent = "Clear";
       clearButton.style.padding = "15px";
 
-      scene.get_simulator().set_boundary_conditions(waveSim.vals, 0);
-      scene.draw();
-      scene.play(undefined);
+      handler.draw();
+      handler.play(undefined);
     })(250, 250);
 
     (function wave_sim_2d_doubleslit(width: number, height: number) {
@@ -1350,20 +1481,20 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       const imageData = ctx.createImageData(width, height);
 
       // Create the simulator
-      let waveSim = new WaveSimTwoDim(width, height, dt);
-      waveSim.wave_propagation_speed = 0.1 * width;
+      let sim = new WaveSimTwoDim(width, height, dt);
+      sim.wave_propagation_speed = 0.1 * width;
 
       // *** Set up the double slit experiment
-      waveSim.remove_pml_layers();
-      waveSim.set_pml_layer(true, true, 0.2, 200.0);
-      waveSim.set_pml_layer(true, false, 0.2, 200.0);
-      waveSim.set_pml_layer(false, true, 0.2, 200.0);
+      sim.remove_pml_layers();
+      sim.set_pml_layer(true, true, 0.2, 200.0);
+      sim.set_pml_layer(true, false, 0.2, 200.0);
+      sim.set_pml_layer(false, true, 0.2, 200.0);
 
       // Create a plane wave at the top
       let a = 4.0;
       let w = 8.0;
       for (let x = 0; x < width; x++) {
-        waveSim.add_point_source(new PointSource(x, 0, w, a, 0));
+        sim.add_point_source(new PointSource(x, 0, w, a, 0));
       }
 
       // Set up two slits by putting reflectors everywhere else on a horizontal line
@@ -1388,12 +1519,22 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       }
       let sources = make_apertures(slit_dist, slit_width);
       for (let source of sources) {
-        waveSim.add_point_source(source);
+        sim.add_point_source(source);
       }
 
+      // Create a handler
+      let handler = new InteractiveHandler(sim);
+
       // Initialize the scene
-      let scene = new WaveSimTwoDimHeatMapScene(canvas, waveSim, imageData);
+      let scene = new WaveSimTwoDimHeatMapScene(
+        canvas,
+        imageData,
+        width,
+        height,
+      );
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.draw();
+      handler.add_scene(scene);
 
       // Make a slider which controls the slit distance (need to fix this!)
       // let w_slider = Slider(
@@ -1421,7 +1562,7 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       // w_slider.width = 200;
 
       // Button which pauses/unpauses the simulation
-      let pauseButton = scene.add_pause_button(
+      let pauseButton = handler.add_pause_button(
         document.getElementById(name + "-pause-button") as HTMLElement,
       );
 
@@ -1429,14 +1570,14 @@ import { SceneFromSimulator } from "./lib/interactive_handler.js";
       let clearButton = Button(
         document.getElementById(name + "-reset-button") as HTMLElement,
         function () {
-          scene.add_to_queue(scene.reset.bind(scene));
+          handler.add_to_queue(sim.reset.bind(sim));
         },
       );
       clearButton.textContent = "Clear";
       clearButton.style.padding = "15px";
 
-      scene.draw();
-      scene.play(undefined);
+      handler.draw();
+      handler.play(undefined);
     })(250, 250);
   });
 })();

@@ -20,9 +20,8 @@ import {
 } from "../base";
 import { BezierSpline } from "../bezier.js";
 import { HeatMap } from "../heatmap.js";
-import { SceneFromSimulator } from "../interactive_handler.js";
+import { SceneFromSimulator } from "../simulator/sim";
 import { StateSimulator, TwoDimDrawable, TwoDimState } from "./statesim.js";
-import { InteractivePlayingScene } from "./sim.js";
 import { Dot3D, Line3D, DraggableDot3D } from "../three_d/mobjects.js";
 import { InteractivePlayingThreeDScene } from "./sim.js";
 import { Vec3D } from "../three_d/matvec.js";
@@ -239,14 +238,14 @@ export class WaveSimOneDim extends StateSimulator {
 
 // Drawer for the wave equation simulation, where displacement is orthogonal
 // to the line of dots.
-export class WaveSimOneDimScene extends InteractivePlayingScene {
-  mode: "curve" | "dots";
+export class WaveSimOneDimScene extends SceneFromSimulator {
+  mode: "curve" | "dots" = "dots";
   arrow_length_scale: number = 1.5;
   include_arrows: boolean = true;
+  width: number;
   constructor(canvas: HTMLCanvasElement, width: number) {
-    let sim = new WaveSimOneDim(width, 0.01);
-    super(canvas, [sim]);
-    this.mode = "dots";
+    super(canvas);
+    this.width = width;
 
     let pos: Vec2D, next_pos: Vec2D;
 
@@ -300,10 +299,9 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       let mass = new DraggableDot(pos, 0.5 / Math.sqrt(width));
       mass.draggable_x = false;
       mass.draggable_y = true;
+      // TODO Add these in the _scene file.
       if (i == 0) {
         mass.add_callback(() => {
-          let sim = this.get_simulator() as WaveSimOneDim;
-          sim.set_left_endpoint(mass.get_center()[1]);
           (this.get_mobj("eq_line") as Line).move_start([
             this.eq_position(1)[0],
             mass.get_center()[1],
@@ -312,21 +310,12 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       }
       if (i == width - 1) {
         mass.add_callback(() => {
-          let sim = this.get_simulator() as WaveSimOneDim;
-          sim.set_right_endpoint(mass.get_center()[1]);
           (this.get_mobj("eq_line") as Line).move_end([
             this.eq_position(width)[0],
             mass.get_center()[1],
           ]);
         });
       }
-      mass.add_callback(() => {
-        let sim = this.get_simulator() as WaveSimOneDim;
-        let vals = sim.get_vals();
-        vals[i] = mass.get_center()[1];
-        vals[i + this.width()] = 0;
-        sim.set_vals(vals);
-      });
       this.add(`p_${i + 1}`, mass);
     }
 
@@ -341,6 +330,12 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
   set_arrow_length_scale(scale: number) {
     this.arrow_length_scale = scale;
   }
+  set_dot_radius(radius: number) {
+    for (let i = 0; i < this.width; i++) {
+      let mass = this.get_mobj(`p_${i + 1}`) as Dot;
+      mass.set_radius(radius);
+    }
+  }
   set_frame_lims(xlims: [number, number], ylims: [number, number]): void {
     super.set_frame_lims(xlims, ylims);
     // Reset positions of objects
@@ -352,19 +347,18 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
     mobj.move_start([pos[0], ymin / 2]);
     mobj.move_end([pos[0], ymax / 2]);
 
-    pos = this.eq_position(this.width());
+    pos = this.eq_position(this.width);
     mobj = this.get_mobj("b1") as Line;
     mobj.move_start([pos[0], ymin / 2]);
     mobj.move_end([pos[0], ymax / 2]);
 
     mobj = this.get_mobj("eq_line") as Line;
     mobj.move_start(this.eq_position(1));
-    mobj.move_end(this.eq_position(this.width()));
+    mobj.move_end(this.eq_position(this.width));
 
-    this.update_mobjects();
     // Reset equilibrium lengths of lines
     let eq_length;
-    for (let i = 1; i < this.width(); i++) {
+    for (let i = 1; i < this.width; i++) {
       pos = this.eq_position(i);
       next_pos = this.eq_position(i + 1);
       let line = this.get_mobj(`l_${i}`) as LineSpring;
@@ -372,32 +366,38 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       line.set_eq_length(eq_length);
     }
   }
-  sim(): WaveSimOneDim {
-    return this.simulators[0] as WaveSimOneDim;
-  }
-  width(): number {
-    return this.sim().width;
-  }
   // Returns the equilibrium position in the scene of the i-th dot.
   eq_position(i: number): Vec2D {
     return [
       this.xlims[0] +
-        ((i - 0.5) * (this.xlims[1] - this.xlims[0])) / this.width(),
+        ((i - 0.5) * (this.xlims[1] - this.xlims[0])) / this.width,
       0,
     ];
   }
+  // Turns draggability on/off
+  toggle_pause(): void {
+    for (let i = 0; i < this.width; i++) {
+      let dot = this.get_mobj(`p_${i + 1}`) as DraggableDot;
+      dot.draggable_y = true;
+    }
+  }
+  toggle_unpause(): void {
+    for (let i = 0; i < this.width; i++) {
+      let dot = this.get_mobj(`p_${i + 1}`) as DraggableDot;
+      dot.draggable_y = false;
+    }
+  }
   // Moves the dots and curve in the scene to the positions dictated by the wave simulation.
-  update_mobjects() {
+  update_mobjects_from_simulator(sim: WaveSimOneDim) {
     let pos: Vec2D, next_pos: Vec2D;
     let disp: number, next_disp: number;
-    let sim = this.sim();
     let u = sim.get_uValues();
     let deriv = sim._get_vValues(sim.dot(sim.vals, sim.time));
 
     // Update the relevant mobjects
     if (this.mode == "dots") {
       let dot, line, arrow;
-      for (let i = 0; i < this.width(); i++) {
+      for (let i = 0; i < this.width; i++) {
         pos = this.eq_position(i + 1);
         disp = u[i] as number;
 
@@ -406,7 +406,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
         dot.move_to([pos[0], pos[1] + disp]);
 
         // Update arrows
-        if (i != 0 && i != this.width() - 1 && this.include_arrows) {
+        if (i != 0 && i != this.width - 1 && this.include_arrows) {
           arrow = this.get_mobj(`arr${i + 1}`) as Arrow;
           arrow.move_start([pos[0], pos[1] + disp]);
           arrow.move_end([
@@ -421,7 +421,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
           );
         }
         // Update connecting lines
-        if (i < this.width() - 1) {
+        if (i < this.width - 1) {
           next_pos = this.eq_position(i + 2);
           next_disp = u[i + 1] as number;
           line = this.get_mobj(`l_${i + 1}`) as LineSpring;
@@ -431,7 +431,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       }
     } else if (this.mode == "curve") {
       let anchors: Vec2D[] = [];
-      for (let i = 0; i < this.width(); i++) {
+      for (let i = 0; i < this.width; i++) {
         pos = this.eq_position(i + 1);
         disp = u[i] as number;
         anchors.push([pos[0], pos[1] + disp]);
@@ -441,6 +441,15 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
       curve.set_anchors(anchors);
     }
   }
+  _draw() {
+    // Draw the mobjects
+    Object.keys(this.mobjects).forEach((name) => {
+      let mobj = this.mobjects[name];
+      if (mobj == undefined) throw new Error(`${name} not found`);
+      this.draw_mobject(mobj);
+    });
+  }
+  // Draw based on mode
   draw_mobject(mobj: MObject) {
     if (mobj instanceof BezierSpline) {
       if (this.mode == "curve") {
@@ -455,7 +464,7 @@ export class WaveSimOneDimScene extends InteractivePlayingScene {
         mobj.draw(this.canvas, this);
       }
     } else if (mobj instanceof Arrow) {
-      if (this.include_arrows) {
+      if (this.include_arrows && this.mode == "dots") {
         mobj.draw(this.canvas, this);
       }
     } else {
@@ -1062,29 +1071,6 @@ export class WaveSimTwoDimParabolaReflector extends WaveSimTwoDimReflector {}
 
 // *** SCENES ***
 
-// A two-dimensional scene view of the one-dimensional wave equation, where dots lie along
-// a horizontal curve and are allowed to move vertically.
-export class WaveSimOneDimInteractiveScene extends WaveSimOneDimScene {
-  set_dot_radius(radius: number) {
-    for (let i = 0; i < this.width(); i++) {
-      let mass = this.get_mobj(`p_${i + 1}`) as Dot;
-      mass.set_radius(radius);
-    }
-  }
-  toggle_pause() {
-    if (this.paused) {
-      for (let i = 0; i < this.width(); i++) {
-        (this.get_mobj(`p_${i + 1}`) as DraggableDot).draggable_y = false;
-      }
-    } else {
-      for (let i = 0; i < this.width(); i++) {
-        (this.get_mobj(`p_${i + 1}`) as DraggableDot).draggable_y = true;
-      }
-    }
-    super.toggle_pause();
-  }
-}
-
 // A two-dimensional scene view of the two-dimensional wave equation, where dots are colored
 export class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
   width: number;
@@ -1162,37 +1148,25 @@ export class WaveSimTwoDimPointsHeatmapScene extends SceneFromSimulator {
 
 // Heatmap version of a 2D input wave equation scene
 // TODO Make this written for any Simulator satisfying HeatMapDrawable.
-// TODO Make the initialization of the simulator via add_simulator().
-export class WaveSimTwoDimHeatMapScene extends InteractivePlayingScene {
-  simulator: WaveSimTwoDim;
+export class WaveSimTwoDimHeatMapScene extends SceneFromSimulator {
   imageData: ImageData; // Target for heatmap data
   constructor(
     canvas: HTMLCanvasElement,
-    simulator: WaveSimTwoDim,
     imageData: ImageData,
+    width: number,
+    height: number,
   ) {
-    super(canvas, [simulator]);
-    this.simulator = simulator;
-    simulator satisfies TwoDimDrawable;
+    super(canvas);
     this.add(
       "heatmap",
-      new HeatMap(
-        simulator.width,
-        simulator.height,
-        -1,
-        1,
-        this.simulator.get_uValues(),
-      ),
+      new HeatMap(width, height, -1, 1, new Array(width * height).fill(0)),
     );
     // TODO Move this part to renderer.
     this.imageData = imageData;
   }
-  get_simulator(ind: number = 0): WaveSimTwoDim {
-    return super.get_simulator(ind) as WaveSimTwoDim;
-  }
-  update_mobjects() {
+  update_mobjects_from_simulator(simulator: WaveSimTwoDim) {
     let mobj = this.get_mobj("heatmap") as HeatMap;
-    mobj.set_vals(this.simulator.get_uValues());
+    mobj.set_vals(simulator.get_uValues());
   }
   draw_mobject(mobj: MObject) {
     if (mobj instanceof HeatMap) {
@@ -1204,6 +1178,7 @@ export class WaveSimTwoDimHeatMapScene extends InteractivePlayingScene {
 }
 
 // A three-dimensional scene view of the two-dimensional wave equation.
+// TODO Turn the below into a ThreeDSceneFromSimulator which is controlled by a handler.
 export class WaveSimTwoDimThreeDScene extends InteractivePlayingThreeDScene {
   rotation_speed: number = 0.01;
   width: number;

@@ -10977,8 +10977,11 @@ var Scene = class {
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.mobjects[name];
       if (mobj == void 0) throw new Error(`${name} not found`);
-      mobj.draw(this.canvas, this);
+      this.draw_mobject(mobj);
     });
+  }
+  draw_mobject(mobj) {
+    mobj.draw(this.canvas, this);
   }
   // Draw a border around the canvas
   draw_border(ctx) {

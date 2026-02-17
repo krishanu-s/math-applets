@@ -1,8 +1,4 @@
-export {
-  Simulator,
-  InteractivePlayingScene,
-  InteractivePlayingThreeDScene,
-} from "./sim";
+export { Simulator, InteractivePlayingThreeDScene } from "./sim";
 export {
   StateSimulator,
   SpringSimulator,

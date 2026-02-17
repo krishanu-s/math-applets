@@ -354,8 +354,11 @@ export class Scene {
     Object.keys(this.mobjects).forEach((name) => {
       let mobj = this.mobjects[name];
       if (mobj == undefined) throw new Error(`${name} not found`);
-      mobj.draw(this.canvas, this);
+      this.draw_mobject(mobj);
     });
+  }
+  draw_mobject(mobj: MObject) {
+    mobj.draw(this.canvas, this);
   }
   // Draw a border around the canvas
   draw_border(ctx: CanvasRenderingContext2D) {
