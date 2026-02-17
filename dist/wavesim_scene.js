@@ -10749,6 +10749,32 @@ var MObject = class {
   _draw(ctx, scene, args) {
   }
 };
+var MObjectGroup = class extends MObject {
+  constructor() {
+    super(...arguments);
+    this.children = {};
+  }
+  add_mobj(name, child) {
+    this.children[name] = child;
+  }
+  remove_mobj(name) {
+    delete this.children[name];
+  }
+  get_mobj(name) {
+    if (!this.children[name]) {
+      throw new Error(`Child with name ${name} not found`);
+    }
+    return this.children[name];
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    Object.values(this.children).forEach(
+      (child) => child.draw(canvas, scene, args)
+    );
+  }
+};
 var LineLikeMObject = class extends MObject {
   constructor() {
     super(...arguments);
@@ -10772,6 +10798,33 @@ var LineLikeMObject = class extends MObject {
     ctx.globalAlpha = this.alpha;
     this.stroke_options.apply_to(ctx, scene);
     this._draw(ctx, scene, args);
+  }
+};
+var LineLikeMObjectGroup = class extends MObjectGroup {
+  constructor() {
+    super(...arguments);
+    this.stroke_options = new StrokeOptions();
+  }
+  set_stroke_color(color) {
+    this.stroke_options.set_stroke_color(color);
+    return this;
+  }
+  set_stroke_width(width) {
+    this.stroke_options.set_stroke_width(width);
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_options.set_stroke_style(style);
+    return this;
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    Object.values(this.children).forEach((child) => {
+      child._draw(ctx, scene, args);
+    });
   }
 };
 var FillLikeMObject = class extends MObject {
@@ -11033,39 +11086,6 @@ function rb_colormap_2(z) {
     return [512 * (gray - 0.5), 0, 0, 255];
   }
 }
-
-// src/lib/base/heatmap.ts
-var HeatMap = class extends MObject {
-  constructor(width, height, min_val, max_val, valArray) {
-    super();
-    this.width = width;
-    this.height = height;
-    this.min_val = min_val;
-    this.max_val = max_val;
-    this.valArray = valArray;
-    this.colorMap = rb_colormap;
-  }
-  set_color_map(colorMap) {
-    this.colorMap = colorMap;
-  }
-  // Gets/sets values
-  set_vals(vals) {
-    this.valArray = vals;
-  }
-  get_vals() {
-    return this.valArray;
-  }
-  // Draws on the canvas
-  _draw(ctx, scene, imageData) {
-    let data = imageData.data;
-    for (let i = 0; i < this.width * this.height; i++) {
-      const px_val = this.valArray[i];
-      const idx = i * 4;
-      [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] = this.colorMap(px_val);
-    }
-    ctx.putImageData(imageData, 0, 0);
-  }
-};
 
 // src/lib/interactive/draggable.ts
 var makeDraggable = (Base) => {
@@ -11617,6 +11637,53 @@ var Arrow = class extends Line {
     ctx.fill();
   }
 };
+var TwoHeadedArrow = class extends Line {
+  constructor() {
+    super(...arguments);
+    this.arrow_size = 0.3;
+  }
+  set_arrow_size(size2) {
+    this.arrow_size = size2;
+  }
+  // Draws on the canvas
+  _draw(ctx, scene) {
+    super._draw(ctx, scene);
+    ctx.fillStyle = this.stroke_options.stroke_color;
+    let [end_x, end_y] = scene.v2c(this.end);
+    let [start_x, start_y] = scene.v2c(this.start);
+    let v;
+    let ax;
+    let ay;
+    let bx;
+    let by;
+    v = vec2_scale(
+      vec2_sub(this.start, this.end),
+      this.arrow_size / this.length()
+    );
+    [ax, ay] = scene.v2c(vec2_sum(this.end, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(this.end, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(end_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
+    v = vec2_scale(
+      vec2_sub(this.end, this.start),
+      this.arrow_size / this.length()
+    );
+    [ax, ay] = scene.v2c(vec2_sum(this.start, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(this.start, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(start_x, start_y);
+    ctx.closePath();
+    ctx.fill();
+  }
+};
 var LineSpring = class extends Line {
   constructor(start, end) {
     super(start, end);
@@ -11679,392 +11746,6 @@ var LineSpring = class extends Line {
       );
       ctx.lineTo(current_p[0], current_p[1]);
       ctx.lineTo(end_x, end_y);
-      ctx.stroke();
-    }
-  }
-};
-
-// src/lib/interactive/button.ts
-function Button(container, callback) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.id = "interactiveButton";
-  button.style.padding = "15px";
-  container.appendChild(button);
-  button.addEventListener("click", (event) => {
-    callback();
-    button.style.transform = "scale(0.95)";
-    setTimeout(() => {
-      button.style.transform = "scale(1)";
-    }, 100);
-  });
-  return button;
-}
-
-// src/lib/interactive/slider.ts
-function Slider(container, callback, kwargs) {
-  let slider = document.createElement("input");
-  slider.type = "range";
-  slider.value = kwargs.initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
-  slider.width = 200;
-  let name = kwargs.name;
-  if (name == void 0) {
-    slider.name = "Value";
-  } else {
-    slider.name = name;
-  }
-  let min2 = kwargs.min;
-  if (min2 == void 0) {
-    slider.min = "0";
-  } else {
-    slider.min = `${min2}`;
-  }
-  let max2 = kwargs.max;
-  if (max2 == void 0) {
-    slider.max = "10";
-  } else {
-    slider.max = `${max2}`;
-  }
-  let step = kwargs.step;
-  if (step == void 0) {
-    slider.step = ".01";
-  } else {
-    slider.step = `${step}`;
-  }
-  container.appendChild(slider);
-  let valueDisplay = document.createElement("span");
-  valueDisplay.classList.add("value-display");
-  valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-  container.appendChild(valueDisplay);
-  function updateDisplay() {
-    callback(slider.value);
-    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-    updateSliderColor(slider);
-  }
-  function updateSliderColor(sliderElement) {
-    const value = 100 * parseFloat(sliderElement.value);
-    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
-  }
-  updateDisplay();
-  slider.addEventListener("input", updateDisplay);
-  return slider;
-}
-
-// src/lib/interactive/scene_view_translator.ts
-var SceneViewTranslator = class {
-  // Callbacks which trigger when the object is dragged.
-  constructor(scene) {
-    this.drag = false;
-    this.dragStart = [0, 0];
-    this.dragEnd = [0, 0];
-    this.callbacks = [];
-    this.scene = scene;
-  }
-  // Adds a callback which triggers when the object is dragged
-  add_callback(callback) {
-    this.callbacks.push(callback);
-  }
-  // Performs all callbacks (called when the object is dragged)
-  do_callbacks() {
-    for (const callback of this.callbacks) {
-      callback();
-    }
-  }
-  click(event) {
-    this.dragStart = [
-      event.pageX - this.scene.canvas.offsetLeft,
-      event.pageY - this.scene.canvas.offsetTop
-    ];
-    if (!this.scene.is_dragging) {
-      this.drag = true;
-      this.scene.click();
-    }
-  }
-  touch(event) {
-    this.dragStart = [
-      event.touches[0].pageX - this.scene.canvas.offsetLeft,
-      event.touches[0].pageY - this.scene.canvas.offsetTop
-    ];
-    if (!this.scene.is_dragging) {
-      this.drag = true;
-      this.scene.click();
-    }
-  }
-  unclick(event) {
-    this.drag = false;
-    this.scene.unclick();
-  }
-  untouch(event) {
-    this.drag = false;
-    this.scene.unclick();
-  }
-  mouse_drag_cursor(event) {
-    if (this.drag) {
-      this.dragEnd = [
-        event.pageX - this.scene.canvas.offsetLeft,
-        event.pageY - this.scene.canvas.offsetTop
-      ];
-      this._drag_cursor();
-    }
-  }
-  touch_drag_cursor(event) {
-    if (this.drag) {
-      this.dragEnd = [
-        event.touches[0].pageX - this.scene.canvas.offsetLeft,
-        event.touches[0].pageY - this.scene.canvas.offsetTop
-      ];
-      this._drag_cursor();
-    }
-  }
-  // Updates the scene to account for a dragged cursor position
-  _drag_cursor() {
-    let dragDiff = vec2_sub(
-      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
-      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
-    );
-    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
-      return;
-    }
-    this.scene.move_view(dragDiff);
-    this.scene.draw();
-    this.dragStart = this.dragEnd;
-    this.do_callbacks();
-  }
-  add() {
-    let self = this;
-    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
-    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
-    this.scene.canvas.addEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self)
-    );
-    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
-    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
-    this.scene.canvas.addEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self)
-    );
-  }
-  remove() {
-    let self = this;
-    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
-    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
-    this.scene.canvas.removeEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self)
-    );
-    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
-    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
-    this.scene.canvas.removeEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self)
-    );
-  }
-};
-
-// src/lib/base/bezier.ts
-var np = __toESM(require_numpy_ts_node(), 1);
-var SmoothOpenPathBezierHandleCalculator = class {
-  constructor(n) {
-    this.n = n;
-    let below_diag_list = [];
-    for (let i = 0; i < n - 2; i++) {
-      below_diag_list.push(1);
-    }
-    below_diag_list.push(2);
-    let below_diag = np.array(below_diag_list);
-    let diag_list = [2];
-    for (let i = 0; i < n - 2; i++) {
-      diag_list.push(4);
-    }
-    diag_list.push(7);
-    let diag2 = np.array(diag_list);
-    let above_diag_list = [];
-    for (let i = 0; i < n - 1; i++) {
-      above_diag_list.push(1);
-    }
-    let above_diag = np.array(above_diag_list);
-    this.result = np.zeros([n, n + 1], "float32");
-    this.result.set([0, 0], 1);
-    this.result.set([0, 1], 2);
-    for (let i = 1; i < n - 1; i++) {
-      this.result.set([i, i], 4);
-      this.result.set([i, i + 1], 2);
-    }
-    this.result.set([n - 1, n - 1], 8);
-    this.result.set([n - 1, n], 1);
-    for (let i = 0; i < n - 1; i++) {
-      let scale = below_diag.get([i]) / diag2.get([i]);
-      diag2.set(
-        [i + 1],
-        diag2.get([i + 1]) - above_diag.get([i]) * scale
-      );
-      below_diag.set(
-        [i],
-        below_diag.get([i]) - diag2.get([i]) * scale
-      );
-      for (let j = 0; j < n + 1; j++) {
-        this.result.set(
-          [i + 1, j],
-          this.result.get([i + 1, j]) - this.result.get([i, j]) * scale
-        );
-      }
-    }
-    for (let i = n - 2; i >= 0; i--) {
-      let scale = above_diag.get([i]) / diag2.get([i + 1]);
-      for (let j = 0; j < n + 1; j++) {
-        this.result.set(
-          [i, j],
-          this.result.get([i, j]) - this.result.get([i + 1, j]) * scale
-        );
-      }
-    }
-    for (let i = 0; i < n; i++) {
-      let scale = 1 / diag2.get([i]);
-      for (let j = 0; j < n + 1; j++) {
-        this.result.set([i, j], this.result.get([i, j]) * scale);
-      }
-    }
-  }
-  // Given a sequence of n+1 anchors, produces the corresponding bezier handles
-  get_bezier_handles(a) {
-    if (a.shape[0] !== this.n + 1) {
-      throw new Error("Invalid anchor array shape");
-    }
-    if (a.shape[1] !== 2) {
-      throw new Error("Invalid anchor array shape");
-    }
-    let h1 = this.result.matmul(a);
-    let h2 = np.zeros([this.n, 2]);
-    for (let i = 0; i < this.n - 1; i++) {
-      h2.set(
-        [i, 0],
-        2 * a.get([i + 1, 0]) - h1.get([i + 1, 0])
-      );
-      h2.set(
-        [i, 1],
-        2 * a.get([i + 1, 1]) - h1.get([i + 1, 1])
-      );
-    }
-    h2.set(
-      [this.n - 1, 0],
-      0.5 * (a.get([this.n, 0]) + h1.get([this.n - 1, 0]))
-    );
-    h2.set(
-      [this.n - 1, 1],
-      0.5 * (a.get([this.n, 1]) + h1.get([this.n - 1, 1]))
-    );
-    return [h1, h2];
-  }
-};
-var BezierSpline = class extends LineLikeMObject {
-  constructor(num_steps) {
-    super();
-    this.num_steps = num_steps;
-    this.solver = new SmoothOpenPathBezierHandleCalculator(num_steps);
-    this.anchors = [];
-    for (let i = 0; i < num_steps + 1; i++) {
-      this.anchors.push([0, 0]);
-    }
-  }
-  set_anchors(new_anchors) {
-    this.anchors = new_anchors;
-  }
-  set_anchor(index, new_anchor) {
-    this.anchors[index] = new_anchor;
-  }
-  get_anchor(index) {
-    return this.anchors[index];
-  }
-  _draw(ctx, scene) {
-    let a_x, a_y, a;
-    a = this.get_anchor(0);
-    [a_x, a_y] = scene.v2c(a);
-    ctx.beginPath();
-    ctx.moveTo(a_x, a_y);
-    let [handles_1, handles_2] = this.solver.get_bezier_handles(
-      np.array(this.anchors)
-    );
-    let h1_x, h1_y, h2_x, h2_y;
-    for (let i = 0; i < this.num_steps; i++) {
-      [h1_x, h1_y] = scene.v2c([
-        handles_1.get([i, 0]),
-        handles_1.get([i, 1])
-      ]);
-      [h2_x, h2_y] = scene.v2c([
-        handles_2.get([i, 0]),
-        handles_2.get([i, 1])
-      ]);
-      a = this.get_anchor(i + 1);
-      [a_x, a_y] = scene.v2c(a);
-      ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
-      ctx.stroke();
-    }
-  }
-};
-var ParametricFunction = class extends LineLikeMObject {
-  constructor(f, tmin, tmax, num_steps) {
-    super();
-    this.mode = "smooth";
-    this.function = f;
-    this.tmin = tmin;
-    this.tmax = tmax;
-    this.num_steps = num_steps;
-    this.solver = new SmoothOpenPathBezierHandleCalculator(this.num_steps);
-  }
-  // Jagged doesn't use Bezier curves. It is faster to compute and render.
-  set_mode(mode) {
-    this.mode = mode;
-  }
-  set_function(new_f) {
-    this.function = new_f;
-  }
-  _draw(ctx, scene) {
-    let points = [np.array(this.function(this.tmin))];
-    for (let i = 1; i <= this.num_steps; i++) {
-      points.push(
-        np.array(
-          this.function(
-            this.tmin + i / this.num_steps * (this.tmax - this.tmin)
-          )
-        )
-      );
-    }
-    let anchors = np.stack(points, 0);
-    let a_x, a_y;
-    [a_x, a_y] = scene.v2c([anchors.get([0, 0]), anchors.get([0, 1])]);
-    ctx.beginPath();
-    ctx.moveTo(a_x, a_y);
-    if (this.mode == "jagged") {
-      for (let i = 0; i < this.num_steps; i++) {
-        [a_x, a_y] = scene.v2c([
-          anchors.get([i + 1, 0]),
-          anchors.get([i + 1, 1])
-        ]);
-        ctx.lineTo(a_x, a_y);
-      }
-      ctx.stroke();
-    } else {
-      let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
-      let h1_x, h1_y, h2_x, h2_y;
-      for (let i = 0; i < this.num_steps; i++) {
-        [h1_x, h1_y] = scene.v2c([
-          handles_1.get([i, 0]),
-          handles_1.get([i, 1])
-        ]);
-        [h2_x, h2_y] = scene.v2c([
-          handles_2.get([i, 0]),
-          handles_2.get([i, 1])
-        ]);
-        [a_x, a_y] = scene.v2c([
-          anchors.get([i + 1, 0]),
-          anchors.get([i + 1, 1])
-        ]);
-        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
-      }
       ctx.stroke();
     }
   }
@@ -12554,6 +12235,641 @@ var Line3D = class extends ThreeDLineLikeMObject {
     ctx.moveTo(start_x, start_y);
     ctx.lineTo(end_x, end_y);
     ctx.stroke();
+  }
+};
+
+// src/lib/base/cartesian.ts
+var AxisOptions = class {
+  constructor() {
+    this.stroke_width = 0.1;
+    this.arrow_size = 0.3;
+  }
+  update(options) {
+    Object.assign(this, options);
+  }
+};
+var TickOptions = class {
+  constructor() {
+    this.distance = 1;
+    this.size = 0.2;
+    this.alpha = 1;
+    this.stroke_width = 0.08;
+  }
+  update(options) {
+    Object.assign(this, options);
+  }
+};
+var GridOptions = class {
+  constructor() {
+    this.distance = 1;
+    this.alpha = 0.2;
+    this.stroke_width = 0.05;
+  }
+  update(options) {
+    Object.assign(this, options);
+  }
+};
+var Axis = class extends MObjectGroup {
+  constructor(lims, type) {
+    super();
+    this.axis_options = new AxisOptions();
+    this.tick_options = new TickOptions();
+    this.lims = lims;
+    this.type = type;
+    this._make_axis();
+    this._make_ticks();
+  }
+  _make_axis() {
+    let [cmin, cmax] = this.lims;
+    let axis;
+    if (this.type === "x") {
+      axis = new TwoHeadedArrow([cmin, 0], [cmax, 0]);
+    } else {
+      axis = new TwoHeadedArrow([0, cmin], [0, cmax]);
+    }
+    axis.set_stroke_width(this.axis_options.stroke_width);
+    axis.set_arrow_size(this.axis_options.arrow_size);
+    this.add_mobj("axis", axis);
+  }
+  _make_ticks() {
+    let [cmin, cmax] = this.lims;
+    let ticks = new LineLikeMObjectGroup().set_alpha(this.tick_options.alpha).set_stroke_width(this.tick_options.stroke_width);
+    for (let c = this.tick_options.distance * Math.floor(cmin / this.tick_options.distance + 1); c < this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance); c += this.tick_options.distance) {
+      if (this.type == "x") {
+        ticks.add_mobj(
+          `tick-(${c})`,
+          new Line(
+            [c, -this.tick_options.size / 2],
+            [c, this.tick_options.size / 2]
+          )
+        );
+      } else {
+        ticks.add_mobj(
+          `tick-(${c})`,
+          new Line(
+            [-this.tick_options.size / 2, c],
+            [this.tick_options.size / 2, c]
+          )
+        );
+      }
+    }
+    this.add_mobj("ticks", ticks);
+  }
+  axis() {
+    return this.get_mobj("axis");
+  }
+  ticks() {
+    return this.get_mobj("ticks");
+  }
+  set_lims(lims) {
+    this.lims = lims;
+    this.remove_mobj("axis");
+    this.remove_mobj("ticks");
+    this._make_axis();
+    this._make_ticks();
+  }
+  set_axis_options(options) {
+    this.axis_options.update(options);
+    this.remove_mobj("axis");
+    this._make_axis();
+  }
+  set_tick_options(options) {
+    this.tick_options.update(options);
+    this.remove_mobj("ticks");
+    this._make_ticks();
+  }
+  set_tick_distance(distance) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
+  }
+  set_tick_size(size2) {
+    this.tick_options.size = size2;
+    this.set_tick_options(this.tick_options);
+  }
+};
+var CoordinateAxes2d = class extends MObjectGroup {
+  constructor(xlims, ylims) {
+    super();
+    this.axis_options = new AxisOptions();
+    this.tick_options = new TickOptions();
+    this.grid_options = new GridOptions();
+    this.xlims = xlims;
+    this.ylims = ylims;
+    this._make_axes();
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
+  }
+  _make_axes() {
+    let x_axis = new Axis(this.xlims, "x");
+    x_axis.set_axis_options(this.axis_options);
+    x_axis.set_tick_options(this.tick_options);
+    this.add_mobj("x-axis", x_axis);
+    let y_axis = new Axis(this.ylims, "y");
+    y_axis.set_axis_options(this.axis_options);
+    y_axis.set_tick_options(this.tick_options);
+    this.add_mobj("y-axis", y_axis);
+  }
+  _make_x_grid_lines() {
+    let [xmin, xmax] = this.xlims;
+    let [ymin, ymax] = this.ylims;
+    let x_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
+    for (let x = this.grid_options.distance * Math.floor(xmin / this.grid_options.distance + 1); x < this.grid_options.distance * Math.ceil(xmax / this.grid_options.distance); x += this.grid_options.distance) {
+      x_grid.add_mobj(`line-(${x})`, new Line([x, ymin], [x, ymax]));
+    }
+    this.add_mobj("x-grid", x_grid);
+  }
+  _make_y_grid_lines() {
+    let [xmin, xmax] = this.xlims;
+    let [ymin, ymax] = this.ylims;
+    let y_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
+    for (let y = this.grid_options.distance * Math.floor(ymin / this.grid_options.distance + 1); y < this.grid_options.distance * Math.ceil(ymax / this.grid_options.distance); y += this.grid_options.distance) {
+      y_grid.add_mobj(`line-(${y})`, new Line([xmin, y], [xmax, y]));
+    }
+    this.add_mobj("y-grid", y_grid);
+  }
+  x_axis() {
+    return this.get_mobj("x-axis");
+  }
+  y_axis() {
+    return this.get_mobj("y-axis");
+  }
+  x_grid() {
+    return this.get_mobj("x-grid");
+  }
+  y_grid() {
+    return this.get_mobj("y-grid");
+  }
+  set_axis_options(options) {
+    this.axis_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+  }
+  set_axis_stroke_width(width) {
+    this.axis_options.stroke_width = width;
+    this.set_axis_options(this.axis_options);
+  }
+  set_tick_options(options) {
+    this.tick_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+  }
+  set_tick_size(size2) {
+    this.tick_options.size = size2;
+    this.set_tick_options(this.tick_options);
+  }
+  set_tick_distance(distance) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
+  }
+  set_grid_options(options) {
+    this.grid_options.update(options);
+    this.remove_mobj("x-grid");
+    this.remove_mobj("y-grid");
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
+  }
+  set_grid_distance(distance) {
+    this.grid_options.distance = distance;
+    this.set_grid_options(this.grid_options);
+  }
+  set_grid_alpha(alpha) {
+    this.grid_options.alpha = alpha;
+    this.set_grid_options(this.grid_options);
+  }
+  set_grid_stroke_width(width) {
+    this.grid_options.stroke_width = width;
+    this.set_grid_options(this.grid_options);
+  }
+  set_lims(xlims, ylims) {
+    this.xlims = xlims;
+    this.ylims = ylims;
+    this.x_axis().set_lims(xlims);
+    this.y_axis().set_lims(ylims);
+    this.remove_mobj("x-grid");
+    this.remove_mobj("y-grid");
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
+  }
+};
+
+// src/lib/base/heatmap.ts
+var HeatMap = class extends MObject {
+  constructor(width, height, min_val, max_val, valArray) {
+    super();
+    this.width = width;
+    this.height = height;
+    this.min_val = min_val;
+    this.max_val = max_val;
+    this.valArray = valArray;
+    this.colorMap = rb_colormap;
+  }
+  set_color_map(colorMap) {
+    this.colorMap = colorMap;
+  }
+  // Gets/sets values
+  set_vals(vals) {
+    this.valArray = vals;
+  }
+  get_vals() {
+    return this.valArray;
+  }
+  // Draws on the canvas
+  _draw(ctx, scene, imageData) {
+    let data = imageData.data;
+    for (let i = 0; i < this.width * this.height; i++) {
+      const px_val = this.valArray[i];
+      const idx = i * 4;
+      [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] = this.colorMap(px_val);
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+};
+
+// src/lib/interactive/button.ts
+function Button(container, callback) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "interactiveButton";
+  button.style.padding = "15px";
+  container.appendChild(button);
+  button.addEventListener("click", (event) => {
+    callback();
+    button.style.transform = "scale(0.95)";
+    setTimeout(() => {
+      button.style.transform = "scale(1)";
+    }, 100);
+  });
+  return button;
+}
+
+// src/lib/interactive/slider.ts
+function Slider(container, callback, kwargs) {
+  let slider = document.createElement("input");
+  slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  slider.width = 200;
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
+  }
+  let min2 = kwargs.min;
+  if (min2 == void 0) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min2}`;
+  }
+  let max2 = kwargs.max;
+  if (max2 == void 0) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max2}`;
+  }
+  let step = kwargs.step;
+  if (step == void 0) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
+  }
+  container.appendChild(slider);
+  let valueDisplay = document.createElement("span");
+  valueDisplay.classList.add("value-display");
+  valueDisplay.id = "sliderValue";
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+  container.appendChild(valueDisplay);
+  function updateDisplay() {
+    callback(slider.value);
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+    updateSliderColor(slider);
+  }
+  function updateSliderColor(sliderElement) {
+    const value = 100 * parseFloat(sliderElement.value);
+    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
+  }
+  updateDisplay();
+  slider.addEventListener("input", updateDisplay);
+  return slider;
+}
+
+// src/lib/interactive/scene_view_translator.ts
+var SceneViewTranslator = class {
+  // Callbacks which trigger when the object is dragged.
+  constructor(scene) {
+    this.drag = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.callbacks = [];
+    this.scene = scene;
+  }
+  // Adds a callback which triggers when the object is dragged
+  add_callback(callback) {
+    this.callbacks.push(callback);
+  }
+  // Performs all callbacks (called when the object is dragged)
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
+  }
+  click(event) {
+    this.dragStart = [
+      event.pageX - this.scene.canvas.offsetLeft,
+      event.pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
+  }
+  touch(event) {
+    this.dragStart = [
+      event.touches[0].pageX - this.scene.canvas.offsetLeft,
+      event.touches[0].pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
+  }
+  unclick(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  untouch(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  mouse_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.pageX - this.scene.canvas.offsetLeft,
+        event.pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  touch_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.touches[0].pageX - this.scene.canvas.offsetLeft,
+        event.touches[0].pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  // Updates the scene to account for a dragged cursor position
+  _drag_cursor() {
+    let dragDiff = vec2_sub(
+      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
+      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
+    );
+    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
+      return;
+    }
+    this.scene.move_view(dragDiff);
+    this.scene.draw();
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+  }
+  add() {
+    let self = this;
+    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
+  }
+  remove() {
+    let self = this;
+    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.removeEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.removeEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
+  }
+};
+
+// src/lib/base/bezier.ts
+var np = __toESM(require_numpy_ts_node(), 1);
+var SmoothOpenPathBezierHandleCalculator = class {
+  constructor(n) {
+    this.n = n;
+    let below_diag_list = [];
+    for (let i = 0; i < n - 2; i++) {
+      below_diag_list.push(1);
+    }
+    below_diag_list.push(2);
+    let below_diag = np.array(below_diag_list);
+    let diag_list = [2];
+    for (let i = 0; i < n - 2; i++) {
+      diag_list.push(4);
+    }
+    diag_list.push(7);
+    let diag2 = np.array(diag_list);
+    let above_diag_list = [];
+    for (let i = 0; i < n - 1; i++) {
+      above_diag_list.push(1);
+    }
+    let above_diag = np.array(above_diag_list);
+    this.result = np.zeros([n, n + 1], "float32");
+    this.result.set([0, 0], 1);
+    this.result.set([0, 1], 2);
+    for (let i = 1; i < n - 1; i++) {
+      this.result.set([i, i], 4);
+      this.result.set([i, i + 1], 2);
+    }
+    this.result.set([n - 1, n - 1], 8);
+    this.result.set([n - 1, n], 1);
+    for (let i = 0; i < n - 1; i++) {
+      let scale = below_diag.get([i]) / diag2.get([i]);
+      diag2.set(
+        [i + 1],
+        diag2.get([i + 1]) - above_diag.get([i]) * scale
+      );
+      below_diag.set(
+        [i],
+        below_diag.get([i]) - diag2.get([i]) * scale
+      );
+      for (let j = 0; j < n + 1; j++) {
+        this.result.set(
+          [i + 1, j],
+          this.result.get([i + 1, j]) - this.result.get([i, j]) * scale
+        );
+      }
+    }
+    for (let i = n - 2; i >= 0; i--) {
+      let scale = above_diag.get([i]) / diag2.get([i + 1]);
+      for (let j = 0; j < n + 1; j++) {
+        this.result.set(
+          [i, j],
+          this.result.get([i, j]) - this.result.get([i + 1, j]) * scale
+        );
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      let scale = 1 / diag2.get([i]);
+      for (let j = 0; j < n + 1; j++) {
+        this.result.set([i, j], this.result.get([i, j]) * scale);
+      }
+    }
+  }
+  // Given a sequence of n+1 anchors, produces the corresponding bezier handles
+  get_bezier_handles(a) {
+    if (a.shape[0] !== this.n + 1) {
+      throw new Error("Invalid anchor array shape");
+    }
+    if (a.shape[1] !== 2) {
+      throw new Error("Invalid anchor array shape");
+    }
+    let h1 = this.result.matmul(a);
+    let h2 = np.zeros([this.n, 2]);
+    for (let i = 0; i < this.n - 1; i++) {
+      h2.set(
+        [i, 0],
+        2 * a.get([i + 1, 0]) - h1.get([i + 1, 0])
+      );
+      h2.set(
+        [i, 1],
+        2 * a.get([i + 1, 1]) - h1.get([i + 1, 1])
+      );
+    }
+    h2.set(
+      [this.n - 1, 0],
+      0.5 * (a.get([this.n, 0]) + h1.get([this.n - 1, 0]))
+    );
+    h2.set(
+      [this.n - 1, 1],
+      0.5 * (a.get([this.n, 1]) + h1.get([this.n - 1, 1]))
+    );
+    return [h1, h2];
+  }
+};
+var BezierSpline = class extends LineLikeMObject {
+  constructor(num_steps) {
+    super();
+    this.num_steps = num_steps;
+    this.solver = new SmoothOpenPathBezierHandleCalculator(num_steps);
+    this.anchors = [];
+    for (let i = 0; i < num_steps + 1; i++) {
+      this.anchors.push([0, 0]);
+    }
+  }
+  set_anchors(new_anchors) {
+    this.anchors = new_anchors;
+  }
+  set_anchor(index, new_anchor) {
+    this.anchors[index] = new_anchor;
+  }
+  get_anchor(index) {
+    return this.anchors[index];
+  }
+  _draw(ctx, scene) {
+    let a_x, a_y, a;
+    a = this.get_anchor(0);
+    [a_x, a_y] = scene.v2c(a);
+    ctx.beginPath();
+    ctx.moveTo(a_x, a_y);
+    let [handles_1, handles_2] = this.solver.get_bezier_handles(
+      np.array(this.anchors)
+    );
+    let h1_x, h1_y, h2_x, h2_y;
+    for (let i = 0; i < this.num_steps; i++) {
+      [h1_x, h1_y] = scene.v2c([
+        handles_1.get([i, 0]),
+        handles_1.get([i, 1])
+      ]);
+      [h2_x, h2_y] = scene.v2c([
+        handles_2.get([i, 0]),
+        handles_2.get([i, 1])
+      ]);
+      a = this.get_anchor(i + 1);
+      [a_x, a_y] = scene.v2c(a);
+      ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
+      ctx.stroke();
+    }
+  }
+};
+var ParametricFunction = class extends LineLikeMObject {
+  constructor(f, tmin, tmax, num_steps) {
+    super();
+    this.mode = "smooth";
+    this.function = f;
+    this.tmin = tmin;
+    this.tmax = tmax;
+    this.num_steps = num_steps;
+    this.solver = new SmoothOpenPathBezierHandleCalculator(this.num_steps);
+  }
+  // Jagged doesn't use Bezier curves. It is faster to compute and render.
+  set_mode(mode) {
+    this.mode = mode;
+  }
+  set_function(new_f) {
+    this.function = new_f;
+  }
+  _draw(ctx, scene) {
+    let points = [np.array(this.function(this.tmin))];
+    for (let i = 1; i <= this.num_steps; i++) {
+      points.push(
+        np.array(
+          this.function(
+            this.tmin + i / this.num_steps * (this.tmax - this.tmin)
+          )
+        )
+      );
+    }
+    let anchors = np.stack(points, 0);
+    let a_x, a_y;
+    [a_x, a_y] = scene.v2c([anchors.get([0, 0]), anchors.get([0, 1])]);
+    ctx.beginPath();
+    ctx.moveTo(a_x, a_y);
+    if (this.mode == "jagged") {
+      for (let i = 0; i < this.num_steps; i++) {
+        [a_x, a_y] = scene.v2c([
+          anchors.get([i + 1, 0]),
+          anchors.get([i + 1, 1])
+        ]);
+        ctx.lineTo(a_x, a_y);
+      }
+      ctx.stroke();
+    } else {
+      let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
+      let h1_x, h1_y, h2_x, h2_y;
+      for (let i = 0; i < this.num_steps; i++) {
+        [h1_x, h1_y] = scene.v2c([
+          handles_1.get([i, 0]),
+          handles_1.get([i, 1])
+        ]);
+        [h2_x, h2_y] = scene.v2c([
+          handles_2.get([i, 0]),
+          handles_2.get([i, 1])
+        ]);
+        [a_x, a_y] = scene.v2c([
+          anchors.get([i + 1, 0]),
+          anchors.get([i + 1, 1])
+        ]);
+        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
+      }
+      ctx.stroke();
+    }
   }
 };
 
@@ -14541,12 +14857,12 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
     (function point_mass_spring(width, height) {
       let canvas_spring = prepare_canvas(width, height, "point-mass-spring");
       let canvas_graph = prepare_canvas(width, height, "point-mass-graph");
-      let xmin = -4;
-      let xmax = 4;
+      let xmin = -6;
+      let xmax = 6;
       let tmin = 0;
-      let tmax = 15;
-      let ymin = -4;
-      let ymax = 4;
+      let tmax = 12;
+      let ymin = -6;
+      let ymax = 6;
       let w = 5;
       class SpringSim extends SpringSimulator {
         reset() {
@@ -14562,23 +14878,8 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
           super(canvas);
           this.step_counter = 0;
           this.set_frame_lims([tmin, tmax], [xmin, xmax]);
-          this.add(
-            "t-axis",
-            new Line([tmin, 0], [tmax, 0]).set_stroke_width(0.05).set_stroke_color("gray")
-          );
-          let tick_size = 0.2;
-          for (let i = 1; i <= tmax; i++) {
-            this.add(
-              `t-axis-${i}`,
-              new Line([i, -tick_size / 2], [i, tick_size / 2]).set_stroke_width(0.05).set_stroke_color("gray")
-            );
-          }
-          for (let i = -4; i <= 4; i++) {
-            this.add(
-              `y-axis-${i}`,
-              new Line([0, i], [tick_size, i]).set_stroke_width(0.05).set_stroke_color("gray")
-            );
-          }
+          let axes = new CoordinateAxes2d([tmin, tmax], [xmin, xmax]);
+          this.add("axes", axes);
           this.add(
             "graph",
             new LineSequence([
@@ -14614,11 +14915,17 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
           super(canvas);
           this.arrow_length_scale = w / 3;
           this.arrow_height = 0;
-          let eq_line = new Line([0, -5], [0, 5]).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
-          let spring = new LineSpring([-3, 0], [0, 0]).set_stroke_width(0.08);
+          let eq_line = new Line([0, ymin], [0, ymax]).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
+          let spring = new LineSpring([xmin * 0.7, 0], [0, 0]).set_stroke_width(
+            0.08
+          );
           spring.set_eq_length(3);
-          let anchor = new Rectangle([-3, 0], 0.15, 4);
-          let mass = new DraggableRectangle([0, 0], 0.6, 0.6);
+          let anchor = new Rectangle(
+            [xmin * 0.7, 0],
+            0.15,
+            (ymax - ymin) * 0.7
+          );
+          let mass = new DraggableRectangle([0, 0], 0.8, 0.8);
           mass.draggable_x = true;
           mass.draggable_y = false;
           let force_arrow = new Arrow(

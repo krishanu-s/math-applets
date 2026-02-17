@@ -28,7 +28,7 @@ class AxisOptions {
 
 class TickOptions {
   distance: number = 1;
-  size: number = 0.5;
+  size: number = 0.2;
   alpha: number = 1.0;
   stroke_width: number = 0.08;
   update(options: Partial<AxisOptions>) {
@@ -80,11 +80,10 @@ export class Axis extends MObjectGroup {
     for (
       let c =
         this.tick_options.distance *
-        Math.ceil(cmin / this.tick_options.distance);
+        Math.floor(cmin / this.tick_options.distance + 1);
       c <
-      this.tick_options.distance *
-        Math.floor(cmax / this.tick_options.distance);
-      c++
+      this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance);
+      c += this.tick_options.distance
     ) {
       if (this.type == "x") {
         ticks.add_mobj(
@@ -175,7 +174,7 @@ export class CoordinateAxes2d extends MObjectGroup {
     for (
       let x =
         this.grid_options.distance *
-        Math.floor(xmin / this.grid_options.distance);
+        Math.floor(xmin / this.grid_options.distance + 1);
       x <
       this.grid_options.distance * Math.ceil(xmax / this.grid_options.distance);
       x += this.grid_options.distance
@@ -194,7 +193,7 @@ export class CoordinateAxes2d extends MObjectGroup {
     for (
       let y =
         this.grid_options.distance *
-        Math.floor(ymin / this.grid_options.distance);
+        Math.floor(ymin / this.grid_options.distance + 1);
       y <
       this.grid_options.distance * Math.ceil(ymax / this.grid_options.distance);
       y += this.grid_options.distance
@@ -274,8 +273,8 @@ export class CoordinateAxes2d extends MObjectGroup {
 export class Axis3D extends ThreeDMObjectGroup {
   lims: Vec2D;
   type: "x" | "y" | "z";
-  tick_size: number = 0.1;
-  tick_distance: number = 1;
+  axis_options: AxisOptions = new AxisOptions();
+  tick_options: TickOptions = new TickOptions();
   constructor(lims: Vec2D, type: "x" | "y" | "z") {
     super();
     this.lims = lims;
@@ -301,24 +300,36 @@ export class Axis3D extends ThreeDMObjectGroup {
     let [cmin, cmax] = this.lims;
     let ticks = new ThreeDLineLikeMObjectGroup().set_alpha(0.3);
     for (
-      let c = this.tick_distance * Math.ceil(cmin / this.tick_distance);
-      c < this.tick_distance * Math.floor(cmax / this.tick_distance);
-      c++
+      let c =
+        this.tick_options.distance *
+        Math.floor(cmin / this.tick_options.distance + 1);
+      c <
+      this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance);
+      c += this.tick_options.distance
     ) {
       if (this.type == "x") {
         ticks.add_mobj(
           `tick-(${c})`,
-          new Line3D([c, -this.tick_size / 2, 0], [c, this.tick_size / 2, 0]),
+          new Line3D(
+            [c, -this.tick_options.size / 2, 0],
+            [c, this.tick_options.size / 2, 0],
+          ),
         );
       } else if (this.type == "y") {
         ticks.add_mobj(
           `tick-(${c})`,
-          new Line3D([0, c, -this.tick_size / 2], [0, c, this.tick_size / 2]),
+          new Line3D(
+            [0, c, -this.tick_options.size / 2],
+            [0, c, this.tick_options.size / 2],
+          ),
         );
       } else if (this.type == "z") {
         ticks.add_mobj(
           `tick-(${c})`,
-          new Line3D([-this.tick_size / 2, 0, c], [this.tick_size / 2, 0, c]),
+          new Line3D(
+            [-this.tick_options.size / 2, 0, c],
+            [this.tick_options.size / 2, 0, c],
+          ),
         );
       }
     }
@@ -330,15 +341,30 @@ export class Axis3D extends ThreeDMObjectGroup {
   ticks() {
     return this.get_mobj("ticks") as ThreeDLineLikeMObjectGroup;
   }
-  set_tick_distance(distance: number) {
-    this.tick_distance = distance;
+  set_lims(lims: Vec2D) {
+    this.lims = lims;
+    this.remove_mobj("axis");
+    this.remove_mobj("ticks");
+    this._make_axis();
+    this._make_ticks();
+  }
+  set_axis_options(options: Record<string, any>) {
+    this.axis_options.update(options);
+    this.remove_mobj("axis");
+    this._make_axis();
+  }
+  set_tick_options(options: Record<string, any>) {
+    this.tick_options.update(options);
     this.remove_mobj("ticks");
     this._make_ticks();
   }
+  set_tick_distance(distance: number) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
+  }
   set_tick_size(size: number) {
-    this.tick_size = size;
-    this.remove_mobj("ticks");
-    this._make_ticks();
+    this.tick_options.size = size;
+    this.set_tick_options(this.tick_options);
   }
 }
 
@@ -347,15 +373,30 @@ export class CoordinateAxes3d extends ThreeDMObjectGroup {
   xlims: Vec2D;
   ylims: Vec2D;
   zlims: Vec2D;
-  tick_size: number = 0.1;
+  axis_options: AxisOptions = new AxisOptions();
+  tick_options: TickOptions = new TickOptions();
   constructor(xlims: Vec2D, ylims: Vec2D, zlims: Vec2D) {
     super();
     this.xlims = xlims;
     this.ylims = ylims;
     this.zlims = zlims;
-    this.add_mobj("x-axis", new Axis3D(xlims, "x"));
-    this.add_mobj("y-axis", new Axis3D(ylims, "y"));
-    this.add_mobj("z-axis", new Axis3D(zlims, "z"));
+    this._make_axes();
+  }
+  _make_axes() {
+    let x_axis = new Axis3D(this.xlims, "x");
+    x_axis.set_axis_options(this.axis_options);
+    x_axis.set_tick_options(this.tick_options);
+    this.add_mobj("x-axis", x_axis);
+
+    let y_axis = new Axis3D(this.ylims, "y");
+    y_axis.set_axis_options(this.axis_options);
+    y_axis.set_tick_options(this.tick_options);
+    this.add_mobj("y-axis", y_axis);
+
+    let z_axis = new Axis3D(this.zlims, "z");
+    z_axis.set_axis_options(this.axis_options);
+    z_axis.set_tick_options(this.tick_options);
+    this.add_mobj("z-axis", z_axis);
   }
   x_axis() {
     return this.get_mobj("x-axis") as Axis3D;
@@ -366,12 +407,29 @@ export class CoordinateAxes3d extends ThreeDMObjectGroup {
   z_axis() {
     return this.get_mobj("z-axis") as Axis3D;
   }
+  set_axis_options(options: Record<string, any>) {
+    this.axis_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+  }
+  set_axis_stroke_width(width: number) {
+    this.axis_options.stroke_width = width;
+    this.set_axis_options(this.axis_options);
+  }
+  set_tick_options(options: Record<string, any>) {
+    this.tick_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+  }
   set_tick_size(size: number) {
-    Object.values(this.children).forEach((child) => {
-      if (child instanceof Axis3D) {
-        child.set_tick_size(size);
-      }
-    });
+    this.tick_options.size = size;
+    this.set_tick_options(this.tick_options);
+  }
+  set_tick_distance(distance: number) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
   }
 }
 

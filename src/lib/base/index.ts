@@ -36,6 +36,13 @@ export {
   touch_event_coords,
 } from "./base";
 export {
+  Axis,
+  CoordinateAxes2d,
+  Axis3D,
+  CoordinateAxes3d,
+  Integral,
+} from "./cartesian";
+export {
   colorval_to_rgba,
   rb_colormap,
   rb_colormap_2,
