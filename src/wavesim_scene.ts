@@ -28,9 +28,9 @@ import {
   vec2_sum_list,
 } from "./lib/base";
 import { Slider, Button } from "./lib/interactive";
-import { SceneViewTranslator } from "./lib/scene_view_translator.js";
-import { ParametricFunction } from "./lib/bezier.js";
-import { HeatMap } from "./lib/heatmap.js";
+import { SceneViewTranslator } from "./lib/interactive/scene_view_translator";
+import { ParametricFunction } from "./lib/base/bezier.js";
+import { HeatMap } from "./lib/base/heatmap";
 import {
   PointSourceOneDim,
   PointSource,

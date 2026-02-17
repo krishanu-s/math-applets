@@ -14,10 +14,10 @@ import {
   LaTeXMObject,
   LatexCache,
 } from "./lib/base";
-import { HeatMap } from "./lib/heatmap.js";
-import { Histogram } from "./lib/stats.js";
+import { HeatMap } from "./lib/base/heatmap";
+import { Histogram } from "./lib/base/stats.js";
 import { Button, Slider } from "./lib/interactive";
-import { ParametricFunction, BezierSpline } from "./lib/bezier.js";
+import { ParametricFunction } from "./lib/base/bezier.js";
 import { rot, rot_z, Vec3D } from "./lib/three_d/matvec.js";
 import {
   Dot3D,

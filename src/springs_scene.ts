@@ -15,7 +15,7 @@ import {
   LineSpring,
   Vec2D,
 } from "./lib/base";
-import { ParametricFunction } from "./lib/bezier.js";
+import { ParametricFunction } from "./lib/base/bezier.js";
 import { SpringSimulator } from "./lib/simulator/statesim.js";
 import {
   InteractiveHandler,

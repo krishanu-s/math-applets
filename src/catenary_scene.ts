@@ -1,6 +1,6 @@
 // import * as np from "numpy-ts";
 import { Slider } from "./lib/interactive";
-import { SmoothOpenPathBezierHandleCalculator } from "./lib/bezier.js";
+import { SmoothOpenPathBezierHandleCalculator } from "./lib/base/bezier.js";
 import {
   Scene,
   Dot,

@@ -1,6 +1,6 @@
-import { MObject, Scene, Rectangle, Line, Vec2D } from "./base";
+import { MObject, Scene, Rectangle, Line, Vec2D } from ".";
 
-// TODO Make space for the axes.
+// TODO Convert to a MObjectGroup
 export class Histogram extends MObject {
   hist: Record<number, number> = {};
   fill_color: string = "red";

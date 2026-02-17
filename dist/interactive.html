@@ -32,6 +32,10 @@
         <!--Script for this scene-->
         <script type="module" src="interactive_scene.js"></script>
         <style>
+            .row {
+                display: flex;
+                align-items: center; /* Centers vertically */
+            }
             .applet-container {
                 display: flex;
                 justify-content: center; /* Centers horizontally */
@@ -77,6 +81,43 @@
             <br />
             <div class="slider" id="draggable-dot-bezier-num-slider"></div>
             <br />
+
+            <h3>Cartesian coordinates</h3>
+            <p>Several scenes including cartesian coordinates.</p>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 33%"
+                    class="applet-container"
+                    id="cartesian-1d"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="applet-container"
+                    id="cartesian-2d"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="applet-container"
+                    id="cartesian-3d"
+                ></div>
+            </div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 33%"
+                    class="slider"
+                    id="cartesian-1d-slider-1"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="slider"
+                    id="cartesian-2d-slider-1"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="slider"
+                    id="cartesian-3d-slider-1"
+                ></div>
+            </div>
         </div>
 
         <a href="./index.html">back to main page</a>

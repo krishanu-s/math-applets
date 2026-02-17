@@ -29,6 +29,7 @@ import {
 } from "./matvec";
 import { DraggableMObject3D, makeDraggable3D } from "../interactive/draggable";
 
+// TODO Turn these into class-extenders similar to what's done for makeDraggable.
 // Base class for three-dimensional Mobjects
 export class ThreeDMObject extends MObject {
   blocked_depth_tolerance: number = 0.01;
@@ -82,8 +83,46 @@ export class ThreeDMObject extends MObject {
       );
     }
   }
+  draw(
+    canvas: HTMLCanvasElement,
+    scene: ThreeDScene,
+    simple: boolean = false,
+    args?: any,
+  ): void {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    if (this instanceof Line3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
+  }
   // Simpler drawing method for 3D scenes which doesn't use local depth testing, for speed purposes.
   _draw_simple(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {}
+}
+
+// Identical extension as MObject -> MObjectGroup
+export class ThreeDMObjectGroup extends ThreeDMObject {
+  children: Record<string, ThreeDMObject> = {};
+  add_mobj(name: string, child: ThreeDMObject) {
+    this.children[name] = child;
+  }
+  get_mobj(name: string): ThreeDMObject {
+    if (!this.children[name]) {
+      throw new Error(`Child with name ${name} not found`);
+    }
+    return this.children[name];
+  }
+  draw(canvas: HTMLCanvasElement, scene: ThreeDScene, args?: any): void {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    Object.values(this.children).forEach((child) => {
+      child.draw(canvas, scene, args);
+    });
+  }
 }
 
 // Identical extension as MObject -> LineLikeMObject
@@ -112,6 +151,32 @@ export class ThreeDLineLikeMObject extends ThreeDMObject {
     } else {
       this._draw(ctx, scene, args);
     }
+  }
+}
+
+// Identical extension as MObjectGroup -> LineLikeMObjectGroup
+export class ThreeDLineLikeMObjectGroup extends ThreeDMObjectGroup {
+  stroke_options: StrokeOptions = new StrokeOptions();
+  set_stroke_color(color: string) {
+    this.stroke_options.set_stroke_color(color);
+    return this;
+  }
+  set_stroke_width(width: number) {
+    this.stroke_options.set_stroke_width(width);
+    return this;
+  }
+  set_stroke_style(style: "solid" | "dashed" | "dotted") {
+    this.stroke_options.set_stroke_style(style);
+    return this;
+  }
+  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    Object.values(this.children).forEach((child) => {
+      child._draw(ctx, scene, args);
+    });
   }
 }
 
@@ -158,6 +223,52 @@ export class ThreeDFillLikeMObject extends ThreeDMObject {
     } else {
       this._draw(ctx, scene, args);
     }
+  }
+}
+
+// Identical extension as MObjectGroup -> FillLikeMObjectGroup
+export class ThreeDFillLikeMObjectGroup extends ThreeDMObjectGroup {
+  stroke_options: StrokeOptions = new StrokeOptions();
+  fill_options: FillOptions = new FillOptions();
+  set_stroke_color(color: string) {
+    this.stroke_options.set_stroke_color(color);
+    return this;
+  }
+  set_stroke_width(width: number) {
+    this.stroke_options.set_stroke_width(width);
+    return this;
+  }
+  set_stroke_style(style: "solid" | "dashed" | "dotted") {
+    this.stroke_options.set_stroke_style(style);
+    return this;
+  }
+  set_fill_color(color: string) {
+    this.fill_options.set_fill_color(color);
+    return this;
+  }
+  set_color(color: string) {
+    this.stroke_options.set_stroke_color(color);
+    this.fill_options.set_fill_color(color);
+    return this;
+  }
+  set_fill_alpha(alpha: number) {
+    this.fill_options.set_fill_alpha(alpha);
+    return this;
+  }
+  set_fill(fill: boolean) {
+    this.fill_options.set_fill(fill);
+    return this;
+  }
+  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+
+    this.stroke_options.apply_to(ctx, scene);
+    this.fill_options.apply_to(ctx);
+    Object.values(this.children).forEach((child) =>
+      child._draw(ctx, scene, args),
+    );
   }
 }
 

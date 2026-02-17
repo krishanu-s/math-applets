@@ -10718,14 +10718,22 @@ function vec2_rot(v, angle2) {
   return [x * cos2 - y * sin2, x * sin2 + y * cos2];
 }
 
+// src/lib/base/style_options.ts
+var DEFAULT_BACKGROUND_COLOR = "white";
+var DEFAULT_BORDER_COLOR = "black";
+var DEFAULT_BORDER_WIDTH = 4;
+var DEFAULT_STROKE_COLOR = "black";
+var DEFAULT_STROKE_WIDTH = 0.08;
+var DEFAULT_FILL_COLOR = "black";
+
 // src/lib/base/base.ts
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
 }
 var StrokeOptions = class {
   constructor() {
-    this.stroke_width = 0.08;
-    this.stroke_color = "black";
+    this.stroke_width = DEFAULT_STROKE_WIDTH;
+    this.stroke_color = DEFAULT_STROKE_COLOR;
     this.stroke_style = "solid";
   }
   set_stroke_color(color) {
@@ -10754,7 +10762,7 @@ var StrokeOptions = class {
 };
 var FillOptions = class {
   constructor() {
-    this.fill_color = "black";
+    this.fill_color = DEFAULT_FILL_COLOR;
     this.fill_alpha = 1;
     this.fill = true;
   }
@@ -10865,8 +10873,9 @@ var FillLikeMObject = class extends MObject {
 };
 var Scene = class {
   constructor(canvas) {
-    this.border_thickness = 4;
-    this.border_color = "black";
+    this.background_color = DEFAULT_BACKGROUND_COLOR;
+    this.border_width = DEFAULT_BORDER_WIDTH;
+    this.border_color = DEFAULT_BORDER_COLOR;
     // Zoom ratio
     this.zoom_ratio = 1;
     // Determines whether any draggable object in the scene is clicked
@@ -10990,6 +10999,7 @@ var Scene = class {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.draw_background(ctx);
     this._draw();
     this.draw_border(ctx);
   }
@@ -11003,10 +11013,16 @@ var Scene = class {
   draw_mobject(mobj) {
     mobj.draw(this.canvas, this);
   }
+  // Draw a background
+  draw_background(ctx) {
+    ctx.fillStyle = this.background_color;
+    ctx.globalAlpha = 1;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
   // Draw a border around the canvas
   draw_border(ctx) {
     ctx.strokeStyle = this.border_color;
-    ctx.lineWidth = this.border_thickness;
+    ctx.lineWidth = this.border_width;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
@@ -11647,7 +11663,7 @@ var LineSpring = class extends Line {
   }
 };
 
-// src/lib/bezier.ts
+// src/lib/base/bezier.ts
 var np = __toESM(require_numpy_ts_node(), 1);
 var SmoothOpenPathBezierHandleCalculator = class {
   constructor(n) {
@@ -11814,6 +11830,9 @@ function vec3_scale(x, factor) {
 function vec3_sum(x, y) {
   return [x[0] + y[0], x[1] + y[1], x[2] + y[2]];
 }
+function vec3_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
+}
 function get_column(m, i) {
   return [m[0][i], m[1][i], m[2][i]];
 }
@@ -11871,8 +11890,41 @@ var ThreeDMObject = class extends MObject {
       return scene.camera.depth(point) > this.blocked_depth_at(scene, vp) + this.blocked_depth_tolerance;
     }
   }
+  draw(canvas, scene, simple = false, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    if (this instanceof Line3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
+  }
   // Simpler drawing method for 3D scenes which doesn't use local depth testing, for speed purposes.
   _draw_simple(ctx, scene) {
+  }
+};
+var ThreeDLineLikeMObject = class extends ThreeDMObject {
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha /= 2;
+    ctx.setLineDash([5, 5]);
+  }
+  unset_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha *= 2;
+    ctx.setLineDash([]);
+  }
+  draw(canvas, scene, simple = false, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    if (this instanceof Line3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
   }
 };
 var ThreeDFillLikeMObject = class extends ThreeDMObject {
@@ -12049,6 +12101,93 @@ var Dot3D = class extends ThreeDFillLikeMObject {
   // }
 };
 var DraggableDot3D = makeDraggable3D(Dot3D);
+var Line3D = class extends ThreeDLineLikeMObject {
+  constructor(start, end) {
+    super();
+    this.start = start;
+    this.end = end;
+  }
+  // Moves the start and end points
+  move_start(v) {
+    this.start = v;
+  }
+  move_end(v) {
+    this.end = v;
+  }
+  depth(scene) {
+    return scene.camera.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
+  }
+  _draw(ctx, scene) {
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
+    let start_blocked = this.is_blocked(scene, this.start);
+    let end_blocked = this.is_blocked(scene, this.end);
+    if (!start_blocked && !end_blocked) {
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+    } else if (start_blocked && end_blocked) {
+      ctx.beginPath();
+      this.set_behind_linked_mobjects(ctx);
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+      this.unset_behind_linked_mobjects(ctx);
+    } else {
+      let n = 1;
+      let v = vec3_sub(this.end, this.start);
+      let p = vec3_scale(vec3_sum(this.start, this.end), 0.5);
+      while (n < 6) {
+        n += 1;
+        if (this.is_blocked(scene, p) == start_blocked) {
+          p = vec3_sum(p, vec3_scale(v, 1 / 2 ** n));
+        } else {
+          p = vec3_sub(p, vec3_scale(v, 1 / 2 ** n));
+        }
+      }
+      let [p_x, p_y] = scene.v2c(scene.camera_view(p));
+      if (start_blocked) {
+        ctx.beginPath();
+        ctx.moveTo(start_x, start_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(end_x, end_y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(end_x, end_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(start_x, start_y);
+        ctx.stroke();
+      }
+    }
+  }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx, scene) {
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
+  }
+};
 
 // src/lib/simulator/sim.ts
 var Simulator = class {

@@ -1,5 +1,5 @@
 import * as np from "numpy-ts";
-import { MObject, LineLikeMObject, Scene, Vec2D } from "./base";
+import { MObject, LineLikeMObject, Scene, Vec2D } from ".";
 
 // TODO Make a smooth Bezier spline class
 
@@ -179,27 +179,13 @@ export class BezierSpline extends LineLikeMObject {
   num_steps: number;
   solver: SmoothOpenPathBezierHandleCalculator;
   anchors: Vec2D[];
-  constructor(num_steps: number, kwargs: Record<string, any>) {
+  constructor(num_steps: number) {
     super();
     this.num_steps = num_steps;
     this.solver = new SmoothOpenPathBezierHandleCalculator(num_steps);
     this.anchors = [];
     for (let i = 0; i < num_steps + 1; i++) {
       this.anchors.push([0, 0]);
-    }
-
-    let stroke_width = kwargs.stroke_width as number;
-    if (stroke_width == undefined) {
-      this.stroke_options.stroke_width = 0.08;
-    } else {
-      this.stroke_options.stroke_width = stroke_width;
-    }
-
-    let stroke_color = kwargs.stroke_color as string;
-    if (stroke_color == undefined) {
-      this.stroke_options.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_options.stroke_color = stroke_color;
     }
   }
   set_anchors(new_anchors: Vec2D[]) {

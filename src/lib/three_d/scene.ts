@@ -169,6 +169,8 @@ export class ThreeDScene extends Scene {
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    this.draw_background(ctx);
+
     // First order the objects by depth
     let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
       let depth_a = this.mobjects[a].depth(this);
@@ -202,9 +204,6 @@ export class ThreeDScene extends Scene {
       }
     }
 
-    // Draw a border around the canvas
-    ctx.strokeStyle = this.border_color;
-    ctx.lineWidth = this.border_thickness;
-    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+    this.draw_border(ctx);
   }
 }

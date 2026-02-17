@@ -1,5 +1,5 @@
 import { Scene, prepare_canvas, Line } from "./lib/base";
-import { BezierCurve } from "./lib/bezier.js";
+import { BezierCurve } from "./lib/base/bezier.js";
 import { Slider } from "./lib/interactive";
 import {
   Vec3D,
@@ -28,7 +28,7 @@ import {
 } from "./lib/three_d/mobjects.js";
 
 import { ThreeDScene } from "./lib/three_d/scene.js";
-import { HeatMap, TwoDimHeatMap } from "./lib/heatmap.js";
+import { HeatMap, TwoDimHeatMap } from "./lib/base/heatmap";
 import { Arcball } from "./lib/interactive/arcball.js";
 
 const DEGREE = Math.PI / 180;

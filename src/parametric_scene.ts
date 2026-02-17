@@ -1,7 +1,7 @@
 // TODO Graph of a parametric function
 import { MObject, Scene } from "./lib/base";
 import { Slider } from "./lib/interactive";
-import { ParametricFunction } from "./lib/bezier.js";
+import { ParametricFunction } from "./lib/base/bezier.js";
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {

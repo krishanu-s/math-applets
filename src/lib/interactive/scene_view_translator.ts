@@ -11,7 +11,7 @@ import {
   vec2_normalize,
   vec2_angle,
   vec2_sum_list,
-} from "./base";
+} from "../base";
 
 export class SceneViewTranslator {
   scene: Scene;
@@ -49,7 +49,6 @@ export class SceneViewTranslator {
     this.drag = false;
     this.scene.unclick();
   }
-
   mouse_drag_cursor(event: MouseEvent) {
     if (this.drag) {
       this.dragEnd = [

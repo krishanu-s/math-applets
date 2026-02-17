@@ -1,4 +1,12 @@
 import { Vec2D } from "./vec2";
+import {
+  DEFAULT_BACKGROUND_COLOR,
+  DEFAULT_BORDER_COLOR,
+  DEFAULT_BORDER_WIDTH,
+  DEFAULT_STROKE_COLOR,
+  DEFAULT_STROKE_WIDTH,
+  DEFAULT_FILL_COLOR,
+} from "./style_options";
 
 // *** FUNCTIONS ***
 
@@ -47,8 +55,8 @@ export function delay(ms: number) {
 
 // Options for ctx.stroke() drawing.
 export class StrokeOptions {
-  stroke_width: number = 0.08;
-  stroke_color: string = "black";
+  stroke_width: number = DEFAULT_STROKE_WIDTH;
+  stroke_color: string = DEFAULT_STROKE_COLOR;
   stroke_style: "solid" | "dashed" | "dotted" = "solid";
   set_stroke_color(color: string) {
     this.stroke_color = color;
@@ -77,7 +85,7 @@ export class StrokeOptions {
 
 // Options for ctx.fill() drawing.
 export class FillOptions {
-  fill_color: string = "black";
+  fill_color: string = DEFAULT_FILL_COLOR;
   fill_alpha: number = 1.0;
   fill: boolean = true;
   set_fill_color(color: string) {
@@ -120,8 +128,31 @@ export class MObject {
   _draw(ctx: CanvasRenderingContext2D, scene: Scene, args?: any) {}
 }
 
+// A MObject which is formed as a group of simpler MObjects.
+// NOTE: In Manim, this is called "MGroup". We deviate from Manim's
+// naming convention here to avoid confusion with groups from mathematical group theory.
+export class MObjectGroup extends MObject {
+  children: Record<string, MObject> = {};
+  add_mobj(name: string, child: MObject) {
+    this.children[name] = child;
+  }
+  get_mobj(name: string): MObject {
+    if (!this.children[name]) {
+      throw new Error(`Child with name ${name} not found`);
+    }
+    return this.children[name];
+  }
+  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    Object.values(this.children).forEach((child) =>
+      child.draw(canvas, scene, args),
+    );
+  }
+}
+
 // A MObject that is drawn using the ctx.stroke() command.
-// TODO Incorporate "dashed" drawing
 export class LineLikeMObject extends MObject {
   stroke_options: StrokeOptions = new StrokeOptions();
   set_stroke_color(color: string) {
@@ -142,6 +173,32 @@ export class LineLikeMObject extends MObject {
     ctx.globalAlpha = this.alpha;
     this.stroke_options.apply_to(ctx, scene);
     this._draw(ctx, scene, args);
+  }
+}
+
+// Line-like mobjects all using the same stroke options.
+export class LineLikeMObjectGroup extends MObjectGroup {
+  stroke_options: StrokeOptions = new StrokeOptions();
+  set_stroke_color(color: string) {
+    this.stroke_options.set_stroke_color(color);
+    return this;
+  }
+  set_stroke_width(width: number) {
+    this.stroke_options.set_stroke_width(width);
+    return this;
+  }
+  set_stroke_style(style: "solid" | "dashed" | "dotted") {
+    this.stroke_options.set_stroke_style(style);
+    return this;
+  }
+  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    Object.values(this.children).forEach((child) => {
+      child._draw(ctx, scene, args);
+    });
   }
 }
 
@@ -189,6 +246,52 @@ export class FillLikeMObject extends MObject {
   }
 }
 
+// Fill-like mobjects all using the same fill options.
+export class FillLikeMObjectGroup extends MObjectGroup {
+  stroke_options: StrokeOptions = new StrokeOptions();
+  fill_options: FillOptions = new FillOptions();
+  set_stroke_color(color: string) {
+    this.stroke_options.set_stroke_color(color);
+    return this;
+  }
+  set_stroke_width(width: number) {
+    this.stroke_options.set_stroke_width(width);
+    return this;
+  }
+  set_stroke_style(style: "solid" | "dashed" | "dotted") {
+    this.stroke_options.set_stroke_style(style);
+    return this;
+  }
+  set_fill_color(color: string) {
+    this.fill_options.set_fill_color(color);
+    return this;
+  }
+  set_color(color: string) {
+    this.stroke_options.set_stroke_color(color);
+    this.fill_options.set_fill_color(color);
+    return this;
+  }
+  set_fill_alpha(alpha: number) {
+    this.fill_options.set_fill_alpha(alpha);
+    return this;
+  }
+  set_fill(fill: boolean) {
+    this.fill_options.set_fill(fill);
+    return this;
+  }
+  draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+
+    this.stroke_options.apply_to(ctx, scene);
+    this.fill_options.apply_to(ctx);
+    Object.values(this.children).forEach((child) =>
+      child._draw(ctx, scene, args),
+    );
+  }
+}
+
 // *** SCENES ***
 
 // A Scene is an abstract class which houses mathematical objects defined by some set of parameters.
@@ -203,8 +306,9 @@ export class FillLikeMObject extends MObject {
 // -
 export class Scene {
   canvas: HTMLCanvasElement;
-  border_thickness: number = 4;
-  border_color: string = "black";
+  background_color: string = DEFAULT_BACKGROUND_COLOR;
+  border_width: number = DEFAULT_BORDER_WIDTH;
+  border_color: string = DEFAULT_BORDER_COLOR;
   mobjects: Record<string, MObject>;
   // Scene size
   xlims: Vec2D;
@@ -344,9 +448,8 @@ export class Scene {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
+    this.draw_background(ctx);
     this._draw();
-
     this.draw_border(ctx);
   }
   _draw() {
@@ -360,10 +463,16 @@ export class Scene {
   draw_mobject(mobj: MObject) {
     mobj.draw(this.canvas, this);
   }
+  // Draw a background
+  draw_background(ctx: CanvasRenderingContext2D) {
+    ctx.fillStyle = this.background_color;
+    ctx.globalAlpha = 1;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
   // Draw a border around the canvas
   draw_border(ctx: CanvasRenderingContext2D) {
     ctx.strokeStyle = this.border_color;
-    ctx.lineWidth = this.border_thickness;
+    ctx.lineWidth = this.border_width;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }

@@ -10655,6 +10655,14 @@ function vec2_rot(v, angle2) {
   return [x * cos2 - y * sin2, x * sin2 + y * cos2];
 }
 
+// src/lib/base/style_options.ts
+var DEFAULT_BACKGROUND_COLOR = "white";
+var DEFAULT_BORDER_COLOR = "black";
+var DEFAULT_BORDER_WIDTH = 4;
+var DEFAULT_STROKE_COLOR = "black";
+var DEFAULT_STROKE_WIDTH = 0.08;
+var DEFAULT_FILL_COLOR = "black";
+
 // src/lib/base/base.ts
 function clamp(x, xmin, xmax) {
   return Math.min(xmax, Math.max(xmin, x));
@@ -10671,8 +10679,8 @@ function delay(ms) {
 }
 var StrokeOptions = class {
   constructor() {
-    this.stroke_width = 0.08;
-    this.stroke_color = "black";
+    this.stroke_width = DEFAULT_STROKE_WIDTH;
+    this.stroke_color = DEFAULT_STROKE_COLOR;
     this.stroke_style = "solid";
   }
   set_stroke_color(color) {
@@ -10701,7 +10709,7 @@ var StrokeOptions = class {
 };
 var FillOptions = class {
   constructor() {
-    this.fill_color = "black";
+    this.fill_color = DEFAULT_FILL_COLOR;
     this.fill_alpha = 1;
     this.fill = true;
   }
@@ -10812,8 +10820,9 @@ var FillLikeMObject = class extends MObject {
 };
 var Scene = class {
   constructor(canvas) {
-    this.border_thickness = 4;
-    this.border_color = "black";
+    this.background_color = DEFAULT_BACKGROUND_COLOR;
+    this.border_width = DEFAULT_BORDER_WIDTH;
+    this.border_color = DEFAULT_BORDER_COLOR;
     // Zoom ratio
     this.zoom_ratio = 1;
     // Determines whether any draggable object in the scene is clicked
@@ -10937,6 +10946,7 @@ var Scene = class {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.draw_background(ctx);
     this._draw();
     this.draw_border(ctx);
   }
@@ -10950,10 +10960,16 @@ var Scene = class {
   draw_mobject(mobj) {
     mobj.draw(this.canvas, this);
   }
+  // Draw a background
+  draw_background(ctx) {
+    ctx.fillStyle = this.background_color;
+    ctx.globalAlpha = 1;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
   // Draw a border around the canvas
   draw_border(ctx) {
     ctx.strokeStyle = this.border_color;
-    ctx.lineWidth = this.border_thickness;
+    ctx.lineWidth = this.border_width;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
@@ -11017,6 +11033,39 @@ function rb_colormap_2(z) {
     return [512 * (gray - 0.5), 0, 0, 255];
   }
 }
+
+// src/lib/base/heatmap.ts
+var HeatMap = class extends MObject {
+  constructor(width, height, min_val, max_val, valArray) {
+    super();
+    this.width = width;
+    this.height = height;
+    this.min_val = min_val;
+    this.max_val = max_val;
+    this.valArray = valArray;
+    this.colorMap = rb_colormap;
+  }
+  set_color_map(colorMap) {
+    this.colorMap = colorMap;
+  }
+  // Gets/sets values
+  set_vals(vals) {
+    this.valArray = vals;
+  }
+  get_vals() {
+    return this.valArray;
+  }
+  // Draws on the canvas
+  _draw(ctx, scene, imageData) {
+    let data = imageData.data;
+    for (let i = 0; i < this.width * this.height; i++) {
+      const px_val = this.valArray[i];
+      const idx = i * 4;
+      [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] = this.colorMap(px_val);
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+};
 
 // src/lib/interactive/draggable.ts
 var makeDraggable = (Base) => {
@@ -11704,7 +11753,7 @@ function Slider(container, callback, kwargs) {
   return slider;
 }
 
-// src/lib/scene_view_translator.ts
+// src/lib/interactive/scene_view_translator.ts
 var SceneViewTranslator = class {
   constructor(scene) {
     this.drag = false;
@@ -11803,7 +11852,7 @@ var SceneViewTranslator = class {
   }
 };
 
-// src/lib/bezier.ts
+// src/lib/base/bezier.ts
 var np = __toESM(require_numpy_ts_node(), 1);
 var SmoothOpenPathBezierHandleCalculator = class {
   constructor(n) {
@@ -11899,25 +11948,13 @@ var SmoothOpenPathBezierHandleCalculator = class {
   }
 };
 var BezierSpline = class extends LineLikeMObject {
-  constructor(num_steps, kwargs) {
+  constructor(num_steps) {
     super();
     this.num_steps = num_steps;
     this.solver = new SmoothOpenPathBezierHandleCalculator(num_steps);
     this.anchors = [];
     for (let i = 0; i < num_steps + 1; i++) {
       this.anchors.push([0, 0]);
-    }
-    let stroke_width = kwargs.stroke_width;
-    if (stroke_width == void 0) {
-      this.stroke_options.stroke_width = 0.08;
-    } else {
-      this.stroke_options.stroke_width = stroke_width;
-    }
-    let stroke_color = kwargs.stroke_color;
-    if (stroke_color == void 0) {
-      this.stroke_options.stroke_color = `rgb(0, 0, 0)`;
-    } else {
-      this.stroke_options.stroke_color = stroke_color;
     }
   }
   set_anchors(new_anchors) {
@@ -12017,39 +12054,6 @@ var ParametricFunction = class extends LineLikeMObject {
       }
       ctx.stroke();
     }
-  }
-};
-
-// src/lib/heatmap.ts
-var HeatMap = class extends MObject {
-  constructor(width, height, min_val, max_val, valArray) {
-    super();
-    this.width = width;
-    this.height = height;
-    this.min_val = min_val;
-    this.max_val = max_val;
-    this.valArray = valArray;
-    this.colorMap = rb_colormap;
-  }
-  set_color_map(colorMap) {
-    this.colorMap = colorMap;
-  }
-  // Gets/sets values
-  set_vals(vals) {
-    this.valArray = vals;
-  }
-  get_vals() {
-    return this.valArray;
-  }
-  // Draws on the canvas
-  _draw(ctx, scene, imageData) {
-    let data = imageData.data;
-    for (let i = 0; i < this.width * this.height; i++) {
-      const px_val = this.valArray[i];
-      const idx = i * 4;
-      [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] = this.colorMap(px_val);
-    }
-    ctx.putImageData(imageData, 0, 0);
   }
 };
 
@@ -12239,6 +12243,17 @@ var ThreeDMObject = class extends MObject {
       return true;
     } else {
       return scene.camera.depth(point) > this.blocked_depth_at(scene, vp) + this.blocked_depth_tolerance;
+    }
+  }
+  draw(canvas, scene, simple = false, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    if (this instanceof Line3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
     }
   }
   // Simpler drawing method for 3D scenes which doesn't use local depth testing, for speed purposes.
@@ -12667,6 +12682,7 @@ var ThreeDScene = class extends Scene {
     let ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.draw_background(ctx);
     let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
       let depth_a = this.mobjects[a].depth(this);
       let depth_b = this.mobjects[b].depth(this);
@@ -12693,9 +12709,7 @@ var ThreeDScene = class extends Scene {
         mobj.draw(this.canvas, this);
       }
     }
-    ctx.strokeStyle = this.border_color;
-    ctx.lineWidth = this.border_thickness;
-    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+    this.draw_border(ctx);
   }
 };
 
@@ -13351,8 +13365,7 @@ var WaveSimOneDimScene = class extends SceneFromSimulator {
       }
       this.add(`p_${i + 1}`, mass);
     }
-    let curve = new BezierSpline(width - 1, {});
-    curve.set_stroke_width(0.02);
+    let curve = new BezierSpline(width - 1).set_stroke_width(0.02);
     this.add("curve", curve);
   }
   set_mode(mode) {

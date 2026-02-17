@@ -3,7 +3,7 @@ import { Scene, Dot, Vec2D } from "./lib/base";
 import {
   SmoothClosedPathBezierHandleCalculator,
   BezierCurve,
-} from "./lib/bezier.js";
+} from "./lib/base/bezier.js";
 
 class ClosedCurveScene extends Scene {
   n: number;

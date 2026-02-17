@@ -18,8 +18,8 @@ import {
   rb_colormap_2,
   colorval_to_rgba,
 } from "../base";
-import { BezierSpline } from "../bezier.js";
-import { HeatMap } from "../heatmap.js";
+import { BezierSpline } from "../base/bezier.js";
+import { HeatMap } from "../base/heatmap";
 import { SceneFromSimulator } from "../simulator/sim";
 import { StateSimulator, TwoDimDrawable, TwoDimState } from "./statesim.js";
 import { Dot3D, Line3D, DraggableDot3D } from "../three_d/mobjects.js";
@@ -320,8 +320,7 @@ export class WaveSimOneDimScene extends SceneFromSimulator {
     }
 
     // Add a Bezier curve which tracks with uValues in simulator
-    let curve = new BezierSpline(width - 1, {});
-    curve.set_stroke_width(0.02);
+    let curve = new BezierSpline(width - 1).set_stroke_width(0.02);
     this.add("curve", curve);
   }
   set_mode(mode: "curve" | "dots") {

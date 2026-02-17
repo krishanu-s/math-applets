@@ -182,6 +182,40 @@ export class Rectangle extends FillLikeMObject implements DraggableMObject {
   }
 }
 
+// A closed path of points.
+export class Polygon extends FillLikeMObject {
+  points: Vec2D[];
+  constructor(points: Vec2D[]) {
+    super();
+    this.points = points;
+  }
+  add_point(point: Vec2D) {
+    this.points.push(point);
+  }
+  remove_point(index: number) {
+    this.points.splice(index, 1);
+  }
+  move_point(i: number, new_point: Vec2D) {
+    this.points[i] = new_point;
+  }
+  _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
+    let [x, y] = scene.v2c(this.points[0]);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let i = 1; i < this.points.length; i++) {
+      [x, y] = scene.v2c(this.points[i]);
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    if (this.fill_options.fill) {
+      ctx.globalAlpha *= this.fill_options.fill_alpha;
+      ctx.fill();
+      ctx.globalAlpha /= this.fill_options.fill_alpha;
+    }
+  }
+}
+
 // A filled rectangle which can be clicked-and-dragged
 export const DraggableRectangle = makeDraggable(Rectangle);
 
@@ -232,15 +266,15 @@ export class LineSequence extends LineLikeMObject {
     this.points[i] = new_point;
   }
   get_point(i: number): Vec2D {
-    return this.points[i];
+    return this.points[i] as Vec2D;
   }
   // Draws on the canvas
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
-    let [x, y] = scene.v2c(this.points[0]);
+    let [x, y] = scene.v2c(this.points[0] as Vec2D);
     ctx.beginPath();
     ctx.moveTo(x, y);
     for (let i = 1; i < this.points.length; i++) {
-      [x, y] = scene.v2c(this.points[i]);
+      [x, y] = scene.v2c(this.points[i] as Vec2D);
       ctx.lineTo(x, y);
     }
     ctx.stroke();
