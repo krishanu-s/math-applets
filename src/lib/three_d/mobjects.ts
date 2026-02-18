@@ -112,6 +112,11 @@ export class ThreeDMObjectGroup extends ThreeDMObject {
   remove_mobj(name: string) {
     delete this.children[name];
   }
+  clear() {
+    Object.keys(this.children).forEach((key) => {
+      delete this.children[key];
+    });
+  }
   get_mobj(name: string): ThreeDMObject {
     if (!this.children[name]) {
       throw new Error(`Child with name ${name} not found`);

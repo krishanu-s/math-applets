@@ -44,31 +44,6 @@ import {
 
 (async function () {
   document.addEventListener("DOMContentLoaded", async function () {
-    // Two points with a connecting line, where the points can be dragged around.
-    (function draggable_dots(width: number, height: number) {
-      let canvas = prepare_canvas(width, height, "draggable-dot");
-      let scene = new Scene(canvas);
-      scene.set_frame_lims([-5, 5], [-5, 5]);
-
-      let dot_1 = new DraggableDot([1, 0], 0.3);
-
-      let dot_2 = new DraggableDot([-1, 0], 0.3);
-
-      let line = new Line([1, 0], [-1, 0]);
-      dot_1.add_callback(() => {
-        line.move_start(dot_1.get_center());
-      });
-      dot_2.add_callback(() => {
-        line.move_end(dot_2.get_center());
-      });
-
-      scene.add("line", line);
-      scene.add("p1", dot_1);
-      scene.add("p2", dot_2);
-
-      scene.draw();
-    })(300, 300);
-
     // A Bezier curve defined by a sequence of control points, where the points can be dragged around.
     (function draggable_dots_bezier(width: number, height: number) {
       let canvas = prepare_canvas(width, height, "draggable-dot-bezier");
@@ -135,26 +110,7 @@ import {
       n_slider.width = 200;
 
       make_scene(5);
-    })(300, 300);
-
-    // A number line
-    (function cartesian_1d(width: number, height: number) {
-      const name = "cartesian-1d";
-      let canvas = prepare_canvas(width, height, name);
-      let scene = new Scene(canvas);
-      let xmin = -5;
-      let xmax = 5;
-      let ymin = -5;
-      let ymax = 5;
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-
-      let number_line = new Axis([xmin, xmax], "x");
-      number_line.axis().set_stroke_width(0.05);
-      number_line.axis().set_arrow_size(0.3);
-      number_line.set_tick_size(0.2);
-      scene.add("number_line", number_line);
-      scene.draw();
-    })(300, 300);
+    })(500, 500);
 
     // A pair of Cartesian axes, with grid lines
     (function cartesian_2d(width: number, height: number) {
@@ -238,7 +194,7 @@ import {
       translator.add();
 
       scene.draw();
-    })(300, 300);
+    })(500, 500);
 
     // A triple of Cartesian axes
     (function cartesian_3d(width: number, height: number) {
@@ -265,13 +221,13 @@ import {
 
       // Set up axes
       let axes = new CoordinateAxes3d([xmin, xmax], [ymin, ymax], [zmin, zmax]);
-      axes.x_axis().axis().set_stroke_width(0.05);
-      axes.y_axis().axis().set_stroke_width(0.05);
-      axes.z_axis().axis().set_stroke_width(0.05);
-      axes.set_tick_size(0.2);
-      axes.x_axis().axis().set_arrow_size(0.3);
-      axes.y_axis().axis().set_arrow_size(0.3);
-      axes.z_axis().axis().set_arrow_size(0.3);
+      // axes.x_axis().axis().set_stroke_width(0.05);
+      // axes.y_axis().axis().set_stroke_width(0.05);
+      // axes.z_axis().axis().set_stroke_width(0.05);
+      // axes.set_tick_size(0.2);
+      // axes.x_axis().axis().set_arrow_size(0.3);
+      // axes.y_axis().axis().set_arrow_size(0.3);
+      // axes.z_axis().axis().set_arrow_size(0.3);
 
       // Make arcball
       let arcball = new Arcball(scene);
@@ -280,7 +236,7 @@ import {
 
       scene.add("axes", axes);
       scene.draw();
-    })(300, 300);
+    })(500, 500);
 
     // (function test_latex(width: number, height: number) {
     //   const canvas_name = "latex-scene";

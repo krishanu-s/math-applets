@@ -23,6 +23,7 @@ export {
   linspace,
   funspace,
   gaussianRandom,
+  gaussian_normal_pdf,
   delay,
   StrokeOptions,
   FillOptions,
@@ -35,6 +36,13 @@ export {
   mouse_event_coords,
   touch_event_coords,
 } from "./base";
+export {
+  Axis,
+  CoordinateAxes2d,
+  Axis3D,
+  CoordinateAxes3d,
+  Integral,
+} from "./cartesian";
 export {
   colorval_to_rgba,
   rb_colormap,

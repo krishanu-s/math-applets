@@ -19,3 +19,4 @@ export {
   WaveSimTwoDimHeatMapScene,
   WaveSimTwoDimThreeDScene,
 } from "./wavesim";
+export { HeatSimTwoDim, HeatSimSpherical } from "./heatsim";

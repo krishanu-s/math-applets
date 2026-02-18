@@ -14,6 +14,7 @@ import {
   Arrow,
   LineSpring,
   Vec2D,
+  CoordinateAxes2d,
 } from "./lib/base";
 import { ParametricFunction } from "./lib/base/bezier.js";
 import { SpringSimulator } from "./lib/simulator/statesim.js";
@@ -152,115 +153,115 @@ export abstract class InteractivePlayingScene extends Scene {
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
-    // *** EXTRA, TO BE REMOVED ***
-    (function foo(width: number, height: number) {
-      let canvas = prepare_canvas(width, height, "two-springs-circle");
-      let xmin = -2.5;
-      let xmax = 2.5;
-      let ymin = -2.5;
-      let ymax = 2.5;
+    // // *** EXTRA, TO BE REMOVED ***
+    // (function foo(width: number, height: number) {
+    //   let canvas = prepare_canvas(width, height, "two-springs-circle");
+    //   let xmin = -2.5;
+    //   let xmax = 2.5;
+    //   let ymin = -2.5;
+    //   let ymax = 2.5;
 
-      class TwoSpringsCircleScene extends InteractivePlayingScene {
-        set_init_values() {
-          (this.get_simulator(0) as SpringSimulator).set_vals([1, 0]);
-          (this.get_simulator(1) as SpringSimulator).set_vals([0, 1]);
-        }
-        constructor(canvas: HTMLCanvasElement) {
-          super(canvas, [
-            new SpringSimulator(1.0, 0.02),
-            new SpringSimulator(1.0, 0.02),
-          ]);
+    //   class TwoSpringsCircleScene extends InteractivePlayingScene {
+    //     set_init_values() {
+    //       (this.get_simulator(0) as SpringSimulator).set_vals([1, 0]);
+    //       (this.get_simulator(1) as SpringSimulator).set_vals([0, 1]);
+    //     }
+    //     constructor(canvas: HTMLCanvasElement) {
+    //       super(canvas, [
+    //         new SpringSimulator(1.0, 0.02),
+    //         new SpringSimulator(1.0, 0.02),
+    //       ]);
 
-          this.set_init_values();
+    //       this.set_init_values();
 
-          let x_axis = new Line([xmin, 0], [xmax, 0])
-            .set_stroke_width(0.02)
-            .set_alpha(0.5);
-          let y_axis = new Line([0, ymin], [0, ymax])
-            .set_stroke_width(0.02)
-            .set_alpha(0.5);
-          this.add("x-axis", x_axis);
-          this.add("y-axis", y_axis);
+    //       let x_axis = new Line([xmin, 0], [xmax, 0])
+    //         .set_stroke_width(0.02)
+    //         .set_alpha(0.5);
+    //       let y_axis = new Line([0, ymin], [0, ymax])
+    //         .set_stroke_width(0.02)
+    //         .set_alpha(0.5);
+    //       this.add("x-axis", x_axis);
+    //       this.add("y-axis", y_axis);
 
-          let trajectory = new ParametricFunction(
-            (t) => [Math.cos(t), Math.sin(t)],
-            0,
-            2 * Math.PI + 0.01,
-            30,
-          )
-            .set_stroke_width(0.05)
-            .set_stroke_color("gray");
-          this.add("trajectory", trajectory);
+    //       let trajectory = new ParametricFunction(
+    //         (t) => [Math.cos(t), Math.sin(t)],
+    //         0,
+    //         2 * Math.PI + 0.01,
+    //         30,
+    //       )
+    //         .set_stroke_width(0.05)
+    //         .set_stroke_color("gray");
+    //       this.add("trajectory", trajectory);
 
-          let dot = new Rectangle([0, 0], 0.1, 0.1);
-          this.add("dot", dot);
+    //       let dot = new Rectangle([0, 0], 0.1, 0.1);
+    //       this.add("dot", dot);
 
-          // First spring simulator is drawn horizontally
-          let mass_0 = new Rectangle([0, 0], 0.1, 0.1);
-          this.add("mass_0", mass_0);
-          let spring_0 = new LineSpring([-2, 0], [0, 0]);
-          spring_0.set_mode("spring");
-          this.add("spring_0", spring_0);
-          this.add("b_0", new Rectangle([-2, 0], 0.1, 2));
+    //       // First spring simulator is drawn horizontally
+    //       let mass_0 = new Rectangle([0, 0], 0.1, 0.1);
+    //       this.add("mass_0", mass_0);
+    //       let spring_0 = new LineSpring([-2, 0], [0, 0]);
+    //       spring_0.set_mode("spring");
+    //       this.add("spring_0", spring_0);
+    //       this.add("b_0", new Rectangle([-2, 0], 0.1, 2));
 
-          // Second spring simulator is drawn vertically
-          let mass_1 = new Rectangle([0, 0], 0.1, 0.1);
-          this.add("mass_1", mass_1);
-          let spring_1 = new LineSpring([0, -2], [0, 0]);
-          spring_1.set_mode("spring");
-          this.add("spring_1", spring_1);
-          this.add("b_1", new Rectangle([0, -2], 2, 0.1));
-        }
-        update_mobjects() {
-          let dot = this.get_mobj("dot") as Rectangle;
-          dot.move_to([
-            this.get_simulator(0).get_vals()[0],
-            this.get_simulator(1).get_vals()[0],
-          ]);
-          // First spring simulator is drawn horizontally
-          let mass_0 = this.get_mobj("mass_0") as Rectangle;
-          mass_0.move_to([this.get_simulator(0).get_vals()[0], 0]);
-          let spring_0 = this.get_mobj("spring_0") as LineSpring;
-          spring_0.set_mode("spring");
-          spring_0.move_end([this.get_simulator(0).get_vals()[0], 0]);
+    //       // Second spring simulator is drawn vertically
+    //       let mass_1 = new Rectangle([0, 0], 0.1, 0.1);
+    //       this.add("mass_1", mass_1);
+    //       let spring_1 = new LineSpring([0, -2], [0, 0]);
+    //       spring_1.set_mode("spring");
+    //       this.add("spring_1", spring_1);
+    //       this.add("b_1", new Rectangle([0, -2], 2, 0.1));
+    //     }
+    //     update_mobjects() {
+    //       let dot = this.get_mobj("dot") as Rectangle;
+    //       dot.move_to([
+    //         this.get_simulator(0).get_vals()[0],
+    //         this.get_simulator(1).get_vals()[0],
+    //       ]);
+    //       // First spring simulator is drawn horizontally
+    //       let mass_0 = this.get_mobj("mass_0") as Rectangle;
+    //       mass_0.move_to([this.get_simulator(0).get_vals()[0], 0]);
+    //       let spring_0 = this.get_mobj("spring_0") as LineSpring;
+    //       spring_0.set_mode("spring");
+    //       spring_0.move_end([this.get_simulator(0).get_vals()[0], 0]);
 
-          // Second spring simulator is drawn vertically
-          let mass_1 = this.get_mobj("mass_1") as Rectangle;
-          mass_1.move_to([0, this.get_simulator(1).get_vals()[0]]);
-          let spring_1 = this.get_mobj("spring_1") as LineSpring;
-          spring_1.set_mode("spring");
-          spring_1.move_end([0, this.get_simulator(1).get_vals()[0]]);
-        }
-        draw_mobject(mobj: MObject) {
-          mobj.draw(this.canvasWrapper, this);
-        }
-      }
+    //       // Second spring simulator is drawn vertically
+    //       let mass_1 = this.get_mobj("mass_1") as Rectangle;
+    //       mass_1.move_to([0, this.get_simulator(1).get_vals()[0]]);
+    //       let spring_1 = this.get_mobj("spring_1") as LineSpring;
+    //       spring_1.set_mode("spring");
+    //       spring_1.move_end([0, this.get_simulator(1).get_vals()[0]]);
+    //     }
+    //     draw_mobject(mobj: MObject) {
+    //       mobj.draw(this.canvasWrapper, this);
+    //     }
+    //   }
 
-      let scene = new TwoSpringsCircleScene(canvas);
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      scene.draw();
+    //   let scene = new TwoSpringsCircleScene(canvas);
+    //   scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+    //   scene.draw();
 
-      // Button which pauses/unpauses the simulation
-      let pauseButton = Button(
-        document.getElementById(
-          "two-springs-circle-pause-button",
-        ) as HTMLElement,
-        function () {
-          scene.add_to_queue(scene.toggle_pause.bind(scene));
-          if (pauseButton.textContent == "Pause simulation") {
-            pauseButton.textContent = "Unpause simulation";
-          } else if (pauseButton.textContent == "Unpause simulation") {
-            pauseButton.textContent = "Pause simulation";
-          } else {
-            throw new Error();
-          }
-        },
-      );
-      pauseButton.textContent = "Unpause simulation";
-      pauseButton.style.padding = "15px";
+    //   // Button which pauses/unpauses the simulation
+    //   let pauseButton = Button(
+    //     document.getElementById(
+    //       "two-springs-circle-pause-button",
+    //     ) as HTMLElement,
+    //     function () {
+    //       scene.add_to_queue(scene.toggle_pause.bind(scene));
+    //       if (pauseButton.textContent == "Pause simulation") {
+    //         pauseButton.textContent = "Unpause simulation";
+    //       } else if (pauseButton.textContent == "Unpause simulation") {
+    //         pauseButton.textContent = "Pause simulation";
+    //       } else {
+    //         throw new Error();
+    //       }
+    //     },
+    //   );
+    //   pauseButton.textContent = "Unpause simulation";
+    //   pauseButton.style.padding = "15px";
 
-      scene.play(undefined);
-    })(300, 300);
+    //   scene.play(undefined);
+    // })(300, 300);
 
     // *** ZERO-DIMENSIONAL WAVE EQUATION ***
     // This is the zero-dimensional case of the wave equation. A point mass connected to a spring
@@ -270,12 +271,12 @@ export abstract class InteractivePlayingScene extends Scene {
       let canvas_spring = prepare_canvas(width, height, "point-mass-spring");
       let canvas_graph = prepare_canvas(width, height, "point-mass-graph");
 
-      let xmin = -4;
-      let xmax = 4;
+      let xmin = -6;
+      let xmax = 6;
       let tmin = 0;
-      let tmax = 15;
-      let ymin = -4;
-      let ymax = 4;
+      let tmax = 12;
+      let ymin = -6;
+      let ymax = 6;
       let w = 5;
 
       // Make the simulator with reset condition
@@ -295,29 +296,9 @@ export abstract class InteractivePlayingScene extends Scene {
         constructor(canvas: HTMLCanvasElement) {
           super(canvas);
           this.set_frame_lims([tmin, tmax], [xmin, xmax]);
-          this.add(
-            "t-axis",
-            new Line([tmin, 0], [tmax, 0])
-              .set_stroke_width(0.05)
-              .set_stroke_color("gray"),
-          );
-          let tick_size = 0.2;
-          for (let i = 1; i <= tmax; i++) {
-            this.add(
-              `t-axis-${i}`,
-              new Line([i, -tick_size / 2], [i, tick_size / 2])
-                .set_stroke_width(0.05)
-                .set_stroke_color("gray"),
-            );
-          }
-          for (let i = -4; i <= 4; i++) {
-            this.add(
-              `y-axis-${i}`,
-              new Line([0, i], [tick_size, i])
-                .set_stroke_width(0.05)
-                .set_stroke_color("gray"),
-            );
-          }
+          let axes = new CoordinateAxes2d([tmin, tmax], [xmin, xmax]);
+
+          this.add("axes", axes);
           this.add(
             "graph",
             new LineSequence([
@@ -356,18 +337,24 @@ export abstract class InteractivePlayingScene extends Scene {
         constructor(canvas: HTMLCanvasElement) {
           super(canvas);
           // TODO Set coordinates in terms of scene frame limits
-          let eq_line = new Line([0, -5], [0, 5])
+          let eq_line = new Line([0, ymin], [0, ymax])
             .set_stroke_width(0.05)
             .set_stroke_style("dashed")
             .set_stroke_color("gray");
-          let spring = new LineSpring([-3, 0], [0, 0]).set_stroke_width(0.08);
+          let spring = new LineSpring([xmin * 0.7, 0], [0, 0]).set_stroke_width(
+            0.08,
+          );
           spring.set_eq_length(3.0);
-          let anchor = new Rectangle([-3, 0], 0.15, 4);
+          let anchor = new Rectangle(
+            [xmin * 0.7, 0],
+            0.15,
+            (ymax - ymin) * 0.7,
+          );
 
           // While the scene is paused, the point mass is an interactive element which can be dragged
           // to update the simulator state. While the scene is unpaused, the simulator runs and updates
           // the state of the point mass.
-          let mass = new DraggableRectangle([0, 0], 0.6, 0.6);
+          let mass = new DraggableRectangle([0, 0], 0.8, 0.8);
           mass.draggable_x = true;
           mass.draggable_y = false;
 

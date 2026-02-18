@@ -11018,102 +11018,6 @@ function rb_colormap(z) {
   }
 }
 
-// src/lib/base/heatmap.ts
-var HeatMap = class extends MObject {
-  constructor(width, height, min_val, max_val, valArray) {
-    super();
-    this.width = width;
-    this.height = height;
-    this.min_val = min_val;
-    this.max_val = max_val;
-    this.valArray = valArray;
-    this.colorMap = rb_colormap;
-  }
-  set_color_map(colorMap) {
-    this.colorMap = colorMap;
-  }
-  // Gets/sets values
-  set_vals(vals) {
-    this.valArray = vals;
-  }
-  get_vals() {
-    return this.valArray;
-  }
-  // Draws on the canvas
-  _draw(ctx, scene, imageData) {
-    let data = imageData.data;
-    for (let i = 0; i < this.width * this.height; i++) {
-      const px_val = this.valArray[i];
-      const idx = i * 4;
-      [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] = this.colorMap(px_val);
-    }
-    ctx.putImageData(imageData, 0, 0);
-  }
-};
-
-// src/lib/base/stats.ts
-var Histogram = class extends MObject {
-  constructor() {
-    super(...arguments);
-    this.hist = {};
-    this.fill_color = "red";
-    // Min/max bin values
-    this.bin_min = 0;
-    this.bin_max = 100;
-    // Min/max counts
-    this.count_min = 0;
-    this.count_max = 100;
-  }
-  set_count_limits(min2, max2) {
-    this.count_min = min2;
-    this.count_max = max2;
-  }
-  set_bin_limits(min2, max2) {
-    this.bin_min = min2;
-    this.bin_max = max2;
-  }
-  set_hist(hist) {
-    this.hist = hist;
-  }
-  // Create a bunch of rectangles
-  draw(canvas, scene) {
-    let [scene_xmin, scene_xmax] = scene.xlims;
-    let [scene_ymin, scene_ymax] = scene.ylims;
-    let xmin = scene_xmin + (scene_xmax - scene_xmin) * 0.05;
-    let xmax = scene_xmax - (scene_xmax - scene_xmin) * 0.05;
-    let ymin = scene_ymin + (scene_ymax - scene_ymin) * 0.05;
-    let ymax = scene_ymax - (scene_ymax - scene_ymin) * 0.05;
-    let x_axis = new Line([xmin, ymin], [xmax, ymin]).set_alpha(1).set_stroke_width(0.5);
-    x_axis.draw(canvas, scene);
-    let y_axis = new Line([xmin, ymin], [xmin, ymax]).set_alpha(1).set_stroke_width(0.5);
-    y_axis.draw(canvas, scene);
-    for (let i = 1; i <= 5; i++) {
-      let line = new Line(
-        [xmin, ymin + i * (ymax - ymin) / 5],
-        [xmax, ymin + i * (ymax - ymin) / 5]
-      ).set_alpha(1).set_stroke_width(0.5).set_stroke_color("gray");
-      line.set_stroke_style("dashed");
-      line.draw(canvas, scene);
-    }
-    let bin_width = (xmax - xmin) / (this.bin_max - this.bin_min);
-    let ct_height = (ymax - ymin) / (this.count_max - this.count_min);
-    let bin;
-    let rect_center, rect_height, rect_width;
-    for (let i = 0; i < Object.keys(this.hist).length; i++) {
-      bin = Object.keys(this.hist)[i];
-      rect_center = [
-        xmin + (bin - this.bin_min + 0.5) * bin_width,
-        ymin + this.hist[bin] * 0.5 * ct_height
-      ];
-      rect_height = this.hist[bin] * ct_height;
-      rect_width = bin_width;
-      let rect = new Rectangle(rect_center, rect_width, rect_height);
-      rect.fill_options.fill_color = this.fill_color;
-      rect.draw(canvas, scene);
-    }
-  }
-};
-
 // src/lib/interactive/draggable.ts
 var makeDraggable = (Base) => {
   return class Draggable extends Base {
@@ -11676,183 +11580,6 @@ var TwoHeadedArrow = class extends Line {
     ctx.lineTo(start_x, start_y);
     ctx.closePath();
     ctx.fill();
-  }
-};
-
-// src/lib/interactive/button.ts
-function Button(container, callback) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.id = "interactiveButton";
-  button.style.padding = "15px";
-  container.appendChild(button);
-  button.addEventListener("click", (event) => {
-    callback();
-    button.style.transform = "scale(0.95)";
-    setTimeout(() => {
-      button.style.transform = "scale(1)";
-    }, 100);
-  });
-  return button;
-}
-
-// src/lib/base/bezier.ts
-var np = __toESM(require_numpy_ts_node(), 1);
-var SmoothOpenPathBezierHandleCalculator = class {
-  constructor(n) {
-    this.n = n;
-    let below_diag_list = [];
-    for (let i = 0; i < n - 2; i++) {
-      below_diag_list.push(1);
-    }
-    below_diag_list.push(2);
-    let below_diag = np.array(below_diag_list);
-    let diag_list = [2];
-    for (let i = 0; i < n - 2; i++) {
-      diag_list.push(4);
-    }
-    diag_list.push(7);
-    let diag2 = np.array(diag_list);
-    let above_diag_list = [];
-    for (let i = 0; i < n - 1; i++) {
-      above_diag_list.push(1);
-    }
-    let above_diag = np.array(above_diag_list);
-    this.result = np.zeros([n, n + 1], "float32");
-    this.result.set([0, 0], 1);
-    this.result.set([0, 1], 2);
-    for (let i = 1; i < n - 1; i++) {
-      this.result.set([i, i], 4);
-      this.result.set([i, i + 1], 2);
-    }
-    this.result.set([n - 1, n - 1], 8);
-    this.result.set([n - 1, n], 1);
-    for (let i = 0; i < n - 1; i++) {
-      let scale = below_diag.get([i]) / diag2.get([i]);
-      diag2.set(
-        [i + 1],
-        diag2.get([i + 1]) - above_diag.get([i]) * scale
-      );
-      below_diag.set(
-        [i],
-        below_diag.get([i]) - diag2.get([i]) * scale
-      );
-      for (let j = 0; j < n + 1; j++) {
-        this.result.set(
-          [i + 1, j],
-          this.result.get([i + 1, j]) - this.result.get([i, j]) * scale
-        );
-      }
-    }
-    for (let i = n - 2; i >= 0; i--) {
-      let scale = above_diag.get([i]) / diag2.get([i + 1]);
-      for (let j = 0; j < n + 1; j++) {
-        this.result.set(
-          [i, j],
-          this.result.get([i, j]) - this.result.get([i + 1, j]) * scale
-        );
-      }
-    }
-    for (let i = 0; i < n; i++) {
-      let scale = 1 / diag2.get([i]);
-      for (let j = 0; j < n + 1; j++) {
-        this.result.set([i, j], this.result.get([i, j]) * scale);
-      }
-    }
-  }
-  // Given a sequence of n+1 anchors, produces the corresponding bezier handles
-  get_bezier_handles(a) {
-    if (a.shape[0] !== this.n + 1) {
-      throw new Error("Invalid anchor array shape");
-    }
-    if (a.shape[1] !== 2) {
-      throw new Error("Invalid anchor array shape");
-    }
-    let h1 = this.result.matmul(a);
-    let h2 = np.zeros([this.n, 2]);
-    for (let i = 0; i < this.n - 1; i++) {
-      h2.set(
-        [i, 0],
-        2 * a.get([i + 1, 0]) - h1.get([i + 1, 0])
-      );
-      h2.set(
-        [i, 1],
-        2 * a.get([i + 1, 1]) - h1.get([i + 1, 1])
-      );
-    }
-    h2.set(
-      [this.n - 1, 0],
-      0.5 * (a.get([this.n, 0]) + h1.get([this.n - 1, 0]))
-    );
-    h2.set(
-      [this.n - 1, 1],
-      0.5 * (a.get([this.n, 1]) + h1.get([this.n - 1, 1]))
-    );
-    return [h1, h2];
-  }
-};
-var ParametricFunction = class extends LineLikeMObject {
-  constructor(f, tmin, tmax, num_steps) {
-    super();
-    this.mode = "smooth";
-    this.function = f;
-    this.tmin = tmin;
-    this.tmax = tmax;
-    this.num_steps = num_steps;
-    this.solver = new SmoothOpenPathBezierHandleCalculator(this.num_steps);
-  }
-  // Jagged doesn't use Bezier curves. It is faster to compute and render.
-  set_mode(mode) {
-    this.mode = mode;
-  }
-  set_function(new_f) {
-    this.function = new_f;
-  }
-  _draw(ctx, scene) {
-    let points = [np.array(this.function(this.tmin))];
-    for (let i = 1; i <= this.num_steps; i++) {
-      points.push(
-        np.array(
-          this.function(
-            this.tmin + i / this.num_steps * (this.tmax - this.tmin)
-          )
-        )
-      );
-    }
-    let anchors = np.stack(points, 0);
-    let a_x, a_y;
-    [a_x, a_y] = scene.v2c([anchors.get([0, 0]), anchors.get([0, 1])]);
-    ctx.beginPath();
-    ctx.moveTo(a_x, a_y);
-    if (this.mode == "jagged") {
-      for (let i = 0; i < this.num_steps; i++) {
-        [a_x, a_y] = scene.v2c([
-          anchors.get([i + 1, 0]),
-          anchors.get([i + 1, 1])
-        ]);
-        ctx.lineTo(a_x, a_y);
-      }
-      ctx.stroke();
-    } else {
-      let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
-      let h1_x, h1_y, h2_x, h2_y;
-      for (let i = 0; i < this.num_steps; i++) {
-        [h1_x, h1_y] = scene.v2c([
-          handles_1.get([i, 0]),
-          handles_1.get([i, 1])
-        ]);
-        [h2_x, h2_y] = scene.v2c([
-          handles_2.get([i, 0]),
-          handles_2.get([i, 1])
-        ]);
-        [a_x, a_y] = scene.v2c([
-          anchors.get([i + 1, 0]),
-          anchors.get([i + 1, 1])
-        ]);
-        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
-      }
-      ctx.stroke();
-    }
   }
 };
 
@@ -12511,6 +12238,279 @@ var TwoHeadedArrow3D = class extends Line3D {
     ctx.lineTo(start_x, start_y);
     ctx.closePath();
     ctx.fill();
+  }
+};
+
+// src/lib/base/heatmap.ts
+var HeatMap = class extends MObject {
+  constructor(width, height, min_val, max_val, valArray) {
+    super();
+    this.width = width;
+    this.height = height;
+    this.min_val = min_val;
+    this.max_val = max_val;
+    this.valArray = valArray;
+    this.colorMap = rb_colormap;
+  }
+  set_color_map(colorMap) {
+    this.colorMap = colorMap;
+  }
+  // Gets/sets values
+  set_vals(vals) {
+    this.valArray = vals;
+  }
+  get_vals() {
+    return this.valArray;
+  }
+  // Draws on the canvas
+  _draw(ctx, scene, imageData) {
+    let data = imageData.data;
+    for (let i = 0; i < this.width * this.height; i++) {
+      const px_val = this.valArray[i];
+      const idx = i * 4;
+      [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] = this.colorMap(px_val);
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+};
+
+// src/lib/base/stats.ts
+var Histogram = class extends MObject {
+  constructor() {
+    super(...arguments);
+    this.hist = {};
+    this.fill_color = "red";
+    // Min/max bin values
+    this.bin_min = 0;
+    this.bin_max = 100;
+    // Min/max counts
+    this.count_min = 0;
+    this.count_max = 100;
+  }
+  set_count_limits(min2, max2) {
+    this.count_min = min2;
+    this.count_max = max2;
+  }
+  set_bin_limits(min2, max2) {
+    this.bin_min = min2;
+    this.bin_max = max2;
+  }
+  set_hist(hist) {
+    this.hist = hist;
+  }
+  // Create a bunch of rectangles
+  draw(canvas, scene) {
+    let [scene_xmin, scene_xmax] = scene.xlims;
+    let [scene_ymin, scene_ymax] = scene.ylims;
+    let xmin = scene_xmin + (scene_xmax - scene_xmin) * 0.05;
+    let xmax = scene_xmax - (scene_xmax - scene_xmin) * 0.05;
+    let ymin = scene_ymin + (scene_ymax - scene_ymin) * 0.05;
+    let ymax = scene_ymax - (scene_ymax - scene_ymin) * 0.05;
+    let x_axis = new Line([xmin, ymin], [xmax, ymin]).set_alpha(1).set_stroke_width(0.5);
+    x_axis.draw(canvas, scene);
+    let y_axis = new Line([xmin, ymin], [xmin, ymax]).set_alpha(1).set_stroke_width(0.5);
+    y_axis.draw(canvas, scene);
+    for (let i = 1; i <= 5; i++) {
+      let line = new Line(
+        [xmin, ymin + i * (ymax - ymin) / 5],
+        [xmax, ymin + i * (ymax - ymin) / 5]
+      ).set_alpha(1).set_stroke_width(0.5).set_stroke_color("gray");
+      line.set_stroke_style("dashed");
+      line.draw(canvas, scene);
+    }
+    let bin_width = (xmax - xmin) / (this.bin_max - this.bin_min);
+    let ct_height = (ymax - ymin) / (this.count_max - this.count_min);
+    let bin;
+    let rect_center, rect_height, rect_width;
+    for (let i = 0; i < Object.keys(this.hist).length; i++) {
+      bin = Object.keys(this.hist)[i];
+      rect_center = [
+        xmin + (bin - this.bin_min + 0.5) * bin_width,
+        ymin + this.hist[bin] * 0.5 * ct_height
+      ];
+      rect_height = this.hist[bin] * ct_height;
+      rect_width = bin_width;
+      let rect = new Rectangle(rect_center, rect_width, rect_height);
+      rect.fill_options.fill_color = this.fill_color;
+      rect.draw(canvas, scene);
+    }
+  }
+};
+
+// src/lib/interactive/button.ts
+function Button(container, callback) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "interactiveButton";
+  button.style.padding = "15px";
+  container.appendChild(button);
+  button.addEventListener("click", (event) => {
+    callback();
+    button.style.transform = "scale(0.95)";
+    setTimeout(() => {
+      button.style.transform = "scale(1)";
+    }, 100);
+  });
+  return button;
+}
+
+// src/lib/base/bezier.ts
+var np = __toESM(require_numpy_ts_node(), 1);
+var SmoothOpenPathBezierHandleCalculator = class {
+  constructor(n) {
+    this.n = n;
+    let below_diag_list = [];
+    for (let i = 0; i < n - 2; i++) {
+      below_diag_list.push(1);
+    }
+    below_diag_list.push(2);
+    let below_diag = np.array(below_diag_list);
+    let diag_list = [2];
+    for (let i = 0; i < n - 2; i++) {
+      diag_list.push(4);
+    }
+    diag_list.push(7);
+    let diag2 = np.array(diag_list);
+    let above_diag_list = [];
+    for (let i = 0; i < n - 1; i++) {
+      above_diag_list.push(1);
+    }
+    let above_diag = np.array(above_diag_list);
+    this.result = np.zeros([n, n + 1], "float32");
+    this.result.set([0, 0], 1);
+    this.result.set([0, 1], 2);
+    for (let i = 1; i < n - 1; i++) {
+      this.result.set([i, i], 4);
+      this.result.set([i, i + 1], 2);
+    }
+    this.result.set([n - 1, n - 1], 8);
+    this.result.set([n - 1, n], 1);
+    for (let i = 0; i < n - 1; i++) {
+      let scale = below_diag.get([i]) / diag2.get([i]);
+      diag2.set(
+        [i + 1],
+        diag2.get([i + 1]) - above_diag.get([i]) * scale
+      );
+      below_diag.set(
+        [i],
+        below_diag.get([i]) - diag2.get([i]) * scale
+      );
+      for (let j = 0; j < n + 1; j++) {
+        this.result.set(
+          [i + 1, j],
+          this.result.get([i + 1, j]) - this.result.get([i, j]) * scale
+        );
+      }
+    }
+    for (let i = n - 2; i >= 0; i--) {
+      let scale = above_diag.get([i]) / diag2.get([i + 1]);
+      for (let j = 0; j < n + 1; j++) {
+        this.result.set(
+          [i, j],
+          this.result.get([i, j]) - this.result.get([i + 1, j]) * scale
+        );
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      let scale = 1 / diag2.get([i]);
+      for (let j = 0; j < n + 1; j++) {
+        this.result.set([i, j], this.result.get([i, j]) * scale);
+      }
+    }
+  }
+  // Given a sequence of n+1 anchors, produces the corresponding bezier handles
+  get_bezier_handles(a) {
+    if (a.shape[0] !== this.n + 1) {
+      throw new Error("Invalid anchor array shape");
+    }
+    if (a.shape[1] !== 2) {
+      throw new Error("Invalid anchor array shape");
+    }
+    let h1 = this.result.matmul(a);
+    let h2 = np.zeros([this.n, 2]);
+    for (let i = 0; i < this.n - 1; i++) {
+      h2.set(
+        [i, 0],
+        2 * a.get([i + 1, 0]) - h1.get([i + 1, 0])
+      );
+      h2.set(
+        [i, 1],
+        2 * a.get([i + 1, 1]) - h1.get([i + 1, 1])
+      );
+    }
+    h2.set(
+      [this.n - 1, 0],
+      0.5 * (a.get([this.n, 0]) + h1.get([this.n - 1, 0]))
+    );
+    h2.set(
+      [this.n - 1, 1],
+      0.5 * (a.get([this.n, 1]) + h1.get([this.n - 1, 1]))
+    );
+    return [h1, h2];
+  }
+};
+var ParametricFunction = class extends LineLikeMObject {
+  constructor(f, tmin, tmax, num_steps) {
+    super();
+    this.mode = "smooth";
+    this.function = f;
+    this.tmin = tmin;
+    this.tmax = tmax;
+    this.num_steps = num_steps;
+    this.solver = new SmoothOpenPathBezierHandleCalculator(this.num_steps);
+  }
+  // Jagged doesn't use Bezier curves. It is faster to compute and render.
+  set_mode(mode) {
+    this.mode = mode;
+  }
+  set_function(new_f) {
+    this.function = new_f;
+  }
+  _draw(ctx, scene) {
+    let points = [np.array(this.function(this.tmin))];
+    for (let i = 1; i <= this.num_steps; i++) {
+      points.push(
+        np.array(
+          this.function(
+            this.tmin + i / this.num_steps * (this.tmax - this.tmin)
+          )
+        )
+      );
+    }
+    let anchors = np.stack(points, 0);
+    let a_x, a_y;
+    [a_x, a_y] = scene.v2c([anchors.get([0, 0]), anchors.get([0, 1])]);
+    ctx.beginPath();
+    ctx.moveTo(a_x, a_y);
+    if (this.mode == "jagged") {
+      for (let i = 0; i < this.num_steps; i++) {
+        [a_x, a_y] = scene.v2c([
+          anchors.get([i + 1, 0]),
+          anchors.get([i + 1, 1])
+        ]);
+        ctx.lineTo(a_x, a_y);
+      }
+      ctx.stroke();
+    } else {
+      let [handles_1, handles_2] = this.solver.get_bezier_handles(anchors);
+      let h1_x, h1_y, h2_x, h2_y;
+      for (let i = 0; i < this.num_steps; i++) {
+        [h1_x, h1_y] = scene.v2c([
+          handles_1.get([i, 0]),
+          handles_1.get([i, 1])
+        ]);
+        [h2_x, h2_y] = scene.v2c([
+          handles_2.get([i, 0]),
+          handles_2.get([i, 1])
+        ]);
+        [a_x, a_y] = scene.v2c([
+          anchors.get([i + 1, 0]),
+          anchors.get([i + 1, 1])
+        ]);
+        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
+      }
+      ctx.stroke();
+    }
   }
 };
 

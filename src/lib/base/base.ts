@@ -46,6 +46,14 @@ export function gaussianRandom(mean: number, stdev: number) {
   return z * stdev + mean;
 }
 
+// Normal distribution
+export function gaussian_normal_pdf(mean: number, stdev: number, x: number) {
+  return (
+    Math.exp(-Math.pow(x - mean, 2) / (2 * Math.pow(stdev, 2))) /
+    (stdev * Math.sqrt(2 * Math.PI))
+  );
+}
+
 // Delays for the given number of milliseconds. Useful for visibility in test animations.
 export function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -138,6 +146,11 @@ export class MObjectGroup extends MObject {
   }
   remove_mobj(name: string) {
     delete this.children[name];
+  }
+  clear() {
+    Object.keys(this.children).forEach((key) => {
+      delete this.children[key];
+    });
   }
   get_mobj(name: string): MObject {
     if (!this.children[name]) {

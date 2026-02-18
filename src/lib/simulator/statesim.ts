@@ -284,4 +284,108 @@ export class TwoDimState {
   }
 }
 
+// A simulator where a subset of the state can be drawn on the surface of a sphere
+export interface SphericalDrawable {
+  num_theta: number;
+  num_phi: number;
+  get_uValues(): Array<number>;
+}
+
+// Represents a function on S^2 in spherical coordinates as an array of values
+// f(θ, φ) where θ ∈ [0, π] and φ ∈ [0, 2π], i.e. θ proceeds along the inner index
+// and φ proceeds along the outer index.
+export class SphericalState {
+  num_theta: number;
+  num_phi: number;
+  constructor(num_theta: number, num_phi: number) {
+    if (num_phi % 2 !== 0) {
+      throw new Error("num_phi must be even");
+    }
+    this.num_theta = num_theta;
+    this.num_phi = num_phi;
+  }
+  index(theta: number, phi: number) {
+    return phi * (this.num_theta + 1) + theta;
+  }
+  // Takes an array of shape (num_theta + 1, num_phi) and downshifts it to shape (num_theta, num_phi)
+  // by averaging adjacent rows.
+  downshift_values(vals: Array<number>): Array<number> {
+    let downshifted_vals = new Array<number>(this.num_theta * this.num_phi);
+    let ind;
+    for (let phi = 0; phi < this.num_phi; phi++) {
+      for (let theta = 0; theta < this.num_theta; theta++) {
+        ind = phi * this.num_theta + theta;
+        let val =
+          ((vals[this.index(theta, phi)] as number) +
+            (vals[this.index(theta + 1, phi)] as number)) /
+          2;
+        downshifted_vals[ind] = val;
+      }
+    }
+    return downshifted_vals;
+  }
+  dtheta() {
+    return Math.PI / this.num_theta;
+  }
+  dphi() {
+    return (2 * Math.PI) / this.num_phi;
+  }
+  get_val(arr: Array<number>, theta: number, phi: number): number {
+    return arr[this.index(theta, phi)] as number;
+  }
+  l_entry(arr: Array<number>, theta: number, phi: number): number {
+    let theta_val = (theta * Math.PI) / this.num_theta;
+    let l_theta: number, l_phi: number;
+    if (theta == 0) {
+      // North pole
+      l_theta = 0;
+      let val = this.get_val(arr, theta, phi);
+      let n = Math.floor(this.num_phi / 2);
+      for (let p = 0; p < n; p++) {
+        l_theta +=
+          this.get_val(arr, 1, p) +
+          this.get_val(arr, 1, (p + n) % this.num_phi) -
+          2 * val;
+      }
+      l_theta *= 1 / n;
+      l_theta *= 1 / this.dtheta() ** 2;
+      // console.log(l_theta, theta, phi);
+      return l_theta;
+    } else if (theta == this.num_theta) {
+      // South pole
+      l_theta = 0;
+      let val = this.get_val(arr, theta, phi);
+      let n = Math.floor(this.num_phi / 2);
+      for (let p = 0; p < n; p++) {
+        l_theta +=
+          this.get_val(arr, this.num_theta - 2, p) +
+          this.get_val(arr, this.num_theta - 2, (p + n) % this.num_phi) -
+          2 * val;
+      }
+      l_theta *= 1 / n;
+      l_theta *= 1 / this.dtheta() ** 2;
+      // console.log(l_theta, theta, phi);
+      return l_theta;
+    } else {
+      // Generic case
+      l_theta =
+        (this.get_val(arr, theta + 1, phi) +
+          this.get_val(arr, theta - 1, phi) -
+          2 * this.get_val(arr, theta, phi)) /
+        this.dtheta() ** 2;
+      l_theta +=
+        (this.get_val(arr, theta + 1, phi) -
+          this.get_val(arr, theta - 1, phi)) /
+        (2 * this.dtheta() * Math.tan(theta_val));
+      l_phi =
+        (this.get_val(arr, theta, (phi + 1) % this.num_phi) +
+          this.get_val(arr, theta, (phi + this.num_phi - 1) % this.num_phi) -
+          2 * this.get_val(arr, theta, phi)) /
+        (this.dphi() * Math.sin(theta_val)) ** 2;
+      // console.log(l_theta, l_phi, theta, phi);
+      return l_theta + l_phi;
+    }
+  }
+}
+
 // TODO Write a Renderer class elsewhere.

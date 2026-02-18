@@ -26,6 +26,7 @@ import {
   vec2_normalize,
   vec2_angle,
   vec2_sum_list,
+  CoordinateAxes2d,
 } from "./lib/base";
 import { Slider, Button } from "./lib/interactive";
 import { SceneViewTranslator } from "./lib/interactive/scene_view_translator";
@@ -444,12 +445,12 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
       let canvas_spring = prepare_canvas(width, height, "point-mass-spring");
       let canvas_graph = prepare_canvas(width, height, "point-mass-graph");
 
-      let xmin = -4;
-      let xmax = 4;
+      let xmin = -6;
+      let xmax = 6;
       let tmin = 0;
-      let tmax = 15;
-      let ymin = -4;
-      let ymax = 4;
+      let tmax = 12;
+      let ymin = -6;
+      let ymax = 6;
       let w = 5;
 
       // Make the simulator with reset condition
@@ -469,29 +470,8 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
         constructor(canvas: HTMLCanvasElement) {
           super(canvas);
           this.set_frame_lims([tmin, tmax], [xmin, xmax]);
-          this.add(
-            "t-axis",
-            new Line([tmin, 0], [tmax, 0])
-              .set_stroke_width(0.05)
-              .set_stroke_color("gray"),
-          );
-          let tick_size = 0.2;
-          for (let i = 1; i <= tmax; i++) {
-            this.add(
-              `t-axis-${i}`,
-              new Line([i, -tick_size / 2], [i, tick_size / 2])
-                .set_stroke_width(0.05)
-                .set_stroke_color("gray"),
-            );
-          }
-          for (let i = -4; i <= 4; i++) {
-            this.add(
-              `y-axis-${i}`,
-              new Line([0, i], [tick_size, i])
-                .set_stroke_width(0.05)
-                .set_stroke_color("gray"),
-            );
-          }
+          let axes = new CoordinateAxes2d([tmin, tmax], [xmin, xmax]);
+          this.add("axes", axes);
           this.add(
             "graph",
             new LineSequence([
@@ -530,18 +510,24 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
         constructor(canvas: HTMLCanvasElement) {
           super(canvas);
           // TODO Set coordinates in terms of scene frame limits
-          let eq_line = new Line([0, -5], [0, 5])
+          let eq_line = new Line([0, ymin], [0, ymax])
             .set_stroke_width(0.05)
             .set_stroke_style("dashed")
             .set_stroke_color("gray");
-          let spring = new LineSpring([-3, 0], [0, 0]).set_stroke_width(0.08);
+          let spring = new LineSpring([xmin * 0.7, 0], [0, 0]).set_stroke_width(
+            0.08,
+          );
           spring.set_eq_length(3.0);
-          let anchor = new Rectangle([-3, 0], 0.15, 4);
+          let anchor = new Rectangle(
+            [xmin * 0.7, 0],
+            0.15,
+            (ymax - ymin) * 0.7,
+          );
 
           // While the scene is paused, the point mass is an interactive element which can be dragged
           // to update the simulator state. While the scene is unpaused, the simulator runs and updates
           // the state of the point mass.
-          let mass = new DraggableRectangle([0, 0], 0.6, 0.6);
+          let mass = new DraggableRectangle([0, 0], 0.8, 0.8);
           mass.draggable_x = true;
           mass.draggable_y = false;
 

@@ -11112,6 +11112,172 @@ var makeDraggable = (Base) => {
     }
   };
 };
+var makeDraggable3D = (Base) => {
+  return class Draggable extends Base {
+    constructor() {
+      super(...arguments);
+      this.draggable_x = true;
+      // Whether the object is set as draggable in the X-direction.
+      this.draggable_y = true;
+      // Whether the object is set as draggable in the Y-direction.
+      this.draggable_z = true;
+      // Whether the object is set as draggable in the Z-direction.
+      this.isClicked = false;
+      // Whether the object is currently being clicked and dragged.
+      this.dragStart = [0, 0];
+      // The starting position of the drag.
+      this.dragEnd = [0, 0];
+      // The ending position of the drag.
+      this.touch_tolerance = 2;
+      // The extra tolerance provided for touch events.
+      this.callbacks = [];
+    }
+    // Callbacks which trigger when the object is dragged.
+    // Adds a callback which triggers when the object is dragged
+    add_callback(callback) {
+      this.callbacks.push(callback);
+    }
+    // Performs all callbacks (called when the object is dragged)
+    do_callbacks() {
+      for (const callback of this.callbacks) {
+        callback();
+      }
+    }
+    // Sets the draggable property of the object
+    set_draggable_x(draggable) {
+      this.draggable_x = draggable;
+    }
+    set_draggable_y(draggable) {
+      this.draggable_y = draggable;
+    }
+    set_draggable_z(draggable) {
+      this.draggable_z = draggable;
+    }
+    // Triggers when the canvas is clicked.
+    click(scene, event) {
+      this.dragStart = vec2_sub(mouse_event_coords(event), [
+        scene.canvas.offsetLeft,
+        scene.canvas.offsetTop
+      ]);
+      if (!scene.is_dragging) {
+        this.isClicked = this.is_inside(
+          scene,
+          scene.c2v(this.dragStart[0], this.dragStart[1])
+        );
+        if (this.isClicked) {
+          scene.click();
+        }
+      }
+    }
+    touch(scene, event) {
+      this.dragStart = [
+        event.touches[0].pageX - scene.canvas.offsetLeft,
+        event.touches[0].pageY - scene.canvas.offsetTop
+      ];
+      if (!scene.is_dragging) {
+        this.isClicked = this.is_almost_inside(
+          scene,
+          scene.c2v(this.dragStart[0], this.dragStart[1]),
+          this.touch_tolerance
+        );
+        if (this.isClicked) {
+          scene.click();
+        }
+      }
+    }
+    // Triggers when the canvas is unclicked.
+    unclick(scene, event) {
+      if (this.isClicked) {
+        scene.unclick();
+      }
+      this.isClicked = false;
+    }
+    untouch(scene, event) {
+      if (this.isClicked) {
+        scene.unclick();
+      }
+      scene.unclick();
+    }
+    // Triggers when the mouse is dragged over the canvas.
+    mouse_drag_cursor(scene, event) {
+      if (this.isClicked) {
+        this.dragEnd = vec2_sub(mouse_event_coords(event), [
+          scene.canvas.offsetLeft,
+          scene.canvas.offsetTop
+        ]);
+        this._drag_cursor(scene);
+      }
+    }
+    touch_drag_cursor(scene, event) {
+      if (this.isClicked) {
+        this.dragEnd = vec2_sub(touch_event_coords(event), [
+          scene.canvas.offsetLeft,
+          scene.canvas.offsetTop
+        ]);
+        this._drag_cursor(scene);
+      }
+    }
+    _drag_cursor(scene) {
+      if (!this.draggable_x && !this.draggable_y && !this.draggable_z) return;
+      let [mx, my, mz] = scene.v2w(
+        vec2_sub(
+          scene.c2s(this.dragEnd[0], this.dragEnd[1]),
+          scene.c2s(this.dragStart[0], this.dragStart[1])
+        )
+      );
+      this.move_by([
+        mx * Number(this.draggable_x),
+        my * Number(this.draggable_y),
+        mz * Number(this.draggable_z)
+      ]);
+      this.dragStart = this.dragEnd;
+      this.do_callbacks();
+      scene.draw();
+    }
+    add(scene) {
+      let self = this;
+      scene.canvas.addEventListener("mousedown", self.click.bind(self, scene));
+      scene.canvas.addEventListener("mouseup", self.unclick.bind(self, scene));
+      scene.canvas.addEventListener(
+        "mousemove",
+        self.mouse_drag_cursor.bind(self, scene)
+      );
+      scene.canvas.addEventListener("touchstart", self.touch.bind(self, scene));
+      scene.canvas.addEventListener("touchend", self.untouch.bind(self, scene));
+      scene.canvas.addEventListener(
+        "touchmove",
+        self.touch_drag_cursor.bind(self, scene)
+      );
+    }
+    remove(scene) {
+      let self = this;
+      scene.canvas.removeEventListener(
+        "mousedown",
+        this.click.bind(self, scene)
+      );
+      scene.canvas.removeEventListener(
+        "mouseup",
+        this.unclick.bind(self, scene)
+      );
+      scene.canvas.removeEventListener(
+        "mousemove",
+        this.mouse_drag_cursor.bind(self, scene)
+      );
+      scene.canvas.removeEventListener(
+        "touchstart",
+        this.click.bind(self, scene)
+      );
+      scene.canvas.removeEventListener(
+        "touchend",
+        this.unclick.bind(self, scene)
+      );
+      scene.canvas.removeEventListener(
+        "touchmove",
+        self.mouse_drag_cursor.bind(self, scene)
+      );
+    }
+  };
+};
 
 // src/lib/base/geometry.ts
 var Dot = class extends FillLikeMObject {
@@ -11217,6 +11383,372 @@ var Rectangle = class extends FillLikeMObject {
   }
 };
 var DraggableRectangle = makeDraggable(Rectangle);
+
+// src/lib/three_d/matvec.ts
+function vec3_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor, x[2] * factor];
+}
+function vec3_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1], x[2] + y[2]];
+}
+function vec3_sub(x, y) {
+  return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
+}
+function get_column(m, i) {
+  return [m[0][i], m[1][i], m[2][i]];
+}
+
+// src/lib/three_d/mobjects.ts
+var ThreeDMObject = class extends MObject {
+  constructor() {
+    super(...arguments);
+    this.blocked_depth_tolerance = 0.01;
+    this.linked_mobjects = [];
+    this.stroke_options = new StrokeOptions();
+  }
+  set_stroke_color(color) {
+    this.stroke_options.set_stroke_color(color);
+    return this;
+  }
+  set_stroke_width(width) {
+    this.stroke_options.set_stroke_width(width);
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_options.set_stroke_style(style);
+    return this;
+  }
+  // Return the depth of the object in the scene. Used for sorting.
+  depth(scene) {
+    return 0;
+  }
+  // Return the depth of the nearest point on the object that lies along the
+  // given ray. Used for relative depth-testing between 3D objects, to determine
+  // how to draw them.
+  depth_at(scene, view_point) {
+    return 0;
+  }
+  // Add a linked Mobject. These are fill-like MObjects in the scene which might obstruct the view
+  // of the curve, and are used internally to _draw() for depth-testing.
+  link_mobject(mobject) {
+    this.linked_mobjects.push(mobject);
+  }
+  // Calculates the minimum depth value among linked FillLike objects at the given 2D scene view point.
+  blocked_depth_at(scene, view_point) {
+    return Math.min(
+      ...this.linked_mobjects.map(
+        (m) => m.depth_at(scene, view_point)
+      )
+    );
+  }
+  // Calculates whether the given 3D scene point is either obstructed by any linked FillLike objects
+  // or is out of scene
+  is_blocked(scene, point) {
+    let vp = scene.camera_view(point);
+    if (vp == null) {
+      return true;
+    } else {
+      return scene.camera.depth(point) > this.blocked_depth_at(scene, vp) + this.blocked_depth_tolerance;
+    }
+  }
+  draw(canvas, scene, simple = false, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    if (this instanceof Line3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
+  }
+  // Simpler drawing method for 3D scenes which doesn't use local depth testing, for speed purposes.
+  _draw_simple(ctx, scene) {
+  }
+};
+var ThreeDLineLikeMObject = class extends ThreeDMObject {
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha /= 2;
+    ctx.setLineDash([5, 5]);
+  }
+  unset_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha *= 2;
+    ctx.setLineDash([]);
+  }
+  draw(canvas, scene, simple = false, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    if (this instanceof Line3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
+  }
+};
+var ThreeDFillLikeMObject = class extends ThreeDMObject {
+  constructor() {
+    super(...arguments);
+    this.fill_options = new FillOptions();
+  }
+  set_fill_color(color) {
+    this.fill_options.fill_color = color;
+    return this;
+  }
+  set_color(color) {
+    this.stroke_options.stroke_color = color;
+    this.fill_options.fill_color = color;
+    return this;
+  }
+  set_fill_alpha(alpha) {
+    this.fill_options.fill_alpha = alpha;
+    return this;
+  }
+  set_fill(fill2) {
+    this.fill_options.fill = fill2;
+    return this;
+  }
+  // Sets the context drawer settings for drawing behind linked FillLike objects.
+  set_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha /= 2;
+  }
+  unset_behind_linked_mobjects(ctx) {
+    ctx.globalAlpha *= 2;
+  }
+  draw(canvas, scene, simple = false, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    this.fill_options.apply_to(ctx);
+    if (this instanceof Dot3D && simple) {
+      this._draw_simple(ctx, scene);
+    } else {
+      this._draw(ctx, scene, args);
+    }
+  }
+};
+var Dot3D = class extends ThreeDFillLikeMObject {
+  constructor(center, radius) {
+    super();
+    this.center = center;
+    this.radius = radius;
+  }
+  get_center() {
+    return this.center;
+  }
+  get_radius() {
+    return this.radius;
+  }
+  // Tests whether a chosen view point lies inside the shape. Used for click-detection.
+  is_inside(scene, view_point) {
+    let center_view = scene.camera_view(this.center);
+    let edge_view = scene.camera_view(
+      vec3_sum(this.center, [0, 0, this.radius])
+    );
+    if (center_view == null || edge_view == null) {
+      return false;
+    } else {
+      return vec2_norm(vec2_sub(view_point, center_view)) < vec2_norm(vec2_sub(edge_view, center_view));
+    }
+  }
+  // Tests whether a chosen vector lies within an enlarged version of the dot.
+  // Used for touch-detection on mobile devices, and for use by small children.
+  is_almost_inside(scene, view_point, tolerance) {
+    let center_view = scene.camera_view(this.center);
+    let edge_view = scene.camera_view(
+      vec3_sum(this.center, [0, 0, this.radius])
+    );
+    if (center_view == null || edge_view == null) {
+      return false;
+    } else {
+      return vec2_norm(vec2_sub(view_point, center_view)) < vec2_norm(vec2_sub(edge_view, center_view)) * tolerance;
+    }
+  }
+  depth(scene) {
+    return scene.camera.depth(this.center);
+  }
+  depth_at(scene, view_point) {
+    if (scene.mode == "perspective") {
+      return 0;
+    } else if (scene.mode == "orthographic") {
+      let dist = vec2_norm(
+        vec2_sub(view_point, scene.camera.orthographic_view(this.center))
+      );
+      if (dist > this.radius) {
+        return Infinity;
+      } else {
+        let depth_adjustment = Math.sqrt(
+          Math.max(0, this.radius ** 2 - dist ** 2)
+        );
+        return scene.camera.depth(this.center) - depth_adjustment;
+      }
+    }
+    return 0;
+  }
+  move_to(new_center) {
+    this.center = new_center;
+  }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
+    this.center[2] += p[2];
+  }
+  _draw_simple(ctx, scene) {
+    let p = scene.camera_view(this.center);
+    let pr = scene.camera_view(
+      vec3_sum(
+        this.center,
+        vec3_scale(get_column(scene.camera.get_camera_frame(), 0), this.radius)
+      )
+    );
+    let state;
+    if (p != null && pr != null) {
+      let [cx, cy] = scene.v2c(p);
+      let [rx, ry] = scene.v2c(pr);
+      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
+      ctx.beginPath();
+      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
+      ctx.stroke();
+      if (this.fill_options.fill) {
+        ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;
+        ctx.fill();
+        ctx.globalAlpha = ctx.globalAlpha / this.fill_options.fill_alpha;
+      }
+    }
+  }
+  _draw(ctx, scene) {
+    let p = scene.camera_view(this.center);
+    let pr = scene.camera_view(
+      vec3_sum(
+        this.center,
+        vec3_scale(get_column(scene.camera.get_camera_frame(), 0), this.radius)
+      )
+    );
+    let state;
+    if (p != null && pr != null) {
+      let depth = scene.camera.depth(this.center);
+      if (depth > this.blocked_depth_at(scene, p) + this.blocked_depth_tolerance) {
+        state = "blocked";
+      } else {
+        state = "unblocked";
+      }
+      let [cx, cy] = scene.v2c(p);
+      let [rx, ry] = scene.v2c(pr);
+      let rc = vec2_norm(vec2_sub([rx, ry], [cx, cy]));
+      ctx.beginPath();
+      if (state == "blocked") {
+        this.set_behind_linked_mobjects(ctx);
+      }
+      ctx.arc(cx, cy, rc, 0, 2 * Math.PI);
+      ctx.stroke();
+      if (this.fill_options.fill) {
+        ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;
+        ctx.fill();
+        ctx.globalAlpha = ctx.globalAlpha / this.fill_options.fill_alpha;
+      }
+      if (state == "blocked") {
+        this.unset_behind_linked_mobjects(ctx);
+      }
+    }
+  }
+  // toDraggableDot3D(): DraggableDot3D {
+  //   return new DraggableDot3D(this.center, this.radius);
+  // }
+  // toDraggableDotZ3D(): DraggableDotZ3D {
+  //   return new DraggableDotZ3D(this.center, this.radius);
+  // }
+};
+var DraggableDot3D = makeDraggable3D(Dot3D);
+var Line3D = class extends ThreeDLineLikeMObject {
+  constructor(start, end) {
+    super();
+    this.start = start;
+    this.end = end;
+  }
+  // Moves the start and end points
+  move_start(v) {
+    this.start = v;
+  }
+  move_end(v) {
+    this.end = v;
+  }
+  depth(scene) {
+    return scene.camera.depth(vec3_scale(vec3_sum(this.end, this.start), 0.5));
+  }
+  _draw(ctx, scene) {
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
+    let start_blocked = this.is_blocked(scene, this.start);
+    let end_blocked = this.is_blocked(scene, this.end);
+    if (!start_blocked && !end_blocked) {
+      ctx.beginPath();
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+    } else if (start_blocked && end_blocked) {
+      ctx.beginPath();
+      this.set_behind_linked_mobjects(ctx);
+      ctx.moveTo(start_x, start_y);
+      ctx.lineTo(end_x, end_y);
+      ctx.stroke();
+      this.unset_behind_linked_mobjects(ctx);
+    } else {
+      let n = 1;
+      let v = vec3_sub(this.end, this.start);
+      let p = vec3_scale(vec3_sum(this.start, this.end), 0.5);
+      while (n < 6) {
+        n += 1;
+        if (this.is_blocked(scene, p) == start_blocked) {
+          p = vec3_sum(p, vec3_scale(v, 1 / 2 ** n));
+        } else {
+          p = vec3_sub(p, vec3_scale(v, 1 / 2 ** n));
+        }
+      }
+      let [p_x, p_y] = scene.v2c(scene.camera_view(p));
+      if (start_blocked) {
+        ctx.beginPath();
+        ctx.moveTo(start_x, start_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(end_x, end_y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(end_x, end_y);
+        this.set_behind_linked_mobjects(ctx);
+        ctx.lineTo(p_x, p_y);
+        ctx.stroke();
+        ctx.beginPath();
+        this.unset_behind_linked_mobjects(ctx);
+        ctx.moveTo(p_x, p_y);
+        ctx.lineTo(start_x, start_y);
+        ctx.stroke();
+      }
+    }
+  }
+  // Simpler drawing routine which doesn't use local depth testing or test against FillLike objects
+  _draw_simple(ctx, scene) {
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [start_x, start_y] = scene.v2c(s);
+    let [end_x, end_y] = scene.v2c(e);
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
+  }
+};
 
 // src/lib/interactive/slider.ts
 function Slider(container, callback, kwargs) {
