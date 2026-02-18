@@ -4,7 +4,7 @@
         <meta charset="UTF-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>wave equation demo</title>
+        <title>heat equation demo</title>
         <base href="." />
         <script>
             MathJax = {
@@ -17,8 +17,12 @@
             defer
             src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
         ></script>
-        <!--<script type="module" src="wavesim.js"></script>-->
+        <script type="module" src="heatsim_scene.js"></script>
         <style>
+            .row {
+                display: flex;
+                align-items: center; /* Centers vertically */
+            }
             .applet-container {
                 display: flex;
                 justify-content: center; /* Centers horizontally */
@@ -34,7 +38,7 @@
                 display: flex;
                 justify-content: center; /* Centers horizontally */
                 align-items: center; /* Centers vertically */
-                width: 40%;
+                width: 50%;
                 height: 25px;
                 margin: 20px 0;
                 margin-left: auto;
@@ -46,21 +50,72 @@
     <body>
         <div style="text-align: center; margin: 10px auto">
             <p>
-                Simulation of heat flow. First just conduction, then also
-                convection.
+                Simulation of heat flow. Both in 2D, and on the surface of a
+                sphere.
             </p>
             <br />
-            <div class="applet-container" id="scene-container"></div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="heatsim-2d"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="heatsim-sphere"
+                ></div>
+            </div>
             <br />
-            <div class="slider" id="slider-container-1"></div>
-            <br />
-            <div class="slider" id="slider-container-2"></div>
-            <br />
-            <div class="button" id="button-container-1"></div>
-            <br />
-            <div class="button" id="button-container-2"></div>
-            <br />
-            <div class="button" id="button-container-3"></div>
+
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="heatsim-2d-button-1"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="heatsim-sphere-button-1"
+                ></div>
+            </div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="heatsim-2d-button-2"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="heatsim-sphere-button-2"
+                ></div>
+            </div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="slider"
+                    id="heatsim-2d-slider-1"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="slider"
+                    id="heatsim-sphere-slider-1"
+                ></div>
+            </div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="slider"
+                    id="heatsim-2d-slider-2"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="slider"
+                    id="heatsim-sphere-slider-2"
+                ></div>
+            </div>
         </div>
         <a href="./index.html">back to main page</a>
     </body>

@@ -10760,6 +10760,11 @@ var MObjectGroup = class extends MObject {
   remove_mobj(name) {
     delete this.children[name];
   }
+  clear() {
+    Object.keys(this.children).forEach((key) => {
+      delete this.children[key];
+    });
+  }
   get_mobj(name) {
     if (!this.children[name]) {
       throw new Error(`Child with name ${name} not found`);
@@ -13252,7 +13257,7 @@ var InteractiveHandler = class {
     }
   }
   // Starts animation
-  play(until) {
+  async play(until) {
     if (this.paused) {
       this.end_time = until;
       return;

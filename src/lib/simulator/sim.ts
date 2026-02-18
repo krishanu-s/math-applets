@@ -10,6 +10,7 @@
 import { Scene, MObject } from "../base";
 import { Button } from "../interactive";
 import { ThreeDScene } from "../three_d/scene.js";
+import { delay } from "../base";
 
 // A generic simulator which can be used to simulate a system.
 export abstract class Simulator {
@@ -273,7 +274,7 @@ export class InteractiveHandler {
     }
   }
   // Starts animation
-  play(until: number | undefined) {
+  async play(until: number | undefined) {
     // If paused, record the end time and stop the loop
     if (this.paused) {
       this.end_time = until;

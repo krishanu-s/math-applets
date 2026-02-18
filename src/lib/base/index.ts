@@ -23,6 +23,7 @@ export {
   linspace,
   funspace,
   gaussianRandom,
+  gaussian_normal_pdf,
   delay,
   StrokeOptions,
   FillOptions,

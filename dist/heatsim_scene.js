@@ -10666,6 +10666,12 @@ var DEFAULT_STROKE_WIDTH = 0.08;
 var DEFAULT_FILL_COLOR = "black";
 
 // src/lib/base/base.ts
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-x));
+}
+function gaussian_normal_pdf(mean, stdev, x) {
+  return Math.exp(-Math.pow(x - mean, 2) / (2 * Math.pow(stdev, 2))) / (stdev * Math.sqrt(2 * Math.PI));
+}
 var StrokeOptions = class {
   constructor() {
     this.stroke_width = DEFAULT_STROKE_WIDTH;
@@ -10736,89 +10742,6 @@ var MObject = class {
     this._draw(ctx, scene, args);
   }
   _draw(ctx, scene, args) {
-  }
-};
-var MObjectGroup = class extends MObject {
-  constructor() {
-    super(...arguments);
-    this.children = {};
-  }
-  add_mobj(name, child) {
-    this.children[name] = child;
-  }
-  remove_mobj(name) {
-    delete this.children[name];
-  }
-  clear() {
-    Object.keys(this.children).forEach((key) => {
-      delete this.children[key];
-    });
-  }
-  get_mobj(name) {
-    if (!this.children[name]) {
-      throw new Error(`Child with name ${name} not found`);
-    }
-    return this.children[name];
-  }
-  draw(canvas, scene, args) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
-    Object.values(this.children).forEach(
-      (child) => child.draw(canvas, scene, args)
-    );
-  }
-};
-var LineLikeMObject = class extends MObject {
-  constructor() {
-    super(...arguments);
-    this.stroke_options = new StrokeOptions();
-  }
-  set_stroke_color(color) {
-    this.stroke_options.set_stroke_color(color);
-    return this;
-  }
-  set_stroke_width(width) {
-    this.stroke_options.set_stroke_width(width);
-    return this;
-  }
-  set_stroke_style(style) {
-    this.stroke_options.set_stroke_style(style);
-    return this;
-  }
-  draw(canvas, scene, args) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
-    this.stroke_options.apply_to(ctx, scene);
-    this._draw(ctx, scene, args);
-  }
-};
-var LineLikeMObjectGroup = class extends MObjectGroup {
-  constructor() {
-    super(...arguments);
-    this.stroke_options = new StrokeOptions();
-  }
-  set_stroke_color(color) {
-    this.stroke_options.set_stroke_color(color);
-    return this;
-  }
-  set_stroke_width(width) {
-    this.stroke_options.set_stroke_width(width);
-    return this;
-  }
-  set_stroke_style(style) {
-    this.stroke_options.set_stroke_style(style);
-    return this;
-  }
-  draw(canvas, scene, args) {
-    let ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
-    this.stroke_options.apply_to(ctx, scene);
-    Object.values(this.children).forEach((child) => {
-      child._draw(ctx, scene, args);
-    });
   }
 };
 var FillLikeMObject = class extends MObject {
@@ -11058,6 +10981,19 @@ function mouse_event_coords(event) {
 }
 function touch_event_coords(event) {
   return [event.touches[0].pageX, event.touches[0].pageY];
+}
+
+// src/lib/base/color.ts
+function colorval_to_rgba(color) {
+  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
+}
+function rb_colormap(z) {
+  const gray = sigmoid(z);
+  if (gray < 0.5) {
+    return [512 * gray, 512 * gray, 255, 255];
+  } else {
+    return [255, 512 * (1 - gray), 512 * (1 - gray), 255];
+  }
 }
 
 // src/lib/interactive/draggable.ts
@@ -11493,111 +11429,7 @@ var Rectangle = class extends FillLikeMObject {
     ctx.fill();
   }
 };
-var Polygon = class extends FillLikeMObject {
-  constructor(points) {
-    super();
-    this.points = points;
-  }
-  add_point(point) {
-    this.points.push(point);
-  }
-  remove_point(index) {
-    this.points.splice(index, 1);
-  }
-  move_point(i, new_point) {
-    this.points[i] = new_point;
-  }
-  _draw(ctx, scene) {
-    let [x, y] = scene.v2c(this.points[0]);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    for (let i = 1; i < this.points.length; i++) {
-      [x, y] = scene.v2c(this.points[i]);
-      ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.stroke();
-    if (this.fill_options.fill) {
-      ctx.globalAlpha *= this.fill_options.fill_alpha;
-      ctx.fill();
-      ctx.globalAlpha /= this.fill_options.fill_alpha;
-    }
-  }
-};
 var DraggableRectangle = makeDraggable(Rectangle);
-var Line = class extends LineLikeMObject {
-  constructor(start, end) {
-    super();
-    this.start = start;
-    this.end = end;
-  }
-  // Moves the start and end points
-  move_start(p) {
-    this.start = p;
-  }
-  move_end(p) {
-    this.end = p;
-  }
-  length() {
-    return vec2_norm(vec2_sub(this.start, this.end));
-  }
-  // Draws on the canvas
-  _draw(ctx, scene) {
-    let [start_x, start_y] = scene.v2c(this.start);
-    let [end_x, end_y] = scene.v2c(this.end);
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(end_x, end_y);
-    ctx.stroke();
-  }
-};
-var TwoHeadedArrow = class extends Line {
-  constructor() {
-    super(...arguments);
-    this.arrow_size = 0.3;
-  }
-  set_arrow_size(size2) {
-    this.arrow_size = size2;
-  }
-  // Draws on the canvas
-  _draw(ctx, scene) {
-    super._draw(ctx, scene);
-    ctx.fillStyle = this.stroke_options.stroke_color;
-    let [end_x, end_y] = scene.v2c(this.end);
-    let [start_x, start_y] = scene.v2c(this.start);
-    let v;
-    let ax;
-    let ay;
-    let bx;
-    let by;
-    v = vec2_scale(
-      vec2_sub(this.start, this.end),
-      this.arrow_size / this.length()
-    );
-    [ax, ay] = scene.v2c(vec2_sum(this.end, vec2_rot(v, Math.PI / 6)));
-    [bx, by] = scene.v2c(vec2_sum(this.end, vec2_rot(v, -Math.PI / 6)));
-    ctx.beginPath();
-    ctx.moveTo(end_x, end_y);
-    ctx.lineTo(ax, ay);
-    ctx.lineTo(bx, by);
-    ctx.lineTo(end_x, end_y);
-    ctx.closePath();
-    ctx.fill();
-    v = vec2_scale(
-      vec2_sub(this.end, this.start),
-      this.arrow_size / this.length()
-    );
-    [ax, ay] = scene.v2c(vec2_sum(this.start, vec2_rot(v, Math.PI / 6)));
-    [bx, by] = scene.v2c(vec2_sum(this.start, vec2_rot(v, -Math.PI / 6)));
-    ctx.beginPath();
-    ctx.moveTo(start_x, start_y);
-    ctx.lineTo(ax, ay);
-    ctx.lineTo(bx, by);
-    ctx.lineTo(start_x, start_y);
-    ctx.closePath();
-    ctx.fill();
-  }
-};
 
 // src/lib/three_d/matvec.ts
 function vec3_norm(x) {
@@ -11615,6 +11447,9 @@ function vec3_scale(x, factor) {
 }
 function vec3_sum(x, y) {
   return [x[0] + y[0], x[1] + y[1], x[2] + y[2]];
+}
+function vec3_sum_list(xs) {
+  return xs.reduce((acc, x) => vec3_sum(acc, x), [0, 0, 0]);
 }
 function vec3_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
@@ -12205,200 +12040,6 @@ var TickOptions = class {
     Object.assign(this, options);
   }
 };
-var GridOptions = class {
-  constructor() {
-    this.distance = 1;
-    this.alpha = 0.2;
-    this.stroke_width = 0.05;
-  }
-  update(options) {
-    Object.assign(this, options);
-  }
-};
-var Axis = class extends MObjectGroup {
-  constructor(lims, type) {
-    super();
-    this.axis_options = new AxisOptions();
-    this.tick_options = new TickOptions();
-    this.lims = lims;
-    this.type = type;
-    this._make_axis();
-    this._make_ticks();
-  }
-  _make_axis() {
-    let [cmin, cmax] = this.lims;
-    let axis;
-    if (this.type === "x") {
-      axis = new TwoHeadedArrow([cmin, 0], [cmax, 0]);
-    } else {
-      axis = new TwoHeadedArrow([0, cmin], [0, cmax]);
-    }
-    axis.set_stroke_width(this.axis_options.stroke_width);
-    axis.set_arrow_size(this.axis_options.arrow_size);
-    this.add_mobj("axis", axis);
-  }
-  _make_ticks() {
-    let [cmin, cmax] = this.lims;
-    let ticks = new LineLikeMObjectGroup().set_alpha(this.tick_options.alpha).set_stroke_width(this.tick_options.stroke_width);
-    for (let c = this.tick_options.distance * Math.floor(cmin / this.tick_options.distance + 1); c < this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance); c += this.tick_options.distance) {
-      if (this.type == "x") {
-        ticks.add_mobj(
-          `tick-(${c})`,
-          new Line(
-            [c, -this.tick_options.size / 2],
-            [c, this.tick_options.size / 2]
-          )
-        );
-      } else {
-        ticks.add_mobj(
-          `tick-(${c})`,
-          new Line(
-            [-this.tick_options.size / 2, c],
-            [this.tick_options.size / 2, c]
-          )
-        );
-      }
-    }
-    this.add_mobj("ticks", ticks);
-  }
-  axis() {
-    return this.get_mobj("axis");
-  }
-  ticks() {
-    return this.get_mobj("ticks");
-  }
-  set_lims(lims) {
-    this.lims = lims;
-    this.remove_mobj("axis");
-    this.remove_mobj("ticks");
-    this._make_axis();
-    this._make_ticks();
-  }
-  set_axis_options(options) {
-    this.axis_options.update(options);
-    this.remove_mobj("axis");
-    this._make_axis();
-  }
-  set_tick_options(options) {
-    this.tick_options.update(options);
-    this.remove_mobj("ticks");
-    this._make_ticks();
-  }
-  set_tick_distance(distance) {
-    this.tick_options.distance = distance;
-    this.set_tick_options(this.tick_options);
-  }
-  set_tick_size(size2) {
-    this.tick_options.size = size2;
-    this.set_tick_options(this.tick_options);
-  }
-};
-var CoordinateAxes2d = class extends MObjectGroup {
-  constructor(xlims, ylims) {
-    super();
-    this.axis_options = new AxisOptions();
-    this.tick_options = new TickOptions();
-    this.grid_options = new GridOptions();
-    this.xlims = xlims;
-    this.ylims = ylims;
-    this._make_axes();
-    this._make_x_grid_lines();
-    this._make_y_grid_lines();
-  }
-  _make_axes() {
-    let x_axis = new Axis(this.xlims, "x");
-    x_axis.set_axis_options(this.axis_options);
-    x_axis.set_tick_options(this.tick_options);
-    this.add_mobj("x-axis", x_axis);
-    let y_axis = new Axis(this.ylims, "y");
-    y_axis.set_axis_options(this.axis_options);
-    y_axis.set_tick_options(this.tick_options);
-    this.add_mobj("y-axis", y_axis);
-  }
-  _make_x_grid_lines() {
-    let [xmin, xmax] = this.xlims;
-    let [ymin, ymax] = this.ylims;
-    let x_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
-    for (let x = this.grid_options.distance * Math.floor(xmin / this.grid_options.distance + 1); x < this.grid_options.distance * Math.ceil(xmax / this.grid_options.distance); x += this.grid_options.distance) {
-      x_grid.add_mobj(`line-(${x})`, new Line([x, ymin], [x, ymax]));
-    }
-    this.add_mobj("x-grid", x_grid);
-  }
-  _make_y_grid_lines() {
-    let [xmin, xmax] = this.xlims;
-    let [ymin, ymax] = this.ylims;
-    let y_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
-    for (let y = this.grid_options.distance * Math.floor(ymin / this.grid_options.distance + 1); y < this.grid_options.distance * Math.ceil(ymax / this.grid_options.distance); y += this.grid_options.distance) {
-      y_grid.add_mobj(`line-(${y})`, new Line([xmin, y], [xmax, y]));
-    }
-    this.add_mobj("y-grid", y_grid);
-  }
-  x_axis() {
-    return this.get_mobj("x-axis");
-  }
-  y_axis() {
-    return this.get_mobj("y-axis");
-  }
-  x_grid() {
-    return this.get_mobj("x-grid");
-  }
-  y_grid() {
-    return this.get_mobj("y-grid");
-  }
-  set_axis_options(options) {
-    this.axis_options.update(options);
-    this.remove_mobj("x-axis");
-    this.remove_mobj("y-axis");
-    this._make_axes();
-  }
-  set_axis_stroke_width(width) {
-    this.axis_options.stroke_width = width;
-    this.set_axis_options(this.axis_options);
-  }
-  set_tick_options(options) {
-    this.tick_options.update(options);
-    this.remove_mobj("x-axis");
-    this.remove_mobj("y-axis");
-    this._make_axes();
-  }
-  set_tick_size(size2) {
-    this.tick_options.size = size2;
-    this.set_tick_options(this.tick_options);
-  }
-  set_tick_distance(distance) {
-    this.tick_options.distance = distance;
-    this.set_tick_options(this.tick_options);
-  }
-  set_grid_options(options) {
-    this.grid_options.update(options);
-    this.remove_mobj("x-grid");
-    this.remove_mobj("y-grid");
-    this._make_x_grid_lines();
-    this._make_y_grid_lines();
-  }
-  set_grid_distance(distance) {
-    this.grid_options.distance = distance;
-    this.set_grid_options(this.grid_options);
-  }
-  set_grid_alpha(alpha) {
-    this.grid_options.alpha = alpha;
-    this.set_grid_options(this.grid_options);
-  }
-  set_grid_stroke_width(width) {
-    this.grid_options.stroke_width = width;
-    this.set_grid_options(this.grid_options);
-  }
-  set_lims(xlims, ylims) {
-    this.xlims = xlims;
-    this.ylims = ylims;
-    this.x_axis().set_lims(xlims);
-    this.y_axis().set_lims(ylims);
-    this.remove_mobj("x-grid");
-    this.remove_mobj("y-grid");
-    this._make_x_grid_lines();
-    this._make_y_grid_lines();
-  }
-};
 var Axis3D = class extends ThreeDMObjectGroup {
   constructor(lims, type) {
     super();
@@ -12545,308 +12186,108 @@ var CoordinateAxes3d = class extends ThreeDMObjectGroup {
     this.set_tick_options(this.tick_options);
   }
 };
-var Integral = class extends Polygon {
-  constructor(f, left_endpoint, right_endpoint, num_points) {
-    const points = [];
-    for (let i = 0; i <= num_points; i++) {
-      const t = left_endpoint + (right_endpoint - left_endpoint) * i / num_points;
-      points.push([t, f(t)]);
-    }
-    points.push([right_endpoint, 0]);
-    points.push([left_endpoint, 0]);
-    super(points);
-    this.f = f;
-    this.left_endpoint = left_endpoint;
-    this.right_endpoint = right_endpoint;
-    this.num_points = num_points;
-  }
-  _recompute_points() {
-    this.points = [];
-    for (let i = 0; i <= this.num_points; i++) {
-      const t = this.left_endpoint + (this.right_endpoint - this.left_endpoint) * i / this.num_points;
-      this.points.push([t, this.f(t)]);
-    }
-    this.points.push([this.right_endpoint, 0]);
-    this.points.push([this.left_endpoint, 0]);
-  }
-  set_left_endpoint(left_endpoint) {
-    this.left_endpoint = left_endpoint;
-    this._recompute_points();
-  }
-  set_right_endpoint(right_endpoint) {
-    this.right_endpoint = right_endpoint;
-    this._recompute_points();
-  }
-  set_num_points(num_points) {
-    this.num_points = num_points;
-    this._recompute_points();
-  }
-  set_func(f) {
-    this.f = f;
-    this._recompute_points();
-  }
-};
 
-// src/lib/base/bezier.ts
-var np = __toESM(require_numpy_ts_node(), 1);
-var SmoothOpenPathBezierHandleCalculator = class {
-  constructor(n) {
-    this.n = n;
-    let below_diag_list = [];
-    for (let i = 0; i < n - 2; i++) {
-      below_diag_list.push(1);
-    }
-    below_diag_list.push(2);
-    let below_diag = np.array(below_diag_list);
-    let diag_list = [2];
-    for (let i = 0; i < n - 2; i++) {
-      diag_list.push(4);
-    }
-    diag_list.push(7);
-    let diag2 = np.array(diag_list);
-    let above_diag_list = [];
-    for (let i = 0; i < n - 1; i++) {
-      above_diag_list.push(1);
-    }
-    let above_diag = np.array(above_diag_list);
-    this.result = np.zeros([n, n + 1], "float32");
-    this.result.set([0, 0], 1);
-    this.result.set([0, 1], 2);
-    for (let i = 1; i < n - 1; i++) {
-      this.result.set([i, i], 4);
-      this.result.set([i, i + 1], 2);
-    }
-    this.result.set([n - 1, n - 1], 8);
-    this.result.set([n - 1, n], 1);
-    for (let i = 0; i < n - 1; i++) {
-      let scale = below_diag.get([i]) / diag2.get([i]);
-      diag2.set(
-        [i + 1],
-        diag2.get([i + 1]) - above_diag.get([i]) * scale
-      );
-      below_diag.set(
-        [i],
-        below_diag.get([i]) - diag2.get([i]) * scale
-      );
-      for (let j = 0; j < n + 1; j++) {
-        this.result.set(
-          [i + 1, j],
-          this.result.get([i + 1, j]) - this.result.get([i, j]) * scale
-        );
-      }
-    }
-    for (let i = n - 2; i >= 0; i--) {
-      let scale = above_diag.get([i]) / diag2.get([i + 1]);
-      for (let j = 0; j < n + 1; j++) {
-        this.result.set(
-          [i, j],
-          this.result.get([i, j]) - this.result.get([i + 1, j]) * scale
-        );
-      }
-    }
-    for (let i = 0; i < n; i++) {
-      let scale = 1 / diag2.get([i]);
-      for (let j = 0; j < n + 1; j++) {
-        this.result.set([i, j], this.result.get([i, j]) * scale);
-      }
-    }
-  }
-  // Given a sequence of n+1 anchors, produces the corresponding bezier handles
-  get_bezier_handles(a) {
-    if (a.shape[0] !== this.n + 1) {
-      throw new Error("Invalid anchor array shape");
-    }
-    if (a.shape[1] !== 2) {
-      throw new Error("Invalid anchor array shape");
-    }
-    let h1 = this.result.matmul(a);
-    let h2 = np.zeros([this.n, 2]);
-    for (let i = 0; i < this.n - 1; i++) {
-      h2.set(
-        [i, 0],
-        2 * a.get([i + 1, 0]) - h1.get([i + 1, 0])
-      );
-      h2.set(
-        [i, 1],
-        2 * a.get([i + 1, 1]) - h1.get([i + 1, 1])
-      );
-    }
-    h2.set(
-      [this.n - 1, 0],
-      0.5 * (a.get([this.n, 0]) + h1.get([this.n - 1, 0]))
-    );
-    h2.set(
-      [this.n - 1, 1],
-      0.5 * (a.get([this.n, 1]) + h1.get([this.n - 1, 1]))
-    );
-    return [h1, h2];
-  }
-};
-var BezierSpline = class extends LineLikeMObject {
-  constructor(num_steps) {
+// src/lib/base/heatmap.ts
+var HeatMap = class extends MObject {
+  constructor(width, height, min_val, max_val, valArray) {
     super();
-    this.num_steps = num_steps;
-    this.solver = new SmoothOpenPathBezierHandleCalculator(num_steps);
-    this.anchors = [];
-    for (let i = 0; i < num_steps + 1; i++) {
-      this.anchors.push([0, 0]);
+    this.width = width;
+    this.height = height;
+    this.min_val = min_val;
+    this.max_val = max_val;
+    this.valArray = valArray;
+    this.colorMap = rb_colormap;
+  }
+  set_color_map(colorMap) {
+    this.colorMap = colorMap;
+  }
+  // Gets/sets values
+  set_vals(vals) {
+    this.valArray = vals;
+  }
+  get_vals() {
+    return this.valArray;
+  }
+  // Draws on the canvas
+  _draw(ctx, scene, imageData) {
+    let data = imageData.data;
+    for (let i = 0; i < this.width * this.height; i++) {
+      const px_val = this.valArray[i];
+      const idx = i * 4;
+      [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] = this.colorMap(px_val);
     }
-  }
-  set_anchors(new_anchors) {
-    this.anchors = new_anchors;
-  }
-  set_anchor(index, new_anchor) {
-    this.anchors[index] = new_anchor;
-  }
-  get_anchor(index) {
-    return this.anchors[index];
-  }
-  _draw(ctx, scene) {
-    let a_x, a_y, a;
-    a = this.get_anchor(0);
-    [a_x, a_y] = scene.v2c(a);
-    ctx.beginPath();
-    ctx.moveTo(a_x, a_y);
-    let [handles_1, handles_2] = this.solver.get_bezier_handles(
-      np.array(this.anchors)
-    );
-    let h1_x, h1_y, h2_x, h2_y;
-    for (let i = 0; i < this.num_steps; i++) {
-      [h1_x, h1_y] = scene.v2c([
-        handles_1.get([i, 0]),
-        handles_1.get([i, 1])
-      ]);
-      [h2_x, h2_y] = scene.v2c([
-        handles_2.get([i, 0]),
-        handles_2.get([i, 1])
-      ]);
-      a = this.get_anchor(i + 1);
-      [a_x, a_y] = scene.v2c(a);
-      ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
-      ctx.stroke();
-    }
+    ctx.putImageData(imageData, 0, 0);
   }
 };
 
-// src/lib/interactive/arcball.ts
-var Arcball = class {
-  constructor(scene) {
-    this.drag = false;
-    this.dragStart = [0, 0];
-    this.dragEnd = [0, 0];
-    this.dragDiff = [0, 0];
-    this.mode = "Translate";
-    this.scene = scene;
+// src/lib/interactive/button.ts
+function Button(container, callback) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "interactiveButton";
+  button.style.padding = "15px";
+  container.appendChild(button);
+  button.addEventListener("click", (event) => {
+    callback();
+    button.style.transform = "scale(0.95)";
+    setTimeout(() => {
+      button.style.transform = "scale(1)";
+    }, 100);
+  });
+  return button;
+}
+
+// src/lib/interactive/slider.ts
+function Slider(container, callback, kwargs) {
+  let slider = document.createElement("input");
+  slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  slider.width = 200;
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
   }
-  set_mode(mode) {
-    this.mode = mode;
+  let min2 = kwargs.min;
+  if (min2 == void 0) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min2}`;
   }
-  switch_mode() {
-    this.mode = this.mode == "Translate" ? "Rotate" : "Translate";
+  let max2 = kwargs.max;
+  if (max2 == void 0) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max2}`;
   }
-  click(event) {
-    this.dragStart = [
-      event.pageX - this.scene.canvas.offsetLeft,
-      event.pageY - this.scene.canvas.offsetTop
-    ];
-    if (!this.scene.is_dragging) {
-      this.drag = true;
-      this.scene.click();
-    }
+  let step = kwargs.step;
+  if (step == void 0) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
   }
-  touch(event) {
-    this.dragStart = [
-      event.touches[0].pageX - this.scene.canvas.offsetLeft,
-      event.touches[0].pageY - this.scene.canvas.offsetTop
-    ];
-    this.drag = true;
+  container.appendChild(slider);
+  let valueDisplay = document.createElement("span");
+  valueDisplay.classList.add("value-display");
+  valueDisplay.id = "sliderValue";
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+  container.appendChild(valueDisplay);
+  function updateDisplay() {
+    callback(slider.value);
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+    updateSliderColor(slider);
   }
-  unclick(event) {
-    this.drag = false;
-    this.scene.unclick();
+  function updateSliderColor(sliderElement) {
+    const value = 100 * parseFloat(sliderElement.value);
+    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
   }
-  untouch(event) {
-    this.drag = false;
-  }
-  mouse_drag_cursor(event) {
-    if (this.drag) {
-      this.dragEnd = [
-        event.pageX - this.scene.canvas.offsetLeft,
-        event.pageY - this.scene.canvas.offsetTop
-      ];
-      this._drag_cursor();
-    }
-  }
-  touch_drag_cursor(event) {
-    if (this.drag) {
-      this.dragEnd = [
-        event.touches[0].pageX - this.scene.canvas.offsetLeft,
-        event.touches[0].pageY - this.scene.canvas.offsetTop
-      ];
-      this._drag_cursor();
-    }
-  }
-  // Updates the scene to account for a dragged cursor position
-  _drag_cursor() {
-    let dragDiff = vec2_sub(
-      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
-      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
-    );
-    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
-      return;
-    }
-    if (this.mode == "Translate") {
-      this.scene.camera.move_by(
-        matmul_vec(this.scene.camera.get_camera_frame(), [
-          dragDiff[0],
-          dragDiff[1],
-          0
-        ])
-      );
-    } else if (this.mode == "Rotate") {
-      let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
-      let rot_axis = matmul_vec(this.scene.camera.get_camera_frame(), [
-        v[0],
-        v[1],
-        0
-      ]);
-      let n = vec2_norm(dragDiff);
-      this.scene.camera.rot_pos_and_view(rot_axis, n);
-    }
-    this.scene.draw();
-    this.dragStart = this.dragEnd;
-  }
-  add() {
-    let self = this;
-    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
-    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
-    this.scene.canvas.addEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self)
-    );
-    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
-    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
-    this.scene.canvas.addEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self)
-    );
-  }
-  remove() {
-    let self = this;
-    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
-    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
-    this.scene.canvas.removeEventListener(
-      "mousemove",
-      self.mouse_drag_cursor.bind(self)
-    );
-    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
-    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
-    this.scene.canvas.removeEventListener(
-      "touchmove",
-      self.touch_drag_cursor.bind(self)
-    );
-  }
-};
+  updateDisplay();
+  slider.addEventListener("input", updateDisplay);
+  return slider;
+}
 
 // src/lib/three_d/scene.ts
 var Camera3D = class {
@@ -13017,77 +12458,485 @@ var ThreeDScene = class extends Scene {
   }
 };
 
-// src/lib/interactive/slider.ts
-function Slider(container, callback, kwargs) {
-  let slider = document.createElement("input");
-  slider.type = "range";
-  slider.value = kwargs.initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
-  slider.width = 200;
-  let name = kwargs.name;
-  if (name == void 0) {
-    slider.name = "Value";
-  } else {
-    slider.name = name;
+// src/lib/simulator/sim.ts
+var Simulator = class {
+  // Length of time in each simulation step
+  constructor(dt) {
+    this.time = 0;
+    this.dt = dt;
   }
-  let min2 = kwargs.min;
-  if (min2 == void 0) {
-    slider.min = "0";
-  } else {
-    slider.min = `${min2}`;
+  reset() {
+    this.time = 0;
   }
-  let max2 = kwargs.max;
-  if (max2 == void 0) {
-    slider.max = "10";
-  } else {
-    slider.max = `${max2}`;
+  step() {
+    this.time += this.dt;
   }
-  let step = kwargs.step;
-  if (step == void 0) {
-    slider.step = ".01";
-  } else {
-    slider.step = `${step}`;
+  // Generic setter.
+  set_attr(name, val) {
+    if (name in this) {
+      this[name] = val;
+    }
   }
-  container.appendChild(slider);
-  let valueDisplay = document.createElement("span");
-  valueDisplay.classList.add("value-display");
-  valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-  container.appendChild(valueDisplay);
-  function updateDisplay() {
-    callback(slider.value);
-    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-    updateSliderColor(slider);
+};
+var SceneFromSimulator = class extends Scene {
+  constructor(canvas) {
+    super(canvas);
   }
-  function updateSliderColor(sliderElement) {
-    const value = 100 * parseFloat(sliderElement.value);
-    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
+  reset() {
   }
-  updateDisplay();
-  slider.addEventListener("input", updateDisplay);
-  return slider;
-}
+  update_mobjects_from_simulator(simulator) {
+  }
+  toggle_pause() {
+  }
+  toggle_unpause() {
+  }
+};
+var ThreeDSceneFromSimulator = class extends ThreeDScene {
+  constructor(canvas) {
+    super(canvas);
+  }
+  reset() {
+  }
+  update_mobjects_from_simulator(simulator) {
+  }
+  toggle_pause() {
+  }
+  toggle_unpause() {
+  }
+};
+var InteractiveHandler = class {
+  // Store a known end-time in case the simulation is paused and unpaused
+  constructor(simulator) {
+    this.scenes = [];
+    this.action_queue = [];
+    this.paused = true;
+    this.time = 0;
+    this.dt = 0.01;
+    this.simulator = simulator;
+  }
+  // Adds a scene
+  add_scene(scene) {
+    scene.update_mobjects_from_simulator(this.simulator);
+    this.scenes.push(scene);
+  }
+  // Draws all scenes
+  draw() {
+    for (let scene of this.scenes) {
+      scene.draw();
+    }
+  }
+  // Set and modify the simulator
+  get_simulator() {
+    return this.simulator;
+  }
+  set_simulator_attr(simulator_ind, attr_name, attr_val) {
+    this.simulator.set_attr(attr_name, attr_val);
+  }
+  add_pause_button(container) {
+    let self = this;
+    let pauseButton = Button(container, function() {
+      self.add_to_queue(self.toggle_pause.bind(self));
+      pauseButton.textContent = pauseButton.textContent == "Pause simulation" ? "Unpause simulation" : "Pause simulation";
+    });
+    pauseButton.textContent = this.paused ? "Unpause simulation" : "Pause simulation";
+    return pauseButton;
+  }
+  // Restarts the simulator
+  reset() {
+    this.simulator.reset();
+    this.time = 0;
+    for (let scene of this.scenes) {
+      scene.reset();
+      scene.update_mobjects_from_simulator(this.simulator);
+      scene.draw();
+    }
+  }
+  // Switches from paused to unpaused and vice-versa.
+  toggle_pause() {
+    this.paused = !this.paused;
+    if (!this.paused) {
+      for (let scene of this.scenes) {
+        scene.toggle_unpause();
+      }
+      this.play(this.end_time);
+    } else {
+      for (let scene of this.scenes) {
+        scene.toggle_pause();
+      }
+    }
+  }
+  // Adds to the action queue if the scene is currently playing,
+  // otherwise execute the callback immediately
+  add_to_queue(callback) {
+    if (this.paused) {
+      callback();
+    } else {
+      this.action_queue.push(callback);
+    }
+  }
+  // Starts animation
+  async play(until) {
+    if (this.paused) {
+      this.end_time = until;
+      return;
+    } else {
+      if (this.action_queue.length > 0) {
+        let callback = this.action_queue.shift();
+        callback();
+      } else if (this.time > until) {
+        return;
+      } else {
+        this.simulator.step();
+        this.time += this.simulator.dt;
+        for (let scene of this.scenes) {
+          scene.update_mobjects_from_simulator(this.simulator);
+          scene.draw();
+        }
+      }
+      window.requestAnimationFrame(this.play.bind(this, until));
+    }
+  }
+};
 
-// src/lib/interactive/scene_view_translator.ts
-var SceneViewTranslator = class {
-  // Callbacks which trigger when the object is dragged.
+// src/lib/simulator/statesim.ts
+var StateSimulator = class extends Simulator {
+  // Size of the array of values storing the state
+  constructor(state_size, dt) {
+    super(dt);
+    this.state_size = state_size;
+    this.vals = new Array(this.state_size).fill(0);
+  }
+  // Resets the simulation
+  reset() {
+    super.reset();
+    this.vals = new Array(this.state_size).fill(0);
+    this.set_boundary_conditions(this.vals, 0);
+  }
+  // Getter and setter for state.
+  get_vals() {
+    return this.vals;
+  }
+  set_vals(vals) {
+    this.vals = vals;
+  }
+  set_val(index, value) {
+    this.vals[index] = value;
+  }
+  // Time-derivative of a given state and time. Overwritten in subclasses.
+  dot(vals, time) {
+    return new Array(this.state_size).fill(0);
+  }
+  // Subroutine for adding any time-evolution calculation
+  // which does not adhere to the differential equation. Used in step().
+  set_boundary_conditions(s, t) {
+  }
+  // Advances the simulation using the differential equation with
+  // s(t + dt) = s(t) + dt * s'(t)
+  step_finite_diff() {
+    let newS = new Array(this.state_size).fill(0);
+    let dS = this.dot(this.vals, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt * dS[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt);
+    this.set_vals(newS);
+    this.time += this.dt;
+  }
+  // Advances the simulation using the differential equation with the Runge-Kutta method.
+  step_runge_kutta() {
+    let newS = new Array(this.state_size).fill(0);
+    let dS_1 = this.dot(this.vals, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt / 2 * dS_1[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt / 2);
+    let dS_2 = this.dot(newS, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt / 2 * dS_2[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt / 2);
+    let dS_3 = this.dot(newS, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt * dS_3[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt);
+    let dS_4 = this.dot(newS, this.time);
+    for (let i = 0; i < this.state_size; i++) {
+      newS[i] = this.vals[i] + this.dt / 6 * dS_1[i] + this.dt / 3 * dS_2[i] + this.dt / 3 * dS_3[i] + this.dt / 6 * dS_4[i];
+    }
+    this.set_boundary_conditions(newS, this.time + this.dt);
+    this.set_vals(newS);
+    this.time += this.dt;
+  }
+  step() {
+    return this.step_runge_kutta();
+  }
+};
+var TwoDimState = class {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+  }
+  index(x, y) {
+    return y * this.width + x;
+  }
+  // One-sided derivative f(x + 1) - f(x)
+  d_x_plus(arr, x, y) {
+    if (x == this.width - 1) {
+      return -arr[this.index(x, y)];
+    } else {
+      return arr[this.index(x + 1, y)] - arr[this.index(x, y)];
+    }
+  }
+  // One-sided derivative f(x) - f(x - 1)
+  d_x_minus(arr, x, y) {
+    if (x == 0) {
+      return arr[this.index(x, y)];
+    } else {
+      return arr[this.index(x, y)] - arr[this.index(x - 1, y)];
+    }
+  }
+  // One-sided derivative f(y + 1) - f(y)
+  d_y_plus(arr, x, y) {
+    if (y == this.height - 1) {
+      return -arr[this.index(x, y)];
+    } else {
+      return arr[this.index(x, y + 1)] - arr[this.index(x, y)];
+    }
+  }
+  // One-sided derivative f(y) - f(y - 1)
+  d_y_minus(arr, x, y) {
+    if (y == 0) {
+      return arr[this.index(x, y)];
+    } else {
+      return arr[this.index(x, y)] - arr[this.index(x, y - 1)];
+    }
+  }
+  // d/dx, computed as (f(x + 1) - f(x - 1)) / 2.
+  d_x_entry(arr, x, y) {
+    if (x == 0) {
+      return (2 * arr[this.index(2, y)] - 2 * arr[this.index(0, y)] - arr[this.index(3, y)] + arr[this.index(1, y)]) / 2;
+    } else if (x == this.width - 1) {
+      return (2 * arr[this.index(this.width - 1, y)] - 2 * arr[this.index(this.width - 3, y)] - arr[this.index(this.width - 2, y)] + arr[this.index(this.width - 4, y)]) / 2;
+    } else {
+      return (arr[this.index(x + 1, y)] - arr[this.index(x - 1, y)]) / 2;
+    }
+  }
+  // d/dy, computed as (f(y + 1) - f(y - 1)) / 2.
+  d_y_entry(arr, x, y) {
+    if (y == 0) {
+      return (2 * arr[this.index(x, 2)] - 2 * arr[this.index(x, 0)] - arr[this.index(x, 3)] + arr[this.index(x, 1)]) / 2;
+    } else if (y == this.height - 1) {
+      return (2 * arr[this.index(x, this.height - 1)] - 2 * arr[this.index(x, this.height - 3)] - arr[this.index(x, this.height - 2)] + arr[this.index(x, this.height - 4)]) / 2;
+    } else {
+      return (arr[this.index(x, y + 1)] - arr[this.index(x, y - 1)]) / 2;
+    }
+  }
+  // (d/dx)^2, computed as f(x + 1) - 2f(x) + f(x - 1).
+  // At the boundaries, use a linear extrapolation.
+  // TODO Maybe better to assume zero outside of the array.
+  l_x_entry(arr, x, y) {
+    if (x == 0) {
+      return 2 * arr[this.index(0, y)] - 5 * arr[this.index(1, y)] + 4 * arr[this.index(2, y)] - arr[this.index(3, y)];
+    } else if (x == this.width - 1) {
+      return 2 * arr[this.index(this.width - 1, y)] - 5 * arr[this.index(this.width - 2, y)] + 4 * arr[this.index(this.width - 3, y)] - arr[this.index(this.width - 4, y)];
+    } else {
+      return arr[this.index(x + 1, y)] - 2 * arr[this.index(x, y)] + arr[this.index(x - 1, y)];
+    }
+  }
+  // (d/dy)^2, computed as f(y + 1) - 2f(y) + f(y - 1).
+  l_y_entry(arr, x, y) {
+    if (y == 0) {
+      return 2 * arr[this.index(x, 0)] - 5 * arr[this.index(x, 1)] + 4 * arr[this.index(x, 2)] - arr[this.index(x, 3)];
+    } else if (y == this.height - 1) {
+      return 2 * arr[this.index(x, this.height - 1)] - 5 * arr[this.index(x, this.height - 2)] + 4 * arr[this.index(x, this.height - 3)] - arr[this.index(x, this.height - 4)];
+    } else {
+      return arr[this.index(x, y + 1)] - 2 * arr[this.index(x, y)] + arr[this.index(x, y - 1)];
+    }
+  }
+};
+var SphericalState = class {
+  constructor(num_theta, num_phi) {
+    if (num_phi % 2 !== 0) {
+      throw new Error("num_phi must be even");
+    }
+    this.num_theta = num_theta;
+    this.num_phi = num_phi;
+  }
+  index(theta, phi) {
+    return phi * (this.num_theta + 1) + theta;
+  }
+  // Takes an array of shape (num_theta + 1, num_phi) and downshifts it to shape (num_theta, num_phi)
+  // by averaging adjacent rows.
+  downshift_values(vals) {
+    let downshifted_vals = new Array(this.num_theta * this.num_phi);
+    let ind;
+    for (let phi = 0; phi < this.num_phi; phi++) {
+      for (let theta = 0; theta < this.num_theta; theta++) {
+        ind = phi * this.num_theta + theta;
+        let val = (vals[this.index(theta, phi)] + vals[this.index(theta + 1, phi)]) / 2;
+        downshifted_vals[ind] = val;
+      }
+    }
+    return downshifted_vals;
+  }
+  dtheta() {
+    return Math.PI / this.num_theta;
+  }
+  dphi() {
+    return 2 * Math.PI / this.num_phi;
+  }
+  get_val(arr, theta, phi) {
+    return arr[this.index(theta, phi)];
+  }
+  l_entry(arr, theta, phi) {
+    let theta_val = theta * Math.PI / this.num_theta;
+    let l_theta, l_phi;
+    if (theta == 0) {
+      l_theta = 0;
+      let val = this.get_val(arr, theta, phi);
+      let n = Math.floor(this.num_phi / 2);
+      for (let p = 0; p < n; p++) {
+        l_theta += this.get_val(arr, 1, p) + this.get_val(arr, 1, (p + n) % this.num_phi) - 2 * val;
+      }
+      l_theta *= 1 / n;
+      l_theta *= 1 / this.dtheta() ** 2;
+      return l_theta;
+    } else if (theta == this.num_theta) {
+      l_theta = 0;
+      let val = this.get_val(arr, theta, phi);
+      let n = Math.floor(this.num_phi / 2);
+      for (let p = 0; p < n; p++) {
+        l_theta += this.get_val(arr, this.num_theta - 2, p) + this.get_val(arr, this.num_theta - 2, (p + n) % this.num_phi) - 2 * val;
+      }
+      l_theta *= 1 / n;
+      l_theta *= 1 / this.dtheta() ** 2;
+      return l_theta;
+    } else {
+      l_theta = (this.get_val(arr, theta + 1, phi) + this.get_val(arr, theta - 1, phi) - 2 * this.get_val(arr, theta, phi)) / this.dtheta() ** 2;
+      l_theta += (this.get_val(arr, theta + 1, phi) - this.get_val(arr, theta - 1, phi)) / (2 * this.dtheta() * Math.tan(theta_val));
+      l_phi = (this.get_val(arr, theta, (phi + 1) % this.num_phi) + this.get_val(arr, theta, (phi + this.num_phi - 1) % this.num_phi) - 2 * this.get_val(arr, theta, phi)) / (this.dphi() * Math.sin(theta_val)) ** 2;
+      return l_theta + l_phi;
+    }
+  }
+};
+
+// src/lib/base/bezier.ts
+var np = __toESM(require_numpy_ts_node(), 1);
+
+// src/lib/simulator/heatsim.ts
+var HeatSimTwoDim = class extends StateSimulator {
+  constructor(width, height, dt) {
+    super(width * height, dt);
+    this.heat_propagation_speed = 20;
+    this.width = width;
+    this.height = height;
+    this._two_dim_state = new TwoDimState(width, height);
+  }
+  size() {
+    return this.width * this.height;
+  }
+  index(x, y) {
+    return this._two_dim_state.index(x, y);
+  }
+  set_heat_propagation_speed(speed) {
+    this.heat_propagation_speed = speed;
+  }
+  // Named portions of the state values
+  get_uValues() {
+    return this._get_uValues(this.vals);
+  }
+  _get_uValues(vals) {
+    return vals.slice(0, this.size());
+  }
+  // Sets the initial conditions of the simulation
+  set_init_conditions(u0) {
+    for (let i = 0; i < this.size(); i++) {
+      this.vals[i] = u0[i];
+    }
+    this.time = 0;
+    this.set_boundary_conditions(this.vals, this.time);
+  }
+  laplacian_entry(vals, x, y) {
+    return this._two_dim_state.l_x_entry(vals, x, y) + this._two_dim_state.l_y_entry(vals, x, y);
+  }
+  dot(vals, time) {
+    let dS = new Array(this.state_size);
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        dS[this.index(x, y)] = this.heat_propagation_speed * this.laplacian_entry(vals, x, y);
+      }
+    }
+    return dS;
+  }
+};
+var HeatSimSpherical = class extends StateSimulator {
+  constructor(num_theta, num_phi, dt) {
+    super((num_theta + 1) * num_phi, dt);
+    this.heat_propagation_speed = 20;
+    this.num_theta = num_theta;
+    this.num_phi = num_phi;
+    this._spherical_state = new SphericalState(num_theta, num_phi);
+  }
+  // Size of the 2D grid
+  size() {
+    return this.num_theta * this.num_phi;
+  }
+  index(x, y) {
+    return this._spherical_state.index(x, y);
+  }
+  set_heat_propagation_speed(speed) {
+    this.heat_propagation_speed = speed;
+  }
+  // Named portions of the state values
+  get_uValues() {
+    return this._get_uValues(this.vals);
+  }
+  _get_uValues(vals) {
+    return vals.slice(0, this.size());
+  }
+  // Downshifts the value array from shape (num_theta + 1, num_phi) to (num_theta, num_phi)
+  // by averaging adjacent rows.
+  get_downshifted_uValues() {
+    return this._spherical_state.downshift_values(this.get_uValues());
+  }
+  // Sets the initial conditions of the simulation
+  set_init_conditions(u0) {
+    for (let i = 0; i < this.size(); i++) {
+      this.vals[i] = u0[i];
+    }
+    this.time = 0;
+    this.set_boundary_conditions(this.vals, this.time);
+  }
+  laplacian_entry(vals, theta, phi) {
+    return this._spherical_state.l_entry(vals, theta, phi);
+  }
+  dot(vals, time) {
+    let dS = new Array(this.state_size).fill(0);
+    for (let theta = 0; theta <= this.num_theta; theta++) {
+      for (let phi = 0; phi < this.num_phi; phi++) {
+        dS[this.index(theta, phi)] = this.laplacian_entry(vals, theta, phi);
+      }
+    }
+    return dS;
+  }
+};
+
+// src/lib/interactive/arcball.ts
+var Arcball = class {
   constructor(scene) {
     this.drag = false;
     this.dragStart = [0, 0];
     this.dragEnd = [0, 0];
-    this.callbacks = [];
+    this.dragDiff = [0, 0];
+    this.mode = "Translate";
     this.scene = scene;
   }
-  // Adds a callback which triggers when the object is dragged
-  add_callback(callback) {
-    this.callbacks.push(callback);
+  set_mode(mode) {
+    this.mode = mode;
   }
-  // Performs all callbacks (called when the object is dragged)
-  do_callbacks() {
-    for (const callback of this.callbacks) {
-      callback();
-    }
+  switch_mode() {
+    this.mode = this.mode == "Translate" ? "Rotate" : "Translate";
   }
   click(event) {
     this.dragStart = [
@@ -13104,10 +12953,7 @@ var SceneViewTranslator = class {
       event.touches[0].pageX - this.scene.canvas.offsetLeft,
       event.touches[0].pageY - this.scene.canvas.offsetTop
     ];
-    if (!this.scene.is_dragging) {
-      this.drag = true;
-      this.scene.click();
-    }
+    this.drag = true;
   }
   unclick(event) {
     this.drag = false;
@@ -13115,7 +12961,6 @@ var SceneViewTranslator = class {
   }
   untouch(event) {
     this.drag = false;
-    this.scene.unclick();
   }
   mouse_drag_cursor(event) {
     if (this.drag) {
@@ -13144,10 +12989,26 @@ var SceneViewTranslator = class {
     if (dragDiff[0] == 0 && dragDiff[1] == 0) {
       return;
     }
-    this.scene.move_view(dragDiff);
+    if (this.mode == "Translate") {
+      this.scene.camera.move_by(
+        matmul_vec(this.scene.camera.get_camera_frame(), [
+          dragDiff[0],
+          dragDiff[1],
+          0
+        ])
+      );
+    } else if (this.mode == "Rotate") {
+      let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
+      let rot_axis = matmul_vec(this.scene.camera.get_camera_frame(), [
+        v[0],
+        v[1],
+        0
+      ]);
+      let n = vec2_norm(dragDiff);
+      this.scene.camera.rot_pos_and_view(rot_axis, n);
+    }
     this.scene.draw();
     this.dragStart = this.dragEnd;
-    this.do_callbacks();
   }
   add() {
     let self = this;
@@ -13181,154 +13042,351 @@ var SceneViewTranslator = class {
   }
 };
 
-// src/interactive_scene.ts
-(async function() {
-  document.addEventListener("DOMContentLoaded", async function() {
-    (function draggable_dots_bezier(width, height) {
-      let canvas = prepare_canvas(width, height, "draggable-dot-bezier");
-      let scene = new Scene(canvas);
-      let xmin = -5;
-      let xmax = 5;
-      let ymin = -5;
-      let ymax = 5;
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      function make_scene(n) {
-        scene.clear();
-        let dots = [];
-        for (let i = 0; i < n; i++) {
-          let dot3 = new DraggableDot(
-            [xmin + (xmax - xmin) * (i + 0.5) / n, 0],
-            0.5 / Math.sqrt(n)
-          );
-          dot3.touch_tolerance = 2 + n / 10;
-          dots.push(dot3);
-          scene.add(`p${i}`, dot3);
-        }
-        let curve = new BezierSpline(n - 1).set_stroke_width(
-          0.2 / Math.sqrt(n)
+// src/heatsim_scene.ts
+var Polygon3D = class extends ThreeDFillLikeMObject {
+  constructor(points) {
+    super();
+    this.points = points;
+  }
+  // TODO Fix this and fix visibility condition
+  depth(scene) {
+    return scene.camera.depth(
+      vec3_scale(vec3_sum_list(this.points), 1 / this.points.length)
+    );
+  }
+  _draw(ctx, scene) {
+    let current_point = this.points[0];
+    let current_point_camera_view = scene.camera_view(current_point);
+    let [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+    ctx.moveTo(cp_x, cp_y);
+    ctx.beginPath();
+    for (let i = 1; i < this.points.length; i++) {
+      current_point = this.points[i];
+      current_point_camera_view = scene.camera_view(current_point);
+      [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+      ctx.lineTo(cp_x, cp_y);
+    }
+    current_point = this.points[0];
+    current_point_camera_view = scene.camera_view(current_point);
+    [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+    ctx.lineTo(cp_x, cp_y);
+    ctx.closePath();
+    if (this.fill_options.fill) {
+      ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;
+      ctx.fill();
+      ctx.globalAlpha = ctx.globalAlpha / this.fill_options.fill_alpha;
+    }
+  }
+};
+var SphereHeatMap = class extends ThreeDMObjectGroup {
+  constructor(radius, num_theta, num_phi) {
+    super();
+    this.radius = radius;
+    this.num_theta = num_theta;
+    this.num_phi = num_phi;
+    this._spherical_state = new SphericalState(num_theta - 1, num_phi);
+    this._make_panels();
+  }
+  // Re-makes the panels
+  _make_panels() {
+    this.clear();
+    let theta_rad, next_theta_rad;
+    let phi_rad, next_phi_rad;
+    for (let theta = 0; theta < this.num_theta; theta++) {
+      theta_rad = Math.PI * theta / this.num_theta;
+      next_theta_rad = Math.PI * (theta + 1) / this.num_theta;
+      for (let phi = 0; phi < this.num_phi; phi++) {
+        phi_rad = 2 * Math.PI * phi / this.num_phi;
+        next_phi_rad = 2 * Math.PI * (phi + 1) / this.num_phi;
+        this.add_mobj(
+          `p_${theta}_${phi}`,
+          new Polygon3D([
+            spherical_to_cartesian(this.radius, theta_rad, phi_rad),
+            spherical_to_cartesian(this.radius, theta_rad, next_phi_rad),
+            spherical_to_cartesian(this.radius, next_theta_rad, next_phi_rad),
+            spherical_to_cartesian(this.radius, next_theta_rad, phi_rad)
+          ]).set_fill_color("red").set_fill_alpha(0.3).set_stroke_width(1e-3)
         );
-        curve.set_anchors(dots.map((dot3) => dot3.get_center()));
-        for (let i = 0; i < n; i++) {
-          dots[i].add_callback(() => {
-            curve.set_anchor(i, dots[i].get_center());
-          });
-        }
-        scene.add("curve", curve);
-        for (let i = 0; i < n; i++) {
-          scene.add(`p${i}`, dots[i]);
-        }
-        scene.draw();
       }
-      let n_slider = Slider(
-        document.getElementById(
-          "draggable-dot-bezier-num-slider"
-        ),
-        function(n) {
-          make_scene(n);
-        },
-        {
-          name: "Number of points",
-          initial_value: "5.0",
-          min: 3,
-          max: 20,
-          step: 1
-        }
-      );
-      n_slider.width = 200;
-      make_scene(5);
-    })(500, 500);
-    (function cartesian_2d(width, height) {
-      const name = "cartesian-2d";
+    }
+  }
+  // Get the panel at the given theta and phi angles
+  get_panel(theta, phi) {
+    return this.get_mobj(`p_${theta}_${phi}`);
+  }
+  // Loads the colors from an array of values with shape (num_theta + 1, num_phi)
+  load_colors_from_array(vals) {
+    for (let theta = 0; theta < this.num_theta; theta++) {
+      for (let phi = 0; phi < this.num_phi; phi++) {
+        let val = vals[this._spherical_state.index(theta, phi)];
+        this.get_panel(theta, phi).set_fill_color(
+          colorval_to_rgba(rb_colormap(val))
+        );
+      }
+    }
+  }
+};
+function spherical_to_cartesian(radius, theta_rad, phi_rad) {
+  return [
+    radius * Math.sin(theta_rad) * Math.cos(phi_rad),
+    radius * Math.sin(theta_rad) * Math.sin(phi_rad),
+    radius * Math.cos(theta_rad)
+  ];
+}
+(function() {
+  document.addEventListener("DOMContentLoaded", async function() {
+    (function heatsim_2d(width, height) {
+      const name = "heatsim-2d";
       let canvas = prepare_canvas(width, height, name);
-      let scene = new Scene(canvas);
-      let xmin = -8;
-      let xmax = 8;
-      let ymin = -8;
-      let ymax = 8;
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      let axes = new CoordinateAxes2d([xmin, xmax], [ymin, ymax]);
-      scene.add("axes", axes);
-      let x = 4;
-      let integral = new Integral((t) => 1 / t, 1, x, 50);
-      integral.set_fill_color("gray");
-      integral.set_fill_alpha(0.3);
-      scene.add("integral", integral);
-      let z_slider = Slider(
-        document.getElementById(name + "-slider-1"),
-        function(log_zr) {
-          let zr = Math.exp(log_zr * Math.LN10);
-          scene.zoom_in_on(zr / scene.zoom_ratio, scene.get_view_center());
-          axes.set_lims(scene.view_xlims, scene.view_ylims);
-          axes.set_axis_options({
-            stroke_width: 0.05 / zr,
-            arrow_size: 0.3 / zr
-          });
-          axes.set_tick_options({
-            distance: 1,
-            size: 0.2 / zr,
-            alpha: 1,
-            stroke_width: 0.08 / zr
-          });
-          axes.set_grid_options({
-            distance: Math.exp(Math.LN2 * Math.ceil(-Math.log2(zr))),
-            alpha: 0.2,
-            stroke_width: 0.05 / zr
-          });
-          scene.draw();
-        },
-        {
-          name: "zoom ratio (log base 10 scale)",
-          initial_value: "0.0",
-          min: -1,
-          max: 1,
-          step: 0.01
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+      let dt = 0.01;
+      class Sim extends HeatSimTwoDim {
+        constructor() {
+          super(...arguments);
+          this.center_temperature = 10;
+          this.boundary_temperature = 0;
+        }
+        set_center_temperature(temp) {
+          this.center_temperature = temp;
+        }
+        set_boundary_temperature(temp) {
+          this.boundary_temperature = temp;
+        }
+        set_boundary_conditions(s, t) {
+          let [center_x, center_y] = [
+            Math.floor(this.width / 2),
+            Math.floor(this.height / 2)
+          ];
+          for (let i = -2; i <= 2; i++) {
+            for (let j = -2; j <= 2; j++) {
+              s[this.index(center_x + i, center_y + j)] = this.center_temperature;
+            }
+          }
+          for (let x = 0; x < this.width; x++) {
+            s[this.index(x, 0)] = this.boundary_temperature;
+            s[this.index(x, this.height - 1)] = this.boundary_temperature;
+          }
+          for (let y = 0; y < this.height; y++) {
+            s[this.index(0, y)] = this.boundary_temperature;
+            s[this.index(this.width - 1, y)] = this.boundary_temperature;
+          }
+        }
+      }
+      let sim = new Sim(width, height, dt);
+      sim.set_heat_propagation_speed(20);
+      let handler = new InteractiveHandler(sim);
+      class S extends SceneFromSimulator {
+        constructor(canvas2, width2, height2, imageData2) {
+          super(canvas2);
+          this.width = width2;
+          this.height = height2;
+          this.imageData = imageData2;
+          let heatmap = new HeatMap(
+            width2,
+            height2,
+            -100,
+            100,
+            new Array(width2 * height2).fill(0)
+          );
+          this.add("heatmap", heatmap);
+        }
+        update_mobjects_from_simulator(simulator) {
+          let mobj = this.get_mobj("heatmap");
+          mobj.set_vals(simulator.get_uValues());
+        }
+        draw_mobject(mobj) {
+          if (mobj instanceof HeatMap) {
+            mobj.draw(this.canvas, this, this.imageData);
+          } else {
+            mobj.draw(this.canvas, this);
+          }
+        }
+      }
+      let scene = new S(canvas, width, height, imageData);
+      handler.add_scene(scene);
+      handler.draw();
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(name + "-button-1")
+      );
+      let clearButton = Button(
+        document.getElementById(name + "-button-2"),
+        function() {
+          handler.add_to_queue(sim.reset.bind(sim));
         }
       );
-      let w_slider = Slider(
-        document.getElementById(name + "-slider-2"),
-        function(d) {
-          integral.set_left_endpoint(Number(d));
-          integral.set_right_endpoint(Number(d) * x);
-          scene.draw();
+      clearButton.textContent = "Clear";
+      let c_slider = Slider(
+        document.getElementById(name + "-slider-1"),
+        function(t) {
+          handler.add_to_queue(() => {
+            sim.set_center_temperature(Number(t));
+          });
         },
         {
-          name: "bounds",
-          initial_value: "1.0",
-          min: 0.5,
-          max: 2,
+          name: "Center temperature",
+          initial_value: "10",
+          min: -10,
+          max: 10,
           step: 0.05
         }
       );
-      let translator = new SceneViewTranslator(scene);
-      translator.add_callback(
-        () => axes.set_lims(scene.view_xlims, scene.view_ylims)
+      let b_slider = Slider(
+        document.getElementById(name + "-slider-2"),
+        function(t) {
+          handler.add_to_queue(() => {
+            sim.set_boundary_temperature(Number(t));
+          });
+        },
+        {
+          name: "Boundary temperature",
+          initial_value: "0",
+          min: -10,
+          max: 10,
+          step: 0.05
+        }
       );
-      translator.add();
-      scene.draw();
-    })(500, 500);
-    (function cartesian_3d(width, height) {
-      const name = "cartesian-3d";
+      handler.play(void 0);
+    })(300, 300);
+    (function heatsim_sphere(width, height) {
+      const name = "heatsim-sphere";
       let canvas = prepare_canvas(width, height, name);
-      let [xmin, xmax] = [-5, 5];
-      let [ymin, ymax] = [-5, 5];
-      let [zmin, zmax] = [-5, 5];
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      let num_theta = 50;
+      let num_phi = 100;
+      let dt = 2e-3;
+      class HeatSim extends HeatSimSpherical {
+        constructor(num_theta2, num_phi2, dt2) {
+          super(num_theta2, num_phi2, dt2);
+          this.n_pole_temp = 20;
+          this.s_pole_temp = -20;
+          // Heat/cold sources are modeled locally using a normal distribution, to avoid sharp edges
+          this.bump_std = 0.05;
+          this.bump_vals = [];
+          this._make_bump_vals();
+        }
+        _make_bump_vals() {
+          let i = 0;
+          let bump_val = gaussian_normal_pdf(
+            0,
+            this.bump_std,
+            i * Math.PI / this.num_theta
+          );
+          this.bump_vals = [];
+          while (bump_val > 0.2) {
+            this.bump_vals.push(bump_val);
+            i++;
+            bump_val = gaussian_normal_pdf(
+              0,
+              this.bump_std,
+              i * Math.PI / this.num_theta
+            );
+          }
+        }
+        set_n_pole_temp(temp) {
+          this.n_pole_temp = temp;
+        }
+        set_s_pole_temp(temp) {
+          this.s_pole_temp = temp;
+        }
+        set_boundary_conditions(s, t) {
+          for (let phi = 0; phi < this.num_phi; phi++) {
+            for (let j = 0; j < this.bump_vals.length; j++) {
+              let bump_val = this.bump_vals[j];
+              s[this.index(j, phi)] = this.n_pole_temp * bump_val;
+              s[this.index(this.num_theta - j, phi)] = this.s_pole_temp * bump_val;
+            }
+          }
+        }
+      }
+      let sim = new HeatSim(num_theta, num_phi, dt);
+      let handler = new InteractiveHandler(sim);
+      class SphereScene extends ThreeDSceneFromSimulator {
+        constructor(canvas2, radius2, num_theta2, num_phi2) {
+          super(canvas2);
+          let sphere = new SphereHeatMap(radius2, num_theta2, num_phi2);
+          this.add("sphere", sphere);
+        }
+        // Load new colors from the simulator
+        update_mobjects_from_simulator(simulator) {
+          let vals = simulator.get_downshifted_uValues();
+          simulator._spherical_state.index;
+          let sphere = this.get_mobj("sphere");
+          sphere.load_colors_from_array(vals);
+        }
+      }
+      let radius = 1;
       let zoom_ratio = 1;
-      let scene = new ThreeDScene(canvas);
-      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      let scene = new SphereScene(canvas, radius, num_theta, num_phi);
+      scene.set_frame_lims([-2, 2], [-2, 2]);
       scene.set_zoom(zoom_ratio);
       scene.set_view_mode("orthographic");
-      scene.camera.move_to([0, 0, -8]);
+      scene.camera.move_to([0, 0, -2]);
       scene.camera.rot_pos_and_view_z(Math.PI / 4);
       scene.camera.rot_pos_and_view(
         [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
-        Math.PI / 4
+        Math.PI / 3
       );
-      let axes = new CoordinateAxes3d([xmin, xmax], [ymin, ymax], [zmin, zmax]);
       let arcball = new Arcball(scene);
       arcball.set_mode("Rotate");
       arcball.add();
+      let [xmin, xmax] = [-2, 2];
+      let [ymin, ymax] = [-2, 2];
+      let [zmin, zmax] = [-2, 2];
+      let axes = new CoordinateAxes3d([xmin, xmax], [ymin, ymax], [zmin, zmax]);
+      axes.set_tick_size(0.1);
+      axes.set_alpha(0.5);
+      axes.set_axis_stroke_width(0.01);
       scene.add("axes", axes);
-      scene.draw();
-    })(500, 500);
+      handler.add_scene(scene);
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(name + "-button-1")
+      );
+      let clearButton = Button(
+        document.getElementById(name + "-button-2"),
+        function() {
+          handler.add_to_queue(sim.reset.bind(sim));
+        }
+      );
+      clearButton.textContent = "Clear";
+      let n_slider = Slider(
+        document.getElementById(name + "-slider-1"),
+        function(t) {
+          handler.add_to_queue(() => {
+            sim.set_n_pole_temp(Number(t));
+          });
+        },
+        {
+          name: "North pole temperature",
+          initial_value: "20",
+          min: -50,
+          max: 50,
+          step: 0.05
+        }
+      );
+      let s_slider = Slider(
+        document.getElementById(name + "-slider-2"),
+        function(t) {
+          handler.add_to_queue(() => {
+            sim.set_s_pole_temp(Number(t));
+          });
+        },
+        {
+          name: "South pole temperature",
+          initial_value: "-20",
+          min: -50,
+          max: 50,
+          step: 0.05
+        }
+      );
+      handler.draw();
+      handler.play(void 0);
+    })(300, 300);
   });
 })();
