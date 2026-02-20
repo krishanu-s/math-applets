@@ -10,6 +10,7 @@ import {
   Vec2D,
   CoordinateAxes3d,
   gaussian_normal_pdf,
+  delay,
 } from "./lib/base";
 import { ColorMap } from "./lib/base/color";
 import { Slider, Button } from "./lib/interactive";
@@ -31,6 +32,9 @@ import {
   ThreeDMObject,
   ThreeDFillLikeMObject,
   ThreeDMObjectGroup,
+  Dot3D,
+  vec3_normalize,
+  rot,
 } from "./lib/three_d";
 import {
   SphericalFunctionZeroOrder,
@@ -554,6 +558,78 @@ class SphereHeatMapScene extends ThreeDSceneFromSimulator {
       // Run the simulation
       handler.draw();
       handler.play(undefined);
+    })(300, 300);
+
+    (async function random_walk_sphere(width: number, height: number) {
+      const name = "random-walk-sphere";
+      let canvas = prepare_canvas(width, height, name);
+
+      // Get the context for drawing
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+
+      // Prepare the scene
+      let zoom_ratio = 1.0;
+      let scene = new ThreeDScene(canvas);
+      scene.set_frame_lims([-2, 2], [-2, 2]);
+      scene.set_zoom(zoom_ratio);
+      scene.set_view_mode("orthographic");
+
+      // Move the camera
+      scene.camera.move_to([0, 0, -8]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        Math.PI / 3,
+      );
+
+      // Add axes
+      let [xmin, xmax] = [-2, 2];
+      let [ymin, ymax] = [-2, 2];
+      let [zmin, zmax] = [-2, 2];
+      let axes = new CoordinateAxes3d([xmin, xmax], [ymin, ymax], [zmin, zmax]);
+      axes.set_tick_size(0.1);
+      axes.set_alpha(0.5);
+      axes.set_axis_stroke_width(0.01);
+      scene.add("axes", axes);
+
+      // Make a point
+      let radius = 1;
+      let point: Vec3D = [0, 0, radius];
+      scene.add("point", new Dot3D(point, 0.01).set_color("red"));
+
+      // Make arcball
+      let arcball = new Arcball(scene);
+      arcball.set_mode("Rotate");
+      arcball.add();
+
+      scene.draw();
+
+      // Run simulation
+      let dtheta = 0.01;
+      let dt = 0.001;
+      let axis: Vec3D;
+
+      for (let t = 0; t < 10; t += dt) {
+        // Pick a random axis
+        // NOTE: This is not totally random: it skews towards the diagonals. Fix this.
+        axis = vec3_normalize([
+          2 * Math.random() - 1,
+          2 * Math.random() - 1,
+          2 * Math.random() - 1,
+        ]);
+
+        // Rotate the point around the random axis
+        point = rot(point, axis, dtheta);
+        (scene.get_mobj("point") as Dot3D).move_to(point);
+
+        // Rotate the scene view
+        scene.camera.rot_pos_and_view_z((dt * Math.PI) / 10);
+        scene.draw();
+        await delay(1);
+      }
     })(300, 300);
   });
 })();

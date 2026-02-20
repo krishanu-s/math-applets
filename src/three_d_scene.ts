@@ -14,7 +14,7 @@ import {
   vec3_sum,
   vec3_sum_list,
   vec3_scale,
-  normalize,
+  vec3_normalize,
   get_column,
   matmul_vec,
   rot,

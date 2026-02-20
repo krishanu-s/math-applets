@@ -14,7 +14,7 @@ import {
 } from "../base";
 import { ThreeDScene } from "../three_d/scene.js";
 import {
-  normalize,
+  vec3_normalize,
   get_column,
   matmul_vec,
   matmul_mat,
