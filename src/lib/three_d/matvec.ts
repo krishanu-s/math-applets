@@ -77,7 +77,7 @@ export function get_column(m: Mat3by3, i: number): Vec3D {
 }
 
 // Projects a nonzero 3D vector to the unit sphere
-export function normalize(v: Vec3D): Vec3D {
+export function vec3_normalize(v: Vec3D): Vec3D {
   let n = vec3_norm(v);
   if (n == 0) {
     throw new Error("Can't normalize the zero vector");
@@ -97,7 +97,7 @@ export function spherical_to_cartesian(c: SphericalVec3D): Vec3D {
 
 // Converts a vector from Cartesian coordinates to spherical coordinates
 export function cartesian_to_spherical(v: Vec3D): SphericalVec3D {
-  let nv = normalize(v);
+  let nv = vec3_normalize(v);
   let theta = Math.asin(nv[2]);
   let phi = Math.acos(nv[0] / Math.cos(theta));
   if (nv[1] / Math.cos(theta) > 0) {
@@ -168,7 +168,7 @@ export function rot_x(v: Vec3D, theta: number): Vec3D {
 // This is done by first rotating the axis to align with the z-axis
 export function rot_matrix(axis: Vec3D, angle: number): Mat3by3 {
   // Get spherical coordinates
-  let [x, y, z] = normalize(axis);
+  let [x, y, z] = vec3_normalize(axis);
   let theta = Math.acos(z);
   let phi = Math.acos(x / Math.sin(theta));
   if (y / Math.sin(theta) < 0) {
@@ -186,7 +186,7 @@ export function rot_matrix(axis: Vec3D, angle: number): Mat3by3 {
 
 export function rot(v: Vec3D, axis: Vec3D, angle: number): Vec3D {
   // Get spherical coordinates
-  let [x, y, z] = normalize(axis);
+  let [x, y, z] = vec3_normalize(axis);
   let theta = Math.acos(z);
   let phi = Math.acos(x / Math.sin(theta));
   if (y / Math.sin(theta) < 0) {

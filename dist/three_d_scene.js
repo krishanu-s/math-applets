@@ -838,7 +838,7 @@ function mat_inv(m) {
 function get_column(m, i) {
   return [m[0][i], m[1][i], m[2][i]];
 }
-function normalize(v) {
+function vec3_normalize(v) {
   let n = vec3_norm(v);
   if (n == 0) {
     throw new Error("Can't normalize the zero vector");
@@ -891,7 +891,7 @@ function rot_x(v, theta) {
   return matmul_vec(rot_x_matrix(theta), v);
 }
 function rot_matrix(axis, angle) {
-  let [x, y, z] = normalize(axis);
+  let [x, y, z] = vec3_normalize(axis);
   let theta = Math.acos(z);
   let phi = Math.acos(x / Math.sin(theta));
   if (y / Math.sin(theta) < 0) {
@@ -905,7 +905,7 @@ function rot_matrix(axis, angle) {
   return result;
 }
 function rot(v, axis, angle) {
-  let [x, y, z] = normalize(axis);
+  let [x, y, z] = vec3_normalize(axis);
   let theta = Math.acos(z);
   let phi = Math.acos(x / Math.sin(theta));
   if (y / Math.sin(theta) < 0) {
