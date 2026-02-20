@@ -10669,9 +10669,6 @@ var DEFAULT_FILL_COLOR = "black";
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
 }
-function gaussian_normal_pdf(mean, stdev, x) {
-  return Math.exp(-Math.pow(x - mean, 2) / (2 * Math.pow(stdev, 2))) / (stdev * Math.sqrt(2 * Math.PI));
-}
 var StrokeOptions = class {
   constructor() {
     this.stroke_width = DEFAULT_STROKE_WIDTH;
@@ -10994,6 +10991,13 @@ function rb_colormap(z) {
   } else {
     return [255, 512 * (1 - gray), 512 * (1 - gray), 255];
   }
+}
+function grayscale_colormap(z) {
+  return grayscale_colormap_logarithmic(z, 1);
+}
+function grayscale_colormap_logarithmic(z, d) {
+  let zc = Math.pow(z, 1 / d);
+  return [255 * (1 - zc), 255 * (1 - zc), 255 * (1 - zc), 255];
 }
 
 // src/lib/interactive/draggable.ts
@@ -12766,6 +12770,9 @@ var SphericalState = class {
   index(theta, phi) {
     return phi * (this.num_theta + 1) + theta;
   }
+  new_arr() {
+    return new Array((this.num_theta + 1) * this.num_phi).fill(0);
+  }
   // Takes an array of shape (num_theta + 1, num_phi) and downshifts it to shape (num_theta, num_phi)
   // by averaging adjacent rows.
   downshift_values(vals) {
@@ -12865,57 +12872,6 @@ var HeatSimTwoDim = class extends StateSimulator {
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
         dS[this.index(x, y)] = this.heat_propagation_speed * this.laplacian_entry(vals, x, y);
-      }
-    }
-    return dS;
-  }
-};
-var HeatSimSpherical = class extends StateSimulator {
-  constructor(num_theta, num_phi, dt) {
-    super((num_theta + 1) * num_phi, dt);
-    this.heat_propagation_speed = 20;
-    this.num_theta = num_theta;
-    this.num_phi = num_phi;
-    this._spherical_state = new SphericalState(num_theta, num_phi);
-  }
-  // Size of the 2D grid
-  size() {
-    return this.num_theta * this.num_phi;
-  }
-  index(x, y) {
-    return this._spherical_state.index(x, y);
-  }
-  set_heat_propagation_speed(speed) {
-    this.heat_propagation_speed = speed;
-  }
-  // Named portions of the state values
-  get_uValues() {
-    return this._get_uValues(this.vals);
-  }
-  _get_uValues(vals) {
-    return vals.slice(0, this.size());
-  }
-  // Downshifts the value array from shape (num_theta + 1, num_phi) to (num_theta, num_phi)
-  // by averaging adjacent rows.
-  get_downshifted_uValues() {
-    return this._spherical_state.downshift_values(this.get_uValues());
-  }
-  // Sets the initial conditions of the simulation
-  set_init_conditions(u0) {
-    for (let i = 0; i < this.size(); i++) {
-      this.vals[i] = u0[i];
-    }
-    this.time = 0;
-    this.set_boundary_conditions(this.vals, this.time);
-  }
-  laplacian_entry(vals, theta, phi) {
-    return this._spherical_state.l_entry(vals, theta, phi);
-  }
-  dot(vals, time) {
-    let dS = new Array(this.state_size).fill(0);
-    for (let theta = 0; theta <= this.num_theta; theta++) {
-      for (let phi = 0; phi < this.num_phi; phi++) {
-        dS[this.index(theta, phi)] = this.laplacian_entry(vals, theta, phi);
       }
     }
     return dS;
@@ -13042,6 +12998,109 @@ var Arcball = class {
   }
 };
 
+// src/lib/base/spherical_harmonics.ts
+function calculate_legendre_polynomial_coefficients(l) {
+  let result = {};
+  result[0] = [1];
+  result[1] = [0, 1];
+  let last_coefficients;
+  let last_last_coefficients;
+  for (let i = 2; i <= l; i++) {
+    last_coefficients = result[i - 1];
+    last_last_coefficients = result[i - 2];
+    let coefficients = [0];
+    for (let j = 0; j <= i - 1; j++) {
+      coefficients.push((2 * i - 1) * last_coefficients[j]);
+    }
+    for (let j = 0; j <= i - 2; j++) {
+      coefficients[j] = coefficients[j] - (i - 1) * last_last_coefficients[j];
+    }
+    for (let j = 0; j <= i; j++) {
+      coefficients[j] = coefficients[j] / i;
+    }
+    result[i] = coefficients;
+  }
+  return result;
+}
+function evaluate_polynomial(coefficients, x) {
+  let result = 0;
+  for (let i = 0; i < coefficients.length; i++) {
+    result += coefficients[i] * Math.pow(x, i);
+  }
+  return result;
+}
+var SphericalFunctionZeroOrder = class {
+  constructor() {
+    // A finite list of coefficients representing the degree 0, 1, ..., n-1 parts.
+    this.coefficients = {};
+    // Pre-computed and stored Legendre polynomials up to a given degree
+    this.legendrePolynomials = {};
+    this.max_degree = 0;
+  }
+  // Resets to zero.
+  clear() {
+    this.coefficients = {};
+  }
+  // Generates and stores the coefficients for the legendre polynomials up to a given degree.
+  _precompute_legendrePolynomials(degree) {
+    this.max_degree = degree;
+    this.legendrePolynomials = calculate_legendre_polynomial_coefficients(degree);
+  }
+  _get_legendrePolynomials(degree) {
+    if (degree > this.max_degree) {
+      this._precompute_legendrePolynomials(degree);
+    }
+    return this.legendrePolynomials[degree];
+  }
+  _eval_spherical_harmonic(l, theta) {
+    return Math.sqrt((2 * l + 1) / (4 * Math.PI)) * evaluate_polynomial(this._get_legendrePolynomials(l), Math.cos(theta));
+  }
+  // Sets/gets the coefficient for a given degree.
+  set_coefficient(degree, coefficient) {
+    if (degree > this.max_degree) {
+      throw new Error("Degree exceeds maximum");
+    }
+    this.coefficients[degree] = coefficient;
+  }
+  get_coefficient(degree) {
+    return this.coefficients[degree] || 0;
+  }
+  // Evolves this function f under the heat equation f' = -Δf
+  evolve_heat_eq(time) {
+    const newCoefficients = {};
+    let d;
+    Object.entries(this.coefficients).forEach(([degree, coeff]) => {
+      d = Number(degree);
+      newCoefficients[d] = coeff * Math.exp(-d * (d + 1) * time);
+    });
+    this.coefficients = newCoefficients;
+  }
+  // Evaluates the function at a point on the sphere efficiently, by using the precomputed legendre polynomials.
+  evaluate(theta, phi) {
+    let result = 0;
+    Object.entries(this.coefficients).forEach(([degree, coeff]) => {
+      result += coeff * this._eval_spherical_harmonic(Number(degree), theta);
+    });
+    return result;
+  }
+  // Outputs an array of shape (m, n) containing the function values at
+  // θ = π/2m, 3π/2m, 5π/2m, ..., (2m+1)π/2m and
+  // φ = π/n, 3π/n, 5π/n, ..., (2n+1)π/n.
+  get_drawable(num_theta, num_phi) {
+    let result = new Array(num_theta * num_phi);
+    let theta = Math.PI / (2 * num_theta);
+    let phi = Math.PI / num_phi;
+    let ind = 0;
+    for (let j = 0; j < num_phi; j++) {
+      for (let i = 0; i < num_theta; i++) {
+        result[ind] = this.evaluate(theta * (2 * i + 1), phi * (2 * j + 1));
+        ind++;
+      }
+    }
+    return result;
+  }
+};
+
 // src/heatsim_scene.ts
 var Polygon3D = class extends ThreeDFillLikeMObject {
   constructor(points) {
@@ -13081,11 +13140,16 @@ var Polygon3D = class extends ThreeDFillLikeMObject {
 var SphereHeatMap = class extends ThreeDMObjectGroup {
   constructor(radius, num_theta, num_phi) {
     super();
+    this.colormap = rb_colormap;
     this.radius = radius;
     this.num_theta = num_theta;
     this.num_phi = num_phi;
     this._spherical_state = new SphericalState(num_theta - 1, num_phi);
     this._make_panels();
+  }
+  // Sets the colormap for the MObject
+  set_colormap(colormap) {
+    this.colormap = colormap;
   }
   // Re-makes the panels
   _make_panels() {
@@ -13120,7 +13184,7 @@ var SphereHeatMap = class extends ThreeDMObjectGroup {
       for (let phi = 0; phi < this.num_phi; phi++) {
         let val = vals[this._spherical_state.index(theta, phi)];
         this.get_panel(theta, phi).set_fill_color(
-          colorval_to_rgba(rb_colormap(val))
+          colorval_to_rgba(this.colormap(val))
         );
       }
     }
@@ -13133,6 +13197,60 @@ function spherical_to_cartesian(radius, theta_rad, phi_rad) {
     radius * Math.cos(theta_rad)
   ];
 }
+var SphericalFunctionSimulator = class extends Simulator {
+  constructor(num_theta, num_phi, dt) {
+    super(dt);
+    this.heat_propagation_speed = 1;
+    this.max_degree = 50;
+    this.num_theta = num_theta;
+    this.num_phi = num_phi;
+    this.sph_fun = new SphericalFunctionZeroOrder();
+    this._init();
+  }
+  // Set initial values to mimic the delta function
+  _init() {
+    this.sph_fun.clear();
+    this.sph_fun._precompute_legendrePolynomials(this.max_degree);
+    for (let l = 0; l <= this.max_degree; l++) {
+      this.sph_fun.set_coefficient(
+        l,
+        this.sph_fun._eval_spherical_harmonic(l, 0)
+      );
+    }
+  }
+  set_heat_propagation_speed(speed) {
+    this.heat_propagation_speed = speed;
+  }
+  reset() {
+    super.reset();
+    this._init();
+  }
+  // Decay according to the heat equation
+  step() {
+    super.step();
+    this.sph_fun.evolve_heat_eq(this.heat_propagation_speed * this.dt);
+  }
+  get_drawable() {
+    return this.sph_fun.get_drawable(this.num_theta, this.num_phi);
+  }
+};
+var SphereHeatMapScene = class extends ThreeDSceneFromSimulator {
+  constructor(canvas, radius, num_theta, num_phi) {
+    super(canvas);
+    let sphere = new SphereHeatMap(radius, num_theta, num_phi);
+    this.add("sphere", sphere);
+  }
+  set_colormap(colormap) {
+    let sphere = this.get_mobj("sphere");
+    sphere.set_colormap(colormap);
+  }
+  // Load new colors from the simulator
+  update_mobjects_from_simulator(simulator) {
+    let vals = simulator.get_drawable();
+    let sphere = this.get_mobj("sphere");
+    sphere.load_colors_from_array(vals);
+  }
+};
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
     (function heatsim_2d(width, height) {
@@ -13260,70 +13378,16 @@ function spherical_to_cartesian(radius, theta_rad, phi_rad) {
       }
       let num_theta = 50;
       let num_phi = 100;
-      let dt = 2e-3;
-      class HeatSim extends HeatSimSpherical {
-        constructor(num_theta2, num_phi2, dt2) {
-          super(num_theta2, num_phi2, dt2);
-          this.n_pole_temp = 20;
-          this.s_pole_temp = -20;
-          // Heat/cold sources are modeled locally using a normal distribution, to avoid sharp edges
-          this.bump_std = 0.05;
-          this.bump_vals = [];
-          this._make_bump_vals();
-        }
-        _make_bump_vals() {
-          let i = 0;
-          let bump_val = gaussian_normal_pdf(
-            0,
-            this.bump_std,
-            i * Math.PI / this.num_theta
-          );
-          this.bump_vals = [];
-          while (bump_val > 0.2) {
-            this.bump_vals.push(bump_val);
-            i++;
-            bump_val = gaussian_normal_pdf(
-              0,
-              this.bump_std,
-              i * Math.PI / this.num_theta
-            );
-          }
-        }
-        set_n_pole_temp(temp) {
-          this.n_pole_temp = temp;
-        }
-        set_s_pole_temp(temp) {
-          this.s_pole_temp = temp;
-        }
-        set_boundary_conditions(s, t) {
-          for (let phi = 0; phi < this.num_phi; phi++) {
-            for (let j = 0; j < this.bump_vals.length; j++) {
-              let bump_val = this.bump_vals[j];
-              s[this.index(j, phi)] = this.n_pole_temp * bump_val;
-              s[this.index(this.num_theta - j, phi)] = this.s_pole_temp * bump_val;
-            }
-          }
-        }
+      let dt = 1e-3;
+      let sim = new SphericalFunctionSimulator(num_theta, num_phi, dt);
+      for (let i = 0; i < 0; i++) {
+        sim.step();
       }
-      let sim = new HeatSim(num_theta, num_phi, dt);
       let handler = new InteractiveHandler(sim);
-      class SphereScene extends ThreeDSceneFromSimulator {
-        constructor(canvas2, radius2, num_theta2, num_phi2) {
-          super(canvas2);
-          let sphere = new SphereHeatMap(radius2, num_theta2, num_phi2);
-          this.add("sphere", sphere);
-        }
-        // Load new colors from the simulator
-        update_mobjects_from_simulator(simulator) {
-          let vals = simulator.get_downshifted_uValues();
-          simulator._spherical_state.index;
-          let sphere = this.get_mobj("sphere");
-          sphere.load_colors_from_array(vals);
-        }
-      }
       let radius = 1;
       let zoom_ratio = 1;
-      let scene = new SphereScene(canvas, radius, num_theta, num_phi);
+      let scene = new SphereHeatMapScene(canvas, radius, num_theta, num_phi);
+      scene.set_colormap(grayscale_colormap);
       scene.set_frame_lims([-2, 2], [-2, 2]);
       scene.set_zoom(zoom_ratio);
       scene.set_view_mode("orthographic");
@@ -13352,39 +13416,10 @@ function spherical_to_cartesian(radius, theta_rad, phi_rad) {
         document.getElementById(name + "-button-2"),
         function() {
           handler.add_to_queue(sim.reset.bind(sim));
+          handler.add_to_queue(handler.draw.bind(handler));
         }
       );
       clearButton.textContent = "Clear";
-      let n_slider = Slider(
-        document.getElementById(name + "-slider-1"),
-        function(t) {
-          handler.add_to_queue(() => {
-            sim.set_n_pole_temp(Number(t));
-          });
-        },
-        {
-          name: "North pole temperature",
-          initial_value: "20",
-          min: -50,
-          max: 50,
-          step: 0.05
-        }
-      );
-      let s_slider = Slider(
-        document.getElementById(name + "-slider-2"),
-        function(t) {
-          handler.add_to_queue(() => {
-            sim.set_s_pole_temp(Number(t));
-          });
-        },
-        {
-          name: "South pole temperature",
-          initial_value: "-20",
-          min: -50,
-          max: 50,
-          step: 0.05
-        }
-      );
       handler.draw();
       handler.play(void 0);
     })(300, 300);

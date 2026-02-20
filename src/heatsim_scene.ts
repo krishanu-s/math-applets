@@ -3,6 +3,7 @@ import {
   Scene,
   HeatMap,
   colorval_to_rgba,
+  grayscale_colormap,
   rb_colormap,
   rb_colormap_2,
   MObject,
@@ -10,15 +11,16 @@ import {
   CoordinateAxes3d,
   gaussian_normal_pdf,
 } from "./lib/base";
+import { ColorMap } from "./lib/base/color";
 import { Slider, Button } from "./lib/interactive";
 import { HeatSimTwoDim, HeatSimSpherical } from "./lib/simulator";
 import {
   InteractiveHandler,
   SceneFromSimulator,
   ThreeDSceneFromSimulator,
+  Simulator,
 } from "./lib/simulator/sim";
 import { SphericalState } from "./lib/simulator/statesim";
-
 import {
   ThreeDScene,
   Vec3D,
@@ -30,6 +32,13 @@ import {
   ThreeDFillLikeMObject,
   ThreeDMObjectGroup,
 } from "./lib/three_d";
+import {
+  SphericalFunctionZeroOrder,
+  legendre_polynomial,
+  spherical_harmonic_0,
+  factorial,
+  calculate_legendre_polynomial_coefficients,
+} from "./lib/base/spherical_harmonics";
 
 // A polygon in 3D where the points are assumed to be coplanar.
 class Polygon3D extends ThreeDFillLikeMObject {
@@ -72,12 +81,13 @@ class Polygon3D extends ThreeDFillLikeMObject {
   }
 }
 
-// A sphere object
+// A spherical heatmap. Receptacle of values from SphericalDrawable.
 class SphereHeatMap extends ThreeDMObjectGroup {
   radius: number;
   num_theta: number;
   num_phi: number;
   _spherical_state: SphericalState;
+  colormap: ColorMap = rb_colormap;
   constructor(radius: number, num_theta: number, num_phi: number) {
     super();
     this.radius = radius;
@@ -85,6 +95,10 @@ class SphereHeatMap extends ThreeDMObjectGroup {
     this.num_phi = num_phi;
     this._spherical_state = new SphericalState(num_theta - 1, num_phi);
     this._make_panels();
+  }
+  // Sets the colormap for the MObject
+  set_colormap(colormap: ColorMap) {
+    this.colormap = colormap;
   }
   // Re-makes the panels
   _make_panels() {
@@ -122,7 +136,7 @@ class SphereHeatMap extends ThreeDMObjectGroup {
       for (let phi = 0; phi < this.num_phi; phi++) {
         let val = vals[this._spherical_state.index(theta, phi)] as number;
         this.get_panel(theta, phi).set_fill_color(
-          colorval_to_rgba(rb_colormap(val)),
+          colorval_to_rgba(this.colormap(val)),
         );
       }
     }
@@ -140,6 +154,144 @@ function spherical_to_cartesian(
     radius * Math.sin(theta_rad) * Math.sin(phi_rad),
     radius * Math.cos(theta_rad),
   ];
+}
+
+// A heat equation simulation on the surface of a sphere where each pole is
+// held at a different, constant temperature.
+class HeatSimPoles extends HeatSimSpherical {
+  n_pole_temp: number = 20;
+  s_pole_temp: number = -20;
+  // Heat/cold sources are modeled locally using a normal distribution, to avoid sharp edges
+  bump_std: number = 0.05;
+  bump_vals: number[] = [];
+  constructor(num_theta: number, num_phi: number, dt: number) {
+    super(num_theta, num_phi, dt);
+    this._make_bump_vals();
+  }
+  _make_bump_vals(): void {
+    let i = 0;
+    let bump_val = gaussian_normal_pdf(
+      0,
+      this.bump_std,
+      (i * Math.PI) / this.num_theta,
+    );
+    this.bump_vals = [];
+    while (bump_val > 0.2) {
+      this.bump_vals.push(bump_val);
+      i++;
+      bump_val = gaussian_normal_pdf(
+        0,
+        this.bump_std,
+        (i * Math.PI) / this.num_theta,
+      );
+    }
+  }
+  set_n_pole_temp(temp: number): void {
+    this.n_pole_temp = temp;
+  }
+  set_s_pole_temp(temp: number): void {
+    this.s_pole_temp = temp;
+  }
+  set_boundary_conditions(s: Array<number>, t: number): void {
+    for (let phi = 0; phi < this.num_phi; phi++) {
+      for (let j = 0; j < this.bump_vals.length; j++) {
+        let bump_val = this.bump_vals[j] as number;
+        s[this.index(j, phi)] = this.n_pole_temp * bump_val;
+        s[this.index(this.num_theta - j, phi)] = this.s_pole_temp * bump_val;
+      }
+    }
+  }
+}
+
+// A heat equation simulation on the surface of a sphere which is initialized
+// with value 1 at the north pole and 0 elsewhere, and then allowed to evolve
+// without any heat sources or sinks. Simulates decoherence of a qubit.
+//
+// TODO This sharp peak causes a singularity in the simulation. So this should instead be simulated
+// as a decay in the coefficients of the spherical harmonics.
+class HeatSimSphericalDecoherence extends HeatSimSpherical {
+  reset() {
+    super.reset();
+    let init_vals = this._spherical_state.new_arr();
+    for (let phi = 0; phi < this.num_phi; phi++) {
+      init_vals[this.index(0, phi)] = 1.0;
+    }
+    this.set_init_conditions(init_vals);
+  }
+}
+
+// A heat equation simulator on the sphere which assumes a function that's
+// independent of phi and stores its decomposition into spherical harmonics.
+class SphericalFunctionSimulator extends Simulator {
+  num_theta: number;
+  num_phi: number;
+  heat_propagation_speed: number = 1.0; // Speed of heat propagation
+  sph_fun: SphericalFunctionZeroOrder;
+  max_degree: number = 50;
+  constructor(num_theta: number, num_phi: number, dt: number) {
+    super(dt);
+    this.num_theta = num_theta;
+    this.num_phi = num_phi;
+    this.sph_fun = new SphericalFunctionZeroOrder();
+    this._init();
+  }
+  // Set initial values to mimic the delta function
+  _init() {
+    // Pre-compute the legendre polynomials, and use them to efficiently compute during step process.
+    this.sph_fun.clear();
+    this.sph_fun._precompute_legendrePolynomials(this.max_degree);
+
+    // As computed, the coefficients below have sum of squares equal to (d+1)^2 / 4π, so we normalize this.
+    // const normalization = (this.max_degree + 1) / Math.sqrt(4 * Math.PI);
+    for (let l = 0; l <= this.max_degree; l++) {
+      this.sph_fun.set_coefficient(
+        l,
+        this.sph_fun._eval_spherical_harmonic(l, 0),
+      );
+    }
+  }
+  set_heat_propagation_speed(speed: number) {
+    this.heat_propagation_speed = speed;
+  }
+  reset() {
+    super.reset();
+    this._init();
+  }
+  // Decay according to the heat equation
+  step() {
+    super.step();
+    this.sph_fun.evolve_heat_eq(this.heat_propagation_speed * this.dt);
+  }
+  get_drawable(): number[] {
+    return this.sph_fun.get_drawable(this.num_theta, this.num_phi);
+  }
+}
+// A 3D scene containing a sphere which updates colors from the simulator
+class SphereHeatMapScene extends ThreeDSceneFromSimulator {
+  constructor(
+    canvas: HTMLCanvasElement,
+    radius: number,
+    num_theta: number,
+    num_phi: number,
+  ) {
+    super(canvas);
+    // Add a sphere.
+    let sphere = new SphereHeatMap(radius, num_theta, num_phi);
+    this.add("sphere", sphere);
+  }
+  set_colormap(colormap: ColorMap) {
+    let sphere = this.get_mobj("sphere") as SphereHeatMap;
+    sphere.set_colormap(colormap);
+  }
+  // Load new colors from the simulator
+  update_mobjects_from_simulator(
+    simulator: HeatSimSpherical | SphericalFunctionSimulator,
+  ) {
+    // This array has shape (num_theta, num_phi).
+    let vals = simulator.get_drawable();
+    let sphere = this.get_mobj("sphere") as SphereHeatMap;
+    sphere.load_colors_from_array(vals);
+  }
 }
 
 (function () {
@@ -302,84 +454,26 @@ function spherical_to_cartesian(
       let num_phi = 100;
 
       // Make a simulator
-      let dt = 0.002;
-      class HeatSim extends HeatSimSpherical {
-        n_pole_temp: number = 20;
-        s_pole_temp: number = -20;
-        // Heat/cold sources are modeled locally using a normal distribution, to avoid sharp edges
-        bump_std: number = 0.05;
-        bump_vals: number[] = [];
-        constructor(num_theta: number, num_phi: number, dt: number) {
-          super(num_theta, num_phi, dt);
-          this._make_bump_vals();
-        }
-        _make_bump_vals(): void {
-          let i = 0;
-          let bump_val = gaussian_normal_pdf(
-            0,
-            this.bump_std,
-            (i * Math.PI) / this.num_theta,
-          );
-          this.bump_vals = [];
-          while (bump_val > 0.2) {
-            this.bump_vals.push(bump_val);
-            i++;
-            bump_val = gaussian_normal_pdf(
-              0,
-              this.bump_std,
-              (i * Math.PI) / this.num_theta,
-            );
-          }
-        }
-        set_n_pole_temp(temp: number): void {
-          this.n_pole_temp = temp;
-        }
-        set_s_pole_temp(temp: number): void {
-          this.s_pole_temp = temp;
-        }
-        set_boundary_conditions(s: Array<number>, t: number): void {
-          for (let phi = 0; phi < this.num_phi; phi++) {
-            for (let j = 0; j < this.bump_vals.length; j++) {
-              let bump_val = this.bump_vals[j] as number;
-              s[this.index(j, phi)] = this.n_pole_temp * bump_val;
-              s[this.index(this.num_theta - j, phi)] =
-                this.s_pole_temp * bump_val;
-            }
-          }
-        }
-      }
-      let sim = new HeatSim(num_theta, num_phi, dt);
+      let dt = 0.001;
+      let sim = new HeatSimPoles(num_theta, num_phi, dt);
+
+      // let sim = new SphericalFunctionSimulator(num_theta, num_phi, dt);
+      // Initial steps to warm up the simulation
+      // for (let i = 0; i < 0; i++) {
+      //   sim.step();
+      // }
+
+      // let sim = new HeatSimSphericalDecoherence(num_theta, num_phi, dt);
+      // sim.reset();
 
       // Make a handler to link the simulator to the sphere object
       let handler = new InteractiveHandler(sim);
 
-      // A 3D scene containing a sphere which updates colors from the simulator
-      class SphereScene extends ThreeDSceneFromSimulator {
-        constructor(
-          canvas: HTMLCanvasElement,
-          radius: number,
-          num_theta: number,
-          num_phi: number,
-        ) {
-          super(canvas);
-          // Add a sphere.
-          let sphere = new SphereHeatMap(radius, num_theta, num_phi);
-          this.add("sphere", sphere);
-        }
-        // Load new colors from the simulator
-        update_mobjects_from_simulator(simulator: HeatSimSpherical) {
-          // This array has shape (num_theta + 1, num_phi).
-          let vals = simulator.get_downshifted_uValues();
-          simulator._spherical_state.index;
-          let sphere = this.get_mobj("sphere") as SphereHeatMap;
-          sphere.load_colors_from_array(vals);
-        }
-      }
-
       // Prepare the scene
       let radius = 1;
       let zoom_ratio = 1.0;
-      let scene = new SphereScene(canvas, radius, num_theta, num_phi);
+      let scene = new SphereHeatMapScene(canvas, radius, num_theta, num_phi);
+      scene.set_colormap(grayscale_colormap);
       scene.set_frame_lims([-2, 2], [-2, 2]);
       scene.set_zoom(zoom_ratio);
       scene.set_view_mode("orthographic");
@@ -420,6 +514,7 @@ function spherical_to_cartesian(
         document.getElementById(name + "-button-2") as HTMLElement,
         function () {
           handler.add_to_queue(sim.reset.bind(sim));
+          handler.add_to_queue(handler.draw.bind(handler));
         },
       );
       clearButton.textContent = "Clear";
