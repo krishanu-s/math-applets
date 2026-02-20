@@ -1,11 +1,38 @@
-// Animations which can be played in a scene
-import { Scene, MObject, linspace, Vec2D } from "./base";
+// Animations which can be played in a scene with a click
+import { Scene, MObject, linspace, Vec2D, delay } from "./base";
 
-abstract class Anim {}
+// Length of one frame in milliseconds
+const FRAME_LENGTH = 10;
+
+// Base class for animations
+abstract class Animation {
+  async play(scene: Scene) {}
+}
+
+// A group of animations, played in sequence with each starting after
+// the last ends.
+export class AnimationSequence extends Animation {
+  animations: Animation[];
+
+  constructor(...animations: Animation[]) {
+    super();
+    this.animations = animations;
+  }
+  add(animation: Animation) {
+    this.animations.push(animation);
+  }
+
+  async play(scene: Scene): Promise<void> {
+    for (let anim of this.animations) {
+      await anim.play(scene);
+      console.log("Animation done");
+    }
+  }
+}
 
 // Zooms in on a point of the scene over a given number of frames,
 // by linearly scaling the view limits.
-class ZoomIn extends Anim {
+export class ZoomIn extends Animation {
   point: Vec2D;
   zoom_ratio: number; // A number greater than 1 which indicates the zoom ratio
   num_frames: number;
@@ -56,7 +83,7 @@ class ZoomIn extends Anim {
 }
 
 // Fades in the mobject
-class FadeIn extends Anim {
+export class FadeIn extends Animation {
   mobj_name: string;
   mobj: MObject;
   num_frames: number;
@@ -66,14 +93,20 @@ class FadeIn extends Anim {
     this.mobj = mobj;
     this.num_frames = num_frames;
   }
+  async play(scene: Scene): Promise<void> {
+    await this._play(scene);
+  }
   // Animates the fade in.
-  play(scene: Scene): void {
+  async _play(scene: Scene): Promise<void> {
     scene.add(this.mobj_name, this.mobj);
-    let alpha = 0;
     for (let i = 1; i <= this.num_frames; i++) {
-      alpha = i / this.num_frames;
-      this.mobj.set_alpha(alpha);
-      scene.draw();
+      await this._play_frame(scene, i);
     }
+  }
+  async _play_frame(scene: Scene, i: number) {
+    let alpha = i / this.num_frames;
+    this.mobj.set_alpha(alpha);
+    scene.draw();
+    await delay(FRAME_LENGTH);
   }
 }
