@@ -5,14 +5,15 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "esbuild src/*_scene.ts --bundle --platform=node --outdir=dist --format=esm"
+    "build": "esbuild src/*_scene.ts src/rust-*.ts --bundle --platform=node --outdir=dist --format=esm --inject:./polyfill.js"
   },
   "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "numpy-ts": "^0.12.0"
+    "numpy-ts": "^0.12.0",
+    "rust-calc": "file:../rust-calc/rust-calc/target/pkg-node"
   },
   "devDependencies": {
     "esbuild": "^0.27.2",

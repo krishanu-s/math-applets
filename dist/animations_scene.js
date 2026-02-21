@@ -1,3 +1,32 @@
+var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
+}) : x)(function(x) {
+  if (typeof require !== "undefined") return require.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
+});
+
+// polyfill.js
+if (typeof global === "undefined") {
+  window.global = window;
+}
+if (typeof __dirname === "undefined") {
+  global.__dirname = "";
+}
+if (typeof __require === "undefined") {
+  let wasmCache = null;
+  global.require = function(name) {
+    if (name === "fs") {
+      return {
+        readFileSync: function(path) {
+          console.log("readFileSync called with:", path);
+          return new Uint8Array();
+        }
+      };
+    }
+    throw new Error(`Cannot find module: ${name}`);
+  };
+}
+
 // src/lib/base/vec2.ts
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);

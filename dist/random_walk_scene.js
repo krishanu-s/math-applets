@@ -4,7 +4,16 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __commonJS = (cb, mod2) => function __require() {
+var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
+}) : x)(function(x) {
+  if (typeof require !== "undefined") return require.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
+});
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __commonJS = (cb, mod2) => function __require2() {
   return mod2 || (0, cb[__getOwnPropNames(cb)[0]])((mod2 = { exports: {} }).exports, mod2), mod2.exports;
 };
 var __copyProps = (to, from, except, desc) => {
@@ -24,10 +33,38 @@ var __toESM = (mod2, isNodeMode, target) => (target = mod2 != null ? __create(__
   mod2
 ));
 
+// polyfill.js
+var init_polyfill = __esm({
+  "polyfill.js"() {
+    "use strict";
+    if (typeof global === "undefined") {
+      window.global = window;
+    }
+    if (typeof __dirname === "undefined") {
+      global.__dirname = "";
+    }
+    if (typeof __require === "undefined") {
+      let wasmCache = null;
+      global.require = function(name) {
+        if (name === "fs") {
+          return {
+            readFileSync: function(path) {
+              console.log("readFileSync called with:", path);
+              return new Uint8Array();
+            }
+          };
+        }
+        throw new Error(`Cannot find module: ${name}`);
+      };
+    }
+  }
+});
+
 // node_modules/numpy-ts/dist/numpy-ts.node.cjs
 var require_numpy_ts_node = __commonJS({
   "node_modules/numpy-ts/dist/numpy-ts.node.cjs"(exports, module) {
     "use strict";
+    init_polyfill();
     var te = Object.defineProperty;
     var ry = Object.getOwnPropertyDescriptor;
     var ty = Object.getOwnPropertyNames;
@@ -10629,7 +10666,14 @@ var require_numpy_ts_node = __commonJS({
   }
 });
 
+// src/random_walk_scene.ts
+init_polyfill();
+
+// src/lib/base/index.ts
+init_polyfill();
+
 // src/lib/base/vec2.ts
+init_polyfill();
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
@@ -10658,6 +10702,7 @@ function vec2_rot(v, angle2) {
 }
 
 // src/lib/base/style_options.ts
+init_polyfill();
 var DEFAULT_BACKGROUND_COLOR = "white";
 var DEFAULT_BORDER_COLOR = "black";
 var DEFAULT_BORDER_WIDTH = 4;
@@ -10666,6 +10711,7 @@ var DEFAULT_STROKE_WIDTH = 0.08;
 var DEFAULT_FILL_COLOR = "black";
 
 // src/lib/base/base.ts
+init_polyfill();
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
 }
@@ -11063,7 +11109,14 @@ function touch_event_coords(event) {
   return [event.touches[0].pageX, event.touches[0].pageY];
 }
 
+// src/lib/base/cartesian.ts
+init_polyfill();
+
+// src/lib/base/geometry.ts
+init_polyfill();
+
 // src/lib/base/color.ts
+init_polyfill();
 function rb_colormap(z) {
   const gray = sigmoid(z);
   if (gray < 0.5) {
@@ -11074,6 +11127,7 @@ function rb_colormap(z) {
 }
 
 // src/lib/interactive/draggable.ts
+init_polyfill();
 var makeDraggable = (Base) => {
   return class Draggable extends Base {
     constructor() {
@@ -11647,7 +11701,11 @@ var TwoHeadedArrow = class extends Line {
   }
 };
 
+// src/lib/three_d/mobjects.ts
+init_polyfill();
+
 // src/lib/three_d/matvec.ts
+init_polyfill();
 function vec3_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2);
 }
@@ -12346,6 +12404,7 @@ var TwoHeadedArrow3D = class extends Line3D {
 };
 
 // src/lib/base/heatmap.ts
+init_polyfill();
 var HeatMap = class extends MObject {
   constructor(width, height, min_val, max_val, valArray) {
     super();
@@ -12379,6 +12438,7 @@ var HeatMap = class extends MObject {
 };
 
 // src/lib/base/stats.ts
+init_polyfill();
 var Histogram = class extends MObject {
   constructor() {
     super(...arguments);
@@ -12441,7 +12501,14 @@ var Histogram = class extends MObject {
   }
 };
 
+// src/lib/base/latex.ts
+init_polyfill();
+
+// src/lib/interactive/index.ts
+init_polyfill();
+
 // src/lib/interactive/button.ts
+init_polyfill();
 function Button(container, callback) {
   const button = document.createElement("button");
   button.type = "button";
@@ -12458,7 +12525,11 @@ function Button(container, callback) {
   return button;
 }
 
+// src/lib/interactive/slider.ts
+init_polyfill();
+
 // src/lib/base/bezier.ts
+init_polyfill();
 var np = __toESM(require_numpy_ts_node(), 1);
 var SmoothOpenPathBezierHandleCalculator = class {
   constructor(n) {
@@ -12619,6 +12690,7 @@ var ParametricFunction = class extends LineLikeMObject {
 };
 
 // src/lib/three_d/scene.ts
+init_polyfill();
 var Camera3D = class {
   constructor() {
     // Position of the camera in 3D space
@@ -12807,6 +12879,7 @@ var ThreeDScene = class extends Scene {
 };
 
 // src/lib/interactive/arcball.ts
+init_polyfill();
 var Arcball = class {
   constructor(scene) {
     this.drag = false;

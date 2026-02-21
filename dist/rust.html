@@ -30,7 +30,7 @@
         <!-- html2canvas -->
         <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
         <!--Script for this scene-->
-        <script src="interactive_scene.js"></script>
+        <script src="rust_scene.js"></script>
         <style>
             .row {
                 display: flex;
@@ -61,59 +61,27 @@
     </head>
     <body>
         <div style="text-align: center; margin: 10px auto">
-            <p>This page showcases some interactive scenes.</p>
-
-            <h3>Bezier curve</h3>
+            <h1>Rust integration</h1>
             <p>
-                A Bezier curve, determined by a sequence of control points, each
-                of which can be dragged around. This is a technique used for
-                drawing smooth curves interpolated from a finite sample. This
-                demonstration will eventually go into a tutorial page with a
-                full explanation of the math.
+                For these demonstrations, you should open up the console and
+                view the print log.
             </p>
-            <br />
-            <div class="applet-container" id="draggable-dot-bezier"></div>
-            <br />
-            <div class="slider" id="draggable-dot-bezier-num-slider"></div>
-            <br />
-
-            <h3>Cartesian coordinates</h3>
-            <p>Several scenes including cartesian coordinates.</p>
+            <h3>Simple calculation</h3>
+            <p>
+                This button does a simple calculation, using a multiplication
+                function implemented in Rust, built to a web assembly binary,
+                and then wrapped in a Javascript function.
+            </p>
             <div style="width: 100%" class="row">
                 <div
                     style="width: 50%"
-                    class="applet-container"
-                    id="cartesian-2d"
+                    class="button"
+                    id="rust-calc-button-1"
                 ></div>
                 <div
                     style="width: 50%"
-                    class="applet-container"
-                    id="cartesian-3d"
-                ></div>
-            </div>
-            <div style="width: 100%" class="row">
-                <div
-                    style="width: 50%"
-                    class="slider"
-                    id="cartesian-2d-slider-1"
-                ></div>
-                <div
-                    style="width: 50%"
-                    class="slider"
-                    id="cartesian-3d-slider-1"
-                ></div>
-            </div>
-
-            <div style="width: 100%" class="row">
-                <div
-                    style="width: 50%"
-                    class="slider"
-                    id="cartesian-2d-slider-2"
-                ></div>
-                <div
-                    style="width: 50%"
-                    class="slider"
-                    id="cartesian-3d-slider-2"
+                    class="button"
+                    id="rust-calc-button-2"
                 ></div>
             </div>
         </div>
