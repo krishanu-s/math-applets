@@ -71,7 +71,7 @@ export class HeatSimSpherical
 {
   num_theta: number;
   num_phi: number;
-  heat_propagation_speed: number = 20.0; // Speed of wave propagation
+  heat_propagation_speed: number = 20.0; // Speed of heat propagation
   _spherical_state: SphericalState;
   constructor(num_theta: number, num_phi: number, dt: number) {
     super((num_theta + 1) * num_phi, dt);
@@ -98,7 +98,7 @@ export class HeatSimSpherical
   }
   // Downshifts the value array from shape (num_theta + 1, num_phi) to (num_theta, num_phi)
   // by averaging adjacent rows.
-  get_downshifted_uValues(): Array<number> {
+  get_drawable(): Array<number> {
     return this._spherical_state.downshift_values(this.get_uValues());
   }
   // Sets the initial conditions of the simulation
@@ -119,6 +119,7 @@ export class HeatSimSpherical
         dS[this.index(theta, phi)] = this.laplacian_entry(vals, theta, phi);
       }
     }
+    // console.log(dS);
     return dS;
   }
 }

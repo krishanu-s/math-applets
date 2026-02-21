@@ -6,8 +6,7 @@ import {
 } from "./color";
 import { MObject, Scene } from ".";
 
-// A pixel heatmap. Values are assumed to be in (-inf, inf) and are
-// mapped to colors according
+// A two-dimensional heatmap. Receptacle of values from TwoDimDrawable.
 export class HeatMap extends MObject {
   width: number;
   height: number;

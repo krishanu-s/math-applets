@@ -2,6 +2,17 @@
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
+function vec2_normalize(x) {
+  let n = vec2_norm(x);
+  if (n == 0) {
+    throw new Error("Can't normalize the zero vector");
+  } else {
+    return vec2_scale(x, 1 / n);
+  }
+}
+function vec2_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
 function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
@@ -15,6 +26,9 @@ var DEFAULT_STROKE_WIDTH = 0.08;
 var DEFAULT_FILL_COLOR = "black";
 
 // src/lib/base/base.ts
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 var StrokeOptions = class {
   constructor() {
     this.stroke_width = DEFAULT_STROKE_WIDTH;
@@ -341,6 +355,39 @@ var Scene = class {
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
+function prepare_canvas(width, height, name) {
+  const container = document.getElementById(name);
+  if (container == null) throw new Error(`${name} not found`);
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+  let wrapper = document.createElement("div");
+  wrapper.classList.add("canvas_container");
+  wrapper.classList.add("non_selectable");
+  wrapper.style.width = `${width}px`;
+  wrapper.style.height = `${height}px`;
+  let canvas = document.createElement("canvas");
+  canvas.classList.add("non_selectable");
+  canvas.style.position = "relative";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.height = height;
+  canvas.width = width;
+  wrapper.appendChild(canvas);
+  container.appendChild(wrapper);
+  prepareCanvasForMobile(canvas);
+  return canvas;
+}
+function prepareCanvasForMobile(canvas) {
+  canvas.ontouchstart = function(e) {
+    e.preventDefault();
+  };
+  canvas.ontouchend = function(e) {
+    e.preventDefault();
+  };
+  canvas.ontouchmove = function(e) {
+    e.preventDefault();
+  };
+}
 function mouse_event_coords(event) {
   return [event.pageX, event.pageY];
 }
@@ -784,6 +831,16 @@ var Rectangle = class extends FillLikeMObject {
 var DraggableRectangle = makeDraggable(Rectangle);
 
 // src/lib/three_d/matvec.ts
+function vec3_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2);
+}
+function vec3_dot(v, w) {
+  let result = 0;
+  for (let i = 0; i < 3; i++) {
+    result += v[i] * w[i];
+  }
+  return result;
+}
 function vec3_scale(x, factor) {
   return [x[0] * factor, x[1] * factor, x[2] * factor];
 }
@@ -793,8 +850,119 @@ function vec3_sum(x, y) {
 function vec3_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
 }
+function transpose(m) {
+  return [
+    [m[0][0], m[1][0], m[2][0]],
+    [m[0][1], m[1][1], m[2][1]],
+    [m[0][2], m[1][2], m[2][2]]
+  ];
+}
+function mat_inv(m) {
+  let det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  if (det == 0) {
+    throw new Error("Can't invert a singular matrix");
+  }
+  let inv_det = 1 / det;
+  return [
+    [
+      inv_det * (m[1][1] * m[2][2] - m[1][2] * m[2][1]),
+      inv_det * (m[0][2] * m[2][1] - m[0][1] * m[2][2]),
+      inv_det * (m[0][1] * m[1][2] - m[0][2] * m[1][1])
+    ],
+    [
+      inv_det * (m[1][2] * m[2][0] - m[1][0] * m[2][2]),
+      inv_det * (m[0][0] * m[2][2] - m[0][2] * m[2][0]),
+      inv_det * (m[0][2] * m[1][0] - m[0][0] * m[1][2])
+    ],
+    [
+      inv_det * (m[1][0] * m[2][1] - m[1][1] * m[2][0]),
+      inv_det * (m[0][1] * m[2][0] - m[0][0] * m[2][1]),
+      inv_det * (m[0][0] * m[1][1] - m[0][1] * m[1][0])
+    ]
+  ];
+}
 function get_column(m, i) {
   return [m[0][i], m[1][i], m[2][i]];
+}
+function vec3_normalize(v) {
+  let n = vec3_norm(v);
+  if (n == 0) {
+    throw new Error("Can't normalize the zero vector");
+  } else {
+    return vec3_scale(v, 1 / n);
+  }
+}
+function matmul_vec(m, v) {
+  let result = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    result[i] = vec3_dot(m[i], v);
+  }
+  return result;
+}
+function matmul_mat(m1, m2) {
+  let result = [];
+  for (let i = 0; i < 3; i++) {
+    result.push(matmul_vec(m1, [m2[0][i], m2[1][i], m2[2][i]]));
+  }
+  return transpose(result);
+}
+function rot_z_matrix(theta) {
+  return [
+    [Math.cos(theta), -Math.sin(theta), 0],
+    [Math.sin(theta), Math.cos(theta), 0],
+    [0, 0, 1]
+  ];
+}
+function rot_z(v, theta) {
+  return matmul_vec(rot_z_matrix(theta), v);
+}
+function rot_y_matrix(theta) {
+  return [
+    [Math.cos(theta), 0, Math.sin(theta)],
+    [0, 1, 0],
+    [-Math.sin(theta), 0, Math.cos(theta)]
+  ];
+}
+function rot_y(v, theta) {
+  return matmul_vec(rot_y_matrix(theta), v);
+}
+function rot_x_matrix(theta) {
+  return [
+    [1, 0, 0],
+    [0, Math.cos(theta), -Math.sin(theta)],
+    [0, Math.sin(theta), Math.cos(theta)]
+  ];
+}
+function rot_x(v, theta) {
+  return matmul_vec(rot_x_matrix(theta), v);
+}
+function rot_matrix(axis, angle) {
+  let [x, y, z] = vec3_normalize(axis);
+  let theta = Math.acos(z);
+  let phi = Math.acos(x / Math.sin(theta));
+  if (y / Math.sin(theta) < 0) {
+    phi = 2 * Math.PI - phi;
+  }
+  let result = rot_z_matrix(-phi);
+  result = matmul_mat(rot_y_matrix(-theta), result);
+  result = matmul_mat(rot_z_matrix(angle), result);
+  result = matmul_mat(rot_y_matrix(theta), result);
+  result = matmul_mat(rot_z_matrix(phi), result);
+  return result;
+}
+function rot(v, axis, angle) {
+  let [x, y, z] = vec3_normalize(axis);
+  let theta = Math.acos(z);
+  let phi = Math.acos(x / Math.sin(theta));
+  if (y / Math.sin(theta) < 0) {
+    phi = 2 * Math.PI - phi;
+  }
+  let result = rot_z(v, -phi);
+  result = rot_y(result, -theta);
+  result = rot_z(result, angle);
+  result = rot_y(result, theta);
+  result = rot_z(result, phi);
+  return result;
 }
 
 // src/lib/three_d/mobjects.ts
@@ -863,6 +1031,46 @@ var ThreeDMObject = class extends MObject {
   }
   // Simpler drawing method for 3D scenes which doesn't use local depth testing, for speed purposes.
   _draw_simple(ctx, scene) {
+  }
+};
+var ThreeDMObjectGroup = class extends ThreeDMObject {
+  constructor() {
+    super(...arguments);
+    this.children = {};
+  }
+  add_mobj(name, child) {
+    this.children[name] = child;
+  }
+  remove_mobj(name) {
+    delete this.children[name];
+  }
+  move_by(p) {
+    Object.values(this.children).forEach((child) => child.move_by(p));
+  }
+  clear() {
+    Object.keys(this.children).forEach((key) => {
+      delete this.children[key];
+    });
+  }
+  get_mobj(name) {
+    if (!this.children[name]) {
+      throw new Error(`Child with name ${name} not found`);
+    }
+    return this.children[name];
+  }
+  // TODO Depth-calculation should be done object-by-object.
+  depth(scene) {
+    return Math.max(
+      ...Object.values(this.children).map((child) => child.depth(scene))
+    );
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    Object.values(this.children).forEach((child) => {
+      child.draw(canvas, scene, args);
+    });
   }
 };
 var ThreeDLineLikeMObject = class extends ThreeDMObject {
@@ -1149,125 +1357,537 @@ var Line3D = class extends ThreeDLineLikeMObject {
   }
 };
 
-// src/orbit_scene.ts
-var GRAV_CONSTANT = 1;
-var OrbitScene = class extends Scene {
-  constructor(canvas, center) {
-    super(canvas);
-    this.center = center;
-    this.add("center", new Dot(center, 0.2));
-    this.add("orbiter", new Dot(center, 0.1));
-    this.state = [center, [0, 0]];
+// src/lib/interactive/arcball.ts
+var Arcball = class {
+  constructor(scene) {
+    this.drag = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.dragDiff = [0, 0];
+    this.mode = "Translate";
+    this.scene = scene;
   }
-  // Set the position of the orbiter
-  set_position(x) {
-    this.state[0] = x;
-    let orbiter = this.get_mobj("orbiter");
-    orbiter.move_to(x);
+  set_mode(mode) {
+    this.mode = mode;
   }
-  get_position() {
-    return this.state[0];
+  switch_mode() {
+    this.mode = this.mode == "Translate" ? "Rotate" : "Translate";
   }
-  // Set the linear velocity. Used by the scene evolution engine.
-  set_velocity(v) {
-    this.state[1] = v;
+  click(event) {
+    this.dragStart = [
+      event.pageX - this.scene.canvas.offsetLeft,
+      event.pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
   }
-  get_velocity() {
-    return this.state[1];
+  touch(event) {
+    this.dragStart = [
+      event.touches[0].pageX - this.scene.canvas.offsetLeft,
+      event.touches[0].pageY - this.scene.canvas.offsetTop
+    ];
+    this.drag = true;
   }
-  // [d2x/dt2, d2y/dt2] in terms of [x, y]
-  d2x(pos) {
-    let r = Math.sqrt(
-      (pos[0] - this.center[0]) ** 2 + (pos[1] - this.center[1]) ** 2
+  unclick(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  untouch(event) {
+    this.drag = false;
+  }
+  mouse_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.pageX - this.scene.canvas.offsetLeft,
+        event.pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  touch_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.touches[0].pageX - this.scene.canvas.offsetLeft,
+        event.touches[0].pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  // Updates the scene to account for a dragged cursor position
+  _drag_cursor() {
+    let dragDiff = vec2_sub(
+      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
+      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
     );
-    return [
-      -GRAV_CONSTANT * (pos[0] - this.center[0]) / r ** 3,
-      -GRAV_CONSTANT * (pos[1] - this.center[1]) / r ** 3
-    ];
+    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
+      return;
+    }
+    if (this.mode == "Translate") {
+      this.scene.camera.move_by(
+        matmul_vec(this.scene.camera.get_camera_frame(), [
+          dragDiff[0],
+          dragDiff[1],
+          0
+        ])
+      );
+    } else if (this.mode == "Rotate") {
+      let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
+      let rot_axis = matmul_vec(this.scene.camera.get_camera_frame(), [
+        v[0],
+        v[1],
+        0
+      ]);
+      let n = vec2_norm(dragDiff);
+      this.scene.camera.rot_pos_and_view(rot_axis, n);
+    }
+    this.scene.draw();
+    this.dragStart = this.dragEnd;
   }
-  // Evolves the simulation forward by time dt
-  step(dt) {
-    let k1 = [
-      this.state[1],
-      this.d2x(this.state[0])
-    ];
-    let k2 = [
-      [
-        this.state[1][0] + k1[1][0] * dt / 2,
-        this.state[1][1] + k1[1][1] * dt / 2
-      ],
-      this.d2x([
-        this.state[0][0] + k1[0][0] * dt / 2,
-        this.state[0][1] + k1[0][1] * dt / 2
-      ])
-    ];
-    let k3 = [
-      [
-        this.state[1][0] + k2[1][0] * dt / 2,
-        this.state[1][1] + k2[1][1] * dt / 2
-      ],
-      this.d2x([
-        this.state[0][0] + k2[0][0] * dt / 2,
-        this.state[0][1] + k2[0][1] * dt / 2
-      ])
-    ];
-    let k4 = [
-      [this.state[1][0] + k3[1][0] * dt, this.state[1][1] + k3[1][1] * dt],
-      this.d2x([
-        this.state[0][0] + k3[0][0] * dt,
-        this.state[0][1] + k3[0][1] * dt
-      ])
-    ];
-    this.set_position([
-      this.state[0][0] + (k1[0][0] + 2 * k2[0][0] + 2 * k3[0][0] + k4[0][0]) * dt / 6,
-      this.state[0][1] + (k1[0][1] + 2 * k2[0][1] + 2 * k3[0][1] + k4[0][1]) * dt / 6
-    ]);
-    this.set_velocity([
-      this.state[1][0] + (k1[1][0] + 2 * k2[1][0] + 2 * k3[1][0] + k4[1][0]) * dt / 6,
-      this.state[1][1] + (k1[1][1] + 2 * k2[1][1] + 2 * k3[1][1] + k4[1][1]) * dt / 6
-    ]);
+  add() {
+    let self = this;
+    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
   }
-  // Starts animation
-  start_playing() {
-    this.step(0.05);
-    this.draw();
-    window.requestAnimationFrame(this.start_playing.bind(this));
+  remove() {
+    let self = this;
+    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.removeEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.removeEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
   }
 };
+
+// src/lib/three_d/scene.ts
+var Camera3D = class {
+  constructor() {
+    // Position of the camera in 3D space
+    this.pos = [0, 0, 0];
+    // The 0th, 1st, and 2nd columns of the camera frame matrix are the
+    // x-direction, y-direction, and z-direction of the camera view, respectively.
+    // The inverse of the camera frame matrix is the main object that is manipulated.
+    this.camera_frame_inv = [
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1]
+    ];
+    // Determines whether retrieval of the 2D view is perspective or orthographic.
+    this.mode = "perspective";
+  }
+  // Set the camera position
+  move_to(pos) {
+    this.pos = pos;
+  }
+  // Translate the camera matrix by a given vector
+  move_by(v) {
+    this.pos = vec3_sum(this.pos, v);
+  }
+  // Get the camera frame inverse matrix
+  get_camera_frame_inv() {
+    return this.camera_frame_inv;
+  }
+  // Set the camera frame inverse matrix
+  set_camera_frame_inv(frame_inv) {
+    this.camera_frame_inv = frame_inv;
+  }
+  // Get the camera frame matrix
+  get_camera_frame() {
+    return mat_inv(this.camera_frame_inv);
+  }
+  // Converts a point to camera space
+  _to_camera_space(p) {
+    return matmul_vec(this.camera_frame_inv, vec3_sub(p, this.pos));
+  }
+  // Rotate the camera matrix around the z-axis.
+  rot_view_z(angle) {
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_z_matrix(-angle)
+    );
+  }
+  // Rotate the camera matrix around the y-axis.
+  rot_view_y(angle) {
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_y_matrix(-angle)
+    );
+  }
+  // Rotate the camera matrix around the x-axis.
+  rot_view_x(angle) {
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_x_matrix(-angle)
+    );
+  }
+  // Rotate the camera matrix around a given axis
+  rot_view(axis, angle) {
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_matrix(axis, -angle)
+    );
+  }
+  // Rotates the camera view around various axes
+  rot_pos_and_view_z(angle) {
+    this.rot_view_z(angle);
+    this.move_to(rot_z(this.pos, angle));
+  }
+  rot_pos_and_view_y(angle) {
+    this.rot_view_y(angle);
+    this.move_to(rot_y(this.pos, angle));
+  }
+  rot_pos_and_view_x(angle) {
+    this.rot_view_x(angle);
+    this.move_to(rot_x(this.pos, angle));
+  }
+  rot_pos_and_view(axis, angle) {
+    this.rot_view(axis, angle);
+    this.move_to(rot(this.pos, axis, angle));
+  }
+  // Projects a 3D point onto the camera view plane. Does not include perspective.
+  orthographic_view(p) {
+    let [vx, vy, vz] = this._to_camera_space(p);
+    return [vx, vy];
+  }
+  // Projects a 3D point onto the camera view plane, and then divides by the third coordinate.
+  // Returns null if the third coordinate is nonpositive (i.e., the point is behind the camera).
+  perspective_view(p) {
+    let [vx, vy, vz] = this._to_camera_space(p);
+    if (vz <= 0) {
+      return null;
+    } else {
+      return [vx / vz, vy / vz];
+    }
+  }
+  // Returns the depth of a point in camera space
+  depth(p) {
+    let [vx, vy, vz] = this._to_camera_space(p);
+    return vz;
+  }
+};
+var ThreeDScene = class extends Scene {
+  constructor() {
+    super(...arguments);
+    this.mobjects = {};
+    this.camera = new Camera3D();
+    this.mode = "perspective";
+  }
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names, group_name) {
+    let group = new ThreeDMObjectGroup();
+    names.forEach((name) => {
+      group.add_mobj(name, this.get_mobj(name));
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name) {
+    let group = this.mobjects[group_name];
+    if (group == void 0) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj);
+    });
+    delete this.mobjects[group_name];
+  }
+  // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
+  scale() {
+    let [xmin, xmax] = this.xlims;
+    return this.canvas.width / (xmax - xmin);
+  }
+  // Modes of viewing/drawing
+  set_view_mode(mode) {
+    this.mode = mode;
+  }
+  camera_view(p) {
+    if (this.mode == "perspective") {
+      return this.camera.perspective_view(p);
+    } else {
+      return this.camera.orthographic_view(p);
+    }
+  }
+  // Converts a 2D vector in the view to world coordinates
+  v2w(v) {
+    let frame = this.camera.get_camera_frame();
+    return matmul_vec(frame, [v[0], v[1], 0]);
+  }
+  // Draw
+  draw(args) {
+    let ctx = this.canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.draw_background(ctx);
+    let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
+      let depth_a = this.mobjects[a].depth(this);
+      let depth_b = this.mobjects[b].depth(this);
+      return depth_b - depth_a;
+    });
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      if (mobj instanceof ThreeDFillLikeMObject) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      if (mobj instanceof ThreeDLineLikeMObject) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      if (!(mobj instanceof ThreeDFillLikeMObject) && !(mobj instanceof ThreeDLineLikeMObject)) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    this.draw_border(ctx);
+  }
+};
+
+// src/lib/interactive/button.ts
+function Button(container, callback) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "interactiveButton";
+  button.style.padding = "15px";
+  container.appendChild(button);
+  button.addEventListener("click", (event) => {
+    callback();
+    button.style.transform = "scale(0.95)";
+    setTimeout(() => {
+      button.style.transform = "scale(1)";
+    }, 100);
+  });
+  return button;
+}
+
+// src/lib/animation.ts
+var FRAME_LENGTH = 10;
+var Animation = class {
+  async play(scene) {
+  }
+};
+var AnimationSequence = class extends Animation {
+  constructor(...animations) {
+    super();
+    this.animations = animations;
+  }
+  add(animation) {
+    this.animations.push(animation);
+  }
+  async play(scene) {
+    for (let i = 0; i < this.animations.length; i++) {
+      let anim = this.animations[i];
+      await anim.play(scene);
+    }
+  }
+};
+var Zoom = class extends Animation {
+  constructor(zoom_point, zoom_ratio, num_frames) {
+    super();
+    this.zoom_point = zoom_point;
+    this.zoom_ratio = zoom_ratio;
+    this.num_frames = num_frames;
+  }
+  async play(scene) {
+    await this._play(scene);
+  }
+  async _play(scene) {
+    for (let i = 1; i <= this.num_frames; i++) {
+      await this._play_frame(scene, i);
+      await delay(FRAME_LENGTH);
+      scene.draw();
+    }
+  }
+  async _play_frame(scene, i) {
+    scene.zoom_in_on(
+      Math.pow(this.zoom_ratio, 1 / this.num_frames),
+      this.zoom_point
+    );
+  }
+};
+var FadeIn = class extends Animation {
+  constructor(mobj_name, mobj, num_frames) {
+    super();
+    this.mobj_name = mobj_name;
+    this.mobj = mobj;
+    this.base_alpha = Number(this.mobj.alpha);
+    this.num_frames = num_frames;
+  }
+  async play(scene) {
+    await this._play(scene);
+  }
+  // Animates the fade in.
+  async _play(scene) {
+    scene.add(this.mobj_name, this.mobj);
+    for (let i = 1; i <= this.num_frames; i++) {
+      await this._play_frame(scene, i);
+      await delay(FRAME_LENGTH);
+      scene.draw();
+    }
+  }
+  async _play_frame(scene, i) {
+    let alpha = i / this.num_frames * this.base_alpha;
+    this.mobj.set_alpha(alpha);
+  }
+};
+var FadeOut = class extends Animation {
+  constructor(mobj_name, num_frames) {
+    super();
+    this.mobj_name = mobj_name;
+    this.num_frames = num_frames;
+  }
+  async play(scene) {
+    await this._play(scene);
+  }
+  // Animates the fade out.
+  async _play(scene) {
+    let mobj = scene.get_mobj(this.mobj_name);
+    let base_alpha = Number(mobj.alpha);
+    for (let i = 1; i <= this.num_frames; i++) {
+      await this._play_frame(scene, i, mobj, base_alpha);
+      await delay(FRAME_LENGTH);
+      scene.draw();
+    }
+  }
+  async _play_frame(scene, i, mobj, base_alpha) {
+    let alpha = (1 - i / this.num_frames) * base_alpha;
+    mobj.set_alpha(alpha);
+  }
+};
+var isVec2D = (v) => v.length == 2;
+var isVec3D = (v) => v.length == 3;
+var MoveBy = class extends Animation {
+  constructor(mobj_name, translate_vec, num_frames) {
+    super();
+    this.mobj_name = mobj_name;
+    this.translate_vec = translate_vec;
+    this.num_frames = num_frames;
+  }
+  async play(scene) {
+    await this._play(scene);
+  }
+  // Animates the movement.
+  async _play(scene) {
+    let tv;
+    if (isVec2D(this.translate_vec)) {
+      tv = vec2_scale(this.translate_vec, 1 / this.num_frames);
+    } else if (isVec3D(this.translate_vec)) {
+      tv = vec3_scale(this.translate_vec, 1 / this.num_frames);
+    } else {
+      throw new Error("Invalid translation vector");
+    }
+    for (let i = 1; i <= this.num_frames; i++) {
+      await this._play_frame(scene, tv);
+      await delay(FRAME_LENGTH);
+      scene.draw();
+    }
+  }
+  async _play_frame(scene, tv) {
+    scene.get_mobj(this.mobj_name).move_by(tv);
+  }
+};
+
+// src/animations_scene.ts
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
-    function prepare_canvas2(width2, height2, name) {
-      const container = document.getElementById(name);
-      if (container == null) throw new Error(`${name} not found`);
-      container.style.width = `${width2}px`;
-      container.style.height = `${height2}px`;
-      let wrapper = document.createElement("div");
-      wrapper.classList.add("canvas_container");
-      wrapper.classList.add("non_selectable");
-      wrapper.style.width = `${width2}px`;
-      wrapper.style.height = `${height2}px`;
-      let canvas2 = document.createElement("canvas");
-      canvas2.classList.add("non_selectable");
-      canvas2.style.position = "relative";
-      canvas2.style.top = "0";
-      canvas2.style.left = "0";
-      canvas2.height = height2;
-      canvas2.width = width2;
-      wrapper.appendChild(canvas2);
-      container.appendChild(wrapper);
-      console.log("Canvas made");
-      return canvas2;
-    }
-    let width = 300;
-    let height = 300;
-    let canvas = prepare_canvas2(width, height, "scene-container");
-    let scene = new OrbitScene(canvas, [0, 0]);
-    scene.set_position([1, 0]);
-    scene.set_velocity([0, 1.2]);
-    let xlims = [-5, 5];
-    let ylims = [-5, 5];
-    scene.set_frame_lims(xlims, ylims);
-    scene.draw();
-    scene.start_playing();
+    (function animation(width, height) {
+      const name = "animation";
+      let canvas = prepare_canvas(width, height, name);
+      let scene = new ThreeDScene(canvas);
+      let zoom_ratio = 1;
+      scene.set_frame_lims([-4, 4], [-4, 4]);
+      scene.set_zoom(zoom_ratio);
+      scene.set_view_mode("orthographic");
+      scene.camera.move_to([0, 0, -8]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        Math.PI / 3
+      );
+      let arcball = new Arcball(scene);
+      arcball.set_mode("Rotate");
+      arcball.add();
+      let fade_in_anims = new AnimationSequence();
+      for (let i = 0; i <= 4; i++) {
+        fade_in_anims.add(
+          new FadeIn(`p_${i}`, new Dot3D([i - 2, 0, 0], 0.2), 15)
+        );
+      }
+      let fade_out_anims = new AnimationSequence();
+      for (let i = 0; i <= 4; i++) {
+        fade_out_anims.add(new FadeOut(`p_${i}`, 15));
+      }
+      let zoom_in = new Zoom([0, 0], 2, 15);
+      let zoom_out = new Zoom([0, 0], 0.5, 15);
+      let moveLeft = new MoveBy("points", [1, 0, 0], 15);
+      let moveRight = new MoveBy("points", [-1, 0, 0], 15);
+      let faded_in = false;
+      let animButton = Button(
+        document.getElementById(name + "-button-1"),
+        async function() {
+          if (faded_in) {
+            scene.ungroup("points");
+            await fade_out_anims.play(scene);
+            animButton.textContent = "Fade In";
+          } else {
+            await fade_in_anims.play(scene);
+            scene.group(["p_0", "p_1", "p_2", "p_3", "p_4"], "points");
+            animButton.textContent = "Fade Out";
+          }
+          faded_in = !faded_in;
+        }
+      );
+      animButton.textContent = "Fade In";
+      let zoomInButton = Button(
+        document.getElementById(name + "-button-2"),
+        function() {
+          zoom_in.play(scene);
+        }
+      );
+      zoomInButton.textContent = "Zoom In";
+      let zoomOutButton = Button(
+        document.getElementById(name + "-button-3"),
+        function() {
+          zoom_out.play(scene);
+        }
+      );
+      zoomOutButton.textContent = "Zoom Out";
+      let moveLeftButton = Button(
+        document.getElementById(name + "-button-4"),
+        function() {
+          moveLeft.play(scene);
+        }
+      );
+      moveLeftButton.textContent = "Move dots left";
+      let moveRightButton = Button(
+        document.getElementById(name + "-button-5"),
+        function() {
+          moveRight.play(scene);
+        }
+      );
+      moveRightButton.textContent = "Move dots right";
+    })(300, 300);
   });
 })();

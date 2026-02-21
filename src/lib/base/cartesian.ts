@@ -9,6 +9,7 @@ import {
 } from "./base";
 import { Vec2D } from "./vec2";
 import { TwoHeadedArrow, Line, Polygon } from "./geometry";
+import { ThreeDScene } from "../three_d/scene";
 import {
   ThreeDMObject,
   ThreeDMObjectGroup,
@@ -127,14 +128,17 @@ export class Axis extends MObjectGroup {
     this.tick_options.update(options);
     this.remove_mobj("ticks");
     this._make_ticks();
+    return this;
   }
   set_tick_distance(distance: number) {
     this.tick_options.distance = distance;
     this.set_tick_options(this.tick_options);
+    return this;
   }
   set_tick_size(size: number) {
     this.tick_options.size = size;
     this.set_tick_options(this.tick_options);
+    return this;
   }
 }
 
@@ -219,24 +223,29 @@ export class CoordinateAxes2d extends MObjectGroup {
     this.remove_mobj("x-axis");
     this.remove_mobj("y-axis");
     this._make_axes();
+    return this;
   }
   set_axis_stroke_width(width: number) {
     this.axis_options.stroke_width = width;
     this.set_axis_options(this.axis_options);
+    return this;
   }
   set_tick_options(options: Record<string, any>) {
     this.tick_options.update(options);
     this.remove_mobj("x-axis");
     this.remove_mobj("y-axis");
     this._make_axes();
+    return this;
   }
   set_tick_size(size: number) {
     this.tick_options.size = size;
     this.set_tick_options(this.tick_options);
+    return this;
   }
   set_tick_distance(distance: number) {
     this.tick_options.distance = distance;
     this.set_tick_options(this.tick_options);
+    return this;
   }
   set_grid_options(options: Record<string, any>) {
     this.grid_options.update(options);
@@ -244,18 +253,22 @@ export class CoordinateAxes2d extends MObjectGroup {
     this.remove_mobj("y-grid");
     this._make_x_grid_lines();
     this._make_y_grid_lines();
+    return this;
   }
   set_grid_distance(distance: number) {
     this.grid_options.distance = distance;
     this.set_grid_options(this.grid_options);
+    return this;
   }
   set_grid_alpha(alpha: number) {
     this.grid_options.alpha = alpha;
     this.set_grid_options(this.grid_options);
+    return this;
   }
   set_grid_stroke_width(width: number) {
     this.grid_options.stroke_width = width;
     this.set_grid_options(this.grid_options);
+    return this;
   }
   set_lims(xlims: Vec2D, ylims: Vec2D) {
     this.xlims = xlims;
@@ -266,6 +279,7 @@ export class CoordinateAxes2d extends MObjectGroup {
     this.remove_mobj("y-grid");
     this._make_x_grid_lines();
     this._make_y_grid_lines();
+    return this;
   }
 }
 
@@ -282,7 +296,6 @@ export class Axis3D extends ThreeDMObjectGroup {
     this._make_axis();
     this._make_ticks();
   }
-
   _make_axis() {
     let [cmin, cmax] = this.lims;
     let axis;
@@ -413,6 +426,7 @@ export class CoordinateAxes3d extends ThreeDMObjectGroup {
     this.remove_mobj("x-axis");
     this.remove_mobj("y-axis");
     this._make_axes();
+    return this;
   }
   set_axis_stroke_width(width: number) {
     this.axis_options.stroke_width = width;
@@ -423,6 +437,7 @@ export class CoordinateAxes3d extends ThreeDMObjectGroup {
     this.remove_mobj("x-axis");
     this.remove_mobj("y-axis");
     this._make_axes();
+    return this;
   }
   set_tick_size(size: number) {
     this.tick_options.size = size;

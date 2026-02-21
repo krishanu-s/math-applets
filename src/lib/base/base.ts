@@ -1,4 +1,5 @@
 import { Vec2D } from "./vec2";
+import { Vec3D } from "../three_d/matvec";
 import {
   DEFAULT_BACKGROUND_COLOR,
   DEFAULT_BORDER_COLOR,
@@ -125,8 +126,8 @@ export class MObject {
     this.alpha = alpha;
     return this;
   }
+  move_by(p: Vec2D | Vec3D): void {}
   add(scene: Scene) {}
-
   draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
@@ -146,6 +147,9 @@ export class MObjectGroup extends MObject {
   }
   remove_mobj(name: string) {
     delete this.children[name];
+  }
+  move_by(p: Vec2D | Vec3D): void {
+    Object.values(this.children).forEach((child) => child.move_by(p));
   }
   clear() {
     Object.keys(this.children).forEach((key) => {
@@ -444,6 +448,25 @@ export class Scene {
   // Removes the mobject from the scene
   remove(name: string) {
     delete this.mobjects[name];
+  }
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names: string[], group_name: string) {
+    let group = new MObjectGroup();
+    names.forEach((name) => {
+      let mobj = this.get_mobj(name);
+      group.add_mobj(name, mobj);
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name: string) {
+    let group = this.mobjects[group_name] as MObjectGroup;
+    if (group == undefined) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj);
+    });
+    delete this.mobjects[group_name];
   }
   // Removes all mobjects from the scene
   clear() {

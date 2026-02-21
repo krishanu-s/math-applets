@@ -99,6 +99,8 @@ var MObject = class {
     this.alpha = alpha;
     return this;
   }
+  move_by(p) {
+  }
   add(scene) {
   }
   draw(canvas, scene, args) {
@@ -108,6 +110,40 @@ var MObject = class {
     this._draw(ctx, scene, args);
   }
   _draw(ctx, scene, args) {
+  }
+};
+var MObjectGroup = class extends MObject {
+  constructor() {
+    super(...arguments);
+    this.children = {};
+  }
+  add_mobj(name, child) {
+    this.children[name] = child;
+  }
+  remove_mobj(name) {
+    delete this.children[name];
+  }
+  move_by(p) {
+    Object.values(this.children).forEach((child) => child.move_by(p));
+  }
+  clear() {
+    Object.keys(this.children).forEach((key) => {
+      delete this.children[key];
+    });
+  }
+  get_mobj(name) {
+    if (!this.children[name]) {
+      throw new Error(`Child with name ${name} not found`);
+    }
+    return this.children[name];
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    Object.values(this.children).forEach(
+      (child) => child.draw(canvas, scene, args)
+    );
   }
 };
 var FillLikeMObject = class extends MObject {
@@ -262,6 +298,25 @@ var Scene = class {
   // Removes the mobject from the scene
   remove(name) {
     delete this.mobjects[name];
+  }
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names, group_name) {
+    let group = new MObjectGroup();
+    names.forEach((name) => {
+      let mobj = this.get_mobj(name);
+      group.add_mobj(name, mobj);
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name) {
+    let group = this.mobjects[group_name];
+    if (group == void 0) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj);
+    });
+    delete this.mobjects[group_name];
   }
   // Removes all mobjects from the scene
   clear() {
@@ -838,7 +893,7 @@ function mat_inv(m) {
 function get_column(m, i) {
   return [m[0][i], m[1][i], m[2][i]];
 }
-function normalize(v) {
+function vec3_normalize(v) {
   let n = vec3_norm(v);
   if (n == 0) {
     throw new Error("Can't normalize the zero vector");
@@ -891,7 +946,7 @@ function rot_x(v, theta) {
   return matmul_vec(rot_x_matrix(theta), v);
 }
 function rot_matrix(axis, angle) {
-  let [x, y, z] = normalize(axis);
+  let [x, y, z] = vec3_normalize(axis);
   let theta = Math.acos(z);
   let phi = Math.acos(x / Math.sin(theta));
   if (y / Math.sin(theta) < 0) {
@@ -905,7 +960,7 @@ function rot_matrix(axis, angle) {
   return result;
 }
 function rot(v, axis, angle) {
-  let [x, y, z] = normalize(axis);
+  let [x, y, z] = vec3_normalize(axis);
   let theta = Math.acos(z);
   let phi = Math.acos(x / Math.sin(theta));
   if (y / Math.sin(theta) < 0) {
@@ -985,6 +1040,46 @@ var ThreeDMObject = class extends MObject {
   }
   // Simpler drawing method for 3D scenes which doesn't use local depth testing, for speed purposes.
   _draw_simple(ctx, scene) {
+  }
+};
+var ThreeDMObjectGroup = class extends ThreeDMObject {
+  constructor() {
+    super(...arguments);
+    this.children = {};
+  }
+  add_mobj(name, child) {
+    this.children[name] = child;
+  }
+  remove_mobj(name) {
+    delete this.children[name];
+  }
+  move_by(p) {
+    Object.values(this.children).forEach((child) => child.move_by(p));
+  }
+  clear() {
+    Object.keys(this.children).forEach((key) => {
+      delete this.children[key];
+    });
+  }
+  get_mobj(name) {
+    if (!this.children[name]) {
+      throw new Error(`Child with name ${name} not found`);
+    }
+    return this.children[name];
+  }
+  // TODO Depth-calculation should be done object-by-object.
+  depth(scene) {
+    return Math.max(
+      ...Object.values(this.children).map((child) => child.depth(scene))
+    );
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    Object.values(this.children).forEach((child) => {
+      child.draw(canvas, scene, args);
+    });
   }
 };
 var ThreeDLineLikeMObject = class extends ThreeDMObject {
@@ -1734,8 +1829,27 @@ var Camera3D = class {
 var ThreeDScene = class extends Scene {
   constructor() {
     super(...arguments);
+    this.mobjects = {};
     this.camera = new Camera3D();
     this.mode = "perspective";
+  }
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names, group_name) {
+    let group = new ThreeDMObjectGroup();
+    names.forEach((name) => {
+      group.add_mobj(name, this.get_mobj(name));
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name) {
+    let group = this.mobjects[group_name];
+    if (group == void 0) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj);
+    });
+    delete this.mobjects[group_name];
   }
   // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
   scale() {

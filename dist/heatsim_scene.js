@@ -10672,6 +10672,9 @@ function sigmoid(x) {
 function gaussian_normal_pdf(mean, stdev, x) {
   return Math.exp(-Math.pow(x - mean, 2) / (2 * Math.pow(stdev, 2))) / (stdev * Math.sqrt(2 * Math.PI));
 }
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 var StrokeOptions = class {
   constructor() {
     this.stroke_width = DEFAULT_STROKE_WIDTH;
@@ -10733,6 +10736,8 @@ var MObject = class {
     this.alpha = alpha;
     return this;
   }
+  move_by(p) {
+  }
   add(scene) {
   }
   draw(canvas, scene, args) {
@@ -10742,6 +10747,40 @@ var MObject = class {
     this._draw(ctx, scene, args);
   }
   _draw(ctx, scene, args) {
+  }
+};
+var MObjectGroup = class extends MObject {
+  constructor() {
+    super(...arguments);
+    this.children = {};
+  }
+  add_mobj(name, child) {
+    this.children[name] = child;
+  }
+  remove_mobj(name) {
+    delete this.children[name];
+  }
+  move_by(p) {
+    Object.values(this.children).forEach((child) => child.move_by(p));
+  }
+  clear() {
+    Object.keys(this.children).forEach((key) => {
+      delete this.children[key];
+    });
+  }
+  get_mobj(name) {
+    if (!this.children[name]) {
+      throw new Error(`Child with name ${name} not found`);
+    }
+    return this.children[name];
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    Object.values(this.children).forEach(
+      (child) => child.draw(canvas, scene, args)
+    );
   }
 };
 var FillLikeMObject = class extends MObject {
@@ -10897,6 +10936,25 @@ var Scene = class {
   remove(name) {
     delete this.mobjects[name];
   }
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names, group_name) {
+    let group = new MObjectGroup();
+    names.forEach((name) => {
+      let mobj = this.get_mobj(name);
+      group.add_mobj(name, mobj);
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name) {
+    let group = this.mobjects[group_name];
+    if (group == void 0) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj);
+    });
+    delete this.mobjects[group_name];
+  }
   // Removes all mobjects from the scene
   clear() {
     this.mobjects = {};
@@ -10994,6 +11052,13 @@ function rb_colormap(z) {
   } else {
     return [255, 512 * (1 - gray), 512 * (1 - gray), 255];
   }
+}
+function grayscale_colormap(z) {
+  return grayscale_colormap_logarithmic(z, 1);
+}
+function grayscale_colormap_logarithmic(z, d) {
+  let zc = Math.pow(z, 1 / d);
+  return [255 * (1 - zc), 255 * (1 - zc), 255 * (1 - zc), 255];
 }
 
 // src/lib/interactive/draggable.ts
@@ -11488,7 +11553,7 @@ function mat_inv(m) {
 function get_column(m, i) {
   return [m[0][i], m[1][i], m[2][i]];
 }
-function normalize(v) {
+function vec3_normalize(v) {
   let n = vec3_norm(v);
   if (n == 0) {
     throw new Error("Can't normalize the zero vector");
@@ -11541,7 +11606,7 @@ function rot_x(v, theta) {
   return matmul_vec(rot_x_matrix(theta), v);
 }
 function rot_matrix(axis, angle2) {
-  let [x, y, z] = normalize(axis);
+  let [x, y, z] = vec3_normalize(axis);
   let theta = Math.acos(z);
   let phi = Math.acos(x / Math.sin(theta));
   if (y / Math.sin(theta) < 0) {
@@ -11555,7 +11620,7 @@ function rot_matrix(axis, angle2) {
   return result;
 }
 function rot(v, axis, angle2) {
-  let [x, y, z] = normalize(axis);
+  let [x, y, z] = vec3_normalize(axis);
   let theta = Math.acos(z);
   let phi = Math.acos(x / Math.sin(theta));
   if (y / Math.sin(theta) < 0) {
@@ -11648,6 +11713,9 @@ var ThreeDMObjectGroup = class extends ThreeDMObject {
   remove_mobj(name) {
     delete this.children[name];
   }
+  move_by(p) {
+    Object.values(this.children).forEach((child) => child.move_by(p));
+  }
   clear() {
     Object.keys(this.children).forEach((key) => {
       delete this.children[key];
@@ -11658,6 +11726,12 @@ var ThreeDMObjectGroup = class extends ThreeDMObject {
       throw new Error(`Child with name ${name} not found`);
     }
     return this.children[name];
+  }
+  // TODO Depth-calculation should be done object-by-object.
+  depth(scene) {
+    return Math.max(
+      ...Object.values(this.children).map((child) => child.depth(scene))
+    );
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
@@ -12166,6 +12240,7 @@ var CoordinateAxes3d = class extends ThreeDMObjectGroup {
     this.remove_mobj("x-axis");
     this.remove_mobj("y-axis");
     this._make_axes();
+    return this;
   }
   set_axis_stroke_width(width) {
     this.axis_options.stroke_width = width;
@@ -12176,6 +12251,7 @@ var CoordinateAxes3d = class extends ThreeDMObjectGroup {
     this.remove_mobj("x-axis");
     this.remove_mobj("y-axis");
     this._make_axes();
+    return this;
   }
   set_tick_size(size2) {
     this.tick_options.size = size2;
@@ -12398,8 +12474,27 @@ var Camera3D = class {
 var ThreeDScene = class extends Scene {
   constructor() {
     super(...arguments);
+    this.mobjects = {};
     this.camera = new Camera3D();
     this.mode = "perspective";
+  }
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names, group_name) {
+    let group = new ThreeDMObjectGroup();
+    names.forEach((name) => {
+      group.add_mobj(name, this.get_mobj(name));
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name) {
+    let group = this.mobjects[group_name];
+    if (group == void 0) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj);
+    });
+    delete this.mobjects[group_name];
   }
   // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
   scale() {
@@ -12766,6 +12861,9 @@ var SphericalState = class {
   index(theta, phi) {
     return phi * (this.num_theta + 1) + theta;
   }
+  new_arr() {
+    return new Array((this.num_theta + 1) * this.num_phi).fill(0);
+  }
   // Takes an array of shape (num_theta + 1, num_phi) and downshifts it to shape (num_theta, num_phi)
   // by averaging adjacent rows.
   downshift_values(vals) {
@@ -12897,7 +12995,7 @@ var HeatSimSpherical = class extends StateSimulator {
   }
   // Downshifts the value array from shape (num_theta + 1, num_phi) to (num_theta, num_phi)
   // by averaging adjacent rows.
-  get_downshifted_uValues() {
+  get_drawable() {
     return this._spherical_state.downshift_values(this.get_uValues());
   }
   // Sets the initial conditions of the simulation
@@ -13081,11 +13179,16 @@ var Polygon3D = class extends ThreeDFillLikeMObject {
 var SphereHeatMap = class extends ThreeDMObjectGroup {
   constructor(radius, num_theta, num_phi) {
     super();
+    this.colormap = rb_colormap;
     this.radius = radius;
     this.num_theta = num_theta;
     this.num_phi = num_phi;
     this._spherical_state = new SphericalState(num_theta - 1, num_phi);
     this._make_panels();
+  }
+  // Sets the colormap for the MObject
+  set_colormap(colormap) {
+    this.colormap = colormap;
   }
   // Re-makes the panels
   _make_panels() {
@@ -13120,7 +13223,7 @@ var SphereHeatMap = class extends ThreeDMObjectGroup {
       for (let phi = 0; phi < this.num_phi; phi++) {
         let val = vals[this._spherical_state.index(theta, phi)];
         this.get_panel(theta, phi).set_fill_color(
-          colorval_to_rgba(rb_colormap(val))
+          colorval_to_rgba(this.colormap(val))
         );
       }
     }
@@ -13133,6 +13236,67 @@ function spherical_to_cartesian(radius, theta_rad, phi_rad) {
     radius * Math.cos(theta_rad)
   ];
 }
+var HeatSimPoles = class extends HeatSimSpherical {
+  constructor(num_theta, num_phi, dt) {
+    super(num_theta, num_phi, dt);
+    this.n_pole_temp = 20;
+    this.s_pole_temp = -20;
+    // Heat/cold sources are modeled locally using a normal distribution, to avoid sharp edges
+    this.bump_std = 0.05;
+    this.bump_vals = [];
+    this._make_bump_vals();
+  }
+  _make_bump_vals() {
+    let i = 0;
+    let bump_val = gaussian_normal_pdf(
+      0,
+      this.bump_std,
+      i * Math.PI / this.num_theta
+    );
+    this.bump_vals = [];
+    while (bump_val > 0.2) {
+      this.bump_vals.push(bump_val);
+      i++;
+      bump_val = gaussian_normal_pdf(
+        0,
+        this.bump_std,
+        i * Math.PI / this.num_theta
+      );
+    }
+  }
+  set_n_pole_temp(temp) {
+    this.n_pole_temp = temp;
+  }
+  set_s_pole_temp(temp) {
+    this.s_pole_temp = temp;
+  }
+  set_boundary_conditions(s, t) {
+    for (let phi = 0; phi < this.num_phi; phi++) {
+      for (let j = 0; j < this.bump_vals.length; j++) {
+        let bump_val = this.bump_vals[j];
+        s[this.index(j, phi)] = this.n_pole_temp * bump_val;
+        s[this.index(this.num_theta - j, phi)] = this.s_pole_temp * bump_val;
+      }
+    }
+  }
+};
+var SphereHeatMapScene = class extends ThreeDSceneFromSimulator {
+  constructor(canvas, radius, num_theta, num_phi) {
+    super(canvas);
+    let sphere = new SphereHeatMap(radius, num_theta, num_phi);
+    this.add("sphere", sphere);
+  }
+  set_colormap(colormap) {
+    let sphere = this.get_mobj("sphere");
+    sphere.set_colormap(colormap);
+  }
+  // Load new colors from the simulator
+  update_mobjects_from_simulator(simulator) {
+    let vals = simulator.get_drawable();
+    let sphere = this.get_mobj("sphere");
+    sphere.load_colors_from_array(vals);
+  }
+};
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
     (function heatsim_2d(width, height) {
@@ -13260,70 +13424,13 @@ function spherical_to_cartesian(radius, theta_rad, phi_rad) {
       }
       let num_theta = 50;
       let num_phi = 100;
-      let dt = 2e-3;
-      class HeatSim extends HeatSimSpherical {
-        constructor(num_theta2, num_phi2, dt2) {
-          super(num_theta2, num_phi2, dt2);
-          this.n_pole_temp = 20;
-          this.s_pole_temp = -20;
-          // Heat/cold sources are modeled locally using a normal distribution, to avoid sharp edges
-          this.bump_std = 0.05;
-          this.bump_vals = [];
-          this._make_bump_vals();
-        }
-        _make_bump_vals() {
-          let i = 0;
-          let bump_val = gaussian_normal_pdf(
-            0,
-            this.bump_std,
-            i * Math.PI / this.num_theta
-          );
-          this.bump_vals = [];
-          while (bump_val > 0.2) {
-            this.bump_vals.push(bump_val);
-            i++;
-            bump_val = gaussian_normal_pdf(
-              0,
-              this.bump_std,
-              i * Math.PI / this.num_theta
-            );
-          }
-        }
-        set_n_pole_temp(temp) {
-          this.n_pole_temp = temp;
-        }
-        set_s_pole_temp(temp) {
-          this.s_pole_temp = temp;
-        }
-        set_boundary_conditions(s, t) {
-          for (let phi = 0; phi < this.num_phi; phi++) {
-            for (let j = 0; j < this.bump_vals.length; j++) {
-              let bump_val = this.bump_vals[j];
-              s[this.index(j, phi)] = this.n_pole_temp * bump_val;
-              s[this.index(this.num_theta - j, phi)] = this.s_pole_temp * bump_val;
-            }
-          }
-        }
-      }
-      let sim = new HeatSim(num_theta, num_phi, dt);
+      let dt = 1e-3;
+      let sim = new HeatSimPoles(num_theta, num_phi, dt);
       let handler = new InteractiveHandler(sim);
-      class SphereScene extends ThreeDSceneFromSimulator {
-        constructor(canvas2, radius2, num_theta2, num_phi2) {
-          super(canvas2);
-          let sphere = new SphereHeatMap(radius2, num_theta2, num_phi2);
-          this.add("sphere", sphere);
-        }
-        // Load new colors from the simulator
-        update_mobjects_from_simulator(simulator) {
-          let vals = simulator.get_downshifted_uValues();
-          simulator._spherical_state.index;
-          let sphere = this.get_mobj("sphere");
-          sphere.load_colors_from_array(vals);
-        }
-      }
       let radius = 1;
       let zoom_ratio = 1;
-      let scene = new SphereScene(canvas, radius, num_theta, num_phi);
+      let scene = new SphereHeatMapScene(canvas, radius, num_theta, num_phi);
+      scene.set_colormap(grayscale_colormap);
       scene.set_frame_lims([-2, 2], [-2, 2]);
       scene.set_zoom(zoom_ratio);
       scene.set_view_mode("orthographic");
@@ -13352,6 +13459,7 @@ function spherical_to_cartesian(radius, theta_rad, phi_rad) {
         document.getElementById(name + "-button-2"),
         function() {
           handler.add_to_queue(sim.reset.bind(sim));
+          handler.add_to_queue(handler.draw.bind(handler));
         }
       );
       clearButton.textContent = "Clear";
@@ -13387,6 +13495,55 @@ function spherical_to_cartesian(radius, theta_rad, phi_rad) {
       );
       handler.draw();
       handler.play(void 0);
+    })(300, 300);
+    (async function random_walk_sphere(width, height) {
+      const name = "random-walk-sphere";
+      let canvas = prepare_canvas(width, height, name);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      let zoom_ratio = 1;
+      let scene = new ThreeDScene(canvas);
+      scene.set_frame_lims([-2, 2], [-2, 2]);
+      scene.set_zoom(zoom_ratio);
+      scene.set_view_mode("orthographic");
+      scene.camera.move_to([0, 0, -8]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        Math.PI / 3
+      );
+      let [xmin, xmax] = [-2, 2];
+      let [ymin, ymax] = [-2, 2];
+      let [zmin, zmax] = [-2, 2];
+      let axes = new CoordinateAxes3d([xmin, xmax], [ymin, ymax], [zmin, zmax]);
+      axes.set_tick_size(0.1);
+      axes.set_alpha(0.5);
+      axes.set_axis_stroke_width(0.01);
+      scene.add("axes", axes);
+      let radius = 1;
+      let point = [0, 0, radius];
+      scene.add("point", new Dot3D(point, 0.01).set_color("red"));
+      let arcball = new Arcball(scene);
+      arcball.set_mode("Rotate");
+      arcball.add();
+      scene.draw();
+      let dtheta = 0.01;
+      let dt = 1e-3;
+      let axis;
+      for (let t = 0; t < 10; t += dt) {
+        axis = vec3_normalize([
+          2 * Math.random() - 1,
+          2 * Math.random() - 1,
+          2 * Math.random() - 1
+        ]);
+        point = rot(point, axis, dtheta);
+        scene.get_mobj("point").move_to(point);
+        scene.camera.rot_pos_and_view_z(dt * Math.PI / 10);
+        scene.draw();
+        await delay(1);
+      }
     })(300, 300);
   });
 })();

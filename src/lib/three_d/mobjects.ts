@@ -112,6 +112,9 @@ export class ThreeDMObjectGroup extends ThreeDMObject {
   remove_mobj(name: string) {
     delete this.children[name];
   }
+  move_by(p: Vec3D): void {
+    Object.values(this.children).forEach((child) => child.move_by(p));
+  }
   clear() {
     Object.keys(this.children).forEach((key) => {
       delete this.children[key];
@@ -122,6 +125,12 @@ export class ThreeDMObjectGroup extends ThreeDMObject {
       throw new Error(`Child with name ${name} not found`);
     }
     return this.children[name];
+  }
+  // TODO Depth-calculation should be done object-by-object.
+  depth(scene: ThreeDScene): number {
+    return Math.max(
+      ...Object.values(this.children).map((child) => child.depth(scene)),
+    );
   }
   draw(canvas: HTMLCanvasElement, scene: ThreeDScene, args?: any): void {
     let ctx = canvas.getContext("2d");

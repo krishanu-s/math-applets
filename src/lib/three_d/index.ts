@@ -7,6 +7,7 @@ export {
   vec3_sub,
   vec3_sum,
   vec3_sum_list,
+  vec3_normalize,
   Mat3by3,
   mat_inv,
   matmul_mat,

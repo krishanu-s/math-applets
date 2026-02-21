@@ -4,8 +4,13 @@
         <meta charset="UTF-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>heat equation demo</title>
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+        />
+        <title>interactive demo</title>
         <base href="." />
+        <!-- MathJax -->
         <script>
             MathJax = {
                 tex: {
@@ -17,7 +22,15 @@
             defer
             src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
         ></script>
-        <script type="module" src="heatsim_scene.js"></script>
+        <!-- KaTeX JS -->
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+        ></script>
+        <!-- html2canvas -->
+        <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+        <!--Script for this scene-->
+        <script type="module" src="animations_scene.js"></script>
         <style>
             .row {
                 display: flex;
@@ -38,7 +51,7 @@
                 display: flex;
                 justify-content: center; /* Centers horizontally */
                 align-items: center; /* Centers vertically */
-                width: 50%;
+                width: 40%;
                 height: 25px;
                 margin: 20px 0;
                 margin-left: auto;
@@ -46,85 +59,72 @@
             }
         </style>
     </head>
-
     <body>
         <div style="text-align: center; margin: 10px auto">
-            <p>
-                Simulation of heat flow. Both in 2D, and on the surface of a
-                sphere.
-            </p>
-            <br />
-            <div style="width: 100%" class="row">
-                <div
-                    style="width: 50%"
-                    class="applet-container"
-                    id="heatsim-2d"
-                ></div>
-                <div
-                    style="width: 50%"
-                    class="applet-container"
-                    id="heatsim-sphere"
-                ></div>
-            </div>
-            <br />
+            <p>This page showcases some animations.</p>
 
-            <div style="width: 100%" class="row">
-                <div
-                    style="width: 50%"
-                    class="button"
-                    id="heatsim-2d-button-1"
-                ></div>
-                <div
-                    style="width: 50%"
-                    class="button"
-                    id="heatsim-sphere-button-1"
-                ></div>
-            </div>
-            <div style="width: 100%" class="row">
-                <div
-                    style="width: 50%"
-                    class="button"
-                    id="heatsim-2d-button-2"
-                ></div>
-                <div
-                    style="width: 50%"
-                    class="button"
-                    id="heatsim-sphere-button-2"
-                ></div>
-            </div>
-            <div style="width: 100%" class="row">
-                <div
-                    style="width: 50%"
-                    class="slider"
-                    id="heatsim-2d-slider-1"
-                ></div>
-                <div
-                    style="width: 50%"
-                    class="slider"
-                    id="heatsim-sphere-slider-1"
-                ></div>
-            </div>
-            <div style="width: 100%" class="row">
-                <div
-                    style="width: 50%"
-                    class="slider"
-                    id="heatsim-2d-slider-2"
-                ></div>
-                <div
-                    style="width: 50%"
-                    class="slider"
-                    id="heatsim-sphere-slider-2"
-                ></div>
-            </div>
-
-            <p>Random walk on the surface of a sphere.</p>
+            <p>Basic</p>
             <br />
-            <div class="applet-container" id="random-walk-sphere"></div>
+            <div class="applet-container" id="animation"></div>
             <br />
-            <div class="button" id="random-walk-sphere-button-1"></div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 20%"
+                    class="button"
+                    id="animation-button-1"
+                ></div>
+                <div
+                    style="width: 20%"
+                    class="button"
+                    id="animation-button-2"
+                ></div>
+                <div
+                    style="width: 20%"
+                    class="button"
+                    id="animation-button-3"
+                ></div>
+                <div
+                    style="width: 20%"
+                    class="button"
+                    id="animation-button-4"
+                ></div>
+                <div
+                    style="width: 20%"
+                    class="button"
+                    id="animation-button-5"
+                ></div>
+            </div>
             <br />
-            <div class="button" id="random-walk-sphere-button-2"></div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 20%"
+                    class="button"
+                    id="animation-button-6"
+                ></div>
+                <div
+                    style="width: 20%"
+                    class="button"
+                    id="animation-button-7"
+                ></div>
+                <div
+                    style="width: 20%"
+                    class="button"
+                    id="animation-button-8"
+                ></div>
+                <div
+                    style="width: 20%"
+                    class="button"
+                    id="animation-button-9"
+                ></div>
+                <div
+                    style="width: 20%"
+                    class="button"
+                    id="animation-button-10"
+                ></div>
+            </div>
+            <br />
         </div>
+
         <a href="./index.html">back to main page</a>
     </body>
 </html>

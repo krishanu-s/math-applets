@@ -92,6 +92,10 @@ export class Sector extends FillLikeMObject {
   move_to(center: Vec2D) {
     this.center = center;
   }
+  move_by(p: Vec2D) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
+  }
   // Change the dot radius
   set_radius(radius: number) {
     this.radius = radius;
@@ -198,12 +202,17 @@ export class Polygon extends FillLikeMObject {
   move_point(i: number, new_point: Vec2D) {
     this.points[i] = new_point;
   }
+  move_by(p: Vec2D) {
+    for (let i = 0; i < this.points.length; i++) {
+      this.points[i] = vec2_sum(this.points[i] as Vec2D, p);
+    }
+  }
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
-    let [x, y] = scene.v2c(this.points[0]);
+    let [x, y] = scene.v2c(this.points[0] as Vec2D);
     ctx.beginPath();
     ctx.moveTo(x, y);
     for (let i = 1; i < this.points.length; i++) {
-      [x, y] = scene.v2c(this.points[i]);
+      [x, y] = scene.v2c(this.points[i] as Vec2D);
       ctx.lineTo(x, y);
     }
     ctx.closePath();
@@ -234,6 +243,10 @@ export class Line extends LineLikeMObject {
   }
   move_end(p: Vec2D) {
     this.end = p;
+  }
+  move_by(p: Vec2D) {
+    this.start = vec2_sum(this.start, p);
+    this.end = vec2_sum(this.end, p);
   }
   length(): number {
     return vec2_norm(vec2_sub(this.start, this.end));
@@ -267,6 +280,11 @@ export class LineSequence extends LineLikeMObject {
   }
   get_point(i: number): Vec2D {
     return this.points[i] as Vec2D;
+  }
+  move_by(p: Vec2D) {
+    for (let i = 0; i < this.points.length; i++) {
+      this.points[i] = vec2_sum(this.points[i] as Vec2D, p);
+    }
   }
   // Draws on the canvas
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {

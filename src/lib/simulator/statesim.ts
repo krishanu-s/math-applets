@@ -289,6 +289,8 @@ export interface SphericalDrawable {
   num_theta: number;
   num_phi: number;
   get_uValues(): Array<number>;
+  // Outputs an array of size (num_theta, num_phi) to be printed on a sphere.
+  get_drawable(): Array<number>;
 }
 
 // Represents a function on S^2 in spherical coordinates as an array of values
@@ -306,6 +308,9 @@ export class SphericalState {
   }
   index(theta: number, phi: number) {
     return phi * (this.num_theta + 1) + theta;
+  }
+  new_arr(): Array<number> {
+    return new Array<number>((this.num_theta + 1) * this.num_phi).fill(0);
   }
   // Takes an array of shape (num_theta + 1, num_phi) and downshifts it to shape (num_theta, num_phi)
   // by averaging adjacent rows.

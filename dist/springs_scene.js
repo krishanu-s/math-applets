@@ -160,6 +160,8 @@ var MObject = class {
     this.alpha = alpha;
     return this;
   }
+  move_by(p) {
+  }
   add(scene) {
   }
   draw(canvas, scene, args) {
@@ -181,6 +183,9 @@ var MObjectGroup = class extends MObject {
   }
   remove_mobj(name) {
     delete this.children[name];
+  }
+  move_by(p) {
+    Object.values(this.children).forEach((child) => child.move_by(p));
   }
   clear() {
     Object.keys(this.children).forEach((key) => {
@@ -406,6 +411,25 @@ var Scene = class {
   // Removes the mobject from the scene
   remove(name) {
     delete this.mobjects[name];
+  }
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names, group_name) {
+    let group = new MObjectGroup();
+    names.forEach((name) => {
+      let mobj = this.get_mobj(name);
+      group.add_mobj(name, mobj);
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name) {
+    let group = this.mobjects[group_name];
+    if (group == void 0) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj);
+    });
+    delete this.mobjects[group_name];
   }
   // Removes all mobjects from the scene
   clear() {
@@ -953,6 +977,10 @@ var Line = class extends LineLikeMObject {
   move_end(p) {
     this.end = p;
   }
+  move_by(p) {
+    this.start = vec2_sum(this.start, p);
+    this.end = vec2_sum(this.end, p);
+  }
   length() {
     return vec2_norm(vec2_sub(this.start, this.end));
   }
@@ -982,6 +1010,11 @@ var LineSequence = class extends LineLikeMObject {
   }
   get_point(i) {
     return this.points[i];
+  }
+  move_by(p) {
+    for (let i = 0; i < this.points.length; i++) {
+      this.points[i] = vec2_sum(this.points[i], p);
+    }
   }
   // Draws on the canvas
   _draw(ctx, scene) {
@@ -1602,14 +1635,17 @@ var Axis = class extends MObjectGroup {
     this.tick_options.update(options);
     this.remove_mobj("ticks");
     this._make_ticks();
+    return this;
   }
   set_tick_distance(distance) {
     this.tick_options.distance = distance;
     this.set_tick_options(this.tick_options);
+    return this;
   }
   set_tick_size(size) {
     this.tick_options.size = size;
     this.set_tick_options(this.tick_options);
+    return this;
   }
 };
 var CoordinateAxes2d = class extends MObjectGroup {
@@ -1669,24 +1705,29 @@ var CoordinateAxes2d = class extends MObjectGroup {
     this.remove_mobj("x-axis");
     this.remove_mobj("y-axis");
     this._make_axes();
+    return this;
   }
   set_axis_stroke_width(width) {
     this.axis_options.stroke_width = width;
     this.set_axis_options(this.axis_options);
+    return this;
   }
   set_tick_options(options) {
     this.tick_options.update(options);
     this.remove_mobj("x-axis");
     this.remove_mobj("y-axis");
     this._make_axes();
+    return this;
   }
   set_tick_size(size) {
     this.tick_options.size = size;
     this.set_tick_options(this.tick_options);
+    return this;
   }
   set_tick_distance(distance) {
     this.tick_options.distance = distance;
     this.set_tick_options(this.tick_options);
+    return this;
   }
   set_grid_options(options) {
     this.grid_options.update(options);
@@ -1694,18 +1735,22 @@ var CoordinateAxes2d = class extends MObjectGroup {
     this.remove_mobj("y-grid");
     this._make_x_grid_lines();
     this._make_y_grid_lines();
+    return this;
   }
   set_grid_distance(distance) {
     this.grid_options.distance = distance;
     this.set_grid_options(this.grid_options);
+    return this;
   }
   set_grid_alpha(alpha) {
     this.grid_options.alpha = alpha;
     this.set_grid_options(this.grid_options);
+    return this;
   }
   set_grid_stroke_width(width) {
     this.grid_options.stroke_width = width;
     this.set_grid_options(this.grid_options);
+    return this;
   }
   set_lims(xlims, ylims) {
     this.xlims = xlims;
@@ -1716,6 +1761,7 @@ var CoordinateAxes2d = class extends MObjectGroup {
     this.remove_mobj("y-grid");
     this._make_x_grid_lines();
     this._make_y_grid_lines();
+    return this;
   }
 };
 

@@ -20,6 +20,7 @@ import {
   ThreeDMObject,
   ThreeDLineLikeMObject,
   ThreeDFillLikeMObject,
+  ThreeDMObjectGroup,
 } from "./mobjects.js";
 
 // Functionality related to the 3D scene camera
@@ -139,9 +140,27 @@ export class Camera3D {
 // Rendering a point v first consists of computing A^{-1}(v - v0). Then the first two coordinates
 // of Av are the 2D coordinates of the rendering, while the third coordinate is the depth.
 export class ThreeDScene extends Scene {
-  mobjects: Record<string, ThreeDMObject>;
+  mobjects: Record<string, ThreeDMObject> = {};
   camera: Camera3D = new Camera3D();
   mode: "perspective" | "orthographic" = "perspective";
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names: string[], group_name: string) {
+    let group = new ThreeDMObjectGroup();
+    names.forEach((name) => {
+      group.add_mobj(name, this.get_mobj(name) as ThreeDMObject);
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name: string) {
+    let group = this.mobjects[group_name] as ThreeDMObjectGroup;
+    if (group == undefined) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj as ThreeDMObject);
+    });
+    delete this.mobjects[group_name];
+  }
   // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
   scale() {
     let [xmin, xmax] = this.xlims;
@@ -171,7 +190,6 @@ export class ThreeDScene extends Scene {
 
     this.draw_background(ctx);
 
-    // First order the objects by depth
     let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
       let depth_a = this.mobjects[a].depth(this);
       let depth_b = this.mobjects[b].depth(this);

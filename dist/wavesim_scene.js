@@ -10738,6 +10738,8 @@ var MObject = class {
     this.alpha = alpha;
     return this;
   }
+  move_by(p) {
+  }
   add(scene) {
   }
   draw(canvas, scene, args) {
@@ -10759,6 +10761,9 @@ var MObjectGroup = class extends MObject {
   }
   remove_mobj(name) {
     delete this.children[name];
+  }
+  move_by(p) {
+    Object.values(this.children).forEach((child) => child.move_by(p));
   }
   clear() {
     Object.keys(this.children).forEach((key) => {
@@ -10984,6 +10989,25 @@ var Scene = class {
   // Removes the mobject from the scene
   remove(name) {
     delete this.mobjects[name];
+  }
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names, group_name) {
+    let group = new MObjectGroup();
+    names.forEach((name) => {
+      let mobj = this.get_mobj(name);
+      group.add_mobj(name, mobj);
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name) {
+    let group = this.mobjects[group_name];
+    if (group == void 0) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj);
+    });
+    delete this.mobjects[group_name];
   }
   // Removes all mobjects from the scene
   clear() {
@@ -11481,6 +11505,10 @@ var Sector = class extends FillLikeMObject {
   move_to(center) {
     this.center = center;
   }
+  move_by(p) {
+    this.center[0] += p[0];
+    this.center[1] += p[1];
+  }
   // Change the dot radius
   set_radius(radius) {
     this.radius = radius;
@@ -11572,6 +11600,10 @@ var Line = class extends LineLikeMObject {
   move_end(p) {
     this.end = p;
   }
+  move_by(p) {
+    this.start = vec2_sum(this.start, p);
+    this.end = vec2_sum(this.end, p);
+  }
   length() {
     return vec2_norm(vec2_sub(this.start, this.end));
   }
@@ -11601,6 +11633,11 @@ var LineSequence = class extends LineLikeMObject {
   }
   get_point(i) {
     return this.points[i];
+  }
+  move_by(p) {
+    for (let i = 0; i < this.points.length; i++) {
+      this.points[i] = vec2_sum(this.points[i], p);
+    }
   }
   // Draws on the canvas
   _draw(ctx, scene) {
@@ -11810,7 +11847,7 @@ function mat_inv(m) {
 function get_column(m, i) {
   return [m[0][i], m[1][i], m[2][i]];
 }
-function normalize(v) {
+function vec3_normalize(v) {
   let n = vec3_norm(v);
   if (n == 0) {
     throw new Error("Can't normalize the zero vector");
@@ -11863,7 +11900,7 @@ function rot_x(v, theta) {
   return matmul_vec(rot_x_matrix(theta), v);
 }
 function rot_matrix(axis, angle2) {
-  let [x, y, z] = normalize(axis);
+  let [x, y, z] = vec3_normalize(axis);
   let theta = Math.acos(z);
   let phi = Math.acos(x / Math.sin(theta));
   if (y / Math.sin(theta) < 0) {
@@ -11877,7 +11914,7 @@ function rot_matrix(axis, angle2) {
   return result;
 }
 function rot(v, axis, angle2) {
-  let [x, y, z] = normalize(axis);
+  let [x, y, z] = vec3_normalize(axis);
   let theta = Math.acos(z);
   let phi = Math.acos(x / Math.sin(theta));
   if (y / Math.sin(theta) < 0) {
@@ -11957,6 +11994,46 @@ var ThreeDMObject = class extends MObject {
   }
   // Simpler drawing method for 3D scenes which doesn't use local depth testing, for speed purposes.
   _draw_simple(ctx, scene) {
+  }
+};
+var ThreeDMObjectGroup = class extends ThreeDMObject {
+  constructor() {
+    super(...arguments);
+    this.children = {};
+  }
+  add_mobj(name, child) {
+    this.children[name] = child;
+  }
+  remove_mobj(name) {
+    delete this.children[name];
+  }
+  move_by(p) {
+    Object.values(this.children).forEach((child) => child.move_by(p));
+  }
+  clear() {
+    Object.keys(this.children).forEach((key) => {
+      delete this.children[key];
+    });
+  }
+  get_mobj(name) {
+    if (!this.children[name]) {
+      throw new Error(`Child with name ${name} not found`);
+    }
+    return this.children[name];
+  }
+  // TODO Depth-calculation should be done object-by-object.
+  depth(scene) {
+    return Math.max(
+      ...Object.values(this.children).map((child) => child.depth(scene))
+    );
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    Object.values(this.children).forEach((child) => {
+      child.draw(canvas, scene, args);
+    });
   }
 };
 var ThreeDLineLikeMObject = class extends ThreeDMObject {
@@ -12342,14 +12419,17 @@ var Axis = class extends MObjectGroup {
     this.tick_options.update(options);
     this.remove_mobj("ticks");
     this._make_ticks();
+    return this;
   }
   set_tick_distance(distance) {
     this.tick_options.distance = distance;
     this.set_tick_options(this.tick_options);
+    return this;
   }
   set_tick_size(size2) {
     this.tick_options.size = size2;
     this.set_tick_options(this.tick_options);
+    return this;
   }
 };
 var CoordinateAxes2d = class extends MObjectGroup {
@@ -12409,24 +12489,29 @@ var CoordinateAxes2d = class extends MObjectGroup {
     this.remove_mobj("x-axis");
     this.remove_mobj("y-axis");
     this._make_axes();
+    return this;
   }
   set_axis_stroke_width(width) {
     this.axis_options.stroke_width = width;
     this.set_axis_options(this.axis_options);
+    return this;
   }
   set_tick_options(options) {
     this.tick_options.update(options);
     this.remove_mobj("x-axis");
     this.remove_mobj("y-axis");
     this._make_axes();
+    return this;
   }
   set_tick_size(size2) {
     this.tick_options.size = size2;
     this.set_tick_options(this.tick_options);
+    return this;
   }
   set_tick_distance(distance) {
     this.tick_options.distance = distance;
     this.set_tick_options(this.tick_options);
+    return this;
   }
   set_grid_options(options) {
     this.grid_options.update(options);
@@ -12434,18 +12519,22 @@ var CoordinateAxes2d = class extends MObjectGroup {
     this.remove_mobj("y-grid");
     this._make_x_grid_lines();
     this._make_y_grid_lines();
+    return this;
   }
   set_grid_distance(distance) {
     this.grid_options.distance = distance;
     this.set_grid_options(this.grid_options);
+    return this;
   }
   set_grid_alpha(alpha) {
     this.grid_options.alpha = alpha;
     this.set_grid_options(this.grid_options);
+    return this;
   }
   set_grid_stroke_width(width) {
     this.grid_options.stroke_width = width;
     this.set_grid_options(this.grid_options);
+    return this;
   }
   set_lims(xlims, ylims) {
     this.xlims = xlims;
@@ -12456,6 +12545,7 @@ var CoordinateAxes2d = class extends MObjectGroup {
     this.remove_mobj("y-grid");
     this._make_x_grid_lines();
     this._make_y_grid_lines();
+    return this;
   }
 };
 
@@ -12987,8 +13077,27 @@ var Camera3D = class {
 var ThreeDScene = class extends Scene {
   constructor() {
     super(...arguments);
+    this.mobjects = {};
     this.camera = new Camera3D();
     this.mode = "perspective";
+  }
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names, group_name) {
+    let group = new ThreeDMObjectGroup();
+    names.forEach((name) => {
+      group.add_mobj(name, this.get_mobj(name));
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name) {
+    let group = this.mobjects[group_name];
+    if (group == void 0) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj);
+    });
+    delete this.mobjects[group_name];
   }
   // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
   scale() {

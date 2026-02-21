@@ -20,10 +20,17 @@ export function rb_colormap(z: number): ColorVal {
   }
 }
 
-// Given a value in (-inf, inf), produces a color from
-// white-to-black where -128 is white and +128 is black.
+// Given a value in (0, 1), produces a color from
+// white-to-black where 0 is white and 1 is black
 export function grayscale_colormap(z: number): ColorVal {
-  return [128 - z, 128 - z, 128 - z, 255];
+  return grayscale_colormap_logarithmic(z, 1);
+}
+
+// Given a value in (0, 1), produces a color from
+// white-to-black where 0 is white and 1 is black.
+export function grayscale_colormap_logarithmic(z: number, d: number): ColorVal {
+  let zc = Math.pow(z, 1 / d);
+  return [255 * (1 - zc), 255 * (1 - zc), 255 * (1 - zc), 255];
 }
 
 // Given a value in (-inf, inf), produces a color from

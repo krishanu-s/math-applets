@@ -16,7 +16,12 @@ import {
   LatexCache,
 } from "./lib/base";
 import { BezierSpline } from "./lib/base/bezier.js";
-import { normalize, get_column, matmul_vec, rot } from "./lib/three_d/matvec";
+import {
+  vec3_normalize,
+  get_column,
+  matmul_vec,
+  rot,
+} from "./lib/three_d/matvec";
 import {
   Vec3D,
   vec3_sum,
