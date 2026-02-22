@@ -14991,35 +14991,49 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
         constructor(canvas) {
           super(canvas);
           this.step_counter = 0;
+          this.num_graphs = 0;
+          console.log("Re-initialized");
           this.set_frame_lims([tmin, tmax], [xmin, xmax]);
           let axes = new CoordinateAxes2d([tmin, tmax], [xmin, xmax]);
           this.add("axes", axes);
+          this.add_graph();
           this.add(
-            "graph",
-            new LineSequence([
-              [0, sim.get_vals()[0]]
-            ]).set_stroke_width(0.05)
+            "dot",
+            new Dot([0, sim.get_vals()[0]], 0.08).set_color("red")
           );
           this.draw();
         }
-        reset() {
-          this.remove("graph");
+        add_graph() {
+          this.num_graphs += 1;
           this.add(
-            "graph",
+            `graph${this.num_graphs - 1}`,
             new LineSequence([
               [0, sim.get_vals()[0]]
             ]).set_stroke_width(0.05)
           );
+          this.step_counter = 0;
+          console.log("Added graph", this.num_graphs);
+        }
+        clear() {
+          for (let i = 0; i < this.num_graphs - 1; i++) {
+            this.remove(`graph${i}`);
+          }
+          console.log("Removed graphs");
+          let graph = this.get_mobj(`graph${this.num_graphs - 1}`);
+          this.remove(`graph${this.num_graphs - 1}`);
+          this.num_graphs = 1;
+          this.add("graph0", graph);
+        }
+        reset() {
+          this.add_graph();
         }
         update_mobjects_from_simulator(simulator) {
           let vals = simulator.get_vals();
           let time = simulator.time;
           this.step_counter += 1;
           if (this.step_counter % 5 === 0 && time < this.xlims[1]) {
-            this.get_mobj("graph").add_point([
-              time,
-              vals[0]
-            ]);
+            this.get_mobj(`graph${this.num_graphs - 1}`).add_point([time, vals[0]]);
+            this.get_mobj("dot").move_to([time, vals[0]]);
           }
         }
       }
@@ -15125,6 +15139,15 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
         }
       );
       resetButton.textContent = "Reset simulation";
+      let clearGraphButton = Button(
+        document.getElementById(
+          "point-mass-spring-graph-clear-button"
+        ),
+        function() {
+          handler.add_to_queue(graph_scene.clear.bind(graph_scene));
+        }
+      );
+      clearGraphButton.textContent = "Clear graphs";
       let w_slider = Slider(
         document.getElementById("point-mass-stiffness-slider"),
         function(val) {
@@ -15133,12 +15156,6 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
           );
           handler.add_to_queue(
             spring_scene.set_spring_stiffness.bind(spring_scene, val)
-          );
-          handler.add_to_queue(
-            spring_scene.update_mobjects_from_simulator.bind(
-              spring_scene,
-              handler.simulator
-            )
           );
           handler.add_to_queue(handler.draw.bind(handler));
         },

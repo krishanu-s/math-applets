@@ -293,6 +293,7 @@ export abstract class InteractivePlayingScene extends Scene {
       // Add the two scenes, with callbacks
       class GraphScene extends SceneFromSimulator {
         step_counter: number = 0;
+        num_graphs: number = 0;
         constructor(canvas: HTMLCanvasElement) {
           super(canvas);
           this.set_frame_lims([tmin, tmax], [xmin, xmax]);
@@ -307,10 +308,19 @@ export abstract class InteractivePlayingScene extends Scene {
           );
           this.draw();
         }
+        clear() {
+          for (let i = 0; i < this.num_graphs - 1; i++) {
+            this.remove(`graph${i}`);
+          }
+          let graph = this.get_mobj(`graph${this.num_graphs - 1}`);
+          this.remove(`graph${this.num_graphs - 1}`);
+          this.add("graph0", graph);
+          this.num_graphs = 0;
+        }
         reset() {
-          this.remove("graph");
+          this.num_graphs += 1;
           this.add(
-            "graph",
+            `graph${this.num_graphs - 1}`,
             new LineSequence([
               [0, sim.get_vals()[0] as number],
             ]).set_stroke_width(0.05),
@@ -322,10 +332,9 @@ export abstract class InteractivePlayingScene extends Scene {
           this.step_counter += 1;
           // Implement update logic, calling from the simulator
           if (this.step_counter % 5 === 0 && time < this.xlims[1]) {
-            (this.get_mobj("graph") as LineSequence).add_point([
-              time,
-              vals[0] as number,
-            ]);
+            (
+              this.get_mobj(`graph${this.num_graphs - 1}`) as LineSequence
+            ).add_point([time, vals[0] as number]);
           }
         }
       }
@@ -449,9 +458,21 @@ export abstract class InteractivePlayingScene extends Scene {
         ) as HTMLElement,
         function () {
           handler.add_to_queue(handler.reset.bind(handler));
+          handler.add_to_queue(graph_scene.clear.bind(graph_scene));
         },
       );
       resetButton.textContent = "Reset simulation";
+
+      // Button which clears the old graphs
+      let clearGraphButton = Button(
+        document.getElementById(
+          "point-mass-spring-graph-clear-button",
+        ) as HTMLElement,
+        function () {
+          handler.add_to_queue(graph_scene.clear.bind(graph_scene));
+        },
+      );
+      clearGraphButton.textContent = "Clear graphs";
 
       // Slider which controls the propagation speed
       let w_slider = Slider(
@@ -500,5 +521,11 @@ export abstract class InteractivePlayingScene extends Scene {
       handler.draw();
       handler.play(undefined);
     })(300, 300);
+
+    // TODO A pendulum. Reset button resets the simulation, but doesn't clear the graph. Clear button clears the graph.
+
+    // TODO A pair of coupled springs in series.
+
+    // TODO A double pendulum.
   });
 })();

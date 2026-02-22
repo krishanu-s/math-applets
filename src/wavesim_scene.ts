@@ -1,4 +1,250 @@
-// Testing the direct feeding of a pixel array to the canvas
+// (function point_mass_spring(width: number, height: number) {
+//   // Prepare the canvases
+//   let canvas_spring = prepare_canvas(width, height, "point-mass-spring");
+//   let canvas_graph = prepare_canvas(width, height, "point-mass-graph");
+
+//   let xmin = -6;
+//   let xmax = 6;
+//   let tmin = 0;
+//   let tmax = 12;
+//   let ymin = -6;
+//   let ymax = 6;
+//   let w = 5;
+
+//   // Make the simulator with reset condition
+//   class SpringSim extends SpringSimulator {
+//     reset() {
+//       super.reset();
+//       sim.set_vals([1, 0]);
+//     }
+//   }
+//   let sim = new SpringSim(w, 0.01);
+//   sim.set_vals([1, 0]);
+//   let handler = new InteractiveHandler(sim);
+
+//   // Add the two scenes, with callbacks
+//   class GraphScene extends SceneFromSimulator {
+//     step_counter: number = 0;
+//     num_graphs: number = 0;
+//     constructor(canvas: HTMLCanvasElement) {
+//       super(canvas);
+//       this.set_frame_lims([tmin, tmax], [xmin, xmax]);
+//       let axes = new CoordinateAxes2d([tmin, tmax], [xmin, xmax]);
+
+//       this.add("axes", axes);
+//       this.add(
+//         "graph",
+//         new LineSequence([[0, sim.get_vals()[0] as number]]).set_stroke_width(
+//           0.05,
+//         ),
+//       );
+//       this.draw();
+//     }
+//     clear() {
+//       for (let i = 0; i < this.num_graphs - 1; i++) {
+//         this.remove(`graph${i}`);
+//       }
+//       let graph = this.get_mobj(`graph${this.num_graphs - 1}`);
+//       this.remove(`graph${this.num_graphs - 1}`);
+//       this.add("graph0", graph);
+//       this.num_graphs = 0;
+//     }
+//     reset() {
+//       this.num_graphs += 1;
+//       this.add(
+//         `graph${this.num_graphs - 1}`,
+//         new LineSequence([[0, sim.get_vals()[0] as number]]).set_stroke_width(
+//           0.05,
+//         ),
+//       );
+//     }
+//     update_mobjects_from_simulator(simulator: SpringSimulator) {
+//       let vals = simulator.get_vals();
+//       let time = simulator.time;
+//       this.step_counter += 1;
+//       // Implement update logic, calling from the simulator
+//       if (this.step_counter % 5 === 0 && time < this.xlims[1]) {
+//         (
+//           this.get_mobj(`graph${this.num_graphs - 1}`) as LineSequence
+//         ).add_point([time, vals[0] as number]);
+//       }
+//     }
+//   }
+//   let graph_scene = new GraphScene(canvas_graph);
+
+//   class SpringScene extends SceneFromSimulator {
+//     arrow_length_scale: number = w / 3;
+//     arrow_height: number = 0;
+//     constructor(canvas: HTMLCanvasElement) {
+//       super(canvas);
+//       // TODO Set coordinates in terms of scene frame limits
+//       let eq_line = new Line([0, ymin], [0, ymax])
+//         .set_stroke_width(0.05)
+//         .set_stroke_style("dashed")
+//         .set_stroke_color("gray");
+//       let spring = new LineSpring([xmin * 0.7, 0], [0, 0]).set_stroke_width(
+//         0.08,
+//       );
+//       spring.set_eq_length(3.0);
+//       let anchor = new Rectangle([xmin * 0.7, 0], 0.15, (ymax - ymin) * 0.7);
+
+//       // While the scene is paused, the point mass is an interactive element which can be dragged
+//       // to update the simulator state. While the scene is unpaused, the simulator runs and updates
+//       // the state of the point mass.
+//       let mass = new DraggableRectangle([0, 0], 0.8, 0.8);
+//       mass.draggable_x = true;
+//       mass.draggable_y = false;
+
+//       let force_arrow = new Arrow(
+//         [0, this.arrow_height],
+//         [0, this.arrow_height],
+//       )
+//         .set_stroke_width(0.1)
+//         .set_stroke_color("red");
+//       // let velocity_arrow = new Arrow();
+
+//       this.add("eq_line", eq_line);
+//       this.add("spring", spring);
+//       this.add("anchor", anchor);
+//       this.add("mass", mass);
+//       // this.add("velocity_arrow", velocity_arrow);
+//       this.add("force_arrow", force_arrow);
+
+//       this.add_callbacks();
+//     }
+//     // Callback which affects the simulator and is removed when simulation is paused
+//     add_callbacks() {
+//       let mass = this.get_mobj("mass") as DraggableRectangle;
+//       mass.add_callback(() => {
+//         sim.set_vals([mass.get_center()[0], 0]);
+//         this.update_mobjects_from_simulator(sim);
+//       });
+//     }
+//     set_spring_mode(mode: "color" | "spring") {
+//       let spring = this.get_mobj("spring") as LineSpring;
+//       spring.set_mode(mode);
+//     }
+//     set_spring_stiffness(val: number) {
+//       this.arrow_length_scale = val / 3;
+//     }
+//     // TODO Add turn on/off of draggability.
+//     // Updates all mobjects to account for the new simulator state
+//     update_mobjects_from_simulator(simulator: SpringSimulator) {
+//       let vals = simulator.get_vals() as Vec2D;
+//       this._update_mass(vals);
+//       this._update_spring(vals);
+//       this._update_force_arrow(vals);
+//     }
+//     // Specific to this scene and simulator
+//     _update_mass(vals: Vec2D) {
+//       (this.get_mobj("mass") as Rectangle).move_to([vals[0], 0]);
+//     }
+//     _update_spring(vals: Vec2D) {
+//       (this.get_mobj("spring") as LineSpring).move_end([vals[0], 0]);
+//     }
+//     _update_force_arrow(vals: Vec2D) {
+//       let force_arrow = this.get_mobj("force_arrow") as Arrow;
+//       force_arrow.move_start([vals[0], this.arrow_height]);
+//       force_arrow.move_end([
+//         vals[0] * (1 - this.arrow_length_scale),
+//         this.arrow_height,
+//       ]);
+//       force_arrow.set_arrow_size(
+//         Math.min(0.5, Math.sqrt(Math.abs(vals[0])) / 2),
+//       );
+//     }
+//     // Enforce strict order on drawing mobjects, overriding subclass behavior
+//     _draw() {
+//       this.draw_mobject(this.get_mobj("eq_line") as Line);
+//       this.draw_mobject(this.get_mobj("anchor") as Rectangle);
+//       this.draw_mobject(this.get_mobj("spring") as LineSpring);
+//       this.draw_mobject(this.get_mobj("mass") as Rectangle);
+//       this.draw_mobject(this.get_mobj("force_arrow") as Arrow);
+//     }
+//     draw_mobject(mobj: MObject) {
+//       mobj.draw(this.canvas, this);
+//     }
+//   }
+//   let spring_scene = new SpringScene(canvas_spring);
+//   spring_scene.set_spring_mode("spring");
+//   spring_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+
+//   handler.add_scene(graph_scene);
+//   handler.add_scene(spring_scene);
+
+//   // Button which pauses/unpauses the simulation
+//   let pausebutton = handler.add_pause_button(
+//     document.getElementById("point-mass-spring-pause-button") as HTMLElement,
+//   );
+
+//   // Button which resets the simulation
+//   let resetButton = Button(
+//     document.getElementById("point-mass-spring-reset-button") as HTMLElement,
+//     function () {
+//       handler.add_to_queue(handler.reset.bind(handler));
+//       handler.add_to_queue(graph_scene.clear.bind(graph_scene));
+//     },
+//   );
+//   resetButton.textContent = "Reset simulation";
+
+//   // Button which clears the old graphs
+//   let clearGraphButton = Button(
+//     document.getElementById(
+//       "point-mass-spring-graph-clear-button",
+//     ) as HTMLElement,
+//     function () {
+//       handler.add_to_queue(graph_scene.clear.bind(graph_scene));
+//     },
+//   );
+//   clearGraphButton.textContent = "Clear graphs";
+
+//   // Slider which controls the propagation speed
+//   let w_slider = Slider(
+//     document.getElementById("point-mass-stiffness-slider") as HTMLElement,
+//     function (val: number) {
+//       handler.add_to_queue(
+//         handler.set_simulator_attr.bind(handler, 0, "stiffness", val),
+//       );
+//       handler.add_to_queue(
+//         spring_scene.set_spring_stiffness.bind(spring_scene, val),
+//       );
+//       handler.add_to_queue(
+//         spring_scene.update_mobjects_from_simulator.bind(
+//           spring_scene,
+//           handler.simulator as SpringSimulator,
+//         ),
+//       );
+//       handler.add_to_queue(handler.draw.bind(handler));
+//     },
+//     {
+//       name: "Spring stiffness",
+//       initial_value: `${sim.stiffness}`,
+//       min: 0,
+//       max: 20,
+//       step: 0.01,
+//     },
+//   );
+
+//   // Slider which controls friction
+//   let f_slider = Slider(
+//     document.getElementById("point-mass-damping-slider") as HTMLElement,
+//     function (val: number) {
+//       handler.add_to_queue(
+//         handler.set_simulator_attr.bind(handler, 0, "friction", val),
+//       );
+//     },
+//     {
+//       name: "Friction",
+//       initial_value: "0.0",
+//       min: 0,
+//       max: 5.0,
+//       step: 0.01,
+//     },
+//   );
+
+//   handler.draw();
+//   handler.play(undefined);
+// })(300, 300); // Testing the direct feeding of a pixel array to the canvas
 import {
   MObject,
   Scene,
@@ -467,27 +713,45 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
       // Add the two scenes, with callbacks
       class GraphScene extends SceneFromSimulator {
         step_counter: number = 0;
+        num_graphs: number = 0;
         constructor(canvas: HTMLCanvasElement) {
           super(canvas);
+          console.log("Re-initialized");
           this.set_frame_lims([tmin, tmax], [xmin, xmax]);
           let axes = new CoordinateAxes2d([tmin, tmax], [xmin, xmax]);
+
           this.add("axes", axes);
+          this.add_graph();
           this.add(
-            "graph",
-            new LineSequence([
-              [0, sim.get_vals()[0] as number],
-            ]).set_stroke_width(0.05),
+            "dot",
+            new Dot([0, sim.get_vals()[0] as number], 0.08).set_color("red"),
           );
           this.draw();
         }
-        reset() {
-          this.remove("graph");
+        add_graph() {
+          this.num_graphs += 1;
           this.add(
-            "graph",
+            `graph${this.num_graphs - 1}`,
             new LineSequence([
               [0, sim.get_vals()[0] as number],
             ]).set_stroke_width(0.05),
           );
+          this.step_counter = 0;
+          console.log("Added graph", this.num_graphs);
+        }
+        clear() {
+          for (let i = 0; i < this.num_graphs - 1; i++) {
+            this.remove(`graph${i}`);
+          }
+          console.log("Removed graphs");
+          let graph = this.get_mobj(`graph${this.num_graphs - 1}`);
+          this.remove(`graph${this.num_graphs - 1}`);
+
+          this.num_graphs = 1;
+          this.add("graph0", graph);
+        }
+        reset() {
+          this.add_graph();
         }
         update_mobjects_from_simulator(simulator: SpringSimulator) {
           let vals = simulator.get_vals();
@@ -495,10 +759,10 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
           this.step_counter += 1;
           // Implement update logic, calling from the simulator
           if (this.step_counter % 5 === 0 && time < this.xlims[1]) {
-            (this.get_mobj("graph") as LineSequence).add_point([
-              time,
-              vals[0] as number,
-            ]);
+            (
+              this.get_mobj(`graph${this.num_graphs - 1}`) as LineSequence
+            ).add_point([time, vals[0] as number]);
+            (this.get_mobj("dot") as Dot).move_to([time, vals[0] as number]);
           }
         }
       }
@@ -622,9 +886,21 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
         ) as HTMLElement,
         function () {
           handler.add_to_queue(handler.reset.bind(handler));
+          // handler.add_to_queue(graph_scene.clear.bind(graph_scene));
         },
       );
       resetButton.textContent = "Reset simulation";
+
+      // Button which clears the old graphs
+      let clearGraphButton = Button(
+        document.getElementById(
+          "point-mass-spring-graph-clear-button",
+        ) as HTMLElement,
+        function () {
+          handler.add_to_queue(graph_scene.clear.bind(graph_scene));
+        },
+      );
+      clearGraphButton.textContent = "Clear graphs";
 
       // Slider which controls the propagation speed
       let w_slider = Slider(
@@ -636,12 +912,9 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
           handler.add_to_queue(
             spring_scene.set_spring_stiffness.bind(spring_scene, val),
           );
-          handler.add_to_queue(
-            spring_scene.update_mobjects_from_simulator.bind(
-              spring_scene,
-              handler.simulator as SpringSimulator,
-            ),
-          );
+          // handler.add_to_queue(
+          //   spring_scene.update_mobjects_from_simulator.bind(spring_scene, sim),
+          // );
           handler.add_to_queue(handler.draw.bind(handler));
         },
         {

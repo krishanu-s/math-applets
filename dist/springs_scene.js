@@ -2117,6 +2117,7 @@ var InteractivePlayingScene = class extends Scene {
         constructor(canvas) {
           super(canvas);
           this.step_counter = 0;
+          this.num_graphs = 0;
           this.set_frame_lims([tmin, tmax], [xmin, xmax]);
           let axes = new CoordinateAxes2d([tmin, tmax], [xmin, xmax]);
           this.add("axes", axes);
@@ -2128,10 +2129,19 @@ var InteractivePlayingScene = class extends Scene {
           );
           this.draw();
         }
+        clear() {
+          for (let i = 0; i < this.num_graphs - 1; i++) {
+            this.remove(`graph${i}`);
+          }
+          let graph = this.get_mobj(`graph${this.num_graphs - 1}`);
+          this.remove(`graph${this.num_graphs - 1}`);
+          this.add("graph0", graph);
+          this.num_graphs = 0;
+        }
         reset() {
-          this.remove("graph");
+          this.num_graphs += 1;
           this.add(
-            "graph",
+            `graph${this.num_graphs - 1}`,
             new LineSequence([
               [0, sim.get_vals()[0]]
             ]).set_stroke_width(0.05)
@@ -2142,10 +2152,7 @@ var InteractivePlayingScene = class extends Scene {
           let time = simulator.time;
           this.step_counter += 1;
           if (this.step_counter % 5 === 0 && time < this.xlims[1]) {
-            this.get_mobj("graph").add_point([
-              time,
-              vals[0]
-            ]);
+            this.get_mobj(`graph${this.num_graphs - 1}`).add_point([time, vals[0]]);
           }
         }
       }
@@ -2248,9 +2255,19 @@ var InteractivePlayingScene = class extends Scene {
         ),
         function() {
           handler.add_to_queue(handler.reset.bind(handler));
+          handler.add_to_queue(graph_scene.clear.bind(graph_scene));
         }
       );
       resetButton.textContent = "Reset simulation";
+      let clearGraphButton = Button(
+        document.getElementById(
+          "point-mass-spring-graph-clear-button"
+        ),
+        function() {
+          handler.add_to_queue(graph_scene.clear.bind(graph_scene));
+        }
+      );
+      clearGraphButton.textContent = "Clear graphs";
       let w_slider = Slider(
         document.getElementById("point-mass-stiffness-slider"),
         function(val) {
