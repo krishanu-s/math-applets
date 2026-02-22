@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>wave equation demo</title>
+        <base href="." />
+        <script>
+            MathJax = {
+                tex: {
+                    inlineMath: { "[+]": [["$", "$"]] },
+                },
+            };
+        </script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
+        ></script>
+        <script type="module" src="springs_scene.js"></script>
+        <style>
+            .row {
+                display: flex;
+                align-items: center; /* Centers vertically */
+            }
+            .applet-container {
+                display: flex;
+                justify-content: center; /* Centers horizontally */
+                align-items: center; /* Centers vertically */
+                width: 50%; /* A width less than 100% is required */
+                margin-left: auto;
+                margin-right: auto;
+                padding: 20px;
+                text-align: center;
+                font-family: Arial, sans-serif;
+            }
+            .slider {
+                display: flex;
+                justify-content: center; /* Centers horizontally */
+                align-items: center; /* Centers vertically */
+                width: 50%;
+                height: 25px;
+                margin: 20px 0;
+                margin-left: auto;
+                margin-right: auto;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div style="text-align: center; margin: 10px auto">
+            <h3>Spring</h3>
+            <br />
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="point-mass-spring"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="point-mass-spring-graph"
+                ></div>
+            </div>
+            <br />
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="point-mass-spring-pause-button"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="point-mass-spring-reset-button"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="point-mass-spring-graph-clear-button"
+                ></div>
+            </div>
+            <div class="slider" id="point-mass-spring-stiffness-slider"></div>
+            <div class="slider" id="point-mass-spring-damping-slider"></div>
+            <br />
+
+            <h3>Pendulum</h3>
+            <br />
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="point-mass-pendulum"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="point-mass-pendulum-graph"
+                ></div>
+            </div>
+            <br />
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="point-mass-pendulum-pause-button"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="point-mass-pendulum-reset-button"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="point-mass-pendulum-graph-clear-button"
+                ></div>
+            </div>
+            <div class="slider" id="point-mass-pendulum-stiffness-slider"></div>
+            <div class="slider" id="point-mass-pendulum-damping-slider"></div>
+
+            <h3>Double spring</h3>
+            <br />
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="double-spring"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="double-spring-graph"
+                ></div>
+            </div>
+            <br />
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="double-spring-pause-button"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="double-spring-reset-button"
+                ></div>
+                <div
+                    style="width: 33%"
+                    class="button"
+                    id="double-spring-graph-clear-button"
+                ></div>
+            </div>
+            <div class="slider" id="double-spring-stiffness-slider"></div>
+            <div class="slider" id="double-spring-damping-slider"></div>
+            <br />
+        </div>
+        <a href="./index.html">back to main page</a>
+        <br />
+        <a href="https://www.ksankar.me">back to Krishanu Sankar's homepage</a>
+    </body>
+</html>

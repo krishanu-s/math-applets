@@ -2127,8 +2127,9 @@ var InteractivePlayingScene = class extends Scene {
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
     (function point_mass_spring(width, height) {
-      let canvas_spring = prepare_canvas(width, height, "point-mass-spring");
-      let canvas_graph = prepare_canvas(width, height, "point-mass-graph");
+      const name = "point-mass-spring";
+      let canvas_spring = prepare_canvas(width, height, name);
+      let canvas_graph = prepare_canvas(width, height, name + "-graph");
       let xmin = -6;
       let xmax = 6;
       let tmin = 0;
@@ -2136,13 +2137,14 @@ var InteractivePlayingScene = class extends Scene {
       let ymin = -6;
       let ymax = 6;
       let w = 5;
+      const dt = 0.01;
       class SpringSim extends SpringSimulator {
         reset() {
           super.reset();
           sim.set_vals([1, 0]);
         }
       }
-      let sim = new SpringSim(w, 0.01);
+      let sim = new SpringSim(w, dt);
       sim.set_vals([1, 0]);
       let handler = new InteractiveHandler(sim);
       class GraphScene extends SceneFromSimulator {
@@ -2150,27 +2152,18 @@ var InteractivePlayingScene = class extends Scene {
           super(canvas);
           this.step_counter = 0;
           this.num_graphs = 0;
+          console.log("Re-initialized");
           this.set_frame_lims([tmin, tmax], [xmin, xmax]);
           let axes = new CoordinateAxes2d([tmin, tmax], [xmin, xmax]);
           this.add("axes", axes);
+          this.add_graph();
           this.add(
-            "graph",
-            new LineSequence([
-              [0, sim.get_vals()[0]]
-            ]).set_stroke_width(0.05)
+            "dot",
+            new Dot([0, sim.get_vals()[0]], 0.08).set_color("red")
           );
           this.draw();
         }
-        clear() {
-          for (let i = 0; i < this.num_graphs - 1; i++) {
-            this.remove(`graph${i}`);
-          }
-          let graph = this.get_mobj(`graph${this.num_graphs - 1}`);
-          this.remove(`graph${this.num_graphs - 1}`);
-          this.add("graph0", graph);
-          this.num_graphs = 0;
-        }
-        reset() {
+        add_graph() {
           this.num_graphs += 1;
           this.add(
             `graph${this.num_graphs - 1}`,
@@ -2178,6 +2171,21 @@ var InteractivePlayingScene = class extends Scene {
               [0, sim.get_vals()[0]]
             ]).set_stroke_width(0.05)
           );
+          this.step_counter = 0;
+          console.log("Added graph", this.num_graphs);
+        }
+        clear() {
+          for (let i = 0; i < this.num_graphs - 1; i++) {
+            this.remove(`graph${i}`);
+          }
+          console.log("Removed graphs");
+          let graph = this.get_mobj(`graph${this.num_graphs - 1}`);
+          this.remove(`graph${this.num_graphs - 1}`);
+          this.num_graphs = 1;
+          this.add("graph0", graph);
+        }
+        reset() {
+          this.add_graph();
         }
         update_mobjects_from_simulator(simulator) {
           let vals = simulator.get_vals();
@@ -2185,6 +2193,7 @@ var InteractivePlayingScene = class extends Scene {
           this.step_counter += 1;
           if (this.step_counter % 5 === 0 && time < this.xlims[1]) {
             this.get_mobj(`graph${this.num_graphs - 1}`).add_point([time, vals[0]]);
+            this.get_mobj("dot").move_to([time, vals[0]]);
           }
         }
       }
@@ -2277,43 +2286,30 @@ var InteractivePlayingScene = class extends Scene {
       handler.add_scene(graph_scene);
       handler.add_scene(spring_scene);
       let pausebutton = handler.add_pause_button(
-        document.getElementById(
-          "point-mass-spring-pause-button"
-        )
+        document.getElementById(name + "-pause-button")
       );
       let resetButton = Button(
-        document.getElementById(
-          "point-mass-spring-reset-button"
-        ),
+        document.getElementById(name + "-reset-button"),
         function() {
           handler.add_to_queue(handler.reset.bind(handler));
-          handler.add_to_queue(graph_scene.clear.bind(graph_scene));
         }
       );
       resetButton.textContent = "Reset simulation";
       let clearGraphButton = Button(
-        document.getElementById(
-          "point-mass-spring-graph-clear-button"
-        ),
+        document.getElementById(name + "-graph-clear-button"),
         function() {
           handler.add_to_queue(graph_scene.clear.bind(graph_scene));
         }
       );
       clearGraphButton.textContent = "Clear graphs";
       let w_slider = Slider(
-        document.getElementById("point-mass-stiffness-slider"),
+        document.getElementById(name + "-stiffness-slider"),
         function(val) {
           handler.add_to_queue(
             handler.set_simulator_attr.bind(handler, 0, "stiffness", val)
           );
           handler.add_to_queue(
             spring_scene.set_spring_stiffness.bind(spring_scene, val)
-          );
-          handler.add_to_queue(
-            spring_scene.update_mobjects_from_simulator.bind(
-              spring_scene,
-              handler.simulator
-            )
           );
           handler.add_to_queue(handler.draw.bind(handler));
         },
@@ -2326,7 +2322,347 @@ var InteractivePlayingScene = class extends Scene {
         }
       );
       let f_slider = Slider(
-        document.getElementById("point-mass-damping-slider"),
+        document.getElementById(name + "-damping-slider"),
+        function(val) {
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "friction", val)
+          );
+        },
+        {
+          name: "Friction",
+          initial_value: "0.0",
+          min: 0,
+          max: 5,
+          step: 0.01
+        }
+      );
+      handler.draw();
+      handler.play(void 0);
+    })(300, 300);
+    (function double_spring(width, height) {
+      const name = "double-spring";
+      let canvas_spring = prepare_canvas(width, height, name);
+      let canvas_graph = prepare_canvas(width, height, name + "-graph");
+      let xmin = -6;
+      let xmax = 6;
+      let tmin = 0;
+      let tmax = 12;
+      let ymin = -6;
+      let ymax = 6;
+      let w = 5;
+      class DoubleSpringSim extends StateSimulator {
+        constructor(stiffness, dt) {
+          super(4, dt);
+          this.friction = 0;
+          this.stiffness = stiffness;
+        }
+        set_stiffness(stiffness) {
+          this.stiffness = stiffness;
+        }
+        set_friction(friction) {
+          this.friction = friction;
+        }
+        // Time-derivative of a given state and time. Overwritten in subclasses.
+        dot(vals, time) {
+          let x0 = vals[0];
+          let x1 = vals[1];
+          return [
+            vals[2],
+            vals[3],
+            -this.stiffness * x0 + this.stiffness * (x1 - x0) - this.friction * vals[2],
+            -this.stiffness * (x1 - x0) - this.friction * vals[3]
+          ];
+        }
+      }
+      let sim = new DoubleSpringSim(w, 0.01);
+      sim.set_vals([1, 0, 0, 0]);
+      let handler = new InteractiveHandler(sim);
+      class GraphScene extends SceneFromSimulator {
+        constructor(canvas) {
+          super(canvas);
+          this.step_counter = 0;
+          this.num_graphs = 0;
+          console.log("Re-initialized");
+          this.set_frame_lims([tmin, tmax], [xmin, xmax]);
+          let axes = new CoordinateAxes2d([tmin, tmax], [xmin, xmax]);
+          this.add("axes", axes);
+          this.add_graph();
+          this.add(
+            "dot_1",
+            new Dot([0, sim.get_vals()[0]], 0.08).set_color("red")
+          );
+          this.add(
+            "dot_2",
+            new Dot([0, sim.get_vals()[1]], 0.08).set_color("blue")
+          );
+          this.draw();
+        }
+        add_graph() {
+          this.num_graphs += 1;
+          this.add(
+            `graph${this.num_graphs - 1}_1`,
+            new LineSequence([
+              [0, sim.get_vals()[0]]
+            ]).set_stroke_width(0.05)
+          );
+          this.add(
+            `graph${this.num_graphs - 1}_2`,
+            new LineSequence([
+              [0, sim.get_vals()[1]]
+            ]).set_stroke_width(0.05)
+          );
+          this.step_counter = 0;
+          console.log("Added graph", this.num_graphs);
+        }
+        clear() {
+          for (let i = 0; i < this.num_graphs - 1; i++) {
+            this.remove(`graph${i}_1`);
+            this.remove(`graph${i}_2`);
+          }
+          console.log("Removed graphs");
+          let graph_1 = this.get_mobj(`graph${this.num_graphs - 1}_1`);
+          this.remove(`graph${this.num_graphs - 1}_1`);
+          this.add("graph0_1", graph_1);
+          let graph_2 = this.get_mobj(`graph${this.num_graphs - 1}_2`);
+          this.remove(`graph${this.num_graphs - 1}_2`);
+          this.add("graph0_2", graph_2);
+          this.num_graphs = 1;
+        }
+        reset() {
+          this.add_graph();
+        }
+        update_mobjects_from_simulator(simulator) {
+          let vals = simulator.get_vals();
+          let time = simulator.time;
+          this.step_counter += 1;
+          if (this.step_counter % 5 === 0 && time < this.xlims[1]) {
+            this.get_mobj(`graph${this.num_graphs - 1}_1`).add_point([time, vals[0]]);
+            this.get_mobj("dot_1").move_to([time, vals[0]]);
+            this.get_mobj(`graph${this.num_graphs - 1}_2`).add_point([time, vals[1]]);
+            this.get_mobj("dot_2").move_to([time, vals[1]]);
+          }
+        }
+      }
+      let graph_scene = new GraphScene(canvas_graph);
+      class DoubleSpringScene extends SceneFromSimulator {
+        constructor(canvas) {
+          super(canvas);
+          this.arrow_length_scale = w / 3;
+          this.arrow_height = 0;
+          let anchor = new Rectangle(
+            [xmin + 0.1 * (xmax - xmin), 0],
+            0.15,
+            (ymax - ymin) * 0.7
+          );
+          let eq_line_0 = new Line(
+            [xmin + 0.4 * (xmax - xmin), ymin],
+            [xmin + 0.4 * (xmax - xmin), ymax]
+          ).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
+          this.add("eq_line_0", eq_line_0);
+          let eq_line_1 = new Line(
+            [xmin + 0.7 * (xmax - xmin), ymin],
+            [xmin + 0.7 * (xmax - xmin), ymax]
+          ).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
+          this.add("eq_line_1", eq_line_1);
+          this.add("anchor", anchor);
+          let spring_0 = new LineSpring(
+            [xmin + 0.1 * (xmax - xmin), 0],
+            [xmin + 0.4 * (xmax - xmin), 0]
+          ).set_stroke_width(0.08);
+          spring_0.set_eq_length(1.5);
+          let spring_1 = new LineSpring(
+            [xmin + 0.4 * (xmax - xmin), 0],
+            [xmin + 0.7 * (xmax - xmin), 0]
+          ).set_stroke_width(0.08);
+          spring_1.set_eq_length(1.5);
+          let mass_0 = new DraggableRectangle(
+            [xmin + 0.4 * (xmax - xmin), 0],
+            0.8,
+            0.8
+          );
+          mass_0.draggable_x = true;
+          mass_0.draggable_y = false;
+          let mass_1 = new DraggableRectangle(
+            [xmin + 0.7 * (xmax - xmin), 0],
+            0.8,
+            0.8
+          );
+          mass_1.draggable_x = true;
+          mass_1.draggable_y = false;
+          this.add("spring_0", spring_0);
+          this.add("spring_1", spring_1);
+          this.add("mass_0", mass_0);
+          this.add("mass_1", mass_1);
+          let force_arrow_0 = new Arrow(
+            [0, this.arrow_height],
+            [0, this.arrow_height]
+          ).set_stroke_width(0.1).set_stroke_color("red");
+          this.add("force_arrow_0", force_arrow_0);
+          let force_arrow_1 = new Arrow(
+            [0, this.arrow_height],
+            [0, this.arrow_height]
+          ).set_stroke_width(0.1).set_stroke_color("red");
+          this.add("force_arrow_1", force_arrow_1);
+          this.add_callbacks();
+        }
+        // Callback which affects the simulator and is removed when simulation is paused
+        add_callbacks() {
+          let mass_0 = this.get_mobj("mass_0");
+          mass_0.add_callback(() => {
+            let x1 = sim.get_vals()[1];
+            sim.set_vals([
+              mass_0.get_center()[0] - (xmin + 0.4 * (xmax - xmin)),
+              x1,
+              0,
+              0
+            ]);
+            this.update_mobjects_from_simulator(sim);
+          });
+          let mass_1 = this.get_mobj("mass_1");
+          mass_1.add_callback(() => {
+            let x0 = sim.get_vals()[0];
+            sim.set_vals([
+              x0,
+              mass_1.get_center()[0] - (xmin + 0.7 * (xmax - xmin)),
+              0,
+              0
+            ]);
+            this.update_mobjects_from_simulator(sim);
+          });
+        }
+        set_spring_mode(mode) {
+          let spring_0 = this.get_mobj("spring_0");
+          spring_0.set_mode(mode);
+          let spring_1 = this.get_mobj("spring_1");
+          spring_1.set_mode(mode);
+        }
+        set_spring_stiffness(val) {
+          this.arrow_length_scale = val / 3;
+        }
+        // TODO Add turn on/off of draggability.
+        // Updates all mobjects to account for the new simulator state
+        update_mobjects_from_simulator(simulator) {
+          let vals = simulator.get_vals();
+          this._update_mass(vals);
+          this._update_spring(vals);
+          this._update_force_arrow(vals);
+        }
+        // Specific to this scene and simulator
+        _update_mass(vals) {
+          let x0 = vals[0];
+          let x1 = vals[1];
+          this.get_mobj("mass_0").move_to([
+            xmin + 0.4 * (xmax - xmin) + x0,
+            0
+          ]);
+          this.get_mobj("mass_1").move_to([
+            xmin + 0.7 * (xmax - xmin) + x1,
+            0
+          ]);
+        }
+        _update_spring(vals) {
+          let x0 = vals[0];
+          let x1 = vals[1];
+          this.get_mobj("spring_0").move_end([
+            xmin + 0.4 * (xmax - xmin) + x0,
+            0
+          ]);
+          this.get_mobj("spring_1").move_start([
+            xmin + 0.4 * (xmax - xmin) + x0,
+            0
+          ]);
+          this.get_mobj("spring_1").move_end([
+            xmin + 0.7 * (xmax - xmin) + x1,
+            0
+          ]);
+        }
+        _update_force_arrow(vals) {
+          let x0 = vals[0];
+          let x1 = vals[1];
+          let force_arrow_0 = this.get_mobj("force_arrow_0");
+          force_arrow_0.move_start([
+            xmin + 0.4 * (xmax - xmin) + x0,
+            this.arrow_height
+          ]);
+          force_arrow_0.move_end([
+            xmin + 0.4 * (xmax - xmin) + x0 - this.arrow_length_scale * (x0 - (x1 - x0)),
+            this.arrow_height
+          ]);
+          force_arrow_0.set_arrow_size(
+            Math.min(0.5, Math.sqrt(Math.abs(x0 - (x1 - x0))) / 2)
+          );
+          let force_arrow_1 = this.get_mobj("force_arrow_1");
+          force_arrow_1.move_start([
+            xmin + 0.7 * (xmax - xmin) + x1,
+            this.arrow_height
+          ]);
+          force_arrow_1.move_end([
+            xmin + 0.7 * (xmax - xmin) + x1 - this.arrow_length_scale * (x1 - x0),
+            this.arrow_height
+          ]);
+          force_arrow_1.set_arrow_size(
+            Math.min(0.5, Math.sqrt(Math.abs(x1 - x0)) / 2)
+          );
+        }
+        // Enforce strict order on drawing mobjects, overriding subclass behavior
+        _draw() {
+          this.draw_mobject(this.get_mobj("eq_line_0"));
+          this.draw_mobject(this.get_mobj("eq_line_1"));
+          this.draw_mobject(this.get_mobj("anchor"));
+          this.draw_mobject(this.get_mobj("spring_0"));
+          this.draw_mobject(this.get_mobj("spring_1"));
+          this.draw_mobject(this.get_mobj("mass_0"));
+          this.draw_mobject(this.get_mobj("mass_1"));
+          this.draw_mobject(this.get_mobj("force_arrow_0"));
+          this.draw_mobject(this.get_mobj("force_arrow_1"));
+        }
+        draw_mobject(mobj) {
+          mobj.draw(this.canvas, this);
+        }
+      }
+      let spring_scene = new DoubleSpringScene(canvas_spring);
+      spring_scene.set_spring_mode("spring");
+      spring_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      handler.add_scene(graph_scene);
+      handler.add_scene(spring_scene);
+      let pausebutton = handler.add_pause_button(
+        document.getElementById(name + "-pause-button")
+      );
+      let resetButton = Button(
+        document.getElementById(name + "-reset-button"),
+        function() {
+          handler.add_to_queue(handler.reset.bind(handler));
+        }
+      );
+      resetButton.textContent = "Reset simulation";
+      let clearGraphButton = Button(
+        document.getElementById(name + "-graph-clear-button"),
+        function() {
+          handler.add_to_queue(graph_scene.clear.bind(graph_scene));
+        }
+      );
+      clearGraphButton.textContent = "Clear graphs";
+      let w_slider = Slider(
+        document.getElementById(name + "-stiffness-slider"),
+        function(val) {
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "stiffness", val)
+          );
+          handler.add_to_queue(
+            spring_scene.set_spring_stiffness.bind(spring_scene, val)
+          );
+          handler.add_to_queue(handler.draw.bind(handler));
+        },
+        {
+          name: "Spring stiffness",
+          initial_value: `${sim.stiffness}`,
+          min: 0,
+          max: 20,
+          step: 0.01
+        }
+      );
+      let f_slider = Slider(
+        document.getElementById(name + "-damping-slider"),
         function(val) {
           handler.add_to_queue(
             handler.set_simulator_attr.bind(handler, 0, "friction", val)
