@@ -2339,6 +2339,243 @@ var InteractivePlayingScene = class extends Scene {
       handler.draw();
       handler.play(void 0);
     })(300, 300);
+    (function point_mass_pendulum(width, height) {
+      const name = "point-mass-pendulum";
+      let canvas_spring = prepare_canvas(width, height, name);
+      let canvas_graph = prepare_canvas(width, height, name + "-graph");
+      let xmin = -6;
+      let xmax = 6;
+      let tmin = 0;
+      let tmax = 12;
+      let ymin = -6;
+      let ymax = 6;
+      let w = 5;
+      class PendulumSim extends StateSimulator {
+        constructor(stiffness, dt) {
+          super(2, dt);
+          this.friction = 0;
+          this.stiffness = stiffness;
+        }
+        set_stiffness(stiffness) {
+          this.stiffness = stiffness;
+        }
+        set_friction(friction) {
+          this.friction = friction;
+        }
+        dot(vals, time) {
+          return [
+            vals[1],
+            -this.stiffness * Math.sin(vals[0]) - this.friction * vals[1]
+          ];
+        }
+      }
+      let sim = new PendulumSim(w, 0.01);
+      sim.set_vals([1, 0]);
+      let handler = new InteractiveHandler(sim);
+      class GraphScene extends SceneFromSimulator {
+        constructor(canvas) {
+          super(canvas);
+          this.step_counter = 0;
+          this.num_graphs = 0;
+          console.log("Re-initialized");
+          this.set_frame_lims([tmin, tmax], [xmin, xmax]);
+          let axes = new CoordinateAxes2d([tmin, tmax], [xmin, xmax]);
+          this.add("axes", axes);
+          this.add_graph();
+          this.add(
+            "dot",
+            new Dot([0, sim.get_vals()[0]], 0.08).set_color("red")
+          );
+          this.draw();
+        }
+        add_graph() {
+          this.num_graphs += 1;
+          this.add(
+            `graph${this.num_graphs - 1}`,
+            new LineSequence([
+              [0, sim.get_vals()[0]]
+            ]).set_stroke_width(0.05)
+          );
+          this.step_counter = 0;
+          console.log("Added graph", this.num_graphs);
+        }
+        clear() {
+          for (let i = 0; i < this.num_graphs - 1; i++) {
+            this.remove(`graph${i}`);
+          }
+          console.log("Removed graphs");
+          let graph = this.get_mobj(`graph${this.num_graphs - 1}`);
+          this.remove(`graph${this.num_graphs - 1}`);
+          this.num_graphs = 1;
+          this.add("graph0", graph);
+        }
+        reset() {
+          this.add_graph();
+        }
+        update_mobjects_from_simulator(simulator) {
+          let vals = simulator.get_vals();
+          let time = simulator.time;
+          this.step_counter += 1;
+          if (this.step_counter % 5 === 0 && time < this.xlims[1]) {
+            this.get_mobj(`graph${this.num_graphs - 1}`).add_point([time, vals[0]]);
+            this.get_mobj("dot").move_to([time, vals[0]]);
+          }
+        }
+      }
+      let graph_scene = new GraphScene(canvas_graph);
+      class PendulumScene extends SceneFromSimulator {
+        constructor(canvas) {
+          super(canvas);
+          this.arrow_length_scale = w / 3;
+          this.arrow_height = 0;
+          this.string_length = 10 / w;
+          let anchor = new Dot([0, ymax + 0.2 * (ymin - ymax)], 0.1);
+          let eq_line = new Line([0, ymax], [0, ymin]).set_stroke_width(0.05).set_stroke_style("dashed").set_stroke_color("gray");
+          this.add("anchor", anchor);
+          this.add("eq_line", eq_line);
+          let string = new Line(
+            [0, ymax + 0.2 * (ymin - ymax)],
+            [0, ymax + 0.2 * (ymin - ymax) - this.string_length]
+          );
+          this.add("string", string);
+          let mass = new DraggableDot(
+            [0, ymax + 0.2 * (ymin - ymax) - this.string_length],
+            0.2
+          );
+          this.add("mass", mass);
+          let force_arrow = new Arrow(
+            [0, this.arrow_height],
+            [0, this.arrow_height]
+          ).set_stroke_width(0.1).set_stroke_color("red");
+          this.add("force_arrow", force_arrow);
+          this.add_callbacks();
+        }
+        // Callback which affects the simulator and is removed when simulation is paused
+        // TODO Add callback
+        add_callbacks() {
+          let mass = this.get_mobj("mass");
+          mass.add_callback(() => {
+            let [x, y] = mass.get_center();
+            let xdiff = x;
+            let ydiff = y - (ymax + 0.2 * (ymin - ymax));
+            let theta = Math.atan2(xdiff, -ydiff);
+            sim.set_vals([theta, 0]);
+            this.update_mobjects_from_simulator(sim);
+          });
+        }
+        set_spring_stiffness(val) {
+          this.arrow_length_scale = val / 3;
+          this.string_length = 10 / val;
+        }
+        // TODO Add turn on/off of draggability.
+        // Updates all mobjects to account for the new simulator state
+        update_mobjects_from_simulator(simulator) {
+          let vals = simulator.get_vals();
+          this._update_mass(vals);
+          this._update_string(vals);
+          this._update_force_arrow(vals);
+        }
+        // Specific to this scene and simulator
+        _update_mass(vals) {
+          let theta = vals[0];
+          let pos = [
+            Math.sin(theta) * this.string_length,
+            ymax + 0.2 * (ymin - ymax) - Math.cos(theta) * this.string_length
+          ];
+          this.get_mobj("mass").move_to(pos);
+        }
+        _update_string(vals) {
+          let theta = vals[0];
+          let pos = [
+            Math.sin(theta) * this.string_length,
+            ymax + 0.2 * (ymin - ymax) - Math.cos(theta) * this.string_length
+          ];
+          this.get_mobj("string").move_end(pos);
+        }
+        _update_force_arrow(vals) {
+          let force_arrow = this.get_mobj("force_arrow");
+          let theta = vals[0];
+          let pos = [
+            Math.sin(theta) * this.string_length,
+            ymax + 0.2 * (ymin - ymax) - Math.cos(theta) * this.string_length
+          ];
+          force_arrow.move_start(pos);
+          force_arrow.move_end([
+            pos[0] - this.arrow_length_scale * Math.sin(theta) * Math.cos(theta),
+            pos[1] - this.arrow_length_scale * Math.sin(theta) * Math.sin(theta)
+          ]);
+          force_arrow.set_arrow_size(
+            Math.min(0.5, Math.sqrt(Math.abs(Math.sin(theta))) / 2)
+          );
+        }
+        // Enforce strict order on drawing mobjects, overriding subclass behavior
+        _draw() {
+          this.draw_mobject(this.get_mobj("eq_line"));
+          this.draw_mobject(this.get_mobj("anchor"));
+          this.draw_mobject(this.get_mobj("string"));
+          this.draw_mobject(this.get_mobj("mass"));
+          this.draw_mobject(this.get_mobj("force_arrow"));
+        }
+        draw_mobject(mobj) {
+          mobj.draw(this.canvas, this);
+        }
+      }
+      let scene = new PendulumScene(canvas_spring);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      handler.add_scene(graph_scene);
+      handler.add_scene(scene);
+      let pausebutton = handler.add_pause_button(
+        document.getElementById(name + "-pause-button")
+      );
+      let resetButton = Button(
+        document.getElementById(name + "-reset-button"),
+        function() {
+          handler.add_to_queue(handler.reset.bind(handler));
+        }
+      );
+      resetButton.textContent = "Reset simulation";
+      let clearGraphButton = Button(
+        document.getElementById(name + "-graph-clear-button"),
+        function() {
+          handler.add_to_queue(graph_scene.clear.bind(graph_scene));
+        }
+      );
+      clearGraphButton.textContent = "Clear graphs";
+      let w_slider = Slider(
+        document.getElementById(name + "-stiffness-slider"),
+        function(val) {
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "stiffness", val)
+          );
+          handler.add_to_queue(scene.set_spring_stiffness.bind(scene, val));
+          handler.add_to_queue(handler.draw.bind(handler));
+        },
+        {
+          name: "Spring stiffness",
+          initial_value: `${sim.stiffness}`,
+          min: 0,
+          max: 20,
+          step: 0.01
+        }
+      );
+      let f_slider = Slider(
+        document.getElementById(name + "-damping-slider"),
+        function(val) {
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "friction", val)
+          );
+        },
+        {
+          name: "Friction",
+          initial_value: "0.0",
+          min: 0,
+          max: 5,
+          step: 0.01
+        }
+      );
+      handler.draw();
+      handler.play(void 0);
+    })(300, 300);
     (function double_spring(width, height) {
       const name = "double-spring";
       let canvas_spring = prepare_canvas(width, height, name);
