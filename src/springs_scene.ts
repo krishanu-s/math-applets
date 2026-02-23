@@ -708,6 +708,7 @@ export abstract class InteractivePlayingScene extends Scene {
       // Prepare the canvases
       let canvas_spring = prepare_canvas(width, height, name);
       let canvas_graph = prepare_canvas(width, height, name + "-graph");
+      let canvas_graph_2 = prepare_canvas(width, height, name + "-graph-2");
 
       let xmin = -6;
       let xmax = 6;
@@ -827,6 +828,78 @@ export abstract class InteractivePlayingScene extends Scene {
         }
       }
       let graph_scene = new GraphScene(canvas_graph);
+
+      // Add the two scenes, with callbacks
+      class Graph2Scene extends SceneFromSimulator {
+        step_counter: number = 0;
+        num_graphs: number = 0;
+        constructor(canvas: HTMLCanvasElement) {
+          super(canvas);
+          console.log("Re-initialized");
+          this.set_frame_lims(
+            [xmin * 0.4, xmax * 0.4],
+            [xmin * 0.4, xmax * 0.4],
+          );
+          let axes = new CoordinateAxes2d(
+            [xmin * 0.4, xmax * 0.4],
+            [xmin * 0.4, xmax * 0.4],
+          )
+            .set_axis_options({ stroke_width: 0.04, arrow_size: 0.1 })
+            .set_tick_options({ size: 0.1 });
+
+          this.add("axes", axes);
+          this.add_graph();
+          this.add(
+            "dot",
+            new Dot(
+              [sim.get_vals()[0] as number, sim.get_vals()[1] as number],
+              0.08,
+            ).set_color("black"),
+          );
+          this.draw();
+        }
+        add_graph() {
+          this.num_graphs += 1;
+          this.add(
+            `graph${this.num_graphs - 1}`,
+            new LineSequence([
+              [sim.get_vals()[0] as number, sim.get_vals()[1] as number],
+            ]).set_stroke_width(0.05),
+          );
+          this.step_counter = 0;
+          console.log("Added graph", this.num_graphs);
+        }
+        clear() {
+          for (let i = 0; i < this.num_graphs - 1; i++) {
+            this.remove(`graph${i}`);
+          }
+          console.log("Removed graphs");
+          let graph = this.get_mobj(`graph${this.num_graphs - 1}`);
+          this.remove(`graph${this.num_graphs - 1}`);
+          this.add("graph0", graph);
+
+          this.num_graphs = 1;
+        }
+        reset() {
+          this.add_graph();
+        }
+        update_mobjects_from_simulator(simulator: DoubleSpringSim) {
+          let vals = simulator.get_vals();
+          let time = simulator.time;
+          this.step_counter += 1;
+          // Implement update logic, calling from the simulator
+          if (this.step_counter % 5 === 0) {
+            (
+              this.get_mobj(`graph${this.num_graphs - 1}`) as LineSequence
+            ).add_point([vals[0] as number, vals[1] as number]);
+            (this.get_mobj("dot") as Dot).move_to([
+              vals[0] as number,
+              vals[1] as number,
+            ]);
+          }
+        }
+      }
+      let graph_2_scene = new Graph2Scene(canvas_graph_2);
 
       class DoubleSpringScene extends SceneFromSimulator {
         arrow_length_scale: number = w / 3;
@@ -1039,6 +1112,7 @@ export abstract class InteractivePlayingScene extends Scene {
       spring_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
 
       handler.add_scene(graph_scene);
+      handler.add_scene(graph_2_scene);
       handler.add_scene(spring_scene);
 
       // Button which pauses/unpauses the simulation
@@ -1061,6 +1135,7 @@ export abstract class InteractivePlayingScene extends Scene {
         document.getElementById(name + "-graph-clear-button") as HTMLElement,
         function () {
           handler.add_to_queue(graph_scene.clear.bind(graph_scene));
+          handler.add_to_queue(graph_2_scene.clear.bind(graph_2_scene));
         },
       );
       clearGraphButton.textContent = "Clear graphs";
