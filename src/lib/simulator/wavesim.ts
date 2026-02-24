@@ -491,7 +491,7 @@ export class WaveSimTwoDim extends StateSimulator implements TwoDimDrawable {
   width: number;
   height: number;
   pml_layers: Record<number, [number, number]> = {};
-  wave_propagation_speed: number = 20.0; // Speed of wave propagation
+  wave_propagation_speed: number = 10.0; // Speed of wave propagation
   _two_dim_state: TwoDimState;
   point_sources: Record<number, PointSource> = {};
   clamp_value: number = Infinity;

@@ -514,7 +514,8 @@ function mouse_event_coords(event) {
   return [event.pageX, event.pageY];
 }
 function touch_event_coords(event) {
-  return [event.touches[0].pageX, event.touches[0].pageY];
+  let touch = event.touches[0];
+  return [touch.pageX, touch.pageY];
 }
 
 // src/lib/base/color.ts
@@ -584,9 +585,10 @@ var makeDraggable = (Base) => {
     }
     touch(scene, event) {
       if (event.touches.length == 0) throw new Error("No touch detected");
+      let touch = event.touches[0];
       this.dragStart = [
-        event.touches[0].pageX - scene.canvas.offsetLeft,
-        event.touches[0].pageY - scene.canvas.offsetTop
+        touch.pageX - scene.canvas.offsetLeft,
+        touch.pageY - scene.canvas.offsetTop
       ];
       if (!scene.is_dragging) {
         this.isClicked = this.is_almost_inside(
@@ -751,9 +753,10 @@ var makeDraggable3D = (Base) => {
       }
     }
     touch(scene, event) {
+      let touch = event.touches[0];
       this.dragStart = [
-        event.touches[0].pageX - scene.canvas.offsetLeft,
-        event.touches[0].pageY - scene.canvas.offsetTop
+        touch.pageX - scene.canvas.offsetLeft,
+        touch.pageY - scene.canvas.offsetTop
       ];
       if (!scene.is_dragging) {
         this.isClicked = this.is_almost_inside(
@@ -846,15 +849,15 @@ var makeDraggable3D = (Base) => {
       );
       scene.canvas.removeEventListener(
         "touchstart",
-        this.click.bind(self, scene)
+        this.touch.bind(self, scene)
       );
       scene.canvas.removeEventListener(
         "touchend",
-        this.unclick.bind(self, scene)
+        this.untouch.bind(self, scene)
       );
       scene.canvas.removeEventListener(
         "touchmove",
-        self.mouse_drag_cursor.bind(self, scene)
+        self.touch_drag_cursor.bind(self, scene)
       );
     }
   };

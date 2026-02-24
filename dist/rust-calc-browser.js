@@ -7,7 +7,9 @@ var __export = (target, all) => {
 // rust-calc/pkg/rust_calc.js
 var rust_calc_exports = {};
 __export(rust_calc_exports, {
-  WaveSimOneDimRust: () => WaveSimOneDimRust,
+  PointSource: () => PointSource,
+  WaveSimOneDim: () => WaveSimOneDim,
+  WaveSimTwoDim: () => WaveSimTwoDim,
   default: () => __wbg_init,
   divide: () => divide,
   initSync: () => initSync,
@@ -15,23 +17,120 @@ __export(rust_calc_exports, {
   subtract: () => subtract,
   sum: () => sum
 });
-var WaveSimOneDimRust = class {
+var PointSource = class _PointSource {
+  static __wrap(ptr) {
+    ptr = ptr >>> 0;
+    const obj = Object.create(_PointSource.prototype);
+    obj.__wbg_ptr = ptr;
+    PointSourceFinalization.register(obj, obj.__wbg_ptr, obj);
+    return obj;
+  }
   __destroy_into_raw() {
     const ptr = this.__wbg_ptr;
     this.__wbg_ptr = 0;
-    WaveSimOneDimRustFinalization.unregister(this);
+    PointSourceFinalization.unregister(this);
     return ptr;
   }
   free() {
     const ptr = this.__destroy_into_raw();
-    wasm.__wbg_wavesimonedimrust_free(ptr, 0);
+    wasm.__wbg_pointsource_free(ptr, 0);
+  }
+  /**
+   * @returns {number}
+   */
+  get amplitude() {
+    const ret = wasm.__wbg_get_pointsource_amplitude(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get frequency() {
+    const ret = wasm.__wbg_get_pointsource_frequency(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get phase() {
+    const ret = wasm.__wbg_get_pointsource_phase(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get x() {
+    const ret = wasm.__wbg_get_pointsource_x(this.__wbg_ptr);
+    return ret >>> 0;
+  }
+  /**
+   * @returns {number}
+   */
+  get y() {
+    const ret = wasm.__wbg_get_pointsource_y(this.__wbg_ptr);
+    return ret >>> 0;
+  }
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} amplitude
+   * @param {number} frequency
+   * @param {number} phase
+   * @returns {PointSource}
+   */
+  static new(x, y, amplitude, frequency, phase) {
+    const ret = wasm.pointsource_new(x, y, amplitude, frequency, phase);
+    return _PointSource.__wrap(ret);
+  }
+  /**
+   * @param {number} arg0
+   */
+  set amplitude(arg0) {
+    wasm.__wbg_set_pointsource_amplitude(this.__wbg_ptr, arg0);
+  }
+  /**
+   * @param {number} arg0
+   */
+  set frequency(arg0) {
+    wasm.__wbg_set_pointsource_frequency(this.__wbg_ptr, arg0);
+  }
+  /**
+   * @param {number} arg0
+   */
+  set phase(arg0) {
+    wasm.__wbg_set_pointsource_phase(this.__wbg_ptr, arg0);
+  }
+  /**
+   * @param {number} arg0
+   */
+  set x(arg0) {
+    wasm.__wbg_set_pointsource_x(this.__wbg_ptr, arg0);
+  }
+  /**
+   * @param {number} arg0
+   */
+  set y(arg0) {
+    wasm.__wbg_set_pointsource_y(this.__wbg_ptr, arg0);
+  }
+};
+if (Symbol.dispose) PointSource.prototype[Symbol.dispose] = PointSource.prototype.free;
+var WaveSimOneDim = class {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    WaveSimOneDimFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_wavesimonedim_free(ptr, 0);
   }
   /**
    * @returns {Float64Array}
    */
   get_u_values() {
     const ptr = this.__destroy_into_raw();
-    const ret = wasm.wavesimonedimrust_get_u_values(ptr);
+    const ret = wasm.wavesimonedim_get_u_values(ptr);
     var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v1;
@@ -41,7 +140,7 @@ var WaveSimOneDimRust = class {
    */
   get_v_values() {
     const ptr = this.__destroy_into_raw();
-    const ret = wasm.wavesimonedimrust_get_v_values(ptr);
+    const ret = wasm.wavesimonedim_get_v_values(ptr);
     var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v1;
@@ -51,7 +150,7 @@ var WaveSimOneDimRust = class {
    */
   get_vals() {
     const ptr = this.__destroy_into_raw();
-    const ret = wasm.wavesimonedimrust_get_vals(ptr);
+    const ret = wasm.wavesimonedim_get_vals(ptr);
     var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v1;
@@ -61,13 +160,27 @@ var WaveSimOneDimRust = class {
    * @param {number} dt
    */
   constructor(width, dt) {
-    const ret = wasm.wavesimonedimrust_new(width, dt);
+    const ret = wasm.wavesimonedim_new(width, dt);
     this.__wbg_ptr = ret >>> 0;
-    WaveSimOneDimRustFinalization.register(this, this.__wbg_ptr, this);
+    WaveSimOneDimFinalization.register(this, this.__wbg_ptr, this);
     return this;
   }
+  /**
+   * @returns {Float64Array}
+   */
+  output_u_vals() {
+    const ret = wasm.wavesimonedim_output_u_vals(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  output_v_vals() {
+    const ret = wasm.wavesimonedim_output_v_vals(this.__wbg_ptr);
+    return ret;
+  }
   reset() {
-    wasm.wavesimonedimrust_reset(this.__wbg_ptr);
+    wasm.wavesimonedim_reset(this.__wbg_ptr);
   }
   /**
    * @param {Float64Array} vals
@@ -75,7 +188,7 @@ var WaveSimOneDimRust = class {
   reset_to(vals) {
     const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedimrust_reset_to(this.__wbg_ptr, ptr0, len0);
+    wasm.wavesimonedim_reset_to(this.__wbg_ptr, ptr0, len0);
   }
   /**
    * @param {string} name
@@ -84,7 +197,7 @@ var WaveSimOneDimRust = class {
   set_attr(name, val) {
     const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedimrust_set_attr(this.__wbg_ptr, ptr0, len0, val);
+    wasm.wavesimonedim_set_attr(this.__wbg_ptr, ptr0, len0, val);
   }
   /**
    * @param {Float64Array} vals
@@ -92,7 +205,7 @@ var WaveSimOneDimRust = class {
   set_u_vals(vals) {
     const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedimrust_set_u_vals(this.__wbg_ptr, ptr0, len0);
+    wasm.wavesimonedim_set_u_vals(this.__wbg_ptr, ptr0, len0);
   }
   /**
    * @param {Float64Array} vals
@@ -100,14 +213,14 @@ var WaveSimOneDimRust = class {
   set_v_vals(vals) {
     const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedimrust_set_v_vals(this.__wbg_ptr, ptr0, len0);
+    wasm.wavesimonedim_set_v_vals(this.__wbg_ptr, ptr0, len0);
   }
   /**
    * @param {number} index
    * @param {number} val
    */
   set_val(index, val) {
-    wasm.wavesimonedimrust_set_val(this.__wbg_ptr, index, val);
+    wasm.wavesimonedim_set_val(this.__wbg_ptr, index, val);
   }
   /**
    * @param {Float64Array} vals
@@ -115,13 +228,76 @@ var WaveSimOneDimRust = class {
   set_vals(vals) {
     const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedimrust_set_vals(this.__wbg_ptr, ptr0, len0);
+    wasm.wavesimonedim_set_vals(this.__wbg_ptr, ptr0, len0);
   }
   step() {
-    wasm.wavesimonedimrust_step(this.__wbg_ptr);
+    wasm.wavesimonedim_step(this.__wbg_ptr);
   }
 };
-if (Symbol.dispose) WaveSimOneDimRust.prototype[Symbol.dispose] = WaveSimOneDimRust.prototype.free;
+if (Symbol.dispose) WaveSimOneDim.prototype[Symbol.dispose] = WaveSimOneDim.prototype.free;
+var WaveSimTwoDim = class {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    WaveSimTwoDimFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_wavesimtwodim_free(ptr, 0);
+  }
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} frequency
+   * @param {number} amplitude
+   * @param {number} phase
+   */
+  add_point_source(x, y, frequency, amplitude, phase) {
+    wasm.wavesimtwodim_add_point_source(this.__wbg_ptr, x, y, frequency, amplitude, phase);
+  }
+  /**
+   * @param {number} width
+   * @param {number} height
+   * @param {number} dt
+   */
+  constructor(width, height, dt) {
+    const ret = wasm.wavesimtwodim_new(width, height, dt);
+    this.__wbg_ptr = ret >>> 0;
+    WaveSimTwoDimFinalization.register(this, this.__wbg_ptr, this);
+    return this;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  output_u_vals() {
+    const ret = wasm.wavesimtwodim_output_u_vals(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  output_v_vals() {
+    const ret = wasm.wavesimtwodim_output_v_vals(this.__wbg_ptr);
+    return ret;
+  }
+  reset() {
+    wasm.wavesimtwodim_reset(this.__wbg_ptr);
+  }
+  /**
+   * @param {string} name
+   * @param {number} val
+   */
+  set_attr(name, val) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.wavesimtwodim_set_attr(this.__wbg_ptr, ptr0, len0, val);
+  }
+  step() {
+    wasm.wavesimtwodim_step(this.__wbg_ptr);
+  }
+};
+if (Symbol.dispose) WaveSimTwoDim.prototype[Symbol.dispose] = WaveSimTwoDim.prototype.free;
 function divide(left, right) {
   const ret = wasm.divide(left, right);
   return ret;
@@ -141,8 +317,12 @@ function sum(left, right) {
 function __wbg_get_imports() {
   const import0 = {
     __proto__: null,
-    __wbg___wbindgen_throw_df03e93053e0f4bc: function(arg0, arg1) {
+    __wbg___wbindgen_throw_89ca9e2c67795ec1: function(arg0, arg1) {
       throw new Error(getStringFromWasm0(arg0, arg1));
+    },
+    __wbg_new_from_slice_42c6e17e5e805f45: function(arg0, arg1) {
+      const ret = new Float64Array(getArrayF64FromWasm0(arg0, arg1));
+      return ret;
     },
     __wbindgen_init_externref_table: function() {
       const table = wasm.__wbindgen_externrefs;
@@ -159,9 +339,15 @@ function __wbg_get_imports() {
     "./rust_calc_bg.js": import0
   };
 }
-var WaveSimOneDimRustFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+var PointSourceFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
 }, unregister: () => {
-} } : new FinalizationRegistry((ptr) => wasm.__wbg_wavesimonedimrust_free(ptr >>> 0, 1));
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_pointsource_free(ptr >>> 0, 1));
+var WaveSimOneDimFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+}, unregister: () => {
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_wavesimonedim_free(ptr >>> 0, 1));
+var WaveSimTwoDimFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+}, unregister: () => {
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_wavesimtwodim_free(ptr >>> 0, 1));
 function getArrayF64FromWasm0(ptr, len) {
   ptr = ptr >>> 0;
   return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
@@ -354,16 +540,16 @@ async function sum2(left, right) {
   await initWasm();
   return sum(left, right);
 }
-async function createWaveSim(width, dt) {
+async function createWaveSimOneDim(width, dt) {
   await initWasm();
-  if (!WaveSimOneDimRust) {
-    throw new Error("WaveSimOneDimRust not found in rust-calc exports");
+  if (!WaveSimOneDim) {
+    throw new Error("WaveSimOneDim not found in rust-calc exports");
   }
-  const WaveSimOneDimRust2 = WaveSimOneDimRust;
+  const WaveSimOneDim2 = WaveSimOneDim;
   let instance;
   try {
-    instance = new WaveSimOneDimRust2(width, dt);
-    console.log("WaveSimOneDimRust instance created:", instance);
+    instance = new WaveSimOneDim2(width, dt);
+    console.log("WaveSimOneDim instance created:", instance);
   } catch (error) {
     console.error(
       "Failed to create or initialize WaveSimOneDimRust instance:",
@@ -373,18 +559,46 @@ async function createWaveSim(width, dt) {
   }
   return instance;
 }
-async function getWaveSimClass() {
+async function createWaveSimTwoDim(width, height, dt) {
   await initWasm();
-  if (WaveSimOneDimRust) {
-    return WaveSimOneDimRust;
+  if (!WaveSimTwoDim) {
+    throw new Error("WaveSimTwoDim not found in rust-calc exports");
+  }
+  const WaveSimTwoDim2 = WaveSimTwoDim;
+  let instance;
+  try {
+    instance = new WaveSimTwoDim2(width, height, dt);
+    console.log("WaveSimTwoDim instance created:", instance);
+  } catch (error) {
+    console.error(
+      "Failed to create or initialize WaveSimOneDimRust instance:",
+      error
+    );
+    throw error;
+  }
+  return instance;
+}
+async function getWaveSimOneDimClass() {
+  await initWasm();
+  if (WaveSimOneDim) {
+    return WaveSimOneDim;
   }
   throw new Error("WaveSimOneDimRust not found in rust-calc exports");
 }
+async function getWaveSimTwoDimClass() {
+  await initWasm();
+  if (WaveSimTwoDim) {
+    return WaveSimTwoDim;
+  }
+  throw new Error("WaveSimTwoDim not found in rust-calc exports");
+}
 console.log("rust-calc exports:", Object.keys(rust_calc_exports));
 export {
-  createWaveSim,
+  createWaveSimOneDim,
+  createWaveSimTwoDim,
   divide2 as divide,
-  getWaveSimClass,
+  getWaveSimOneDimClass,
+  getWaveSimTwoDimClass,
   initWasm,
   isWasmInitialized,
   multiply2 as multiply,

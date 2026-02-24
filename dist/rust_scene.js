@@ -7,7 +7,9 @@ var __export = (target, all) => {
 // rust-calc/pkg/rust_calc.js
 var rust_calc_exports = {};
 __export(rust_calc_exports, {
-  WaveSimOneDimRust: () => WaveSimOneDimRust,
+  PointSource: () => PointSource,
+  WaveSimOneDim: () => WaveSimOneDim,
+  WaveSimTwoDim: () => WaveSimTwoDim,
   default: () => __wbg_init,
   divide: () => divide,
   initSync: () => initSync,
@@ -15,23 +17,120 @@ __export(rust_calc_exports, {
   subtract: () => subtract,
   sum: () => sum
 });
-var WaveSimOneDimRust = class {
+var PointSource = class _PointSource {
+  static __wrap(ptr) {
+    ptr = ptr >>> 0;
+    const obj = Object.create(_PointSource.prototype);
+    obj.__wbg_ptr = ptr;
+    PointSourceFinalization.register(obj, obj.__wbg_ptr, obj);
+    return obj;
+  }
   __destroy_into_raw() {
     const ptr = this.__wbg_ptr;
     this.__wbg_ptr = 0;
-    WaveSimOneDimRustFinalization.unregister(this);
+    PointSourceFinalization.unregister(this);
     return ptr;
   }
   free() {
     const ptr = this.__destroy_into_raw();
-    wasm.__wbg_wavesimonedimrust_free(ptr, 0);
+    wasm.__wbg_pointsource_free(ptr, 0);
+  }
+  /**
+   * @returns {number}
+   */
+  get amplitude() {
+    const ret = wasm.__wbg_get_pointsource_amplitude(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get frequency() {
+    const ret = wasm.__wbg_get_pointsource_frequency(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get phase() {
+    const ret = wasm.__wbg_get_pointsource_phase(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get x() {
+    const ret = wasm.__wbg_get_pointsource_x(this.__wbg_ptr);
+    return ret >>> 0;
+  }
+  /**
+   * @returns {number}
+   */
+  get y() {
+    const ret = wasm.__wbg_get_pointsource_y(this.__wbg_ptr);
+    return ret >>> 0;
+  }
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} amplitude
+   * @param {number} frequency
+   * @param {number} phase
+   * @returns {PointSource}
+   */
+  static new(x, y, amplitude, frequency, phase) {
+    const ret = wasm.pointsource_new(x, y, amplitude, frequency, phase);
+    return _PointSource.__wrap(ret);
+  }
+  /**
+   * @param {number} arg0
+   */
+  set amplitude(arg0) {
+    wasm.__wbg_set_pointsource_amplitude(this.__wbg_ptr, arg0);
+  }
+  /**
+   * @param {number} arg0
+   */
+  set frequency(arg0) {
+    wasm.__wbg_set_pointsource_frequency(this.__wbg_ptr, arg0);
+  }
+  /**
+   * @param {number} arg0
+   */
+  set phase(arg0) {
+    wasm.__wbg_set_pointsource_phase(this.__wbg_ptr, arg0);
+  }
+  /**
+   * @param {number} arg0
+   */
+  set x(arg0) {
+    wasm.__wbg_set_pointsource_x(this.__wbg_ptr, arg0);
+  }
+  /**
+   * @param {number} arg0
+   */
+  set y(arg0) {
+    wasm.__wbg_set_pointsource_y(this.__wbg_ptr, arg0);
+  }
+};
+if (Symbol.dispose) PointSource.prototype[Symbol.dispose] = PointSource.prototype.free;
+var WaveSimOneDim = class {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    WaveSimOneDimFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_wavesimonedim_free(ptr, 0);
   }
   /**
    * @returns {Float64Array}
    */
   get_u_values() {
     const ptr = this.__destroy_into_raw();
-    const ret = wasm.wavesimonedimrust_get_u_values(ptr);
+    const ret = wasm.wavesimonedim_get_u_values(ptr);
     var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v1;
@@ -41,7 +140,7 @@ var WaveSimOneDimRust = class {
    */
   get_v_values() {
     const ptr = this.__destroy_into_raw();
-    const ret = wasm.wavesimonedimrust_get_v_values(ptr);
+    const ret = wasm.wavesimonedim_get_v_values(ptr);
     var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v1;
@@ -51,7 +150,7 @@ var WaveSimOneDimRust = class {
    */
   get_vals() {
     const ptr = this.__destroy_into_raw();
-    const ret = wasm.wavesimonedimrust_get_vals(ptr);
+    const ret = wasm.wavesimonedim_get_vals(ptr);
     var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v1;
@@ -61,13 +160,27 @@ var WaveSimOneDimRust = class {
    * @param {number} dt
    */
   constructor(width, dt) {
-    const ret = wasm.wavesimonedimrust_new(width, dt);
+    const ret = wasm.wavesimonedim_new(width, dt);
     this.__wbg_ptr = ret >>> 0;
-    WaveSimOneDimRustFinalization.register(this, this.__wbg_ptr, this);
+    WaveSimOneDimFinalization.register(this, this.__wbg_ptr, this);
     return this;
   }
+  /**
+   * @returns {Float64Array}
+   */
+  output_u_vals() {
+    const ret = wasm.wavesimonedim_output_u_vals(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  output_v_vals() {
+    const ret = wasm.wavesimonedim_output_v_vals(this.__wbg_ptr);
+    return ret;
+  }
   reset() {
-    wasm.wavesimonedimrust_reset(this.__wbg_ptr);
+    wasm.wavesimonedim_reset(this.__wbg_ptr);
   }
   /**
    * @param {Float64Array} vals
@@ -75,7 +188,7 @@ var WaveSimOneDimRust = class {
   reset_to(vals) {
     const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedimrust_reset_to(this.__wbg_ptr, ptr0, len0);
+    wasm.wavesimonedim_reset_to(this.__wbg_ptr, ptr0, len0);
   }
   /**
    * @param {string} name
@@ -84,7 +197,7 @@ var WaveSimOneDimRust = class {
   set_attr(name, val) {
     const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedimrust_set_attr(this.__wbg_ptr, ptr0, len0, val);
+    wasm.wavesimonedim_set_attr(this.__wbg_ptr, ptr0, len0, val);
   }
   /**
    * @param {Float64Array} vals
@@ -92,7 +205,7 @@ var WaveSimOneDimRust = class {
   set_u_vals(vals) {
     const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedimrust_set_u_vals(this.__wbg_ptr, ptr0, len0);
+    wasm.wavesimonedim_set_u_vals(this.__wbg_ptr, ptr0, len0);
   }
   /**
    * @param {Float64Array} vals
@@ -100,14 +213,14 @@ var WaveSimOneDimRust = class {
   set_v_vals(vals) {
     const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedimrust_set_v_vals(this.__wbg_ptr, ptr0, len0);
+    wasm.wavesimonedim_set_v_vals(this.__wbg_ptr, ptr0, len0);
   }
   /**
    * @param {number} index
    * @param {number} val
    */
   set_val(index, val) {
-    wasm.wavesimonedimrust_set_val(this.__wbg_ptr, index, val);
+    wasm.wavesimonedim_set_val(this.__wbg_ptr, index, val);
   }
   /**
    * @param {Float64Array} vals
@@ -115,13 +228,76 @@ var WaveSimOneDimRust = class {
   set_vals(vals) {
     const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedimrust_set_vals(this.__wbg_ptr, ptr0, len0);
+    wasm.wavesimonedim_set_vals(this.__wbg_ptr, ptr0, len0);
   }
   step() {
-    wasm.wavesimonedimrust_step(this.__wbg_ptr);
+    wasm.wavesimonedim_step(this.__wbg_ptr);
   }
 };
-if (Symbol.dispose) WaveSimOneDimRust.prototype[Symbol.dispose] = WaveSimOneDimRust.prototype.free;
+if (Symbol.dispose) WaveSimOneDim.prototype[Symbol.dispose] = WaveSimOneDim.prototype.free;
+var WaveSimTwoDim = class {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    WaveSimTwoDimFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_wavesimtwodim_free(ptr, 0);
+  }
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} frequency
+   * @param {number} amplitude
+   * @param {number} phase
+   */
+  add_point_source(x, y, frequency, amplitude, phase) {
+    wasm.wavesimtwodim_add_point_source(this.__wbg_ptr, x, y, frequency, amplitude, phase);
+  }
+  /**
+   * @param {number} width
+   * @param {number} height
+   * @param {number} dt
+   */
+  constructor(width, height, dt) {
+    const ret = wasm.wavesimtwodim_new(width, height, dt);
+    this.__wbg_ptr = ret >>> 0;
+    WaveSimTwoDimFinalization.register(this, this.__wbg_ptr, this);
+    return this;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  output_u_vals() {
+    const ret = wasm.wavesimtwodim_output_u_vals(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  output_v_vals() {
+    const ret = wasm.wavesimtwodim_output_v_vals(this.__wbg_ptr);
+    return ret;
+  }
+  reset() {
+    wasm.wavesimtwodim_reset(this.__wbg_ptr);
+  }
+  /**
+   * @param {string} name
+   * @param {number} val
+   */
+  set_attr(name, val) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.wavesimtwodim_set_attr(this.__wbg_ptr, ptr0, len0, val);
+  }
+  step() {
+    wasm.wavesimtwodim_step(this.__wbg_ptr);
+  }
+};
+if (Symbol.dispose) WaveSimTwoDim.prototype[Symbol.dispose] = WaveSimTwoDim.prototype.free;
 function divide(left, right) {
   const ret = wasm.divide(left, right);
   return ret;
@@ -141,8 +317,12 @@ function sum(left, right) {
 function __wbg_get_imports() {
   const import0 = {
     __proto__: null,
-    __wbg___wbindgen_throw_df03e93053e0f4bc: function(arg0, arg1) {
+    __wbg___wbindgen_throw_89ca9e2c67795ec1: function(arg0, arg1) {
       throw new Error(getStringFromWasm0(arg0, arg1));
+    },
+    __wbg_new_from_slice_42c6e17e5e805f45: function(arg0, arg1) {
+      const ret = new Float64Array(getArrayF64FromWasm0(arg0, arg1));
+      return ret;
     },
     __wbindgen_init_externref_table: function() {
       const table = wasm.__wbindgen_externrefs;
@@ -159,9 +339,15 @@ function __wbg_get_imports() {
     "./rust_calc_bg.js": import0
   };
 }
-var WaveSimOneDimRustFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+var PointSourceFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
 }, unregister: () => {
-} } : new FinalizationRegistry((ptr) => wasm.__wbg_wavesimonedimrust_free(ptr >>> 0, 1));
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_pointsource_free(ptr >>> 0, 1));
+var WaveSimOneDimFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+}, unregister: () => {
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_wavesimonedim_free(ptr >>> 0, 1));
+var WaveSimTwoDimFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+}, unregister: () => {
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_wavesimtwodim_free(ptr >>> 0, 1));
 function getArrayF64FromWasm0(ptr, len) {
   ptr = ptr >>> 0;
   return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
@@ -339,16 +525,16 @@ async function multiply2(left, right) {
   await initWasm();
   return multiply(left, right);
 }
-async function createWaveSim(width, dt) {
+async function createWaveSimOneDim(width, dt) {
   await initWasm();
-  if (!WaveSimOneDimRust) {
-    throw new Error("WaveSimOneDimRust not found in rust-calc exports");
+  if (!WaveSimOneDim) {
+    throw new Error("WaveSimOneDim not found in rust-calc exports");
   }
-  const WaveSimOneDimRust2 = WaveSimOneDimRust;
+  const WaveSimOneDim3 = WaveSimOneDim;
   let instance;
   try {
-    instance = new WaveSimOneDimRust2(width, dt);
-    console.log("WaveSimOneDimRust instance created:", instance);
+    instance = new WaveSimOneDim3(width, dt);
+    console.log("WaveSimOneDim instance created:", instance);
   } catch (error) {
     console.error(
       "Failed to create or initialize WaveSimOneDimRust instance:",
@@ -357,6 +543,32 @@ async function createWaveSim(width, dt) {
     throw error;
   }
   return instance;
+}
+async function createWaveSimTwoDim(width, height, dt) {
+  await initWasm();
+  if (!WaveSimTwoDim) {
+    throw new Error("WaveSimTwoDim not found in rust-calc exports");
+  }
+  const WaveSimTwoDim3 = WaveSimTwoDim;
+  let instance;
+  try {
+    instance = new WaveSimTwoDim3(width, height, dt);
+    console.log("WaveSimTwoDim instance created:", instance);
+  } catch (error) {
+    console.error(
+      "Failed to create or initialize WaveSimOneDimRust instance:",
+      error
+    );
+    throw error;
+  }
+  return instance;
+}
+async function getWaveSimTwoDimClass() {
+  await initWasm();
+  if (WaveSimTwoDim) {
+    return WaveSimTwoDim;
+  }
+  throw new Error("WaveSimTwoDim not found in rust-calc exports");
 }
 console.log("rust-calc exports:", Object.keys(rust_calc_exports));
 
@@ -386,11 +598,20 @@ function vec2_sub(x, y) {
 }
 
 // src/lib/base/style_options.ts
+var DEFAULT_BACKGROUND_COLOR = "white";
+var DEFAULT_BORDER_COLOR = "black";
+var DEFAULT_BORDER_WIDTH = 4;
 var DEFAULT_STROKE_COLOR = "black";
 var DEFAULT_STROKE_WIDTH = 0.08;
 var DEFAULT_FILL_COLOR = "black";
 
 // src/lib/base/base.ts
+function clamp(x, xmin, xmax) {
+  return Math.min(xmax, Math.max(xmin, x));
+}
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-x));
+}
 function funspace(func, start, stop, num) {
   const step = (stop - start) / (num - 1);
   return Array.from({ length: num }, (_, i) => func(start + i * step));
@@ -469,6 +690,40 @@ var MObject = class {
   _draw(ctx, scene, args) {
   }
 };
+var MObjectGroup = class extends MObject {
+  constructor() {
+    super(...arguments);
+    this.children = {};
+  }
+  add_mobj(name, child) {
+    this.children[name] = child;
+  }
+  remove_mobj(name) {
+    delete this.children[name];
+  }
+  move_by(p) {
+    Object.values(this.children).forEach((child) => child.move_by(p));
+  }
+  clear() {
+    Object.keys(this.children).forEach((key) => {
+      delete this.children[key];
+    });
+  }
+  get_mobj(name) {
+    if (!this.children[name]) {
+      throw new Error(`Child with name ${name} not found`);
+    }
+    return this.children[name];
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    Object.values(this.children).forEach(
+      (child) => child.draw(canvas, scene, args)
+    );
+  }
+};
 var FillLikeMObject = class extends MObject {
   constructor() {
     super(...arguments);
@@ -513,11 +768,229 @@ var FillLikeMObject = class extends MObject {
     this._draw(ctx, scene, args);
   }
 };
+var Scene = class {
+  constructor(canvas) {
+    this.background_color = DEFAULT_BACKGROUND_COLOR;
+    this.border_width = DEFAULT_BORDER_WIDTH;
+    this.border_color = DEFAULT_BORDER_COLOR;
+    // Zoom ratio
+    this.zoom_ratio = 1;
+    // Determines whether any draggable object in the scene is clicked
+    this.is_dragging = false;
+    this.canvas = canvas;
+    this.mobjects = {};
+    this.xlims = [0, canvas.width];
+    this.ylims = [0, canvas.height];
+    this.view_xlims = [0, canvas.width];
+    this.view_ylims = [0, canvas.height];
+  }
+  click() {
+    this.is_dragging = true;
+  }
+  unclick() {
+    this.is_dragging = false;
+  }
+  // Sets the coordinates for the borders of the scene. This also resets
+  // the current viewing window to match the scene size.
+  set_frame_lims(xlims, ylims) {
+    this.xlims = xlims;
+    this.ylims = ylims;
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
+  }
+  // Sets the current viewing window
+  set_view_lims(xlims, ylims) {
+    this.zoom_ratio = (this.xlims[1] - this.xlims[0]) / (xlims[1] - xlims[0]);
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
+  }
+  // Returns the center of the viewing window
+  get_view_center() {
+    return [
+      (this.view_xlims[0] + this.view_xlims[1]) / 2,
+      (this.view_ylims[0] + this.view_ylims[1]) / 2
+    ];
+  }
+  // Sets the current zoom level
+  set_zoom(value) {
+    this.zoom_ratio = value;
+    this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
+    this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
+  }
+  // Performs a homothety around the specified center point of the viewing window, with the given factor
+  zoom_in_on(ratio, center) {
+    this.zoom_ratio *= ratio;
+    this.view_xlims = [
+      center[0] + (this.view_xlims[0] - center[0]) / ratio,
+      center[0] + (this.view_xlims[1] - center[0]) / ratio
+    ];
+    this.view_ylims = [
+      center[1] + (this.view_ylims[0] - center[1]) / ratio,
+      center[1] + (this.view_ylims[1] - center[1]) / ratio
+    ];
+  }
+  // Moves the viewing window by the specified vector
+  move_view(v) {
+    this.view_xlims = [this.view_xlims[0] + v[0], this.view_xlims[1] + v[0]];
+    this.view_ylims = [this.view_ylims[0] + v[1], this.view_ylims[1] + v[1]];
+  }
+  // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
+  scale() {
+    let [xmin, xmax] = this.view_xlims;
+    return this.canvas.width / (xmax - xmin);
+  }
+  // Converts scene coordinates to canvas coordinates
+  s2c(x, y) {
+    return [
+      this.canvas.width * (x - this.xlims[0]) / (this.xlims[1] - this.xlims[0]),
+      this.canvas.height * (this.ylims[1] - y) / (this.ylims[1] - this.ylims[0])
+    ];
+  }
+  // Converts viewing coordinates to canvas coordinates
+  v2c(v) {
+    return [
+      this.canvas.width * (v[0] - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - v[1]) / (this.view_ylims[1] - this.view_ylims[0])
+    ];
+  }
+  // Converts canvas coordinates to scene coordinates
+  c2s(x, y) {
+    return [
+      this.xlims[0] + x * (this.xlims[1] - this.xlims[0]) / this.canvas.width,
+      this.ylims[1] - y * (this.ylims[1] - this.ylims[0]) / this.canvas.height
+    ];
+  }
+  // Converts canvas coordinates to viewing coordinates
+  c2v(x, y) {
+    return [
+      this.view_xlims[0] + x * (this.view_xlims[1] - this.view_xlims[0]) / this.canvas.width,
+      this.view_ylims[1] - y * (this.view_ylims[1] - this.view_ylims[0]) / this.canvas.height
+    ];
+  }
+  // Adds a mobject to the scene
+  add(name, mobj) {
+    this.mobjects[name] = mobj;
+    let self = this;
+    mobj.add(self);
+  }
+  // Removes the mobject from the scene
+  remove(name) {
+    delete this.mobjects[name];
+  }
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names, group_name) {
+    let group = new MObjectGroup();
+    names.forEach((name) => {
+      let mobj = this.get_mobj(name);
+      group.add_mobj(name, mobj);
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name) {
+    let group = this.mobjects[group_name];
+    if (group == void 0) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj);
+    });
+    delete this.mobjects[group_name];
+  }
+  // Removes all mobjects from the scene
+  clear() {
+    this.mobjects = {};
+  }
+  // Checks if a mobject exists in the scene
+  has_mobj(name) {
+    return this.mobjects.hasOwnProperty(name);
+  }
+  // Gets the mobject by name
+  get_mobj(name) {
+    let mobj = this.mobjects[name];
+    if (mobj == void 0) throw new Error(`${name} not found`);
+    return mobj;
+  }
+  // Draws the scene
+  draw(args) {
+    let ctx = this.canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.draw_background(ctx);
+    this._draw();
+    this.draw_border(ctx);
+  }
+  _draw() {
+    Object.keys(this.mobjects).forEach((name) => {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      this.draw_mobject(mobj);
+    });
+  }
+  draw_mobject(mobj) {
+    mobj.draw(this.canvas, this);
+  }
+  // Draw a background
+  draw_background(ctx) {
+    ctx.fillStyle = this.background_color;
+    ctx.globalAlpha = 1;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+  // Draw a border around the canvas
+  draw_border(ctx) {
+    ctx.strokeStyle = this.border_color;
+    ctx.lineWidth = this.border_width;
+    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+};
+function prepare_canvas(width, height, name) {
+  const container = document.getElementById(name);
+  if (container == null) throw new Error(`${name} not found`);
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+  let wrapper = document.createElement("div");
+  wrapper.classList.add("canvas_container");
+  wrapper.classList.add("non_selectable");
+  wrapper.style.width = `${width}px`;
+  wrapper.style.height = `${height}px`;
+  let canvas = document.createElement("canvas");
+  canvas.classList.add("non_selectable");
+  canvas.style.position = "relative";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.height = height;
+  canvas.width = width;
+  wrapper.appendChild(canvas);
+  container.appendChild(wrapper);
+  prepareCanvasForMobile(canvas);
+  return canvas;
+}
+function prepareCanvasForMobile(canvas) {
+  canvas.ontouchstart = function(e) {
+    e.preventDefault();
+  };
+  canvas.ontouchend = function(e) {
+    e.preventDefault();
+  };
+  canvas.ontouchmove = function(e) {
+    e.preventDefault();
+  };
+}
 function mouse_event_coords(event) {
   return [event.pageX, event.pageY];
 }
 function touch_event_coords(event) {
-  return [event.touches[0].pageX, event.touches[0].pageY];
+  let touch = event.touches[0];
+  return [touch.pageX, touch.pageY];
+}
+
+// src/lib/base/color.ts
+function rb_colormap(z) {
+  const gray = sigmoid(z);
+  if (gray < 0.5) {
+    return [512 * gray, 512 * gray, 255, 255];
+  } else {
+    return [255, 512 * (1 - gray), 512 * (1 - gray), 255];
+  }
 }
 
 // src/lib/interactive/draggable.ts
@@ -574,9 +1047,10 @@ var makeDraggable = (Base) => {
     }
     touch(scene, event) {
       if (event.touches.length == 0) throw new Error("No touch detected");
+      let touch = event.touches[0];
       this.dragStart = [
-        event.touches[0].pageX - scene.canvas.offsetLeft,
-        event.touches[0].pageY - scene.canvas.offsetTop
+        touch.pageX - scene.canvas.offsetLeft,
+        touch.pageY - scene.canvas.offsetTop
       ];
       if (!scene.is_dragging) {
         this.isClicked = this.is_almost_inside(
@@ -741,9 +1215,10 @@ var makeDraggable3D = (Base) => {
       }
     }
     touch(scene, event) {
+      let touch = event.touches[0];
       this.dragStart = [
-        event.touches[0].pageX - scene.canvas.offsetLeft,
-        event.touches[0].pageY - scene.canvas.offsetTop
+        touch.pageX - scene.canvas.offsetLeft,
+        touch.pageY - scene.canvas.offsetTop
       ];
       if (!scene.is_dragging) {
         this.isClicked = this.is_almost_inside(
@@ -836,15 +1311,15 @@ var makeDraggable3D = (Base) => {
       );
       scene.canvas.removeEventListener(
         "touchstart",
-        this.click.bind(self, scene)
+        this.touch.bind(self, scene)
       );
       scene.canvas.removeEventListener(
         "touchend",
-        this.unclick.bind(self, scene)
+        this.untouch.bind(self, scene)
       );
       scene.canvas.removeEventListener(
         "touchmove",
-        self.mouse_drag_cursor.bind(self, scene)
+        self.touch_drag_cursor.bind(self, scene)
       );
     }
   };
@@ -1318,6 +1793,39 @@ var Line3D = class extends ThreeDLineLikeMObject {
     ctx.moveTo(start_x, start_y);
     ctx.lineTo(end_x, end_y);
     ctx.stroke();
+  }
+};
+
+// src/lib/base/heatmap.ts
+var HeatMap = class extends MObject {
+  constructor(width, height, min_val, max_val, valArray) {
+    super();
+    this.width = width;
+    this.height = height;
+    this.min_val = min_val;
+    this.max_val = max_val;
+    this.valArray = valArray;
+    this.colorMap = rb_colormap;
+  }
+  set_color_map(colorMap) {
+    this.colorMap = colorMap;
+  }
+  // Gets/sets values
+  set_vals(vals) {
+    this.valArray = vals;
+  }
+  get_vals() {
+    return this.valArray;
+  }
+  // Draws on the canvas
+  _draw(ctx, scene, imageData) {
+    let data = imageData.data;
+    for (let i = 0; i < this.width * this.height; i++) {
+      const px_val = this.valArray[i];
+      const idx = i * 4;
+      [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] = this.colorMap(px_val);
+    }
+    ctx.putImageData(imageData, 0, 0);
   }
 };
 
@@ -11920,6 +12428,112 @@ var Simulator = class {
     }
   }
 };
+var SceneFromSimulator = class extends Scene {
+  constructor(canvas) {
+    super(canvas);
+  }
+  reset() {
+  }
+  update_mobjects_from_simulator(simulator) {
+  }
+  toggle_pause() {
+  }
+  toggle_unpause() {
+  }
+};
+var InteractiveHandler = class {
+  // Store a known end-time in case the simulation is paused and unpaused
+  constructor(simulator) {
+    this.scenes = [];
+    this.action_queue = [];
+    this.paused = true;
+    this.time = 0;
+    this.dt = 0.01;
+    this.simulator = simulator;
+  }
+  // Adds a scene
+  add_scene(scene) {
+    scene.update_mobjects_from_simulator(this.simulator);
+    this.scenes.push(scene);
+  }
+  // Draws all scenes
+  draw() {
+    for (let scene of this.scenes) {
+      scene.draw();
+    }
+  }
+  // Set and modify the simulator
+  get_simulator() {
+    return this.simulator;
+  }
+  set_simulator_attr(simulator_ind, attr_name, attr_val) {
+    this.simulator.set_attr(attr_name, attr_val);
+  }
+  add_pause_button(container) {
+    let self = this;
+    let pauseButton = Button(container, function() {
+      self.add_to_queue(self.toggle_pause.bind(self));
+      pauseButton.textContent = pauseButton.textContent == "Pause simulation" ? "Unpause simulation" : "Pause simulation";
+    });
+    pauseButton.textContent = this.paused ? "Unpause simulation" : "Pause simulation";
+    return pauseButton;
+  }
+  // Restarts the simulator
+  reset() {
+    this.simulator.reset();
+    this.time = 0;
+    for (let scene of this.scenes) {
+      scene.reset();
+      scene.update_mobjects_from_simulator(this.simulator);
+      scene.draw();
+    }
+  }
+  // Switches from paused to unpaused and vice-versa.
+  toggle_pause() {
+    this.paused = !this.paused;
+    if (!this.paused) {
+      for (let scene of this.scenes) {
+        scene.toggle_unpause();
+      }
+      this.play(this.end_time);
+    } else {
+      for (let scene of this.scenes) {
+        scene.toggle_pause();
+      }
+    }
+  }
+  // Adds to the action queue if the scene is currently playing,
+  // otherwise execute the callback immediately
+  add_to_queue(callback) {
+    if (this.paused) {
+      callback();
+    } else {
+      this.action_queue.push(callback);
+    }
+  }
+  // Starts animation
+  async play(until) {
+    if (this.paused) {
+      this.end_time = until;
+      return;
+    } else {
+      if (this.action_queue.length > 0) {
+        let callback = this.action_queue.shift();
+        callback();
+      } else if (this.time > until) {
+        return;
+      } else {
+        this.simulator.step();
+        this.time += this.simulator.dt;
+        for (let scene of this.scenes) {
+          scene.update_mobjects_from_simulator(this.simulator);
+          scene.draw();
+        }
+      }
+      window.requestAnimationFrame(this.play.bind(this, until));
+    }
+  }
+};
 
 // src/lib/simulator/statesim.ts
 var StateSimulator = class extends Simulator {
@@ -11995,9 +12609,121 @@ var StateSimulator = class extends Simulator {
     return this.step_runge_kutta();
   }
 };
+var TwoDimState = class {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+  }
+  index(x, y) {
+    return y * this.width + x;
+  }
+  // One-sided derivative f(x + 1) - f(x)
+  d_x_plus(arr, x, y) {
+    if (x == this.width - 1) {
+      return -arr[this.index(x, y)];
+    } else {
+      return arr[this.index(x + 1, y)] - arr[this.index(x, y)];
+    }
+  }
+  // One-sided derivative f(x) - f(x - 1)
+  d_x_minus(arr, x, y) {
+    if (x == 0) {
+      return arr[this.index(x, y)];
+    } else {
+      return arr[this.index(x, y)] - arr[this.index(x - 1, y)];
+    }
+  }
+  // One-sided derivative f(y + 1) - f(y)
+  d_y_plus(arr, x, y) {
+    if (y == this.height - 1) {
+      return -arr[this.index(x, y)];
+    } else {
+      return arr[this.index(x, y + 1)] - arr[this.index(x, y)];
+    }
+  }
+  // One-sided derivative f(y) - f(y - 1)
+  d_y_minus(arr, x, y) {
+    if (y == 0) {
+      return arr[this.index(x, y)];
+    } else {
+      return arr[this.index(x, y)] - arr[this.index(x, y - 1)];
+    }
+  }
+  // d/dx, computed as (f(x + 1) - f(x - 1)) / 2.
+  d_x_entry(arr, x, y) {
+    if (x == 0) {
+      return (2 * arr[this.index(2, y)] - 2 * arr[this.index(0, y)] - arr[this.index(3, y)] + arr[this.index(1, y)]) / 2;
+    } else if (x == this.width - 1) {
+      return (2 * arr[this.index(this.width - 1, y)] - 2 * arr[this.index(this.width - 3, y)] - arr[this.index(this.width - 2, y)] + arr[this.index(this.width - 4, y)]) / 2;
+    } else {
+      return (arr[this.index(x + 1, y)] - arr[this.index(x - 1, y)]) / 2;
+    }
+  }
+  // d/dy, computed as (f(y + 1) - f(y - 1)) / 2.
+  d_y_entry(arr, x, y) {
+    if (y == 0) {
+      return (2 * arr[this.index(x, 2)] - 2 * arr[this.index(x, 0)] - arr[this.index(x, 3)] + arr[this.index(x, 1)]) / 2;
+    } else if (y == this.height - 1) {
+      return (2 * arr[this.index(x, this.height - 1)] - 2 * arr[this.index(x, this.height - 3)] - arr[this.index(x, this.height - 2)] + arr[this.index(x, this.height - 4)]) / 2;
+    } else {
+      return (arr[this.index(x, y + 1)] - arr[this.index(x, y - 1)]) / 2;
+    }
+  }
+  // (d/dx)^2, computed as f(x + 1) - 2f(x) + f(x - 1).
+  // At the boundaries, use a linear extrapolation.
+  // TODO Maybe better to assume zero outside of the array.
+  l_x_entry(arr, x, y) {
+    if (x == 0) {
+      return 2 * arr[this.index(0, y)] - 5 * arr[this.index(1, y)] + 4 * arr[this.index(2, y)] - arr[this.index(3, y)];
+    } else if (x == this.width - 1) {
+      return 2 * arr[this.index(this.width - 1, y)] - 5 * arr[this.index(this.width - 2, y)] + 4 * arr[this.index(this.width - 3, y)] - arr[this.index(this.width - 4, y)];
+    } else {
+      return arr[this.index(x + 1, y)] - 2 * arr[this.index(x, y)] + arr[this.index(x - 1, y)];
+    }
+  }
+  // (d/dy)^2, computed as f(y + 1) - 2f(y) + f(y - 1).
+  l_y_entry(arr, x, y) {
+    if (y == 0) {
+      return 2 * arr[this.index(x, 0)] - 5 * arr[this.index(x, 1)] + 4 * arr[this.index(x, 2)] - arr[this.index(x, 3)];
+    } else if (y == this.height - 1) {
+      return 2 * arr[this.index(x, this.height - 1)] - 5 * arr[this.index(x, this.height - 2)] + 4 * arr[this.index(x, this.height - 3)] - arr[this.index(x, this.height - 4)];
+    } else {
+      return arr[this.index(x, y + 1)] - 2 * arr[this.index(x, y)] + arr[this.index(x, y - 1)];
+    }
+  }
+};
 
 // src/lib/simulator/wavesim.ts
-var WaveSimOneDim = class extends StateSimulator {
+var PointSource2 = class {
+  // Time at which the source turns on
+  constructor(x, y, w, a, p) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.a = a;
+    this.p = p;
+    this.turn_on_time = 0;
+  }
+  set_x(x) {
+    this.x = x;
+  }
+  set_y(y) {
+    this.y = y;
+  }
+  set_w(w) {
+    this.w = w;
+  }
+  set_a(a) {
+    this.a = a;
+  }
+  set_p(p) {
+    this.p = p;
+  }
+  set_turn_on_time(time) {
+    this.turn_on_time = time;
+  }
+};
+var WaveSimOneDim2 = class extends StateSimulator {
   constructor(width, dt) {
     super(2 * width, dt);
     // Perfectly-matched layers in 1D are implemented as increasing friction coefficients at the boundaries.
@@ -12120,6 +12846,228 @@ var WaveSimOneDim = class extends StateSimulator {
     });
   }
 };
+var WaveSimTwoDim2 = class extends StateSimulator {
+  constructor(width, height, dt) {
+    super(4 * width * height, dt);
+    this.pml_layers = {};
+    this.wave_propagation_speed = 10;
+    this.point_sources = {};
+    this.clamp_value = Infinity;
+    this.width = width;
+    this.height = height;
+    this._two_dim_state = new TwoDimState(width, height);
+    this.set_pml_layer(true, true, 0.2, 200);
+    this.set_pml_layer(true, false, 0.2, 200);
+    this.set_pml_layer(false, true, 0.2, 200);
+    this.set_pml_layer(false, false, 0.2, 200);
+  }
+  // Sets the initial conditions of the simulation
+  set_init_conditions(x0, v0) {
+    for (let i = 0; i < this.size(); i++) {
+      this.vals[i] = x0[i];
+      this.vals[i + this.size()] = v0[i];
+      this.vals[i + 2 * this.size()] = 0;
+      this.vals[i + 3 * this.size()] = 0;
+    }
+    this.time = 0;
+    this.set_boundary_conditions(this.vals, this.time);
+  }
+  add_point_source(source) {
+    let ind = Object.keys(this.point_sources).length;
+    this.point_sources[ind] = source;
+  }
+  remove_point_source(id) {
+    delete this.point_sources[id];
+  }
+  // *** HELPER FUNCTIONS ***
+  // Size of the 2D grid
+  size() {
+    return this.width * this.height;
+  }
+  index(x, y) {
+    return this._two_dim_state.index(x, y);
+  }
+  // Named portions of the state values
+  get_uValues() {
+    return this._get_uValues(this.vals);
+  }
+  _get_uValues(vals) {
+    return vals.slice(0, this.size());
+  }
+  _get_vValues(vals) {
+    return vals.slice(this.size(), 2 * this.size());
+  }
+  _get_pxValues(vals) {
+    return vals.slice(2 * this.size(), 3 * this.size());
+  }
+  _get_pyValues(vals) {
+    return vals.slice(3 * this.size(), 4 * this.size());
+  }
+  // PML-related TODO Split these off into their own config object?
+  // Adds a perfectly matched layer to the specified border of the domain. The magnitude of damping
+  // grows as max(0, C(L - x))^2, where C is the pml_strength parameter, L is the pml_width parameter,
+  // and x represents the ratio distance(point, border) / distance(center, border). That is, x = 1
+  // at the center of the grid, and x = 0 at the border of the grid.
+  remove_pml_layers() {
+    this.pml_layers = { 0: [0, 0], 1: [0, 0], 2: [0, 0], 3: [0, 0] };
+  }
+  set_pml_layer(x_direction, positive, pml_width, pml_strength) {
+    let ind;
+    if (x_direction && positive) {
+      ind = 0;
+    } else if (x_direction && !positive) {
+      ind = 1;
+    } else if (!x_direction && positive) {
+      ind = 2;
+    } else if (!x_direction && !positive) {
+      ind = 3;
+    } else {
+      throw new Error("Invalid PML specification.");
+    }
+    this.pml_layers[ind] = [pml_width, pml_strength];
+  }
+  sigma_x(arr_x) {
+    let ind, pml_thickness, pml_strength;
+    if (arr_x - this.width / 2 >= 0) {
+      ind = 0;
+    } else {
+      ind = 1;
+    }
+    if (this.pml_layers.hasOwnProperty(ind)) {
+      [pml_thickness, pml_strength] = this.pml_layers[ind];
+      let relative_distance_from_center = Math.abs(
+        -1 + arr_x / (this.width / 2)
+      );
+      return pml_strength * Math.max(0, relative_distance_from_center + pml_thickness - 1) ** 2;
+    } else {
+      return 0;
+    }
+  }
+  sigma_y(arr_y) {
+    let ind, pml_thickness, pml_strength;
+    if (arr_y - this.height / 2 >= 0) {
+      ind = 2;
+    } else {
+      ind = 3;
+    }
+    if (this.pml_layers.hasOwnProperty(ind)) {
+      [pml_thickness, pml_strength] = this.pml_layers[ind];
+      let relative_distance_from_center = Math.abs(
+        -1 + arr_y / (this.height / 2)
+      );
+      return pml_strength * Math.max(0, relative_distance_from_center + pml_thickness - 1) ** 2;
+    } else {
+      return 0;
+    }
+  }
+  // NOTE: All methods below apply to any function f: R^2 -> R. Put them into their own class,
+  // which has width and height attributes, and a "index" function. Maybe part of the same
+  // interface for TwoDimDrawable? Or TwoDimState?
+  d_x_plus(arr, x, y) {
+    return this._two_dim_state.d_x_plus(arr, x, y);
+  }
+  d_x_minus(arr, x, y) {
+    return this._two_dim_state.d_x_minus(arr, x, y);
+  }
+  d_y_plus(arr, x, y) {
+    return this._two_dim_state.d_y_plus(arr, x, y);
+  }
+  d_y_minus(arr, x, y) {
+    return this._two_dim_state.d_y_minus(arr, x, y);
+  }
+  d_x_entry(arr, x, y) {
+    return this._two_dim_state.d_x_entry(arr, x, y);
+  }
+  d_y_entry(arr, x, y) {
+    return this._two_dim_state.d_y_entry(arr, x, y);
+  }
+  l_x_entry(arr, x, y) {
+    return this._two_dim_state.l_x_entry(arr, x, y);
+  }
+  l_y_entry(arr, x, y) {
+    return this._two_dim_state.l_y_entry(arr, x, y);
+  }
+  // (d/dx)^2 + (d/dy)^2
+  laplacian_entry(vals, x, y) {
+    return this.l_x_entry(vals, x, y) + this.l_y_entry(vals, x, y);
+  }
+  wps(x, y) {
+    return this.wave_propagation_speed;
+  }
+  // Constructs the time-derivative of the entire state array. Here is where
+  // the wave equation is used.
+  dot(vals, time) {
+    let dS = new Array(this.state_size);
+    let ind, sx, sy;
+    let u = this._get_uValues(vals);
+    let px = this._get_pxValues(vals);
+    let py = this._get_pyValues(vals);
+    for (let ind2 = 0; ind2 < this.size(); ind2++) {
+      dS[ind2] = vals[ind2 + this.size()];
+    }
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        ind = this.index(x, y);
+        dS[ind + this.size()] = this.wps(x, y) ** 2 * this.laplacian_entry(u, x, y) + this.d_x_entry(px, x, y) + this.d_y_entry(py, x, y) - (this.sigma_x(x) + this.sigma_y(y)) * vals[ind + this.size()] - this.sigma_x(x) * this.sigma_y(y) * vals[ind];
+      }
+    }
+    for (let x = 0; x < this.width; x++) {
+      sx = this.sigma_x(x);
+      for (let y = 0; y < this.height; y++) {
+        ind = this.index(x, y);
+        dS[ind + 2 * this.size()] = -sx * px[ind] + this.wps(x, y) ** 2 * (this.sigma_y(y) - sx) * this.d_x_entry(u, x, y);
+      }
+    }
+    for (let y = 0; y < this.height; y++) {
+      sy = this.sigma_y(y);
+      for (let x = 0; x < this.width; x++) {
+        ind = this.index(x, y);
+        dS[ind + 3 * this.size()] = -sy * py[ind] + this.wps(x, y) ** 2 * (this.sigma_x(x) - sy) * this.d_y_entry(u, x, y);
+      }
+    }
+    return dS;
+  }
+  // Add point sources
+  set_boundary_conditions(s, t) {
+    let ind;
+    Object.entries(this.point_sources).forEach(([key, elem]) => {
+      if (t >= elem.turn_on_time) {
+        ind = this.index(elem.x, elem.y);
+        s[ind] = elem.a * Math.sin(elem.w * (t - elem.p));
+        s[ind + this.size()] = elem.a * elem.w * Math.cos(elem.w * (t - elem.p));
+      }
+    });
+    for (let ind2 = 0; ind2 < this.state_size; ind2++) {
+      this.vals[ind2] = clamp(
+        this.vals[ind2],
+        -this.clamp_value,
+        this.clamp_value
+      );
+    }
+  }
+};
+var WaveSimTwoDimHeatMapScene = class extends SceneFromSimulator {
+  // Target for heatmap data
+  constructor(canvas, imageData, width, height) {
+    super(canvas);
+    this.add(
+      "heatmap",
+      new HeatMap(width, height, -1, 1, new Array(width * height).fill(0))
+    );
+    this.imageData = imageData;
+  }
+  update_mobjects_from_simulator(simulator) {
+    let mobj = this.get_mobj("heatmap");
+    mobj.set_vals(simulator.get_uValues());
+  }
+  draw_mobject(mobj) {
+    if (mobj instanceof HeatMap) {
+      mobj.draw(this.canvas, this, this.imageData);
+    } else {
+      mobj.draw(this.canvas, this);
+    }
+  }
+};
 
 // src/rust_scene.ts
 (async function() {
@@ -12160,7 +13108,7 @@ var WaveSimOneDim = class extends StateSimulator {
       function foo(x) {
         return Math.exp(-(5 * (x - 0.5) ** 2));
       }
-      class WaveSimulator extends WaveSimOneDim {
+      class WaveSimulator extends WaveSimOneDim2 {
         reset() {
           super.reset();
           this.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, width));
@@ -12168,14 +13116,21 @@ var WaveSimOneDim = class extends StateSimulator {
         }
       }
       let simTS = new WaveSimulator(width, dt);
+      simTS.set_wave_propagation_speed(10);
       simTS.reset();
-      let simRust = await createWaveSim(width, dt);
+      let simRust = await createWaveSimOneDim(width, dt);
+      simRust.set_attr("wave_propagation_speed", 10);
+      simRust.reset();
       let rustButton = Button(
         document.getElementById(name + "-button-1"),
         async function handleClick() {
           for (let i = 0; i < num_steps; i++) {
+            const vals = simRust.output_u_vals();
             simRust.step();
-            console.log(`Step ${i + 1} completed`);
+            if (i % 100 == 0) {
+              console.log(vals);
+              console.log(`Step ${i} completed`);
+            }
           }
           console.log(`Done ${num_steps} iterations at size ${width}`);
           simRust.reset();
@@ -12186,8 +13141,12 @@ var WaveSimOneDim = class extends StateSimulator {
         document.getElementById(name + "-button-2"),
         async function handleClick() {
           for (let i = 0; i < num_steps; i++) {
+            const vals = simTS.get_uValues();
             simTS.step();
-            console.log(`Step ${i + 1} completed`);
+            if (i % 100 == 0) {
+              console.log(vals);
+              console.log(`Step ${i} completed`);
+            }
           }
           console.log(`Done ${num_steps} iterations at size ${width}`);
           simTS.reset();
@@ -12195,5 +13154,113 @@ var WaveSimOneDim = class extends StateSimulator {
       );
       tsButton.textContent = "TS implementation";
     })();
+    (async function rust_wave_eq_two_dim(width, height) {
+      const name = "rust-wave-eq-two-dim";
+      const dt = 0.01;
+      const num_steps = 300;
+      const xmin = -5;
+      const xmax = 5;
+      const ymin = -5;
+      const ymax = 5;
+      let canvasTS = prepare_canvas(width, height, name + "-ts");
+      let canvasRust = prepare_canvas(width, height, name + "-rust");
+      const ctxTS = canvasTS.getContext("2d");
+      if (!ctxTS) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageDataTS = ctxTS.createImageData(width, height);
+      const ctxRust = canvasRust.getContext("2d");
+      if (!ctxRust) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageDataRust = ctxRust.createImageData(width, height);
+      let simTS = new WaveSimTwoDim2(width, height, dt);
+      simTS.set_attr("wave_propagation_speed", 0.1 * width);
+      simTS.reset();
+      simTS.set_boundary_conditions(simTS.vals, 0);
+      let a = 5;
+      let w = 8;
+      let distance = 2;
+      simTS.add_point_source(
+        new PointSource2(
+          Math.floor(0.5 * (1 + distance / (xmax - xmin)) * width),
+          Math.floor(height / 2),
+          w,
+          a,
+          Math.PI / w
+        )
+      );
+      simTS.add_point_source(
+        new PointSource2(
+          Math.floor(0.5 * (1 - distance / (xmax - xmin)) * width),
+          Math.floor(height / 2),
+          w,
+          a,
+          0
+        )
+      );
+      let handlerTS = new InteractiveHandler(simTS);
+      let sceneTS = new WaveSimTwoDimHeatMapScene(
+        canvasTS,
+        imageDataTS,
+        width,
+        height
+      );
+      sceneTS.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      handlerTS.add_scene(sceneTS);
+      let pauseButtonTS = handlerTS.add_pause_button(
+        document.getElementById(name + "-ts-button-1")
+      );
+      let clearButtonTS = Button(
+        document.getElementById(name + "-ts-button-2"),
+        function() {
+          handlerTS.add_to_queue(simTS.reset.bind(simTS));
+          handlerTS.add_to_queue(handlerTS.draw.bind(handlerTS));
+        }
+      );
+      clearButtonTS.textContent = "Clear";
+      clearButtonTS.style.padding = "15px";
+      let simRust = await createWaveSimTwoDim(width, height, dt);
+      simRust.set_attr("wave_propagation_speed", 0.1 * width);
+      simRust.reset();
+      simRust.add_point_source(
+        Math.floor(0.5 * (1 + distance / (xmax - xmin)) * width),
+        Math.floor(height / 2),
+        w,
+        a,
+        Math.PI / w
+      );
+      simRust.add_point_source(
+        Math.floor(0.5 * (1 - distance / (xmax - xmin)) * width),
+        Math.floor(height / 2),
+        w,
+        a,
+        0
+      );
+      let handlerRust = new InteractiveHandler(simRust);
+      const WaveSimTwoDimClass = await getWaveSimTwoDimClass();
+      class Foo extends WaveSimTwoDimHeatMapScene {
+        // TODO Add typehint for
+        update_mobjects_from_simulator(simulator) {
+          let mobj = this.get_mobj("heatmap");
+          mobj.set_vals(simulator.output_u_vals());
+        }
+      }
+      let sceneRust = new Foo(canvasRust, imageDataRust, width, height);
+      sceneRust.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      handlerRust.add_scene(sceneRust);
+      let pauseButtonRust = handlerRust.add_pause_button(
+        document.getElementById(name + "-rust-button-1")
+      );
+      let clearButtonRust = Button(
+        document.getElementById(name + "-rust-button-2"),
+        function() {
+          handlerRust.add_to_queue(simRust.reset.bind(simRust));
+          handlerRust.add_to_queue(handlerRust.draw.bind(handlerRust));
+        }
+      );
+      clearButtonRust.textContent = "Clear";
+      clearButtonRust.style.padding = "15px";
+    })(200, 200);
   });
 })();

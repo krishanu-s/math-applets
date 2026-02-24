@@ -47,21 +47,24 @@ export async function sum(left: number, right: number): Promise<number> {
 }
 
 // Robust createWaveSim function
-export async function createWaveSim(width: number, dt: number): Promise<any> {
+export async function createWaveSimOneDim(
+  width: number,
+  dt: number,
+): Promise<any> {
   await initWasm();
 
-  if (!(rustCalc as any).WaveSimOneDimRust) {
-    throw new Error("WaveSimOneDimRust not found in rust-calc exports");
+  if (!(rustCalc as any).WaveSimOneDim) {
+    throw new Error("WaveSimOneDim not found in rust-calc exports");
   }
 
-  const WaveSimOneDimRust = (rustCalc as any).WaveSimOneDimRust;
+  const WaveSimOneDim = (rustCalc as any).WaveSimOneDim;
 
   let instance;
 
   try {
     // Create instance
-    instance = new WaveSimOneDimRust(width, dt);
-    console.log("WaveSimOneDimRust instance created:", instance);
+    instance = new WaveSimOneDim(width, dt);
+    console.log("WaveSimOneDim instance created:", instance);
 
     // // Check what methods are available
     // console.log(
@@ -131,15 +134,54 @@ export async function createWaveSim(width: number, dt: number): Promise<any> {
   return instance;
 }
 
-// Also export the class directly for advanced use
-export async function getWaveSimClass(): Promise<any> {
+export async function createWaveSimTwoDim(
+  width: number,
+  height: number,
+  dt: number,
+): Promise<any> {
   await initWasm();
 
-  if ((rustCalc as any).WaveSimOneDimRust) {
-    return (rustCalc as any).WaveSimOneDimRust;
+  if (!(rustCalc as any).WaveSimTwoDim) {
+    throw new Error("WaveSimTwoDim not found in rust-calc exports");
+  }
+
+  const WaveSimTwoDim = (rustCalc as any).WaveSimTwoDim;
+
+  let instance;
+
+  try {
+    // Create instance
+    instance = new WaveSimTwoDim(width, height, dt);
+    console.log("WaveSimTwoDim instance created:", instance);
+  } catch (error) {
+    console.error(
+      "Failed to create or initialize WaveSimOneDimRust instance:",
+      error,
+    );
+    throw error;
+  }
+
+  return instance;
+}
+
+// Also export the class directly for advanced use
+export async function getWaveSimOneDimClass(): Promise<any> {
+  await initWasm();
+
+  if ((rustCalc as any).WaveSimOneDim) {
+    return (rustCalc as any).WaveSimOneDim;
   }
 
   throw new Error("WaveSimOneDimRust not found in rust-calc exports");
+}
+export async function getWaveSimTwoDimClass(): Promise<any> {
+  await initWasm();
+
+  if ((rustCalc as any).WaveSimTwoDim) {
+    return (rustCalc as any).WaveSimTwoDim;
+  }
+
+  throw new Error("WaveSimTwoDim not found in rust-calc exports");
 }
 
 // Export the raw module for advanced use
