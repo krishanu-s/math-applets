@@ -571,5 +571,6 @@ export function mouse_event_coords(event: MouseEvent): Vec2D {
 }
 
 export function touch_event_coords(event: TouchEvent): Vec2D {
-  return [event.touches[0].pageX, event.touches[0].pageY];
+  let touch = event.touches[0] as Touch;
+  return [touch.pageX, touch.pageY];
 }

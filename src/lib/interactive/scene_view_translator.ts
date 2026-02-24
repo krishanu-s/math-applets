@@ -43,9 +43,10 @@ export class SceneViewTranslator {
     }
   }
   touch(event: TouchEvent) {
+    let touch = event.touches[0] as Touch;
     this.dragStart = [
-      event.touches[0].pageX - this.scene.canvas.offsetLeft,
-      event.touches[0].pageY - this.scene.canvas.offsetTop,
+      touch.pageX - this.scene.canvas.offsetLeft,
+      touch.pageY - this.scene.canvas.offsetTop,
     ];
     if (!this.scene.is_dragging) {
       this.drag = true;
@@ -71,9 +72,10 @@ export class SceneViewTranslator {
   }
   touch_drag_cursor(event: TouchEvent) {
     if (this.drag) {
+      let touch = event.touches[0] as Touch;
       this.dragEnd = [
-        event.touches[0].pageX - this.scene.canvas.offsetLeft,
-        event.touches[0].pageY - this.scene.canvas.offsetTop,
+        touch.pageX - this.scene.canvas.offsetLeft,
+        touch.pageY - this.scene.canvas.offsetTop,
       ];
       this._drag_cursor();
     }

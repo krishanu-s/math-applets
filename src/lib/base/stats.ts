@@ -60,12 +60,12 @@ export class Histogram extends MObject {
     let bin;
     let rect_center: Vec2D, rect_height: number, rect_width: number;
     for (let i = 0; i < Object.keys(this.hist).length; i++) {
-      bin = Object.keys(this.hist)[i];
+      bin = Number(Object.keys(this.hist)[i]);
       rect_center = [
         xmin + (bin - this.bin_min + 0.5) * bin_width,
-        ymin + this.hist[bin] * 0.5 * ct_height,
+        ymin + (this.hist[bin] as number) * 0.5 * ct_height,
       ];
-      rect_height = this.hist[bin] * ct_height;
+      rect_height = (this.hist[bin] as number) * ct_height;
       rect_width = bin_width;
       let rect = new Rectangle(rect_center, rect_width, rect_height);
       rect.fill_options.fill_color = this.fill_color;

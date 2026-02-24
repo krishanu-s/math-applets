@@ -1,12 +1,7 @@
 export { Simulator, InteractivePlayingThreeDScene } from "./sim";
-export {
-  StateSimulator,
-  SpringSimulator,
-  TwoDimState,
-  OneDimDrawable,
-  TwoDimDrawable,
-} from "./statesim";
-export {
+export { StateSimulator, SpringSimulator, TwoDimState } from "./statesim";
+export type { OneDimDrawable, TwoDimDrawable } from "./statesim";
+export type {
   PointSourceOneDim,
   PointSource,
   WaveSimOneDim,
@@ -14,7 +9,6 @@ export {
   WaveSimTwoDimReflector,
   WaveSimTwoDimEllipticReflector,
   WaveSimOneDimScene,
-  WaveSimOneDimInteractiveScene,
   WaveSimTwoDimPointsHeatmapScene,
   WaveSimTwoDimHeatMapScene,
   WaveSimTwoDimThreeDScene,

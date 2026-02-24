@@ -1,6 +1,5 @@
-export { Arcball } from "../interactive/arcball";
+export type { Arcball } from "../interactive/arcball";
 export {
-  Vec3D,
   vec3_dot,
   vec3_norm,
   vec3_scale,
@@ -8,7 +7,6 @@ export {
   vec3_sum,
   vec3_sum_list,
   vec3_normalize,
-  Mat3by3,
   mat_inv,
   matmul_mat,
   matmul_vec,
@@ -21,8 +19,9 @@ export {
   rot_y,
   rot_z,
 } from "./matvec";
-export { Camera3D, ThreeDScene } from "./scene";
-export {
+export type { Vec3D, Mat3by3 } from "./matvec";
+export type { Camera3D, ThreeDScene } from "./scene";
+export type {
   ThreeDMObject,
   ThreeDLineLikeMObject,
   ThreeDFillLikeMObject,

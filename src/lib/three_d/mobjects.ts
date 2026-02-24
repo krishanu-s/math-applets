@@ -563,22 +563,25 @@ export class LineSequence3D extends ThreeDLineLikeMObject {
     this.points[i] = new_point;
   }
   get_point(i: number): Vec3D {
-    return this.points[i];
+    return this.points[i] as Vec3D;
   }
   depth(scene: ThreeDScene): number {
     if (this.points.length == 0) {
       return 0;
     } else if (this.points.length == 1) {
-      return scene.camera.depth(this.points[0]);
+      return scene.camera.depth(this.points[0] as Vec3D);
     } else {
       return scene.camera.depth(
-        vec3_scale(vec3_sum(this.points[0], this.points[1]), 0.5),
+        vec3_scale(
+          vec3_sum(this.points[0] as Vec3D, this.points[1] as Vec3D),
+          0.5,
+        ),
       );
     }
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     ctx.beginPath();
-    let current_point: Vec3D = this.points[0];
+    let current_point: Vec3D = this.points[0] as Vec3D;
     let current_point_camera_view: Vec2D | null =
       scene.camera_view(current_point);
     let cp_x: number = 0,
@@ -599,7 +602,7 @@ export class LineSequence3D extends ThreeDLineLikeMObject {
     let v: Vec3D;
     let n: number;
     for (let i = 1; i < this.points.length; i++) {
-      next_point = this.points[i];
+      next_point = this.points[i] as Vec3D;
       next_point_camera_view = scene.camera_view(next_point);
       if (current_point_camera_view == null || next_point_camera_view == null) {
         continue;
@@ -672,7 +675,7 @@ export class LineSequence3D extends ThreeDLineLikeMObject {
     let p: Vec2D | null;
     let x: number, y: number;
     for (let i = 0; i < this.points.length; i++) {
-      p = scene.camera_view(this.points[i]);
+      p = scene.camera_view(this.points[i] as Vec3D);
       if (p == null) {
         in_frame = false;
       } else {
@@ -815,7 +818,7 @@ export class Cube extends ThreeDLineLikeMObject {
     for (let i = 0; i < vertices.length; i++) {
       let v = projected_vertices[i];
       if (v == null) {
-        canvas_vertices.push(v);
+        canvas_vertices.push(v as null);
       } else {
         canvas_vertices.push(scene.v2c(v as Vec2D));
       }

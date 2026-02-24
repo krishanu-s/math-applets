@@ -5,7 +5,7 @@ import {
   mouse_event_coords,
   touch_event_coords,
 } from "../base/base";
-import { Vec2D, vec2_sub, vec2_sum } from "../base/vec2";
+import { Vec2D, vec2_sub } from "../base/vec2";
 import { ThreeDScene, Vec3D } from "../three_d";
 
 // TODO It would be great if we could unite the 2D and 3D cases, as they're nearly identical.
@@ -63,9 +63,10 @@ export const makeDraggable = <T extends new (...args: any[]) => any>(
     }
     touch(scene: Scene, event: TouchEvent) {
       if (event.touches.length == 0) throw new Error("No touch detected");
+      let touch = event.touches[0] as Touch;
       this.dragStart = [
-        (event.touches[0] as Touch).pageX - scene.canvas.offsetLeft,
-        (event.touches[0] as Touch).pageY - scene.canvas.offsetTop,
+        touch.pageX - scene.canvas.offsetLeft,
+        touch.pageY - scene.canvas.offsetTop,
       ];
       if (!scene.is_dragging) {
         this.isClicked = this.is_almost_inside(
@@ -238,9 +239,10 @@ export const makeDraggable3D = <T extends new (...args: any[]) => any>(
       }
     }
     touch(scene: ThreeDScene, event: TouchEvent) {
+      let touch = event.touches[0] as Touch;
       this.dragStart = [
-        event.touches[0].pageX - scene.canvas.offsetLeft,
-        event.touches[0].pageY - scene.canvas.offsetTop,
+        touch.pageX - scene.canvas.offsetLeft,
+        touch.pageY - scene.canvas.offsetTop,
       ];
       if (!scene.is_dragging) {
         this.isClicked = this.is_almost_inside(
@@ -322,7 +324,7 @@ export const makeDraggable3D = <T extends new (...args: any[]) => any>(
         self.touch_drag_cursor.bind(self, scene),
       );
     }
-    remove(scene: Scene) {
+    remove(scene: ThreeDScene) {
       let self = this;
       // For desktop
       scene.canvas.removeEventListener(
@@ -340,15 +342,15 @@ export const makeDraggable3D = <T extends new (...args: any[]) => any>(
       // For mobile
       scene.canvas.removeEventListener(
         "touchstart",
-        this.click.bind(self, scene),
+        this.touch.bind(self, scene),
       );
       scene.canvas.removeEventListener(
         "touchend",
-        this.unclick.bind(self, scene),
+        this.untouch.bind(self, scene),
       );
       scene.canvas.removeEventListener(
         "touchmove",
-        self.mouse_drag_cursor.bind(self, scene),
+        self.touch_drag_cursor.bind(self, scene),
       );
     }
   };

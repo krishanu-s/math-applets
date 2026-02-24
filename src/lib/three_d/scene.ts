@@ -191,8 +191,8 @@ export class ThreeDScene extends Scene {
     this.draw_background(ctx);
 
     let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
-      let depth_a = this.mobjects[a].depth(this);
-      let depth_b = this.mobjects[b].depth(this);
+      let depth_a = (this.mobjects[a] as ThreeDMObject).depth(this);
+      let depth_b = (this.mobjects[b] as ThreeDMObject).depth(this);
       return depth_b - depth_a;
     });
 

@@ -1309,7 +1309,7 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
         document.getElementById(name + "-slider-1") as HTMLElement,
         function (val: number) {
           handler.add_to_queue(() => {
-            sim.point_sources[0].set_w(val);
+            (sim.point_sources[0] as PointSource).set_w(val);
           });
         },
         {

@@ -1,5 +1,4 @@
 export {
-  Vec2D,
   vec2_norm,
   vec2_angle,
   vec2_normalize,
@@ -9,6 +8,7 @@ export {
   vec2_sub,
   vec2_rot,
 } from "./vec2";
+export type { Vec2D } from "./vec2";
 export {
   DEFAULT_BACKGROUND_COLOR,
   DEFAULT_BORDER_COLOR,
