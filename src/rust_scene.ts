@@ -72,13 +72,21 @@ import { funspace } from "./lib/base";
 
       // Rust simulator - use the wrapper
       let simRust = await createWaveSim(width, dt);
+      simRust.reset();
 
       // Button which, when clicked, calls a rust function to do calculations
+
+      // TODO Build direct access to the values field of the simRust object via its pointer,
+      // so that we can access the values directly without having to call a function
+      const memory = new WebAssembly.Memory({ initial: 1024, maximum: 1024 });
       let rustButton = Button(
         document.getElementById(name + "-button-1") as HTMLElement,
         async function handleClick() {
           for (let i = 0; i < num_steps; i++) {
             simRust.step();
+            const valsPtr = simRust.vals_ptr();
+            const vals = new Float64Array(memory.buffer, valsPtr, 2 * width);
+            console.log(vals);
             console.log(`Step ${i + 1} completed`);
           }
           console.log(`Done ${num_steps} iterations at size ${width}`);

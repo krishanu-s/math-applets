@@ -1,4 +1,4 @@
-export type { Arcball } from "../interactive/arcball";
+export { Arcball } from "../interactive/arcball";
 export {
   vec3_dot,
   vec3_norm,
@@ -19,9 +19,9 @@ export {
   rot_y,
   rot_z,
 } from "./matvec";
-export type { Vec3D, Mat3by3 } from "./matvec";
-export type { Camera3D, ThreeDScene } from "./scene";
-export type {
+export { Vec3D, Mat3by3 } from "./matvec";
+export { Camera3D, ThreeDScene } from "./scene";
+export {
   ThreeDMObject,
   ThreeDLineLikeMObject,
   ThreeDFillLikeMObject,
