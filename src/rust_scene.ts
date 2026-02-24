@@ -1,4 +1,4 @@
-import { loadWasm, multiply } from "./rust-calc-browser.js";
+import { multiply, createWaveSim } from "./rust-calc-browser.js";
 import { Button } from "./lib/interactive/button.js";
 import { WaveSimOneDim } from "./lib/simulator/wavesim.js";
 import { funspace } from "./lib/base";
@@ -9,12 +9,12 @@ import { funspace } from "./lib/base";
     (async function rust_calc() {
       const name = "rust-calc";
 
-      // Load the WASM module
-      try {
-        await loadWasm();
-      } catch (error) {
-        console.error("Failed to load WASM module:", error);
-      }
+      // // Load the WASM module
+      // try {
+      //   await loadWasm();
+      // } catch (error) {
+      //   console.error("Failed to load WASM module:", error);
+      // }
       // TODO: Implement some more interesting Rust calculations for comparison, such as modifying an
       // array entry-by-entry.
 
@@ -29,7 +29,7 @@ import { funspace } from "./lib/base";
         document.getElementById(name + "-button-1") as HTMLElement,
         async function handleClick() {
           for (let i = 0; i < numCalls; i++) {
-            c = multiply(a, b);
+            const result = await multiply(a, b);
           }
           console.log(`${numCalls} calls completed`);
         },
@@ -49,69 +49,57 @@ import { funspace } from "./lib/base";
       tsButton.textContent = "TS implementation";
     })();
 
-    // (async function rust_wave_eq_one_dim() {
-    //   const name = "rust-wave-eq-one-dim";
+    (async function rust_wave_eq_one_dim() {
+      const name = "rust-wave-eq-one-dim";
 
-    //   // Load the WASM module
-    //   try {
-    //     await loadWasm();
-    //   } catch (error) {
-    //     console.error("Failed to load WASM module:", error);
-    //   }
-    //   // TODO: Implement some more interesting Rust calculations for comparison, such as modifying an
-    //   // array entry-by-entry.
+      const width = 50000;
+      const dt = 0.01;
+      const num_steps = 2000;
 
-    //   const width = 10000;
-    //   const dt = 0.01;
-    //   const num_steps = 2000;
+      // Typescript simulator
+      function foo(x: number): number {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
+      class WaveSimulator extends WaveSimOneDim {
+        reset() {
+          super.reset();
+          this.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, width));
+          this.set_vValues(funspace((x) => 0, 0, 1, width));
+        }
+      }
+      let simTS = new WaveSimulator(width, dt);
+      simTS.reset();
 
-    //   // Typescript simulator
-    //   function foo(x: number): number {
-    //     return Math.exp(-(5 * (x - 0.5) ** 2));
-    //   }
-    //   class WaveSimulator extends WaveSimOneDim {
-    //     reset() {
-    //       super.reset();
-    //       this.set_uValues(funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, width));
-    //       this.set_vValues(funspace((x) => 0, 0, 1, width));
-    //     }
-    //   }
-    //   let simTS = new WaveSimulator(width, dt);
-    //   simTS.reset();
+      // Rust simulator - use the wrapper
+      let simRust = await createWaveSim(width, dt);
 
-    //   // Rust simulator
-    //   let simRust = new WaveSimOneDimRust(width, dt);
-    //   simRust.reset();
+      // Button which, when clicked, calls a rust function to do calculations
+      let rustButton = Button(
+        document.getElementById(name + "-button-1") as HTMLElement,
+        async function handleClick() {
+          for (let i = 0; i < num_steps; i++) {
+            simRust.step();
+            console.log(`Step ${i + 1} completed`);
+          }
+          console.log(`Done ${num_steps} iterations at size ${width}`);
+          simRust.reset();
+        },
+      );
+      rustButton.textContent = "Rust implementation";
 
-    //   // let simRust = new WaveSimOneDimRust(width, dt);
-    //   // simRust.reset();
-
-    //   // Button which, when clicked, calls a rust function to do calculations
-    //   let rustButton = Button(
-    //     document.getElementById(name + "-button-1") as HTMLElement,
-    //     async function handleClick() {
-    //       for (let i = 0; i < num_steps; i++) {
-    //         simRust.step();
-    //         console.log(`Step ${i + 1} completed`);
-    //       }
-    //       console.log(`Done ${num_steps} iterations at size ${width}`);
-    //       simRust.reset();
-    //     },
-    //   );
-    //   rustButton.textContent = "Rust implementation";
-
-    //   // Button which, when clicked, calls TS to do calculations
-    //   let tsButton = Button(
-    //     document.getElementById(name + "-button-2") as HTMLElement,
-    //     async function handleClick() {
-    //       for (let i = 0; i < num_steps; i++) {
-    //         simTS.step();
-    //       }
-    //       simTS.reset();
-    //       console.log(`Done ${num_steps} iterations at size ${width}`);
-    //     },
-    //   );
-    //   tsButton.textContent = "TS implementation";
-    // })();
+      // Button which, when clicked, calls TS to do calculations
+      let tsButton = Button(
+        document.getElementById(name + "-button-2") as HTMLElement,
+        async function handleClick() {
+          for (let i = 0; i < num_steps; i++) {
+            simTS.step();
+            console.log(`Step ${i + 1} completed`);
+          }
+          console.log(`Done ${num_steps} iterations at size ${width}`);
+          simTS.reset();
+        },
+      );
+      tsButton.textContent = "TS implementation";
+    })();
   });
 })();
