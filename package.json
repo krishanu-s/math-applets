@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "esbuild src/*_scene.ts src/rust*.ts src/*rust*.ts --bundle --platform=browser --outdir=dist --format=esm --define:import.meta.url='\"\"'",
     "build:dev": "esbuild src/rust_scene.ts --bundle --platform=browser --outdir=dist --format=esm --sourcemap",
+    "build-rust": "cd rust-calc/ && wasm-pack build --target web --release && cd ../",
     "copy-wasm": "cp rust-calc/pkg/rust_calc_bg.wasm dist/. && cp rust-calc/pkg/rust_calc.js dist/rust-calc-bundle.js"
   },
   "type": "module",

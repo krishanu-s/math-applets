@@ -1,7 +1,12 @@
-import { multiply, createWaveSim } from "./rust-calc-browser.js";
-import { Button } from "./lib/interactive/button.js";
-import { WaveSimOneDim } from "./lib/simulator/wavesim.js";
-import { funspace } from "./lib/base";
+import { multiply, createWaveSim } from "./rust-calc-browser";
+import { Button } from "./lib/interactive/button";
+import {
+  WaveSimOneDim,
+  WaveSimTwoDim,
+  PointSource,
+  WaveSimTwoDimHeatMapScene,
+} from "./lib/simulator/wavesim";
+import { funspace, prepare_canvas, delay, HeatMap } from "./lib/base";
 
 // Testing out performance of Rust bound in via WASM.
 (async function () {
@@ -115,5 +120,114 @@ import { funspace } from "./lib/base";
       );
       tsButton.textContent = "TS implementation";
     })();
+
+    // Animate a 2D wave equation heatmap scene, non-interactively.
+    (async function rust_wave_eq_two_dim(width: number, height: number) {
+      const name = "rust-wave-eq-two-dim";
+      const dt = 0.01;
+      const num_steps = 200;
+
+      const xmin = -5;
+      const xmax = 5;
+      const ymin = -5;
+      const ymax = 5;
+
+      // Prepare canvases
+      let canvasTS = prepare_canvas(width, height, name + "-ts");
+      let canvasRust = prepare_canvas(width, height, name + "-rust");
+
+      // Create ImageData objects
+      const ctxTS = canvasTS.getContext("2d");
+      if (!ctxTS) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageDataTS = ctxTS.createImageData(width, height);
+
+      const ctxRust = canvasRust.getContext("2d");
+      if (!ctxRust) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageDataRust = ctxRust.createImageData(width, height);
+
+      // Make the TS simulator and scene
+      let simTS = new WaveSimTwoDim(width, height, dt);
+      simTS.set_attr("wave_propagation_speed", 0.1 * width);
+      simTS.reset();
+      simTS.set_boundary_conditions(simTS.vals, 0);
+
+      let a = 5.0;
+      let w = 5.0;
+      let distance = 2.0;
+      simTS.add_point_source(
+        new PointSource(
+          Math.floor(0.5 * (1 + distance / (xmax - xmin)) * width),
+          Math.floor(height / 2),
+          a,
+          w,
+          Math.PI,
+        ),
+      );
+      simTS.add_point_source(
+        new PointSource(
+          Math.floor(0.5 * (1 - distance / (xmax - xmin)) * width),
+          Math.floor(height / 2),
+          a,
+          w,
+          0.0,
+        ),
+      );
+      let sceneTS = new WaveSimTwoDimHeatMapScene(
+        canvasTS,
+        imageDataTS,
+        width,
+        height,
+      );
+      sceneTS.set_frame_lims([xmin, xmax], [ymin, ymax]);
+
+      // TODO Make the Rust simulator and scene
+      // This consists of writing the Simulator class in Rust and also
+      // defining struct PointSource there.
+
+      class Foo extends WaveSimTwoDimHeatMapScene {
+        update_mobjects_from_simulator(simulator: WaveSimTwoDimRust) {
+          let mobj = this.get_mobj("heatmap") as HeatMap;
+          mobj.set_vals(simulator.output_u_vals());
+        }
+      }
+      let sceneRust = new Foo(canvasRust, imageDataRust, width, height);
+      sceneRust.set_frame_lims([xmin, xmax], [ymin, ymax]);
+
+      // // Button which, when clicked, calls Rust to do calculations
+      // // TODO Write simulator values to scene
+      // let rustButton = Button(
+      //   document.getElementById(name + "-button-1") as HTMLElement,
+      //   async function handleClick() {
+      //     for (let i = 0; i < num_steps; i++) {
+      //       simRust.step();
+      //       const vals = simRust.output_u_vals();
+      //     }
+      //     console.log(`Done ${num_steps} iterations at size ${width}`);
+      //     simRust.reset();
+      //   },
+      // );
+      // rustButton.textContent = "Rust implementation";
+
+      // Button which, when clicked, calls TS to do calculations
+      // TODO Write simulator values to scene
+      let tsButton = Button(
+        document.getElementById(name + "-ts-button") as HTMLElement,
+        async function handleClick() {
+          for (let i = 0; i < num_steps; i++) {
+            simTS.step();
+            sceneTS.update_mobjects_from_simulator(simTS);
+            sceneTS.draw();
+            await delay(0.1);
+          }
+          console.log(`Done ${num_steps} iterations at size ${width}`);
+          simTS.reset();
+        },
+      );
+      tsButton.textContent = "TS implementation";
+    })(300, 300);
   });
 })();
