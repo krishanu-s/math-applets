@@ -68,26 +68,28 @@ import { funspace } from "./lib/base";
         }
       }
       let simTS = new WaveSimulator(width, dt);
+      simTS.set_wave_propagation_speed(10.0);
       simTS.reset();
 
       // Rust simulator - use the wrapper
       let simRust = await createWaveSim(width, dt);
+      simRust.set_attr("wave_propagation_speed", 10.0);
       simRust.reset();
 
       // Button which, when clicked, calls a rust function to do calculations
 
       // TODO Build direct access to the values field of the simRust object via its pointer,
       // so that we can access the values directly without having to call a function
-      const memory = new WebAssembly.Memory({ initial: 1024, maximum: 1024 });
       let rustButton = Button(
         document.getElementById(name + "-button-1") as HTMLElement,
         async function handleClick() {
           for (let i = 0; i < num_steps; i++) {
+            const vals = simRust.output_u_vals();
             simRust.step();
-            const valsPtr = simRust.vals_ptr();
-            const vals = new Float64Array(memory.buffer, valsPtr, 2 * width);
-            console.log(vals);
-            console.log(`Step ${i + 1} completed`);
+            if (i % 100 == 0) {
+              console.log(vals);
+              console.log(`Step ${i} completed`);
+            }
           }
           console.log(`Done ${num_steps} iterations at size ${width}`);
           simRust.reset();
@@ -100,8 +102,12 @@ import { funspace } from "./lib/base";
         document.getElementById(name + "-button-2") as HTMLElement,
         async function handleClick() {
           for (let i = 0; i < num_steps; i++) {
+            const vals = simTS.get_uValues();
             simTS.step();
-            console.log(`Step ${i + 1} completed`);
+            if (i % 100 == 0) {
+              console.log(vals);
+              console.log(`Step ${i} completed`);
+            }
           }
           console.log(`Done ${num_steps} iterations at size ${width}`);
           simTS.reset();
