@@ -2,8 +2,9 @@
 import { MObject, Scene } from "./lib/base";
 import { Slider } from "./lib/interactive";
 import { ParametricFunction } from "./lib/base/bezier.js";
+import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 
-(function () {
+(async function () {
   document.addEventListener("DOMContentLoaded", async function () {
     // Prepare the canvas
     function prepare_canvas(
@@ -59,6 +60,7 @@ import { ParametricFunction } from "./lib/base/bezier.js";
     }
 
     // Make the scene
+    let solver = await createSmoothOpenPathBezier(30);
     let parametric = new ParametricFunction(
       (t) => {
         let r = 1 / (1 + 0.5 * Math.cos(t));
@@ -67,6 +69,7 @@ import { ParametricFunction } from "./lib/base/bezier.js";
       0,
       2 * Math.PI,
       30,
+      solver,
     );
     let scene = new Scene(canvas);
     scene.set_frame_lims([xmin, xmax], [ymin, ymax]);

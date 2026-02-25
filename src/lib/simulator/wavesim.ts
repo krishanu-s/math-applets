@@ -25,6 +25,7 @@ import { StateSimulator, TwoDimDrawable, TwoDimState } from "./statesim.js";
 import { Dot3D, Line3D, DraggableDot3D } from "../three_d/mobjects.js";
 import { InteractivePlayingThreeDScene } from "./sim.js";
 import { Vec3D } from "../three_d/matvec.js";
+import { createSmoothOpenPathBezier } from "../../rust-calc-browser";
 
 // A one-dimensional point source.
 export class PointSourceOneDim {
@@ -318,9 +319,12 @@ export class WaveSimOneDimScene extends SceneFromSimulator {
       }
       this.add(`p_${i + 1}`, mass);
     }
-
-    // Add a Bezier curve which tracks with uValues in simulator
-    let curve = new BezierSpline(width - 1).set_stroke_width(0.02);
+  }
+  // Add a Bezier curve which tracks with uValues in simulator
+  // This step has to be async and therefore cannot be in the constructor.
+  async add_curve() {
+    let solver = await createSmoothOpenPathBezier(this.width - 1);
+    let curve = new BezierSpline(this.width - 1, solver).set_stroke_width(0.02);
     this.add("curve", curve);
   }
   set_mode(mode: "curve" | "dots") {

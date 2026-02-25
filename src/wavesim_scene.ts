@@ -29,11 +29,11 @@ import {
   CoordinateAxes2d,
 } from "./lib/base";
 import {
-  multiply,
   createWaveSimOneDim,
   createWaveSimTwoDim,
   getWaveSimOneDimClass,
   getWaveSimTwoDimClass,
+  createSmoothOpenPathBezier,
 } from "./rust-calc-browser";
 import { Slider, Button } from "./lib/interactive";
 import { SceneViewTranslator } from "./lib/interactive/scene_view_translator";
@@ -62,7 +62,7 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
   document.addEventListener("DOMContentLoaded", async function () {
     // *** INTRODUCTION SECTION ***
     // Demonstration of wave propagation in two dimensions. This particular one shows a dipole.
-    (async function twodim_dipole_demo() {
+    await (async function twodim_dipole_demo() {
       let name = "twodim-dipole-demo";
       // Prepare the canvas and scene
       let width = 200;
@@ -170,272 +170,275 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
     // This demonstration shows an example of light propagation in a two-dimensional medium using
     // the ray model. More precisely, it shows how light rays emanating from the focus of a conic section
     // bounce off the conic.
-    // (async function conic_rays() {
-    //   // Prepare the canvas
-    //   let canvas = prepare_canvas(200, 200, "conic-rays");
+    (async function conic_rays() {
+      // Prepare the canvas
+      let canvas = prepare_canvas(200, 200, "conic-rays");
 
-    //   // Get the context for drawing
-    //   const ctx = canvas.getContext("2d");
-    //   if (!ctx) {
-    //     throw new Error("Failed to get 2D context");
-    //   }
+      // Get the context for drawing
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
 
-    //   // Make the scene
-    //   let scene = new Scene(canvas);
-    //   scene.set_frame_lims([-5, 5], [-5, 5]);
+      // Make the scene
+      let scene = new Scene(canvas);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
 
-    //   // Define conic section
-    //   class Conic {
-    //     focus: Vec2D;
-    //     eccentricity: number;
-    //     scale: number;
-    //     other_focus: Vec2D | null;
-    //     constructor(focus: Vec2D, eccentricity: number, scale: number) {
-    //       this.focus = focus;
-    //       this.eccentricity = eccentricity;
-    //       this.scale = scale;
-    //       this.other_focus = this.calculate_other_focus();
-    //     }
-    //     // Radius as a function of angle, i.e. polar parametrization
-    //     polar_radius(t: number): number {
-    //       return this.scale / (1 + this.eccentricity * Math.cos(t));
-    //     }
-    //     // 2D parametrization in polar form
-    //     polar_function(t: number): Vec2D {
-    //       let r = this.polar_radius(t);
-    //       return [
-    //         this.focus[0] + r * Math.cos(t),
-    //         this.focus[1] + r * Math.sin(t),
-    //       ];
-    //     }
-    //     // Calculates the other focus
-    //     // TODO Return a PVec2D in projective space.
-    //     calculate_other_focus(): Vec2D | null {
-    //       if (this.eccentricity == 1) {
-    //         return null;
-    //       } else {
-    //         return vec2_sum_list([
-    //           [-this.focus[0], -this.focus[1]],
-    //           this.polar_function(0),
-    //           this.polar_function(Math.PI),
-    //         ]);
-    //       }
-    //     }
-    //     // Sets the eccentricity
-    //     set_eccentricity(eccentricity: number) {
-    //       this.eccentricity = eccentricity;
-    //       this.other_focus = this.calculate_other_focus();
-    //     }
-    //     // Makes a conic section object
-    //     // TODO Consider making the solver fixed.
-    //     make_curve(): MObject {
-    //       if (this.eccentricity < 1) {
-    //         return new ParametricFunction(
-    //           this.polar_function.bind(this),
-    //           -Math.PI,
-    //           Math.PI,
-    //           50,
-    //         );
-    //       } else if (this.eccentricity == 1) {
-    //         let curve = new ParametricFunction(
-    //           this.polar_function.bind(this),
-    //           -Math.PI + 0.01,
-    //           Math.PI - 0.01,
-    //           50,
-    //         );
-    //         curve.mode = "jagged";
-    //         return curve;
-    //       } else {
-    //         return new MObject();
-    //       }
-    //     }
-    //     // Makes dots for the foci
-    //     make_focus(): Dot {
-    //       return new Dot(this.focus, 0.2);
-    //     }
-    //     make_other_focus(): MObject {
-    //       if (this.eccentricity >= 1.0) {
-    //         return new MObject();
-    //       } else {
-    //         return new Dot(this.other_focus as Vec2D, 0.1);
-    //       }
-    //     }
-    //     make_trajectory(t: number): [MObject, MObject] {
-    //       if (this.eccentricity >= 1.0) {
-    //         return [new MObject(), new MObject()];
-    //       } else {
-    //         let intersection_point = this.polar_function(t);
-    //         return [
-    //           new Line(this.focus, intersection_point).set_stroke_width(0.04),
-    //           new Line(
-    //             intersection_point,
-    //             this.other_focus as Vec2D,
-    //           ).set_stroke_width(0.04),
-    //         ];
-    //       }
-    //     }
-    //   }
+      // Define conic section
+      class Conic {
+        focus: Vec2D;
+        eccentricity: number;
+        scale: number;
+        other_focus: Vec2D | null;
+        constructor(focus: Vec2D, eccentricity: number, scale: number) {
+          this.focus = focus;
+          this.eccentricity = eccentricity;
+          this.scale = scale;
+          this.other_focus = this.calculate_other_focus();
+        }
+        // Radius as a function of angle, i.e. polar parametrization
+        polar_radius(t: number): number {
+          return this.scale / (1 + this.eccentricity * Math.cos(t));
+        }
+        // 2D parametrization in polar form
+        polar_function(t: number): Vec2D {
+          let r = this.polar_radius(t);
+          return [
+            this.focus[0] + r * Math.cos(t),
+            this.focus[1] + r * Math.sin(t),
+          ];
+        }
+        // Calculates the other focus
+        // TODO Return a PVec2D in projective space.
+        calculate_other_focus(): Vec2D | null {
+          if (this.eccentricity == 1) {
+            return null;
+          } else {
+            return vec2_sum_list([
+              [-this.focus[0], -this.focus[1]],
+              this.polar_function(0),
+              this.polar_function(Math.PI),
+            ]);
+          }
+        }
+        // Sets the eccentricity
+        set_eccentricity(eccentricity: number) {
+          this.eccentricity = eccentricity;
+          this.other_focus = this.calculate_other_focus();
+        }
+        // Makes a conic section object
+        // TODO Consider making the solver fixed.
+        async make_curve(): Promise<MObject> {
+          let solver = await createSmoothOpenPathBezier(50);
+          if (this.eccentricity < 1) {
+            return new ParametricFunction(
+              this.polar_function.bind(this),
+              -Math.PI,
+              Math.PI,
+              50,
+              solver,
+            );
+          } else if (this.eccentricity == 1) {
+            let curve = new ParametricFunction(
+              this.polar_function.bind(this),
+              -Math.PI + 0.01,
+              Math.PI - 0.01,
+              50,
+              solver,
+            );
+            curve.mode = "jagged";
+            return curve;
+          } else {
+            return new MObject();
+          }
+        }
+        // Makes dots for the foci
+        make_focus(): Dot {
+          return new Dot(this.focus, 0.2);
+        }
+        make_other_focus(): MObject {
+          if (this.eccentricity >= 1.0) {
+            return new MObject();
+          } else {
+            return new Dot(this.other_focus as Vec2D, 0.1);
+          }
+        }
+        make_trajectory(t: number): [MObject, MObject] {
+          if (this.eccentricity >= 1.0) {
+            return [new MObject(), new MObject()];
+          } else {
+            let intersection_point = this.polar_function(t);
+            return [
+              new Line(this.focus, intersection_point).set_stroke_width(0.04),
+              new Line(
+                intersection_point,
+                this.other_focus as Vec2D,
+              ).set_stroke_width(0.04),
+            ];
+          }
+        }
+      }
 
-    //   // Make conic
-    //   let focus: Vec2D = [2.0, 0];
-    //   let eccentricity = 0.5;
-    //   let scale = 3.0;
-    //   let conic = new Conic(focus, eccentricity, scale);
+      // Make conic
+      let focus: Vec2D = [2.0, 0];
+      let eccentricity = 0.5;
+      let scale = 3.0;
+      let conic = new Conic(focus, eccentricity, scale);
 
-    //   // Redraw fixed elements of scene
-    //   function reset_scene_fixed_elements() {
-    //     scene.remove("focus");
-    //     scene.remove("other_focus");
-    //     scene.remove("curve");
-    //     scene.add("focus", conic.make_focus());
-    //     scene.add("other_focus", conic.make_other_focus());
-    //     scene.add("curve", conic.make_curve());
-    //   }
+      // Redraw fixed elements of scene
+      async function reset_scene_fixed_elements() {
+        scene.remove("focus");
+        scene.remove("other_focus");
+        scene.remove("curve");
+        scene.add("focus", conic.make_focus());
+        scene.add("other_focus", conic.make_other_focus());
+        scene.add("curve", await conic.make_curve());
+      }
 
-    //   // Decide trajectory angles
-    //   let num_trajectories = 20;
-    //   let thetas: number[] = [];
-    //   for (let i = 0; i < num_trajectories; i++) {
-    //     thetas.push((2 * Math.PI * i) / num_trajectories);
-    //   }
-    //   let collision_times: number[];
+      // Decide trajectory angles
+      let num_trajectories = 20;
+      let thetas: number[] = [];
+      for (let i = 0; i < num_trajectories; i++) {
+        thetas.push((2 * Math.PI * i) / num_trajectories);
+      }
+      let collision_times: number[];
 
-    //   // Calculate the collision points of the trajectories with the conic section
-    //   function recalculate_collision_time(theta: number): number {
-    //     return conic.polar_radius(theta);
-    //   }
+      // Calculate the collision points of the trajectories with the conic section
+      function recalculate_collision_time(theta: number): number {
+        return conic.polar_radius(theta);
+      }
 
-    //   // Add a slider
-    //   let eccentricity_slider: HTMLInputElement = Slider(
-    //     document.getElementById(
-    //       "conic-rays-eccentricity-slider",
-    //     ) as HTMLElement,
-    //     function (val: number) {
-    //       conic.set_eccentricity(val);
-    //       reset_scene_fixed_elements();
-    //       scene.draw();
-    //       let collision_times: number[] = [];
-    //       for (let i = 0; i < num_trajectories; i++) {
-    //         collision_times.push(recalculate_collision_time(thetas[i]));
-    //       }
-    //     },
-    //     {
-    //       name: "Eccentricity",
-    //       min: 0.0,
-    //       max: 1.0,
-    //       initial_value: "0.5",
-    //       step: 0.05,
-    //     },
-    //   );
+      // Add a slider
+      let eccentricity_slider: HTMLInputElement = Slider(
+        document.getElementById(
+          "conic-rays-eccentricity-slider",
+        ) as HTMLElement,
+        async function (val: number) {
+          conic.set_eccentricity(val);
+          await reset_scene_fixed_elements();
+          scene.draw();
+          let collision_times: number[] = [];
+          for (let i = 0; i < num_trajectories; i++) {
+            collision_times.push(recalculate_collision_time(thetas[i]));
+          }
+        },
+        {
+          name: "Eccentricity",
+          min: 0.0,
+          max: 1.0,
+          initial_value: "0.5",
+          step: 0.05,
+        },
+      );
 
-    //   // Draw the scene
-    //   scene.draw();
+      // Draw the scene
+      scene.draw();
 
-    //   // Make a pause button for the animation
-    //   let playing = false;
-    //   let pauseButton = Button(
-    //     document.getElementById("conic-rays-pause-button") as HTMLElement,
-    //     function () {
-    //       playing = !playing;
-    //       if (pauseButton.textContent == "Pause simulation") {
-    //         pauseButton.textContent = "Unpause simulation";
-    //       } else if (pauseButton.textContent == "Unpause simulation") {
-    //         pauseButton.textContent = "Pause simulation";
-    //       } else {
-    //         throw new Error();
-    //       }
-    //     },
-    //   );
-    //   pauseButton.textContent = "Unpause simulation";
-    //   pauseButton.style.padding = "15px";
+      // Make a pause button for the animation
+      let playing = false;
+      let pauseButton = Button(
+        document.getElementById("conic-rays-pause-button") as HTMLElement,
+        function () {
+          playing = !playing;
+          if (pauseButton.textContent == "Pause simulation") {
+            pauseButton.textContent = "Unpause simulation";
+          } else if (pauseButton.textContent == "Unpause simulation") {
+            pauseButton.textContent = "Pause simulation";
+          } else {
+            throw new Error();
+          }
+        },
+      );
+      pauseButton.textContent = "Unpause simulation";
+      pauseButton.style.padding = "15px";
 
-    //   async function do_simulation(total_time: number, dt: number) {
-    //     // Setup
-    //     let current_thetas: number[] = [];
-    //     let moving_points: Vec2D[] = [];
-    //     let reflected: boolean[] = [];
-    //     for (let i = 0; i < num_trajectories; i++) {
-    //       current_thetas.push((2 * Math.PI * i) / num_trajectories);
-    //       reflected.push(false);
-    //       moving_points.push([focus[0], focus[1]]);
-    //       let dot = new Dot(focus, 0.05);
-    //       dot.set_color("red");
-    //       scene.add(`p_${i}`, dot);
-    //     }
-    //     let collision_times: number[] = [];
-    //     for (let i = 0; i < num_trajectories; i++) {
-    //       collision_times.push(recalculate_collision_time(thetas[i]));
-    //     }
-    //     // Animate trajectories
-    //     let t = 0;
-    //     let x: number, y: number;
-    //     let collision_indices: number[] = [];
-    //     while (t < total_time) {
-    //       if (playing) {
-    //         for (let i = 0; i < num_trajectories; i++) {
-    //           [x, y] = moving_points[i];
-    //           if (t + dt > collision_times[i] && !reflected[i]) {
-    //             // Collision case
-    //             collision_indices.push(i);
+      async function do_simulation(total_time: number, dt: number) {
+        // Setup
+        let current_thetas: number[] = [];
+        let moving_points: Vec2D[] = [];
+        let reflected: boolean[] = [];
+        for (let i = 0; i < num_trajectories; i++) {
+          current_thetas.push((2 * Math.PI * i) / num_trajectories);
+          reflected.push(false);
+          moving_points.push([focus[0], focus[1]]);
+          let dot = new Dot(focus, 0.05);
+          dot.set_color("red");
+          scene.add(`p_${i}`, dot);
+        }
+        let collision_times: number[] = [];
+        for (let i = 0; i < num_trajectories; i++) {
+          collision_times.push(recalculate_collision_time(thetas[i]));
+        }
+        // Animate trajectories
+        let t = 0;
+        let x: number, y: number;
+        let collision_indices: number[] = [];
+        while (t < total_time) {
+          if (playing) {
+            for (let i = 0; i < num_trajectories; i++) {
+              [x, y] = moving_points[i];
+              if (t + dt > collision_times[i] && !reflected[i]) {
+                // Collision case
+                collision_indices.push(i);
 
-    //             // TODO Recalculate next collision time for continued reflections
-    //             let s = collision_times[i] - t;
+                // TODO Recalculate next collision time for continued reflections
+                let s = collision_times[i] - t;
 
-    //             // Add the first trajectory portion to the reflection point
-    //             x += Math.cos(thetas[i]) * s;
-    //             y += Math.sin(thetas[i]) * s;
+                // Add the first trajectory portion to the reflection point
+                x += Math.cos(thetas[i]) * s;
+                y += Math.sin(thetas[i]) * s;
 
-    //             // Add a little collision effect
-    //             let effect = new Sector(
-    //               [x, y],
-    //               0.3,
-    //               thetas[i] - Math.PI / 2,
-    //               thetas[i] + Math.PI / 2,
-    //             );
-    //             effect.set_color("red");
-    //             scene.add(`c_${i}`, effect);
+                // Add a little collision effect
+                let effect = new Sector(
+                  [x, y],
+                  0.3,
+                  thetas[i] - Math.PI / 2,
+                  thetas[i] + Math.PI / 2,
+                );
+                effect.set_color("red");
+                scene.add(`c_${i}`, effect);
 
-    //             // Set new trajectory angle after reflection
-    //             if (conic.eccentricity == 1) {
-    //               current_thetas[i] = Math.PI;
-    //             } else {
-    //               // TODO If we want to be honest, we could calculate the angle in a more robust way, using local partial derivatives of the curve.
-    //               current_thetas[i] = vec2_angle(
-    //                 vec2_sub(
-    //                   conic.other_focus as Vec2D,
-    //                   conic.polar_function(thetas[i]),
-    //                 ),
-    //               );
-    //             }
-    //             // Add the first trajectory portion after the reflection point
-    //             x += Math.cos(current_thetas[i]) * (dt - s);
-    //             y += Math.sin(current_thetas[i]) * (dt - s);
-    //             reflected[i] = true;
-    //           } else {
-    //             x += Math.cos(current_thetas[i]) * dt;
-    //             y += Math.sin(current_thetas[i]) * dt;
-    //           }
-    //           moving_points[i] = [x, y];
-    //           (scene.get_mobj(`p_${i}`) as Dot).move_to([x, y]);
-    //         }
-    //         scene.draw();
-    //         t += dt;
-    //         while (collision_indices.length > 0) {
-    //           let i = collision_indices.pop();
-    //           scene.remove(`c_${i}`);
-    //         }
-    //       }
-    //       await delay(10);
-    //     }
-    //     for (let i = 0; i < num_trajectories; i++) {
-    //       scene.remove(`p_${i}`);
-    //     }
-    //     await delay(500);
-    //   }
-    //   while (true) {
-    //     await do_simulation(10, 0.06);
-    //   }
-    // })();
+                // Set new trajectory angle after reflection
+                if (conic.eccentricity == 1) {
+                  current_thetas[i] = Math.PI;
+                } else {
+                  // TODO If we want to be honest, we could calculate the angle in a more robust way, using local partial derivatives of the curve.
+                  current_thetas[i] = vec2_angle(
+                    vec2_sub(
+                      conic.other_focus as Vec2D,
+                      conic.polar_function(thetas[i]),
+                    ),
+                  );
+                }
+                // Add the first trajectory portion after the reflection point
+                x += Math.cos(current_thetas[i]) * (dt - s);
+                y += Math.sin(current_thetas[i]) * (dt - s);
+                reflected[i] = true;
+              } else {
+                x += Math.cos(current_thetas[i]) * dt;
+                y += Math.sin(current_thetas[i]) * dt;
+              }
+              moving_points[i] = [x, y];
+              (scene.get_mobj(`p_${i}`) as Dot).move_to([x, y]);
+            }
+            scene.draw();
+            t += dt;
+            while (collision_indices.length > 0) {
+              let i = collision_indices.pop();
+              scene.remove(`c_${i}`);
+            }
+          }
+          await delay(10);
+        }
+        for (let i = 0; i < num_trajectories; i++) {
+          scene.remove(`p_${i}`);
+        }
+        await delay(500);
+      }
+      while (true) {
+        await do_simulation(10, 0.06);
+      }
+    })();
 
     // *** ZERO-DIMENSIONAL WAVE EQUATION ***
     // This is the zero-dimensional case of the wave equation. A point mass connected to a spring
@@ -678,469 +681,473 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
     // connected in a horizontal line, oscillating vertically.
     // - TODO Add line segments showing the displacements from the equilibrium position.
     // - TODO Add a reset button to reset the simulation.
-    // (function point_mass_discrete_sequence(
-    //   width: number,
-    //   height: number,
-    //   num_points: number,
-    // ) {
-    //   // Prepare the canvas
-    //   let canvas = prepare_canvas(
-    //     width,
-    //     height,
-    //     "point-mass-discrete-sequence",
-    //   );
+    (async function point_mass_discrete_sequence(
+      width: number,
+      height: number,
+      num_points: number,
+    ) {
+      // Prepare the canvas
+      let canvas = prepare_canvas(
+        width,
+        height,
+        "point-mass-discrete-sequence",
+      );
 
-    //   function foo(x: number): number {
-    //     return Math.exp(-(5 * (x - 0.5) ** 2));
-    //   }
+      function foo(x: number): number {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
 
-    //   // Prepare the simulator
-    //   class WaveSimulator extends WaveSimOneDim {
-    //     reset() {
-    //       super.reset();
-    //       this.set_uValues(
-    //         funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
-    //       );
-    //       this.set_vValues(funspace((x) => 0, 0, 1, num_points));
-    //     }
-    //   }
+      // Prepare the simulator
+      class WaveSimulator extends WaveSimOneDim {
+        reset() {
+          super.reset();
+          this.set_uValues(
+            funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
+          );
+          this.set_vValues(funspace((x) => 0, 0, 1, num_points));
+        }
+      }
 
-    //   let w = 3.0;
-    //   let sim = new WaveSimOneDim(num_points, 0.01);
-    //   sim.set_attr("wave_propagation_speed", w);
-    //   sim.reset = function () {
-    //     this.time = 0;
-    //     this.set_uValues(
-    //       funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
-    //     );
-    //     this.set_vValues(funspace((x) => 0, 0, 1, num_points));
-    //   };
-    //   sim.reset();
+      let w = 3.0;
+      let sim = new WaveSimOneDim(num_points, 0.01);
+      sim.set_attr("wave_propagation_speed", w);
+      sim.reset = function () {
+        this.time = 0;
+        this.set_uValues(
+          funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
+        );
+        this.set_vValues(funspace((x) => 0, 0, 1, num_points));
+      };
+      sim.reset();
 
-    //   // Prepare the handler
-    //   let handler = new InteractiveHandler(sim);
+      // Prepare the handler
+      let handler = new InteractiveHandler(sim);
 
-    //   // Prepare the scene and add
-    //   class WaveScene extends WaveSimOneDimScene {
-    //     constructor(canvas: HTMLCanvasElement, num_points: number) {
-    //       super(canvas, num_points);
-    //       for (let i = 0; i < num_points; i++) {
-    //         let mass = this.get_mobj(`p_${i + 1}`) as DraggableDot;
-    //         this.add_callback(i, mass);
-    //       }
-    //     }
-    //     add_callback(i: number, mass: DraggableDot) {
-    //       let self = this;
-    //       if (i == 0) {
-    //         mass.add_callback(() => {
-    //           sim.set_left_endpoint(mass.get_center()[1]);
-    //         });
-    //       }
-    //       if (i == width - 1) {
-    //         mass.add_callback(() => {
-    //           sim.set_right_endpoint(mass.get_center()[1]);
-    //         });
-    //       }
-    //       mass.add_callback(() => {
-    //         let vals = sim.get_vals();
-    //         vals[i] = mass.get_center()[1];
-    //         vals[i + this.width] = 0;
-    //         sim.set_vals(vals);
-    //         self.update_mobjects_from_simulator(sim);
-    //       });
-    //     }
-    //   }
-    //   let scene = new WaveScene(canvas, num_points);
-    //   scene.set_frame_lims([-5, 5], [-5, 5]);
-    //   scene.set_mode("dots");
-    //   scene.set_dot_radius(0.1);
-    //   handler.add_scene(scene);
+      // Prepare the scene and add
+      class WaveScene extends WaveSimOneDimScene {
+        constructor(canvas: HTMLCanvasElement, num_points: number) {
+          super(canvas, num_points);
+          for (let i = 0; i < num_points; i++) {
+            let mass = this.get_mobj(`p_${i + 1}`) as DraggableDot;
+            this.add_callback(i, mass);
+          }
+        }
+        add_callback(i: number, mass: DraggableDot) {
+          let self = this;
+          if (i == 0) {
+            mass.add_callback(() => {
+              sim.set_left_endpoint(mass.get_center()[1]);
+            });
+          }
+          if (i == width - 1) {
+            mass.add_callback(() => {
+              sim.set_right_endpoint(mass.get_center()[1]);
+            });
+          }
+          mass.add_callback(() => {
+            let vals = sim.get_vals();
+            vals[i] = mass.get_center()[1];
+            vals[i + this.width] = 0;
+            sim.set_vals(vals);
+            self.update_mobjects_from_simulator(sim);
+          });
+        }
+      }
+      let scene = new WaveScene(canvas, num_points);
+      await scene.add_curve();
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("dots");
+      scene.set_dot_radius(0.1);
+      handler.add_scene(scene);
 
-    //   // Button which pauses/unpauses the simulation
-    //   let pauseButton = handler.add_pause_button(
-    //     document.getElementById(
-    //       "point-mass-discrete-sequence-pause-button",
-    //     ) as HTMLElement,
-    //   );
+      // Button which pauses/unpauses the simulation
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(
+          "point-mass-discrete-sequence-pause-button",
+        ) as HTMLElement,
+      );
 
-    //   // Button which resets the simulation
-    //   let resetButton = Button(
-    //     document.getElementById(
-    //       "point-mass-discrete-sequence-reset-button",
-    //     ) as HTMLElement,
-    //     function () {
-    //       handler.add_to_queue(handler.reset.bind(handler));
-    //     },
-    //   );
-    //   resetButton.textContent = "Reset simulation";
+      // Button which resets the simulation
+      let resetButton = Button(
+        document.getElementById(
+          "point-mass-discrete-sequence-reset-button",
+        ) as HTMLElement,
+        function () {
+          handler.add_to_queue(handler.reset.bind(handler));
+        },
+      );
+      resetButton.textContent = "Reset simulation";
 
-    //   // Slider which controls friction
-    //   let f_slider = Slider(
-    //     document.getElementById(
-    //       "point-mass-discrete-sequence-friction-slider",
-    //     ) as HTMLElement,
-    //     function (val: number) {
-    //       handler.add_to_queue(
-    //         handler.set_simulator_attr.bind(handler, 0, "damping", val),
-    //       );
-    //     },
-    //     {
-    //       name: "Friction",
-    //       initial_value: "0.0",
-    //       min: 0,
-    //       max: 5.0,
-    //       step: 0.01,
-    //     },
-    //   );
+      // Slider which controls friction
+      let f_slider = Slider(
+        document.getElementById(
+          "point-mass-discrete-sequence-friction-slider",
+        ) as HTMLElement,
+        function (val: number) {
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "damping", val),
+          );
+        },
+        {
+          name: "Friction",
+          initial_value: "0.0",
+          min: 0,
+          max: 5.0,
+          step: 0.01,
+        },
+      );
 
-    //   // Slider which controls the propagation speed
-    //   let w_slider = Slider(
-    //     document.getElementById(
-    //       "point-mass-discrete-sequence-stiffness-slider",
-    //     ) as HTMLElement,
-    //     function (val: number) {
-    //       handler.add_to_queue(
-    //         handler.set_simulator_attr.bind(
-    //           handler,
-    //           0,
-    //           "wave_propagation_speed",
-    //           val,
-    //         ),
-    //       );
-    //       handler.add_to_queue(
-    //         scene.set_arrow_length_scale.bind(scene, val / 2),
-    //       );
-    //       handler.add_to_queue(
-    //         scene.update_mobjects_from_simulator.bind(
-    //           scene,
-    //           handler.simulator as WaveSimulator,
-    //         ),
-    //       );
-    //       handler.add_to_queue(handler.draw.bind(handler));
-    //     },
-    //     {
-    //       name: "Spring stiffness",
-    //       initial_value: `${w}`,
-    //       min: 0,
-    //       max: 20,
-    //       step: 0.05,
-    //     },
-    //   );
+      // Slider which controls the propagation speed
+      let w_slider = Slider(
+        document.getElementById(
+          "point-mass-discrete-sequence-stiffness-slider",
+        ) as HTMLElement,
+        function (val: number) {
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(
+              handler,
+              0,
+              "wave_propagation_speed",
+              val,
+            ),
+          );
+          handler.add_to_queue(
+            scene.set_arrow_length_scale.bind(scene, val / 2),
+          );
+          handler.add_to_queue(
+            scene.update_mobjects_from_simulator.bind(
+              scene,
+              handler.simulator as WaveSimulator,
+            ),
+          );
+          handler.add_to_queue(handler.draw.bind(handler));
+        },
+        {
+          name: "Spring stiffness",
+          initial_value: `${w}`,
+          min: 0,
+          max: 20,
+          step: 0.05,
+        },
+      );
 
-    //   // Prepare the simulation
-    //   handler.draw();
-    //   handler.play(undefined);
-    // })(300, 300, 10);
+      // Prepare the simulation
+      handler.draw();
+      handler.play(undefined);
+    })(300, 300, 10);
 
     // Use the same scene as before, but with a large number of point masses (say, 50) drawn
     // as a Bezier-curve.
-    // (function point_mass_continuous_sequence(
-    //   width: number,
-    //   height: number,
-    //   num_points: number,
-    // ) {
-    //   // Prepare the canvas
-    //   let canvas = prepare_canvas(
-    //     width,
-    //     height,
-    //     "point-mass-continuous-sequence",
-    //   );
+    (async function point_mass_continuous_sequence(
+      width: number,
+      height: number,
+      num_points: number,
+    ) {
+      // Prepare the canvas
+      let canvas = prepare_canvas(
+        width,
+        height,
+        "point-mass-continuous-sequence",
+      );
 
-    //   function foo(x: number): number {
-    //     return Math.exp(-(5 * (x - 0.5) ** 2));
-    //   }
+      function foo(x: number): number {
+        return Math.exp(-(5 * (x - 0.5) ** 2));
+      }
 
-    //   // Prepare the simulator
-    //   class WaveSimulator extends WaveSimOneDim {
-    //     reset() {
-    //       super.reset();
-    //       this.set_uValues(
-    //         funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
-    //       );
-    //       this.set_vValues(funspace((x) => 0, 0, 1, num_points));
-    //     }
-    //   }
+      // Prepare the simulator
+      class WaveSimulator extends WaveSimOneDim {
+        reset() {
+          super.reset();
+          this.set_uValues(
+            funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
+          );
+          this.set_vValues(funspace((x) => 0, 0, 1, num_points));
+        }
+      }
 
-    //   let w = 3.0;
-    //   let sim = new WaveSimOneDim(num_points, 0.01);
-    //   sim.reset();
-    //   sim.set_attr("wave_propagation_speed", 3.0);
-    //   sim.set_attr("damping", 0.05);
-    //   sim.set_attr("dt", 0.05);
-    //   sim.reset = function () {
-    //     this.time = 0;
-    //     this.set_uValues(
-    //       funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
-    //     );
-    //     this.set_vValues(funspace((x) => 0, 0, 1, num_points));
-    //   };
-    //   sim.reset();
+      let w = 3.0;
+      let sim = new WaveSimOneDim(num_points, 0.01);
+      sim.reset();
+      sim.set_attr("wave_propagation_speed", 3.0);
+      sim.set_attr("damping", 0.05);
+      sim.set_attr("dt", 0.05);
+      sim.reset = function () {
+        this.time = 0;
+        this.set_uValues(
+          funspace((x) => 5 * (foo(x) - foo(1)), 0, 1, num_points),
+        );
+        this.set_vValues(funspace((x) => 0, 0, 1, num_points));
+      };
+      sim.reset();
 
-    //   // Prepare the handler
-    //   let handler = new InteractiveHandler(sim);
+      // Prepare the handler
+      let handler = new InteractiveHandler(sim);
 
-    //   // Prepare the scene and add
-    //   class WaveScene extends WaveSimOneDimScene {
-    //     constructor(canvas: HTMLCanvasElement, num_points: number) {
-    //       super(canvas, num_points);
-    //       for (let i = 0; i < num_points; i++) {
-    //         let mass = this.get_mobj(`p_${i + 1}`) as DraggableDot;
-    //         this.add_callback(i, mass);
-    //       }
-    //     }
-    //     add_callback(i: number, mass: DraggableDot) {
-    //       let self = this;
-    //       if (i == 0) {
-    //         mass.add_callback(() => {
-    //           sim.set_left_endpoint(mass.get_center()[1]);
-    //         });
-    //       }
-    //       if (i == width - 1) {
-    //         mass.add_callback(() => {
-    //           sim.set_right_endpoint(mass.get_center()[1]);
-    //         });
-    //       }
-    //       mass.add_callback(() => {
-    //         let vals = sim.get_vals();
-    //         vals[i] = mass.get_center()[1];
-    //         vals[i + this.width] = 0;
-    //         sim.set_vals(vals);
-    //         self.update_mobjects_from_simulator(sim);
-    //       });
-    //     }
-    //   }
-    //   let scene = new WaveScene(canvas, num_points);
-    //   scene.set_frame_lims([-5, 5], [-5, 5]);
-    //   scene.set_mode("dots");
-    //   scene.set_dot_radius(0.05);
-    //   scene.set_arrow_length_scale(0.05);
-    //   handler.add_scene(scene);
+      // Prepare the scene and add
+      class WaveScene extends WaveSimOneDimScene {
+        constructor(canvas: HTMLCanvasElement, num_points: number) {
+          super(canvas, num_points);
+          for (let i = 0; i < num_points; i++) {
+            let mass = this.get_mobj(`p_${i + 1}`) as DraggableDot;
+            this.add_callback(i, mass);
+          }
+        }
+        add_callback(i: number, mass: DraggableDot) {
+          let self = this;
+          if (i == 0) {
+            mass.add_callback(() => {
+              sim.set_left_endpoint(mass.get_center()[1]);
+            });
+          }
+          if (i == width - 1) {
+            mass.add_callback(() => {
+              sim.set_right_endpoint(mass.get_center()[1]);
+            });
+          }
+          mass.add_callback(() => {
+            let vals = sim.get_vals();
+            vals[i] = mass.get_center()[1];
+            vals[i + this.width] = 0;
+            sim.set_vals(vals);
+            self.update_mobjects_from_simulator(sim);
+          });
+        }
+      }
+      let scene = new WaveScene(canvas, num_points);
+      await scene.add_curve();
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("dots");
+      scene.set_dot_radius(0.05);
+      scene.set_arrow_length_scale(0.05);
+      handler.add_scene(scene);
 
-    //   // Add SceneViewTranslator
-    //   // ** NOTE that this must come after all objects have been added to the scene.
-    //   let translator = new SceneViewTranslator(scene);
-    //   translator.add();
+      // Add SceneViewTranslator
+      // ** NOTE that this must come after all objects have been added to the scene.
+      let translator = new SceneViewTranslator(scene);
+      translator.add();
 
-    //   // Slider which controls the zoom
-    //   let zoom_slider = Slider(
-    //     document.getElementById(
-    //       "point-mass-continuous-sequence-zoom-slider",
-    //     ) as HTMLElement,
-    //     function (zr: number) {
-    //       handler.add_to_queue(() => {
-    //         scene.zoom_in_on(zr / scene.zoom_ratio, scene.get_view_center());
-    //         if (zr > 3) {
-    //           scene.set_mode("dots");
-    //         } else {
-    //           scene.set_mode("curve");
-    //         }
-    //         scene.update_mobjects_from_simulator(sim);
-    //         scene.draw();
-    //       });
-    //     },
-    //     {
-    //       name: "Zoom ratio",
-    //       initial_value: "1.0",
-    //       min: 0.6,
-    //       max: 5,
-    //       step: 0.05,
-    //     },
-    //   );
+      // Slider which controls the zoom
+      let zoom_slider = Slider(
+        document.getElementById(
+          "point-mass-continuous-sequence-zoom-slider",
+        ) as HTMLElement,
+        function (zr: number) {
+          handler.add_to_queue(() => {
+            scene.zoom_in_on(zr / scene.zoom_ratio, scene.get_view_center());
+            if (zr > 3) {
+              scene.set_mode("dots");
+            } else {
+              scene.set_mode("curve");
+            }
+            scene.update_mobjects_from_simulator(sim);
+            scene.draw();
+          });
+        },
+        {
+          name: "Zoom ratio",
+          initial_value: "1.0",
+          min: 0.6,
+          max: 5,
+          step: 0.05,
+        },
+      );
 
-    //   // Button which pauses/unpauses the simulation
-    //   let pauseButton = handler.add_pause_button(
-    //     document.getElementById(
-    //       "point-mass-continuous-sequence-pause-button",
-    //     ) as HTMLElement,
-    //   );
+      // Button which pauses/unpauses the simulation
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(
+          "point-mass-continuous-sequence-pause-button",
+        ) as HTMLElement,
+      );
 
-    //   // Button which resets the simulation
-    //   let resetButton = Button(
-    //     document.getElementById(
-    //       "point-mass-continuous-sequence-reset-button",
-    //     ) as HTMLElement,
-    //     function () {
-    //       handler.add_to_queue(handler.reset.bind(handler));
-    //     },
-    //   );
-    //   resetButton.textContent = "Reset simulation";
+      // Button which resets the simulation
+      let resetButton = Button(
+        document.getElementById(
+          "point-mass-continuous-sequence-reset-button",
+        ) as HTMLElement,
+        function () {
+          handler.add_to_queue(handler.reset.bind(handler));
+        },
+      );
+      resetButton.textContent = "Reset simulation";
 
-    //   // Slider which controls friction
-    //   let f_slider = Slider(
-    //     document.getElementById(
-    //       "point-mass-continuous-sequence-friction-slider",
-    //     ) as HTMLElement,
-    //     function (val: number) {
-    //       handler.add_to_queue(
-    //         handler.set_simulator_attr.bind(handler, 0, "damping", val),
-    //       );
-    //     },
-    //     {
-    //       name: "Friction",
-    //       initial_value: "0.0",
-    //       min: 0,
-    //       max: 5.0,
-    //       step: 0.01,
-    //     },
-    //   );
+      // Slider which controls friction
+      let f_slider = Slider(
+        document.getElementById(
+          "point-mass-continuous-sequence-friction-slider",
+        ) as HTMLElement,
+        function (val: number) {
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(handler, 0, "damping", val),
+          );
+        },
+        {
+          name: "Friction",
+          initial_value: "0.0",
+          min: 0,
+          max: 5.0,
+          step: 0.01,
+        },
+      );
 
-    //   // Slider which controls the propagation speed
-    //   let w_slider = Slider(
-    //     document.getElementById(
-    //       "point-mass-continuous-sequence-stiffness-slider",
-    //     ) as HTMLElement,
-    //     function (val: number) {
-    //       handler.add_to_queue(
-    //         handler.set_simulator_attr.bind(
-    //           handler,
-    //           0,
-    //           "wave_propagation_speed",
-    //           val,
-    //         ),
-    //       );
-    //       handler.add_to_queue(
-    //         scene.set_arrow_length_scale.bind(scene, val / 2),
-    //       );
-    //       handler.add_to_queue(
-    //         scene.update_mobjects_from_simulator.bind(
-    //           scene,
-    //           handler.simulator as WaveSimulator,
-    //         ),
-    //       );
-    //       handler.add_to_queue(handler.draw.bind(handler));
-    //     },
-    //     {
-    //       name: "Spring stiffness",
-    //       initial_value: `${w}`,
-    //       min: 0,
-    //       max: 20,
-    //       step: 0.05,
-    //     },
-    //   );
+      // Slider which controls the propagation speed
+      let w_slider = Slider(
+        document.getElementById(
+          "point-mass-continuous-sequence-stiffness-slider",
+        ) as HTMLElement,
+        function (val: number) {
+          handler.add_to_queue(
+            handler.set_simulator_attr.bind(
+              handler,
+              0,
+              "wave_propagation_speed",
+              val,
+            ),
+          );
+          handler.add_to_queue(
+            scene.set_arrow_length_scale.bind(scene, val / 2),
+          );
+          handler.add_to_queue(
+            scene.update_mobjects_from_simulator.bind(
+              scene,
+              handler.simulator as WaveSimulator,
+            ),
+          );
+          handler.add_to_queue(handler.draw.bind(handler));
+        },
+        {
+          name: "Spring stiffness",
+          initial_value: `${w}`,
+          min: 0,
+          max: 20,
+          step: 0.05,
+        },
+      );
 
-    //   // Prepare the simulation
-    //   handler.draw();
-    //   handler.play(undefined);
-    // })(300, 300, 50);
+      // Prepare the simulation
+      handler.draw();
+      handler.play(undefined);
+    })(300, 300, 50);
 
     // - A one-dimensional wave example with PML at the ends, where a point in the middle
     // is a timelike wave-source. Demonstrates how the timelike oscillation becomes spacelike oscillation.
     // - A one-dimensional example bounded at both endpoints with an impulse wave traveling back
     // and forth. Demonstrates how a zero-point acts as a reflector.
-    // (function wavesim_one_dimensional_demo_impulse(
-    //   width: number,
-    //   height: number,
-    //   num_points: number,
-    // ) {
-    //   const name = "wavesim-1d-impulse";
-    //   // Prepare the canvas
-    //   let canvas = prepare_canvas(width, height, name);
+    (async function wavesim_one_dimensional_demo_impulse(
+      width: number,
+      height: number,
+      num_points: number,
+    ) {
+      const name = "wavesim-1d-impulse";
+      // Prepare the canvas
+      let canvas = prepare_canvas(width, height, name);
 
-    //   // Initial conditions
-    //   const sigma = 0.1;
-    //   const mu = 0.5;
-    //   const a = 2.0;
-    //   function pulse(x: number): number {
-    //     return a * Math.exp(-((x - mu) ** 2 / sigma ** 2));
-    //   }
-    //   function pulse_deriv(x: number): number {
-    //     return ((-2 * (x - mu)) / sigma ** 2) * pulse(x);
-    //   }
+      // Initial conditions
+      const sigma = 0.1;
+      const mu = 0.5;
+      const a = 2.0;
+      function pulse(x: number): number {
+        return a * Math.exp(-((x - mu) ** 2 / sigma ** 2));
+      }
+      function pulse_deriv(x: number): number {
+        return ((-2 * (x - mu)) / sigma ** 2) * pulse(x);
+      }
 
-    //   // Prepare the simulator
-    //   let sim = new WaveSimOneDim(num_points, 0.01);
-    //   sim.set_attr("wave_propagation_speed", 5.0);
-    //   sim.set_attr("damping", 0.0);
-    //   sim.set_attr("dt", 0.02);
-    //   sim.reset = function () {
-    //     sim.time = 0;
-    //     sim.set_uValues(funspace((x) => pulse(x) - pulse(1), 0, 1, num_points));
-    //     sim.set_vValues(
-    //       funspace((x) => -0.1 * pulse_deriv(x), 0, 1, num_points),
-    //     );
-    //   };
-    //   sim.reset();
+      // Prepare the simulator
+      let sim = new WaveSimOneDim(num_points, 0.01);
+      sim.set_attr("wave_propagation_speed", 5.0);
+      sim.set_attr("damping", 0.0);
+      sim.set_attr("dt", 0.02);
+      sim.reset = function () {
+        sim.time = 0;
+        sim.set_uValues(funspace((x) => pulse(x) - pulse(1), 0, 1, num_points));
+        sim.set_vValues(
+          funspace((x) => -0.1 * pulse_deriv(x), 0, 1, num_points),
+        );
+      };
+      sim.reset();
 
-    //   // Prepare the handler
-    //   let handler = new InteractiveHandler(sim);
+      // Prepare the handler
+      let handler = new InteractiveHandler(sim);
 
-    //   // Prepare the scene and add
-    //   let scene = new WaveSimOneDimScene(canvas, num_points);
-    //   scene.set_frame_lims([-5, 5], [-5, 5]);
-    //   scene.set_mode("dots");
-    //   scene.set_dot_radius(0.05);
-    //   scene.include_arrows = false;
-    //   handler.add_scene(scene);
+      // Prepare the scene and add
+      let scene = new WaveSimOneDimScene(canvas, num_points);
+      await scene.add_curve();
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("dots");
+      scene.set_dot_radius(0.05);
+      scene.include_arrows = false;
+      handler.add_scene(scene);
 
-    //   // Button which pauses/unpauses the simulation
-    //   let pauseButton = handler.add_pause_button(
-    //     document.getElementById(name + "-pause-button") as HTMLElement,
-    //   );
-    //   // Button which resets the simulation
-    //   let resetButton = Button(
-    //     document.getElementById(name + "-reset-button") as HTMLElement,
-    //     function () {
-    //       handler.add_to_queue(handler.reset.bind(handler));
-    //     },
-    //   );
-    //   resetButton.textContent = "Reset simulation";
+      // Button which pauses/unpauses the simulation
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(name + "-pause-button") as HTMLElement,
+      );
+      // Button which resets the simulation
+      let resetButton = Button(
+        document.getElementById(name + "-reset-button") as HTMLElement,
+        function () {
+          handler.add_to_queue(handler.reset.bind(handler));
+        },
+      );
+      resetButton.textContent = "Reset simulation";
 
-    //   // Prepare the simulation
-    //   handler.draw();
-    //   handler.play(undefined);
-    // })(300, 300, 50);
-    // (function wavesim_one_dimensional_demo_pml(
-    //   width: number,
-    //   height: number,
-    //   num_points: number,
-    // ) {
-    //   const name = "wavesim-1d-pml";
-    //   // Prepare the canvas
-    //   let canvas = prepare_canvas(width, height, name);
+      // Prepare the simulation
+      handler.draw();
+      handler.play(undefined);
+    })(300, 300, 50);
+    (async function wavesim_one_dimensional_demo_pml(
+      width: number,
+      height: number,
+      num_points: number,
+    ) {
+      const name = "wavesim-1d-pml";
+      // Prepare the canvas
+      let canvas = prepare_canvas(width, height, name);
 
-    //   // Set the attributes of the simulator
-    //   let sim = new WaveSimOneDim(num_points, 0.01);
-    //   sim.set_attr("wave_propagation_speed", 3.0);
-    //   sim.set_attr("damping", 0.0);
-    //   sim.set_pml_layer(true, 0.3, 100);
-    //   sim.set_pml_layer(false, 0.3, 100);
-    //   sim.set_attr("dt", 0.02);
-    //   sim.add_point_source(new PointSourceOneDim(num_points / 2, 3.0, 1.0, 0));
-    //   sim.reset = function () {
-    //     sim.time = 0;
-    //     sim.set_uValues(funspace((x) => 0, 0, 1, num_points));
-    //     sim.set_vValues(funspace((x) => 0, 0, 1, num_points));
-    //   };
-    //   sim.reset();
+      // Set the attributes of the simulator
+      let sim = new WaveSimOneDim(num_points, 0.01);
+      sim.set_attr("wave_propagation_speed", 3.0);
+      sim.set_attr("damping", 0.0);
+      sim.set_pml_layer(true, 0.3, 100);
+      sim.set_pml_layer(false, 0.3, 100);
+      sim.set_attr("dt", 0.02);
+      sim.add_point_source(new PointSourceOneDim(num_points / 2, 3.0, 1.0, 0));
+      sim.reset = function () {
+        sim.time = 0;
+        sim.set_uValues(funspace((x) => 0, 0, 1, num_points));
+        sim.set_vValues(funspace((x) => 0, 0, 1, num_points));
+      };
+      sim.reset();
 
-    //   // Prepare the handler
-    //   let handler = new InteractiveHandler(sim);
+      // Prepare the handler
+      let handler = new InteractiveHandler(sim);
 
-    //   // Prepare the scene and add
-    //   let scene = new WaveSimOneDimScene(canvas, num_points);
-    //   scene.set_frame_lims([-5, 5], [-5, 5]);
-    //   scene.set_mode("curve");
-    //   scene.set_dot_radius(0.05);
-    //   scene.include_arrows = false;
-    //   handler.add_scene(scene);
+      // Prepare the scene and add
+      let scene = new WaveSimOneDimScene(canvas, num_points);
+      await scene.add_curve();
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_mode("curve");
+      scene.set_dot_radius(0.05);
+      scene.include_arrows = false;
+      handler.add_scene(scene);
 
-    //   // Button which pauses/unpauses the simulation
-    //   let pauseButton = handler.add_pause_button(
-    //     document.getElementById(name + "-pause-button") as HTMLElement,
-    //   );
-    //   // Button which resets the simulation
-    //   let resetButton = Button(
-    //     document.getElementById(name + "-reset-button") as HTMLElement,
-    //     function () {
-    //       handler.add_to_queue(handler.reset.bind(handler));
-    //     },
-    //   );
-    //   resetButton.textContent = "Reset simulation";
+      // Button which pauses/unpauses the simulation
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(name + "-pause-button") as HTMLElement,
+      );
+      // Button which resets the simulation
+      let resetButton = Button(
+        document.getElementById(name + "-reset-button") as HTMLElement,
+        function () {
+          handler.add_to_queue(handler.reset.bind(handler));
+        },
+      );
+      resetButton.textContent = "Reset simulation";
 
-    //   // Prepare the simulation
-    //   handler.draw();
-    //   handler.play(undefined);
-    // })(300, 300, 60);
+      // Prepare the simulation
+      handler.draw();
+      handler.play(undefined);
+    })(300, 300, 60);
 
     // *** TWO-DIMENSIONAL WAVE EQUATION ***
     // A 2D lattice of point masses, oscillating along a third dimension.
@@ -1255,7 +1262,10 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
       scene.play(undefined);
     })(300, 300);
 
-    (async function wave_sim_2d_point_source(width: number, height: number) {
+    await (async function wave_sim_2d_point_source(
+      width: number,
+      height: number,
+    ) {
       const dt = 0.02;
       const xmin = -5;
       const xmax = 5;
@@ -1338,7 +1348,7 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
       handler.play(undefined);
     })(250, 250);
 
-    (async function wave_sim_2d_point_source_conic(
+    await (async function wave_sim_2d_point_source_conic(
       width: number,
       height: number,
     ) {
@@ -1369,6 +1379,7 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
       let handler = new InteractiveHandler(sim);
 
       // Initialize the scene
+      let solver = await createSmoothOpenPathBezier(100);
       let conic = new ParametricFunction(
         (t) => [
           (sim.semimajor_axis / width) * (xmax - xmin) * Math.cos(t),
@@ -1376,10 +1387,12 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
         ],
         0,
         Math.PI * 2,
-        30,
-      );
-      conic.set_stroke_width(0.03);
-      conic.set_alpha(0.5);
+        100,
+        solver,
+      )
+        .set_stroke_width(0.03)
+        .set_alpha(0.5);
+
       let scene = new WaveSimTwoDimHeatMapScene(
         canvas,
         imageData,
@@ -1449,7 +1462,10 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
       handler.play(undefined);
     })(250, 250);
 
-    (async function wave_sim_2d_doubleslit(width: number, height: number) {
+    await (async function wave_sim_2d_doubleslit(
+      width: number,
+      height: number,
+    ) {
       const dt = 0.02;
       const xmin = -5;
       const xmax = 5;

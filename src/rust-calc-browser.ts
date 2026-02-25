@@ -47,6 +47,7 @@ export async function sum(left: number, right: number): Promise<number> {
 }
 
 // Robust createWaveSim function
+// TODO Move this to lib/simulator/wavesim.ts
 export async function createWaveSimOneDim(
   width: number,
   dt: number,
@@ -134,6 +135,7 @@ export async function createWaveSimOneDim(
   return instance;
 }
 
+// TODO Move this to lib/simulator/wavesim.ts
 export async function createWaveSimTwoDim(
   width: number,
   height: number,
@@ -156,6 +158,39 @@ export async function createWaveSimTwoDim(
   } catch (error) {
     console.error(
       "Failed to create or initialize WaveSimOneDimRust instance:",
+      error,
+    );
+    throw error;
+  }
+
+  return instance;
+}
+
+// TODO Move this to lib/base/bezier.ts
+export async function createSmoothOpenPathBezier(n: number): Promise<any> {
+  await initWasm();
+
+  if (!(rustCalc as any).SmoothOpenPathBezierHandleCalculator) {
+    throw new Error(
+      "SmoothOpenPathBezierHandleCalculator not found in rust-calc exports",
+    );
+  }
+
+  const SmoothOpenPathBezierHandleCalculator = (rustCalc as any)
+    .SmoothOpenPathBezierHandleCalculator;
+
+  let instance;
+
+  try {
+    // Create instance
+    instance = new SmoothOpenPathBezierHandleCalculator(n);
+    console.log(
+      "SmoothOpenPathBezierHandleCalculator instance created:",
+      instance,
+    );
+  } catch (error) {
+    console.error(
+      "Failed to create or initialize SmoothOpenPathBezierHandleCalculator instance:",
       error,
     );
     throw error;

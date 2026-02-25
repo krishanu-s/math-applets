@@ -28,7 +28,6 @@ import {
 } from "./lib/three_d/mobjects.js";
 import { ThreeDScene } from "./lib/three_d/scene.js";
 import { Arcball } from "./lib/interactive/arcball.js";
-import { rot90 } from "numpy-ts";
 
 export function pick_random_step(dim: number): number[] {
   const x = 2 * dim * Math.random();
@@ -1013,6 +1012,7 @@ class HeatMapScene extends Scene {
         -Math.PI,
         -0.05,
         100,
+        null,
       ).set_stroke_width(0.03);
       graph_1.set_mode("jagged");
       const graph_2 = new ParametricFunction(
@@ -1022,6 +1022,7 @@ class HeatMapScene extends Scene {
         0.05,
         Math.PI,
         100,
+        null,
       ).set_stroke_width(0.03);
       graph_1.set_mode("jagged");
       scene.add("graph_1", graph_1);

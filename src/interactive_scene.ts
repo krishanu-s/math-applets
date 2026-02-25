@@ -46,9 +46,11 @@ import {
   CoordinateAxes3d,
   Integral,
 } from "./lib/base/cartesian";
+import { ParametricFunction } from "./lib/base/bezier";
+import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 
-(async function () {
-  document.addEventListener("DOMContentLoaded", async function () {
+(function () {
+  document.addEventListener("DOMContentLoaded", function () {
     // A Bezier curve defined by a sequence of control points, where the points can be dragged around.
     (function draggable_dots_bezier(width: number, height: number) {
       let canvas = prepare_canvas(width, height, "draggable-dot-bezier");
@@ -60,7 +62,7 @@ import {
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
 
       // Make the scene
-      function make_scene(n: number) {
+      async function make_scene(n: number) {
         scene.clear();
         let dots: DraggableDot[] = [];
         for (let i = 0; i < n; i++) {
@@ -74,7 +76,8 @@ import {
         }
 
         // Define the Bezier curve and link it to the dots
-        let curve = new BezierSpline(n - 1).set_stroke_width(
+        let solver = await createSmoothOpenPathBezier(n - 1);
+        let curve = new BezierSpline(n - 1, solver).set_stroke_width(
           0.2 / Math.sqrt(n),
         );
         curve.set_anchors(dots.map((dot) => dot.get_center()));

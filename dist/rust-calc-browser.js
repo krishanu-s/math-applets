@@ -8,6 +8,7 @@ var __export = (target, all) => {
 var rust_calc_exports = {};
 __export(rust_calc_exports, {
   PointSource: () => PointSource,
+  SmoothOpenPathBezierHandleCalculator: () => SmoothOpenPathBezierHandleCalculator,
   WaveSimOneDim: () => WaveSimOneDim,
   WaveSimTwoDim: () => WaveSimTwoDim,
   default: () => __wbg_init,
@@ -114,6 +115,49 @@ var PointSource = class _PointSource {
   }
 };
 if (Symbol.dispose) PointSource.prototype[Symbol.dispose] = PointSource.prototype.free;
+var SmoothOpenPathBezierHandleCalculator = class {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    SmoothOpenPathBezierHandleCalculatorFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_smoothopenpathbezierhandlecalculator_free(ptr, 0);
+  }
+  /**
+   * @returns {number}
+   */
+  get n() {
+    const ret = wasm.__wbg_get_smoothopenpathbezierhandlecalculator_n(this.__wbg_ptr);
+    return ret >>> 0;
+  }
+  /**
+   * @param {number} arg0
+   */
+  set n(arg0) {
+    wasm.__wbg_set_smoothopenpathbezierhandlecalculator_n(this.__wbg_ptr, arg0);
+  }
+  /**
+   * @param {Float64Array} anchors
+   * @returns {Float64Array}
+   */
+  get_bezier_handles(anchors) {
+    const ret = wasm.smoothopenpathbezierhandlecalculator_get_bezier_handles(this.__wbg_ptr, anchors);
+    return ret;
+  }
+  /**
+   * @param {number} n
+   */
+  constructor(n) {
+    const ret = wasm.smoothopenpathbezierhandlecalculator_new(n);
+    this.__wbg_ptr = ret >>> 0;
+    SmoothOpenPathBezierHandleCalculatorFinalization.register(this, this.__wbg_ptr, this);
+    return this;
+  }
+};
+if (Symbol.dispose) SmoothOpenPathBezierHandleCalculator.prototype[Symbol.dispose] = SmoothOpenPathBezierHandleCalculator.prototype.free;
 var WaveSimOneDim = class {
   __destroy_into_raw() {
     const ptr = this.__wbg_ptr;
@@ -128,12 +172,26 @@ var WaveSimOneDim = class {
   /**
    * @returns {Float64Array}
    */
+  get_uValues() {
+    const ret = wasm.wavesimonedim_get_uValues(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {Float64Array}
+   */
   get_u_values() {
     const ptr = this.__destroy_into_raw();
     const ret = wasm.wavesimonedim_get_u_values(ptr);
     var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v1;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_vValues() {
+    const ret = wasm.wavesimonedim_get_vValues(this.__wbg_ptr);
+    return ret;
   }
   /**
    * @returns {Float64Array}
@@ -164,20 +222,6 @@ var WaveSimOneDim = class {
     this.__wbg_ptr = ret >>> 0;
     WaveSimOneDimFinalization.register(this, this.__wbg_ptr, this);
     return this;
-  }
-  /**
-   * @returns {Float64Array}
-   */
-  output_u_vals() {
-    const ret = wasm.wavesimonedim_output_u_vals(this.__wbg_ptr);
-    return ret;
-  }
-  /**
-   * @returns {Float64Array}
-   */
-  output_v_vals() {
-    const ret = wasm.wavesimonedim_output_v_vals(this.__wbg_ptr);
-    return ret;
   }
   reset() {
     wasm.wavesimonedim_reset(this.__wbg_ptr);
@@ -257,6 +301,55 @@ var WaveSimTwoDim = class {
     wasm.wavesimtwodim_add_point_source(this.__wbg_ptr, x, y, frequency, amplitude, phase);
   }
   /**
+   * @returns {Float64Array}
+   */
+  get_uValues() {
+    const ret = wasm.wavesimtwodim_get_uValues(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_vValues() {
+    const ret = wasm.wavesimtwodim_get_vValues(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @param {number} index
+   * @param {number} amplitude
+   */
+  modify_point_source_amplitude(index, amplitude) {
+    wasm.wavesimtwodim_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
+  }
+  /**
+   * @param {number} index
+   * @param {number} frequency
+   */
+  modify_point_source_frequency(index, frequency) {
+    wasm.wavesimtwodim_modify_point_source_frequency(this.__wbg_ptr, index, frequency);
+  }
+  /**
+   * @param {number} index
+   * @param {number} phase
+   */
+  modify_point_source_phase(index, phase) {
+    wasm.wavesimtwodim_modify_point_source_phase(this.__wbg_ptr, index, phase);
+  }
+  /**
+   * @param {number} index
+   * @param {number} x
+   */
+  modify_point_source_x(index, x) {
+    wasm.wavesimtwodim_modify_point_source_x(this.__wbg_ptr, index, x);
+  }
+  /**
+   * @param {number} index
+   * @param {number} y
+   */
+  modify_point_source_y(index, y) {
+    wasm.wavesimtwodim_modify_point_source_y(this.__wbg_ptr, index, y);
+  }
+  /**
    * @param {number} width
    * @param {number} height
    * @param {number} dt
@@ -267,19 +360,8 @@ var WaveSimTwoDim = class {
     WaveSimTwoDimFinalization.register(this, this.__wbg_ptr, this);
     return this;
   }
-  /**
-   * @returns {Float64Array}
-   */
-  output_u_vals() {
-    const ret = wasm.wavesimtwodim_output_u_vals(this.__wbg_ptr);
-    return ret;
-  }
-  /**
-   * @returns {Float64Array}
-   */
-  output_v_vals() {
-    const ret = wasm.wavesimtwodim_output_v_vals(this.__wbg_ptr);
-    return ret;
+  remove_pml_layers() {
+    wasm.wavesimtwodim_remove_pml_layers(this.__wbg_ptr);
   }
   reset() {
     wasm.wavesimtwodim_reset(this.__wbg_ptr);
@@ -292,6 +374,15 @@ var WaveSimTwoDim = class {
     const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
     wasm.wavesimtwodim_set_attr(this.__wbg_ptr, ptr0, len0, val);
+  }
+  /**
+   * @param {boolean} x_direction
+   * @param {boolean} positive
+   * @param {number} width
+   * @param {number} strength
+   */
+  set_pml_layer(x_direction, positive, width, strength) {
+    wasm.wavesimtwodim_set_pml_layer(this.__wbg_ptr, x_direction, positive, width, strength);
   }
   step() {
     wasm.wavesimtwodim_step(this.__wbg_ptr);
@@ -320,9 +411,16 @@ function __wbg_get_imports() {
     __wbg___wbindgen_throw_89ca9e2c67795ec1: function(arg0, arg1) {
       throw new Error(getStringFromWasm0(arg0, arg1));
     },
+    __wbg_length_57aa70d8471ff229: function(arg0) {
+      const ret = arg0.length;
+      return ret;
+    },
     __wbg_new_from_slice_42c6e17e5e805f45: function(arg0, arg1) {
       const ret = new Float64Array(getArrayF64FromWasm0(arg0, arg1));
       return ret;
+    },
+    __wbg_prototypesetcall_e26af6f1b2474b2b: function(arg0, arg1, arg2) {
+      Float64Array.prototype.set.call(getArrayF64FromWasm0(arg0, arg1), arg2);
     },
     __wbindgen_init_externref_table: function() {
       const table = wasm.__wbindgen_externrefs;
@@ -342,6 +440,9 @@ function __wbg_get_imports() {
 var PointSourceFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
 }, unregister: () => {
 } } : new FinalizationRegistry((ptr) => wasm.__wbg_pointsource_free(ptr >>> 0, 1));
+var SmoothOpenPathBezierHandleCalculatorFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+}, unregister: () => {
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_smoothopenpathbezierhandlecalculator_free(ptr >>> 0, 1));
 var WaveSimOneDimFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
 }, unregister: () => {
 } } : new FinalizationRegistry((ptr) => wasm.__wbg_wavesimonedim_free(ptr >>> 0, 1));
@@ -578,6 +679,30 @@ async function createWaveSimTwoDim(width, height, dt) {
   }
   return instance;
 }
+async function createSmoothOpenPathBezier(n) {
+  await initWasm();
+  if (!SmoothOpenPathBezierHandleCalculator) {
+    throw new Error(
+      "SmoothOpenPathBezierHandleCalculator not found in rust-calc exports"
+    );
+  }
+  const SmoothOpenPathBezierHandleCalculator2 = SmoothOpenPathBezierHandleCalculator;
+  let instance;
+  try {
+    instance = new SmoothOpenPathBezierHandleCalculator2(n);
+    console.log(
+      "SmoothOpenPathBezierHandleCalculator instance created:",
+      instance
+    );
+  } catch (error) {
+    console.error(
+      "Failed to create or initialize SmoothOpenPathBezierHandleCalculator instance:",
+      error
+    );
+    throw error;
+  }
+  return instance;
+}
 async function getWaveSimOneDimClass() {
   await initWasm();
   if (WaveSimOneDim) {
@@ -594,6 +719,7 @@ async function getWaveSimTwoDimClass() {
 }
 console.log("rust-calc exports:", Object.keys(rust_calc_exports));
 export {
+  createSmoothOpenPathBezier,
   createWaveSimOneDim,
   createWaveSimTwoDim,
   divide2 as divide,

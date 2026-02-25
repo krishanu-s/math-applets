@@ -15,7 +15,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "numpy-ts": "^0.12.0",
     "rust-calc": "file:./rust-calc/pkg"
   },
   "devDependencies": {
