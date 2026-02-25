@@ -2,6 +2,7 @@ import * as np from "numpy-ts";
 import { MObject, LineLikeMObject, Scene, Vec2D } from ".";
 
 // TODO Make a smooth Bezier spline class
+// TODO Move this calculator class into Rust for speed.
 
 // Given anchors points P_0, P_1, ..., P_n, computes handles
 // B_1, B_2, ..., B_{2n} such that the sequence of Bezier splines
