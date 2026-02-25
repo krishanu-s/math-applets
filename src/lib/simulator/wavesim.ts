@@ -521,6 +521,31 @@ export class WaveSimTwoDim extends StateSimulator implements TwoDimDrawable {
     let ind = Object.keys(this.point_sources).length;
     this.point_sources[ind] = source;
   }
+  modify_point_source_x(index: number, x: number) {
+    if (this.point_sources[index]) {
+      this.point_sources[index].x = x;
+    }
+  }
+  modify_point_source_y(index: number, y: number) {
+    if (this.point_sources[index]) {
+      this.point_sources[index].y = y;
+    }
+  }
+  modify_point_source_amplitude(index: number, amplitude: number) {
+    if (this.point_sources[index]) {
+      this.point_sources[index].a = amplitude;
+    }
+  }
+  modify_point_source_frequency(index: number, frequency: number) {
+    if (this.point_sources[index]) {
+      this.point_sources[index].w = frequency;
+    }
+  }
+  modify_point_source_phase(index: number, phase: number) {
+    if (this.point_sources[index]) {
+      this.point_sources[index].p = phase;
+    }
+  }
   remove_point_source(id: number) {
     delete this.point_sources[id];
   }

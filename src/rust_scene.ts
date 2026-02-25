@@ -6,13 +6,14 @@ import {
   getWaveSimTwoDimClass,
 } from "./rust-calc-browser";
 import { Button } from "./lib/interactive/button";
+import { Slider } from "./lib/interactive/slider";
 import {
   WaveSimOneDim,
   WaveSimTwoDim,
   PointSource,
   WaveSimTwoDimHeatMapScene,
 } from "./lib/simulator/wavesim";
-import { InteractiveHandler } from "./lib/simulator/sim";
+import { InteractiveHandler, Simulator } from "./lib/simulator/sim";
 import { funspace, prepare_canvas, delay, HeatMap } from "./lib/base";
 
 // Testing out performance of Rust bound in via WASM.
@@ -96,7 +97,7 @@ import { funspace, prepare_canvas, delay, HeatMap } from "./lib/base";
         document.getElementById(name + "-button-1") as HTMLElement,
         async function handleClick() {
           for (let i = 0; i < num_steps; i++) {
-            const vals = simRust.output_u_vals();
+            const vals = simRust.get_uValues();
             simRust.step();
             if (i % 100 == 0) {
               console.log(vals);
@@ -208,8 +209,29 @@ import { funspace, prepare_canvas, delay, HeatMap } from "./lib/base";
       );
       clearButtonTS.textContent = "Clear";
       clearButtonTS.style.padding = "15px";
+      // Make a slider which controls the dipole distance
+      let w_sliderTS = Slider(
+        document.getElementById(name + "-ts-slider-1") as HTMLElement,
+        function (d: number) {
+          let r = d / (xmax - xmin);
+          handlerTS.add_to_queue(() => {
+            simTS.modify_point_source_x(0, Math.floor(0.5 * (1 + r) * width));
+            simTS.modify_point_source_x(1, Math.floor(0.5 * (1 - r) * width));
+          });
+        },
+        {
+          name: "Distance",
+          initial_value: "1.0",
+          min: 0.2,
+          max: 8,
+          step: 0.05,
+        },
+      );
 
       // Make the Rust simulator and scene
+      // TODO Write a wrapper class which extends Simulator and reveals
+      // a reset() method, a step() method, a add_point_source() method,
+      // a modify_point_source() method, and a get_uValues() method
 
       let simRust = await createWaveSimTwoDim(width, height, dt);
       simRust.set_attr("wave_propagation_speed", 0.1 * width);
@@ -231,15 +253,12 @@ import { funspace, prepare_canvas, delay, HeatMap } from "./lib/base";
       );
       let handlerRust = new InteractiveHandler(simRust);
 
-      const WaveSimTwoDimClass = await getWaveSimTwoDimClass();
-      class Foo extends WaveSimTwoDimHeatMapScene {
-        // TODO Add typehint for
-        update_mobjects_from_simulator(simulator: WaveSimTwoDimClass) {
-          let mobj = this.get_mobj("heatmap") as HeatMap;
-          mobj.set_vals(simulator.output_u_vals());
-        }
-      }
-      let sceneRust = new Foo(canvasRust, imageDataRust, width, height);
+      let sceneRust = new WaveSimTwoDimHeatMapScene(
+        canvasRust,
+        imageDataRust,
+        width,
+        height,
+      );
       sceneRust.set_frame_lims([xmin, xmax], [ymin, ymax]);
       handlerRust.add_scene(sceneRust);
 
@@ -257,22 +276,24 @@ import { funspace, prepare_canvas, delay, HeatMap } from "./lib/base";
       );
       clearButtonRust.textContent = "Clear";
       clearButtonRust.style.padding = "15px";
-      // // Button which, when clicked, calls Rust to do calculations
-      // // TODO Write simulator values to scene
-      // let rustButton = Button(
-      //   document.getElementById(name + "-rust-button-1") as HTMLElement,
-      //   async function handleClick() {
-      //     for (let i = 0; i < num_steps; i++) {
-      //       simRust.step();
-      //       sceneRust.update_mobjects_from_simulator(simRust);
-      //       sceneRust.draw();
-      //       await delay(0.0);
-      //     }
-      //     console.log(`Done ${num_steps} iterations at size ${width}`);
-      //     simRust.reset();
-      //   },
-      // );
-      // rustButton.textContent = "Rust implementation";
+      // Make a slider which controls the dipole distance
+      let w_sliderRust = Slider(
+        document.getElementById(name + "-rust-slider-1") as HTMLElement,
+        function (d: number) {
+          let r = d / (xmax - xmin);
+          handlerRust.add_to_queue(() => {
+            simRust.modify_point_source_x(0, Math.floor(0.5 * (1 + r) * width));
+            simRust.modify_point_source_x(1, Math.floor(0.5 * (1 - r) * width));
+          });
+        },
+        {
+          name: "Distance",
+          initial_value: "1.0",
+          min: 0.2,
+          max: 8,
+          step: 0.05,
+        },
+      );
     })(200, 200);
   });
 })();
