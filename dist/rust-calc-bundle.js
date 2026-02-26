@@ -1,5 +1,81 @@
 /* @ts-self-types="./rust_calc.d.ts" */
 
+export class HeatSimTwoDim {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        HeatSimTwoDimFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_heatsimtwodim_free(ptr, 0);
+    }
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {number} amplitude
+     */
+    add_point_source(x, y, amplitude) {
+        wasm.heatsimtwodim_add_point_source(this.__wbg_ptr, x, y, amplitude);
+    }
+    /**
+     * @returns {Float64Array}
+     */
+    get_uValues() {
+        const ret = wasm.heatsimtwodim_get_uValues(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {number} index
+     * @param {number} amplitude
+     */
+    modify_point_source_amplitude(index, amplitude) {
+        wasm.heatsimtwodim_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
+    }
+    /**
+     * @param {number} index
+     * @param {number} x
+     */
+    modify_point_source_x(index, x) {
+        wasm.heatsimtwodim_modify_point_source_x(this.__wbg_ptr, index, x);
+    }
+    /**
+     * @param {number} index
+     * @param {number} y
+     */
+    modify_point_source_y(index, y) {
+        wasm.heatsimtwodim_modify_point_source_y(this.__wbg_ptr, index, y);
+    }
+    /**
+     * @param {number} width
+     * @param {number} height
+     * @param {number} dt
+     */
+    constructor(width, height, dt) {
+        const ret = wasm.heatsimtwodim_new(width, height, dt);
+        this.__wbg_ptr = ret >>> 0;
+        HeatSimTwoDimFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    reset() {
+        wasm.heatsimtwodim_reset(this.__wbg_ptr);
+    }
+    /**
+     * @param {string} name
+     * @param {number} val
+     */
+    set_attr(name, val) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.heatsimtwodim_set_attr(this.__wbg_ptr, ptr0, len0, val);
+    }
+    step() {
+        wasm.heatsimtwodim_step(this.__wbg_ptr);
+    }
+}
+if (Symbol.dispose) HeatSimTwoDim.prototype[Symbol.dispose] = HeatSimTwoDim.prototype.free;
+
 export class SmoothOpenPathBezierHandleCalculator {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
@@ -430,6 +506,9 @@ function __wbg_get_imports() {
     };
 }
 
+const HeatSimTwoDimFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_heatsimtwodim_free(ptr >>> 0, 1));
 const SmoothOpenPathBezierHandleCalculatorFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_smoothopenpathbezierhandlecalculator_free(ptr >>> 0, 1));

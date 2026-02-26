@@ -7,6 +7,7 @@ var __export = (target, all) => {
 // rust-calc/pkg/rust_calc.js
 var rust_calc_exports = {};
 __export(rust_calc_exports, {
+  HeatSimTwoDim: () => HeatSimTwoDim,
   SmoothOpenPathBezierHandleCalculator: () => SmoothOpenPathBezierHandleCalculator,
   WaveSimOneDim: () => WaveSimOneDim,
   WaveSimTwoDim: () => WaveSimTwoDim,
@@ -14,6 +15,81 @@ __export(rust_calc_exports, {
   default: () => __wbg_init,
   initSync: () => initSync
 });
+var HeatSimTwoDim = class {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    HeatSimTwoDimFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_heatsimtwodim_free(ptr, 0);
+  }
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} amplitude
+   */
+  add_point_source(x, y, amplitude) {
+    wasm.heatsimtwodim_add_point_source(this.__wbg_ptr, x, y, amplitude);
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_uValues() {
+    const ret = wasm.heatsimtwodim_get_uValues(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @param {number} index
+   * @param {number} amplitude
+   */
+  modify_point_source_amplitude(index, amplitude) {
+    wasm.heatsimtwodim_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
+  }
+  /**
+   * @param {number} index
+   * @param {number} x
+   */
+  modify_point_source_x(index, x) {
+    wasm.heatsimtwodim_modify_point_source_x(this.__wbg_ptr, index, x);
+  }
+  /**
+   * @param {number} index
+   * @param {number} y
+   */
+  modify_point_source_y(index, y) {
+    wasm.heatsimtwodim_modify_point_source_y(this.__wbg_ptr, index, y);
+  }
+  /**
+   * @param {number} width
+   * @param {number} height
+   * @param {number} dt
+   */
+  constructor(width, height, dt) {
+    const ret = wasm.heatsimtwodim_new(width, height, dt);
+    this.__wbg_ptr = ret >>> 0;
+    HeatSimTwoDimFinalization.register(this, this.__wbg_ptr, this);
+    return this;
+  }
+  reset() {
+    wasm.heatsimtwodim_reset(this.__wbg_ptr);
+  }
+  /**
+   * @param {string} name
+   * @param {number} val
+   */
+  set_attr(name, val) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.heatsimtwodim_set_attr(this.__wbg_ptr, ptr0, len0, val);
+  }
+  step() {
+    wasm.heatsimtwodim_step(this.__wbg_ptr);
+  }
+};
+if (Symbol.dispose) HeatSimTwoDim.prototype[Symbol.dispose] = HeatSimTwoDim.prototype.free;
 var SmoothOpenPathBezierHandleCalculator = class {
   __destroy_into_raw() {
     const ptr = this.__wbg_ptr;
@@ -439,6 +515,9 @@ function __wbg_get_imports() {
     "./rust_calc_bg.js": import0
   };
 }
+var HeatSimTwoDimFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+}, unregister: () => {
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_heatsimtwodim_free(ptr >>> 0, 1));
 var SmoothOpenPathBezierHandleCalculatorFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
 }, unregister: () => {
 } } : new FinalizationRegistry((ptr) => wasm.__wbg_smoothopenpathbezierhandlecalculator_free(ptr >>> 0, 1));
@@ -656,6 +735,25 @@ async function createWaveSimTwoDim(width, height, dt) {
   } catch (error) {
     console.error(
       "Failed to create or initialize WaveSimOneDimRust instance:",
+      error
+    );
+    throw error;
+  }
+  return instance;
+}
+async function createHeatSimTwoDim(width, height, dt) {
+  await initWasm();
+  if (!HeatSimTwoDim) {
+    throw new Error("HeatSimTwoDim not found in rust-calc exports");
+  }
+  const HeatSimTwoDim2 = HeatSimTwoDim;
+  let instance;
+  try {
+    instance = new HeatSimTwoDim2(width, height, dt);
+    console.log("HeatSimTwoDim instance created:", instance);
+  } catch (error) {
+    console.error(
+      "Failed to create or initialize HeatSimTwoDimRust instance:",
       error
     );
     throw error;
@@ -2854,6 +2952,50 @@ var WaveSimTwoDimHeatMapScene = class extends SceneFromSimulator {
           step: 0.05
         }
       );
+    })(200, 200);
+    await (async function rust_heat_eq_two_dim(width, height) {
+      const name = "rust-heat-eq-two-dim";
+      const dt = 0.01;
+      const num_steps = 300;
+      const xmin = -5;
+      const xmax = 5;
+      const ymin = -5;
+      const ymax = 5;
+      let canvasRust = prepare_canvas(width, height, name + "-rust");
+      const ctxRust = canvasRust.getContext("2d");
+      if (!ctxRust) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageDataRust = ctxRust.createImageData(width, height);
+      let simRust = await createHeatSimTwoDim(width, height, dt);
+      simRust.set_attr("heat_propagation_speed", 100);
+      simRust.reset();
+      simRust.add_point_source(
+        Math.floor(width / 2),
+        Math.floor(height / 2),
+        10
+      );
+      let handlerRust = new InteractiveHandler(simRust);
+      let sceneRust = new WaveSimTwoDimHeatMapScene(
+        canvasRust,
+        imageDataRust,
+        width,
+        height
+      );
+      sceneRust.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      handlerRust.add_scene(sceneRust);
+      let pauseButtonRust = handlerRust.add_pause_button(
+        document.getElementById(name + "-rust-button-1")
+      );
+      let clearButtonRust = Button(
+        document.getElementById(name + "-rust-button-2"),
+        function() {
+          handlerRust.add_to_queue(simRust.reset.bind(simRust));
+          handlerRust.add_to_queue(handlerRust.draw.bind(handlerRust));
+        }
+      );
+      clearButtonRust.textContent = "Clear";
+      clearButtonRust.style.padding = "15px";
     })(200, 200);
   });
 })();
