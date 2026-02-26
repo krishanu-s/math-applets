@@ -1235,117 +1235,121 @@ function Slider(container, callback, kwargs) {
   return slider;
 }
 
+// src/lib/base/bezier.ts
+var BezierSpline = class extends LineLikeMObject {
+  constructor(num_steps, solver) {
+    super();
+    this.num_steps = num_steps;
+    this.solver = solver;
+    this.anchors = [];
+    for (let i = 0; i < num_steps + 1; i++) {
+      this.anchors.push([0, 0]);
+    }
+  }
+  set_anchors(new_anchors) {
+    this.anchors = new_anchors;
+  }
+  set_anchor(index, new_anchor) {
+    this.anchors[index] = new_anchor;
+  }
+  get_anchor(index) {
+    return this.anchors[index];
+  }
+  // Draw the Bezier curve using the solver
+  _draw(ctx, scene) {
+    if (!this.solver) {
+      this._drawFallback(ctx, scene);
+      return;
+    }
+    let a_x, a_y, a;
+    a = this.get_anchor(0);
+    [a_x, a_y] = scene.v2c(a);
+    ctx.beginPath();
+    ctx.moveTo(a_x, a_y);
+    let anchors_flat = this.anchors.reduce(
+      (acc, val) => acc.concat(val),
+      []
+    );
+    try {
+      let handles_flat = this.solver.get_bezier_handles(anchors_flat);
+      let handles = [];
+      for (let i = 0; i < handles_flat.length; i += 2) {
+        handles.push([handles_flat[i], handles_flat[i + 1]]);
+      }
+      let h1_x, h1_y, h2_x, h2_y;
+      for (let i = 0; i < this.num_steps; i++) {
+        [h1_x, h1_y] = scene.v2c(handles[i]);
+        [h2_x, h2_y] = scene.v2c(handles[i + this.num_steps]);
+        a = this.get_anchor(i + 1);
+        [a_x, a_y] = scene.v2c(a);
+        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
+      }
+      ctx.stroke();
+    } catch (error) {
+      console.warn("Error with solver, drawing with fallback method.");
+      this._drawFallback(ctx, scene);
+    }
+  }
+  // Draw a simple piecewise linear as fallback
+  _drawFallback(ctx, scene) {
+    if (this.anchors.length === 0) return;
+    let [x, y] = scene.v2c(this.get_anchor(0));
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let i = 1; i < this.anchors.length; i++) {
+      [x, y] = scene.v2c(this.get_anchor(i));
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+};
+var ParametricFunction = class extends BezierSpline {
+  constructor(f, tmin, tmax, num_steps, solver) {
+    super(num_steps, solver);
+    this.mode = "smooth";
+    this.function = f;
+    this.tmin = tmin;
+    this.tmax = tmax;
+    this._make_anchors();
+  }
+  _make_anchors() {
+    let anchors = [this.function(this.tmin)];
+    for (let i = 1; i <= this.num_steps; i++) {
+      anchors.push(
+        this.function(
+          this.tmin + i / this.num_steps * (this.tmax - this.tmin)
+        )
+      );
+    }
+    this.set_anchors(anchors);
+  }
+  // Jagged doesn't use Bezier curves. It is faster to compute and render.
+  set_mode(mode) {
+    this.mode = mode;
+  }
+  set_function(new_f) {
+    this.function = new_f;
+    this._make_anchors();
+  }
+  _draw(ctx, scene) {
+    if (this.mode == "jagged") {
+      this._drawFallback(ctx, scene);
+    } else {
+      super._draw(ctx, scene);
+    }
+  }
+};
+
 // rust-calc/pkg/rust_calc.js
 var rust_calc_exports = {};
 __export(rust_calc_exports, {
-  PointSource: () => PointSource,
   SmoothOpenPathBezierHandleCalculator: () => SmoothOpenPathBezierHandleCalculator,
   WaveSimOneDim: () => WaveSimOneDim,
   WaveSimTwoDim: () => WaveSimTwoDim,
+  WaveSimTwoDimElliptical: () => WaveSimTwoDimElliptical,
   default: () => __wbg_init,
-  divide: () => divide,
-  initSync: () => initSync,
-  multiply: () => multiply,
-  subtract: () => subtract,
-  sum: () => sum
+  initSync: () => initSync
 });
-var PointSource = class _PointSource {
-  static __wrap(ptr) {
-    ptr = ptr >>> 0;
-    const obj = Object.create(_PointSource.prototype);
-    obj.__wbg_ptr = ptr;
-    PointSourceFinalization.register(obj, obj.__wbg_ptr, obj);
-    return obj;
-  }
-  __destroy_into_raw() {
-    const ptr = this.__wbg_ptr;
-    this.__wbg_ptr = 0;
-    PointSourceFinalization.unregister(this);
-    return ptr;
-  }
-  free() {
-    const ptr = this.__destroy_into_raw();
-    wasm.__wbg_pointsource_free(ptr, 0);
-  }
-  /**
-   * @returns {number}
-   */
-  get amplitude() {
-    const ret = wasm.__wbg_get_pointsource_amplitude(this.__wbg_ptr);
-    return ret;
-  }
-  /**
-   * @returns {number}
-   */
-  get frequency() {
-    const ret = wasm.__wbg_get_pointsource_frequency(this.__wbg_ptr);
-    return ret;
-  }
-  /**
-   * @returns {number}
-   */
-  get phase() {
-    const ret = wasm.__wbg_get_pointsource_phase(this.__wbg_ptr);
-    return ret;
-  }
-  /**
-   * @returns {number}
-   */
-  get x() {
-    const ret = wasm.__wbg_get_pointsource_x(this.__wbg_ptr);
-    return ret >>> 0;
-  }
-  /**
-   * @returns {number}
-   */
-  get y() {
-    const ret = wasm.__wbg_get_pointsource_y(this.__wbg_ptr);
-    return ret >>> 0;
-  }
-  /**
-   * @param {number} x
-   * @param {number} y
-   * @param {number} amplitude
-   * @param {number} frequency
-   * @param {number} phase
-   * @returns {PointSource}
-   */
-  static new(x, y, amplitude, frequency, phase) {
-    const ret = wasm.pointsource_new(x, y, amplitude, frequency, phase);
-    return _PointSource.__wrap(ret);
-  }
-  /**
-   * @param {number} arg0
-   */
-  set amplitude(arg0) {
-    wasm.__wbg_set_pointsource_amplitude(this.__wbg_ptr, arg0);
-  }
-  /**
-   * @param {number} arg0
-   */
-  set frequency(arg0) {
-    wasm.__wbg_set_pointsource_frequency(this.__wbg_ptr, arg0);
-  }
-  /**
-   * @param {number} arg0
-   */
-  set phase(arg0) {
-    wasm.__wbg_set_pointsource_phase(this.__wbg_ptr, arg0);
-  }
-  /**
-   * @param {number} arg0
-   */
-  set x(arg0) {
-    wasm.__wbg_set_pointsource_x(this.__wbg_ptr, arg0);
-  }
-  /**
-   * @param {number} arg0
-   */
-  set y(arg0) {
-    wasm.__wbg_set_pointsource_y(this.__wbg_ptr, arg0);
-  }
-};
-if (Symbol.dispose) PointSource.prototype[Symbol.dispose] = PointSource.prototype.free;
 var SmoothOpenPathBezierHandleCalculator = class {
   __destroy_into_raw() {
     const ptr = this.__wbg_ptr;
@@ -1401,6 +1405,15 @@ var WaveSimOneDim = class {
     wasm.__wbg_wavesimonedim_free(ptr, 0);
   }
   /**
+   * @param {number} x
+   * @param {number} frequency
+   * @param {number} amplitude
+   * @param {number} phase
+   */
+  add_point_source(x, frequency, amplitude, phase) {
+    wasm.wavesimonedim_add_point_source(this.__wbg_ptr, x, frequency, amplitude, phase);
+  }
+  /**
    * @returns {Float64Array}
    */
   get_uValues() {
@@ -1410,39 +1423,37 @@ var WaveSimOneDim = class {
   /**
    * @returns {Float64Array}
    */
-  get_u_values() {
-    const ptr = this.__destroy_into_raw();
-    const ret = wasm.wavesimonedim_get_u_values(ptr);
-    var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v1;
-  }
-  /**
-   * @returns {Float64Array}
-   */
   get_vValues() {
     const ret = wasm.wavesimonedim_get_vValues(this.__wbg_ptr);
     return ret;
   }
   /**
-   * @returns {Float64Array}
+   * @param {number} index
+   * @param {number} amplitude
    */
-  get_v_values() {
-    const ptr = this.__destroy_into_raw();
-    const ret = wasm.wavesimonedim_get_v_values(ptr);
-    var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v1;
+  modify_point_source_amplitude(index, amplitude) {
+    wasm.wavesimonedim_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
   }
   /**
-   * @returns {Float64Array}
+   * @param {number} index
+   * @param {number} frequency
    */
-  get_vals() {
-    const ptr = this.__destroy_into_raw();
-    const ret = wasm.wavesimonedim_get_vals(ptr);
-    var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v1;
+  modify_point_source_frequency(index, frequency) {
+    wasm.wavesimonedim_modify_point_source_frequency(this.__wbg_ptr, index, frequency);
+  }
+  /**
+   * @param {number} index
+   * @param {number} phase
+   */
+  modify_point_source_phase(index, phase) {
+    wasm.wavesimonedim_modify_point_source_phase(this.__wbg_ptr, index, phase);
+  }
+  /**
+   * @param {number} index
+   * @param {number} x
+   */
+  modify_point_source_x(index, x) {
+    wasm.wavesimonedim_modify_point_source_x(this.__wbg_ptr, index, x);
   }
   /**
    * @param {number} width
@@ -1473,37 +1484,6 @@ var WaveSimOneDim = class {
     const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
     wasm.wavesimonedim_set_attr(this.__wbg_ptr, ptr0, len0, val);
-  }
-  /**
-   * @param {Float64Array} vals
-   */
-  set_u_vals(vals) {
-    const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedim_set_u_vals(this.__wbg_ptr, ptr0, len0);
-  }
-  /**
-   * @param {Float64Array} vals
-   */
-  set_v_vals(vals) {
-    const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedim_set_v_vals(this.__wbg_ptr, ptr0, len0);
-  }
-  /**
-   * @param {number} index
-   * @param {number} val
-   */
-  set_val(index, val) {
-    wasm.wavesimonedim_set_val(this.__wbg_ptr, index, val);
-  }
-  /**
-   * @param {Float64Array} vals
-   */
-  set_vals(vals) {
-    const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedim_set_vals(this.__wbg_ptr, ptr0, len0);
   }
   step() {
     wasm.wavesimonedim_step(this.__wbg_ptr);
@@ -1620,22 +1600,149 @@ var WaveSimTwoDim = class {
   }
 };
 if (Symbol.dispose) WaveSimTwoDim.prototype[Symbol.dispose] = WaveSimTwoDim.prototype.free;
-function divide(left, right) {
-  const ret = wasm.divide(left, right);
-  return ret;
-}
-function multiply(left, right) {
-  const ret = wasm.multiply(left, right);
-  return ret;
-}
-function subtract(left, right) {
-  const ret = wasm.subtract(left, right);
-  return ret;
-}
-function sum(left, right) {
-  const ret = wasm.sum(left, right);
-  return ret;
-}
+var WaveSimTwoDimElliptical = class {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    WaveSimTwoDimEllipticalFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_wavesimtwodimelliptical_free(ptr, 0);
+  }
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} frequency
+   * @param {number} amplitude
+   * @param {number} phase
+   */
+  add_point_source(x, y, frequency, amplitude, phase) {
+    wasm.wavesimtwodimelliptical_add_point_source(this.__wbg_ptr, x, y, frequency, amplitude, phase);
+  }
+  /**
+   * @param {number} index
+   * @returns {number}
+   */
+  get_focus_x(index) {
+    const ret = wasm.wavesimtwodimelliptical_get_focus_x(this.__wbg_ptr, index);
+    return ret >>> 0;
+  }
+  /**
+   * @param {number} index
+   * @returns {number}
+   */
+  get_focus_y(index) {
+    const ret = wasm.wavesimtwodimelliptical_get_focus_y(this.__wbg_ptr, index);
+    return ret >>> 0;
+  }
+  /**
+   * @returns {number}
+   */
+  get_semimajor_axis() {
+    const ret = wasm.wavesimtwodimelliptical_get_semimajor_axis(this.__wbg_ptr);
+    return ret >>> 0;
+  }
+  /**
+   * @returns {number}
+   */
+  get_semiminor_axis() {
+    const ret = wasm.wavesimtwodimelliptical_get_semiminor_axis(this.__wbg_ptr);
+    return ret >>> 0;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_uValues() {
+    const ret = wasm.wavesimtwodimelliptical_get_uValues(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_vValues() {
+    const ret = wasm.wavesimtwodimelliptical_get_vValues(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @param {number} index
+   * @param {number} amplitude
+   */
+  modify_point_source_amplitude(index, amplitude) {
+    wasm.wavesimtwodimelliptical_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
+  }
+  /**
+   * @param {number} index
+   * @param {number} frequency
+   */
+  modify_point_source_frequency(index, frequency) {
+    wasm.wavesimtwodimelliptical_modify_point_source_frequency(this.__wbg_ptr, index, frequency);
+  }
+  /**
+   * @param {number} index
+   * @param {number} phase
+   */
+  modify_point_source_phase(index, phase) {
+    wasm.wavesimtwodimelliptical_modify_point_source_phase(this.__wbg_ptr, index, phase);
+  }
+  /**
+   * @param {number} index
+   * @param {number} x
+   */
+  modify_point_source_x(index, x) {
+    wasm.wavesimtwodimelliptical_modify_point_source_x(this.__wbg_ptr, index, x);
+  }
+  /**
+   * @param {number} index
+   * @param {number} y
+   */
+  modify_point_source_y(index, y) {
+    wasm.wavesimtwodimelliptical_modify_point_source_y(this.__wbg_ptr, index, y);
+  }
+  /**
+   * @param {number} width
+   * @param {number} height
+   * @param {number} dt
+   */
+  constructor(width, height, dt) {
+    const ret = wasm.wavesimtwodimelliptical_new(width, height, dt);
+    this.__wbg_ptr = ret >>> 0;
+    WaveSimTwoDimEllipticalFinalization.register(this, this.__wbg_ptr, this);
+    return this;
+  }
+  recalculate_masks() {
+    wasm.wavesimtwodimelliptical_recalculate_masks(this.__wbg_ptr);
+  }
+  remove_pml_layers() {
+    wasm.wavesimtwodimelliptical_remove_pml_layers(this.__wbg_ptr);
+  }
+  reset() {
+    wasm.wavesimtwodimelliptical_reset(this.__wbg_ptr);
+  }
+  /**
+   * @param {string} name
+   * @param {number} val
+   */
+  set_attr(name, val) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.wavesimtwodimelliptical_set_attr(this.__wbg_ptr, ptr0, len0, val);
+  }
+  /**
+   * @param {boolean} x_direction
+   * @param {boolean} positive
+   * @param {number} width
+   * @param {number} strength
+   */
+  set_pml_layer(x_direction, positive, width, strength) {
+    wasm.wavesimtwodimelliptical_set_pml_layer(this.__wbg_ptr, x_direction, positive, width, strength);
+  }
+  step() {
+    wasm.wavesimtwodimelliptical_step(this.__wbg_ptr);
+  }
+};
+if (Symbol.dispose) WaveSimTwoDimElliptical.prototype[Symbol.dispose] = WaveSimTwoDimElliptical.prototype.free;
 function __wbg_get_imports() {
   const import0 = {
     __proto__: null,
@@ -1668,9 +1775,6 @@ function __wbg_get_imports() {
     "./rust_calc_bg.js": import0
   };
 }
-var PointSourceFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
-}, unregister: () => {
-} } : new FinalizationRegistry((ptr) => wasm.__wbg_pointsource_free(ptr >>> 0, 1));
 var SmoothOpenPathBezierHandleCalculatorFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
 }, unregister: () => {
 } } : new FinalizationRegistry((ptr) => wasm.__wbg_smoothopenpathbezierhandlecalculator_free(ptr >>> 0, 1));
@@ -1680,6 +1784,9 @@ var WaveSimOneDimFinalization = typeof FinalizationRegistry === "undefined" ? { 
 var WaveSimTwoDimFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
 }, unregister: () => {
 } } : new FinalizationRegistry((ptr) => wasm.__wbg_wavesimtwodim_free(ptr >>> 0, 1));
+var WaveSimTwoDimEllipticalFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+}, unregister: () => {
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_wavesimtwodimelliptical_free(ptr >>> 0, 1));
 function getArrayF64FromWasm0(ptr, len) {
   ptr = ptr >>> 0;
   return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
@@ -1853,9 +1960,6 @@ async function initWasm() {
     isInitialized = true;
   }
 }
-function isWasmInitialized() {
-  return isInitialized;
-}
 async function createSmoothOpenPathBezier(n) {
   await initWasm();
   if (!SmoothOpenPathBezierHandleCalculator) {
@@ -1881,171 +1985,6 @@ async function createSmoothOpenPathBezier(n) {
   return instance;
 }
 console.log("rust-calc exports:", Object.keys(rust_calc_exports));
-
-// src/lib/base/bezier.ts
-var initializationStarted = false;
-var initializationPromise = null;
-async function ensureWasmInitialized() {
-  if (isWasmInitialized()) {
-    return;
-  }
-  if (!initializationStarted) {
-    initializationStarted = true;
-    initializationPromise = initWasm();
-  }
-  await initializationPromise;
-}
-var BezierSpline = class extends LineLikeMObject {
-  constructor(num_steps, solver) {
-    super();
-    this.solverInitialized = true;
-    this.solverInitializing = true;
-    this.num_steps = num_steps;
-    this.solver = solver;
-    this.anchors = [];
-    for (let i = 0; i < num_steps + 1; i++) {
-      this.anchors.push([0, 0]);
-    }
-    this.initializeSolver();
-  }
-  async initializeSolver() {
-    if (this.solverInitializing || this.solverInitialized) {
-      console.log("Solver initialization already in progress or completed");
-      return;
-    }
-    this.solverInitializing = true;
-    console.log("Starting solver initialization...");
-    try {
-      console.log("Ensuring WebAssembly is initialized...");
-      await ensureWasmInitialized();
-      console.log("WebAssembly initialization complete");
-      console.log("Creating SmoothOpenPathBezier with n =", this.num_steps);
-      this.solver = await createSmoothOpenPathBezier(this.num_steps);
-      console.log("Solver created:", this.solver);
-      if (this.solver && typeof this.solver.get_bezier_handles === "function") {
-        this.solverInitialized = true;
-        console.log("Bezier solver initialized successfully");
-      } else {
-        console.error(
-          "Bezier solver created but doesn't have get_bezier_handles method. Solver:",
-          this.solver
-        );
-        this.solver = null;
-      }
-    } catch (error) {
-      console.error("Failed to initialize Bezier solver:", error);
-    } finally {
-      this.solverInitializing = false;
-      console.log(
-        "Solver initialization attempt completed. solverInitialized =",
-        this.solverInitialized
-      );
-    }
-  }
-  set_anchors(new_anchors) {
-    this.anchors = new_anchors;
-  }
-  set_anchor(index, new_anchor) {
-    this.anchors[index] = new_anchor;
-  }
-  get_anchor(index) {
-    return this.anchors[index];
-  }
-  // Draw the Bezier curve using the solver
-  _draw(ctx, scene) {
-    console.log(
-      "BezierSpline._draw called. solverInitialized =",
-      this.solverInitialized,
-      "solver =",
-      this.solver
-    );
-    if (!this.solverInitialized || !this.solver) {
-      console.log("Using fallback drawing");
-      this.drawFallback(ctx, scene);
-      return;
-    }
-    console.log("Using solver for drawing");
-    let a_x, a_y, a;
-    a = this.get_anchor(0);
-    [a_x, a_y] = scene.v2c(a);
-    ctx.beginPath();
-    ctx.moveTo(a_x, a_y);
-    let anchors_flat = this.anchors.reduce(
-      (acc, val) => acc.concat(val),
-      []
-    );
-    try {
-      console.log("Getting bezier handles for ", anchors_flat);
-      console.log("Solver:", this.solver);
-      let handles_flat = this.solver.get_bezier_handles(anchors_flat);
-      console.log("Gotten bezier handles");
-      let handles = [];
-      for (let i = 0; i < handles_flat.length; i += 2) {
-        handles.push([handles_flat[i], handles_flat[i + 1]]);
-      }
-      let h1_x, h1_y, h2_x, h2_y;
-      for (let i = 0; i < this.num_steps; i++) {
-        [h1_x, h1_y] = scene.v2c(handles[i]);
-        [h2_x, h2_y] = scene.v2c(handles[i + this.num_steps]);
-        a = this.get_anchor(i + 1);
-        [a_x, a_y] = scene.v2c(a);
-        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
-      }
-      ctx.stroke();
-    } catch (error) {
-      console.warn("Error drawing Bezier spline, using fallback:", error);
-      this.drawFallback(ctx, scene);
-    }
-  }
-  // Draw a simple piecewise linear as fallback
-  drawFallback(ctx, scene) {
-    if (this.anchors.length === 0) return;
-    let [x, y] = scene.v2c(this.get_anchor(0));
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    for (let i = 1; i < this.anchors.length; i++) {
-      [x, y] = scene.v2c(this.get_anchor(i));
-      ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  }
-};
-var ParametricFunction = class extends BezierSpline {
-  constructor(f, tmin, tmax, num_steps, solver) {
-    super(num_steps, solver);
-    this.mode = "smooth";
-    this.function = f;
-    this.tmin = tmin;
-    this.tmax = tmax;
-    this._make_anchors();
-  }
-  _make_anchors() {
-    let anchors = [this.function(this.tmin)];
-    for (let i = 1; i <= this.num_steps; i++) {
-      anchors.push(
-        this.function(
-          this.tmin + i / this.num_steps * (this.tmax - this.tmin)
-        )
-      );
-    }
-    this.set_anchors(anchors);
-  }
-  // Jagged doesn't use Bezier curves. It is faster to compute and render.
-  set_mode(mode) {
-    this.mode = mode;
-  }
-  set_function(new_f) {
-    this.function = new_f;
-    this._make_anchors();
-  }
-  _draw(ctx, scene) {
-    if (this.mode == "jagged") {
-      this.drawFallback(ctx, scene);
-    } else {
-      super._draw(ctx, scene);
-    }
-  }
-};
 
 // src/parametric_scene.ts
 (async function() {

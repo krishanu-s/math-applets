@@ -25,27 +25,6 @@ export function isWasmInitialized(): boolean {
   return isInitialized;
 }
 
-// Create wrapper functions that ensure initialization
-export async function multiply(left: number, right: number): Promise<number> {
-  await initWasm();
-  return rustCalc.multiply(left, right);
-}
-
-export async function divide(left: number, right: number): Promise<number> {
-  await initWasm();
-  return rustCalc.divide(left, right);
-}
-
-export async function subtract(left: number, right: number): Promise<number> {
-  await initWasm();
-  return rustCalc.subtract(left, right);
-}
-
-export async function sum(left: number, right: number): Promise<number> {
-  await initWasm();
-  return rustCalc.sum(left, right);
-}
-
 // Robust createWaveSim function
 // TODO Move this to lib/simulator/wavesim.ts
 export async function createWaveSimOneDim(
@@ -158,6 +137,37 @@ export async function createWaveSimTwoDim(
   } catch (error) {
     console.error(
       "Failed to create or initialize WaveSimOneDimRust instance:",
+      error,
+    );
+    throw error;
+  }
+
+  return instance;
+}
+
+// TODO Move this to lib/simulator/wavesim.ts
+export async function createWaveSimTwoDimElliptical(
+  width: number,
+  height: number,
+  dt: number,
+): Promise<any> {
+  await initWasm();
+
+  if (!(rustCalc as any).WaveSimTwoDimElliptical) {
+    throw new Error("WaveSimTwoDimElliptical not found in rust-calc exports");
+  }
+
+  const WaveSimTwoDimElliptical = (rustCalc as any).WaveSimTwoDimElliptical;
+
+  let instance;
+
+  try {
+    // Create instance
+    instance = new WaveSimTwoDimElliptical(width, height, dt);
+    console.log("WaveSimTwoDimElliptical instance created:", instance);
+  } catch (error) {
+    console.error(
+      "Failed to create or initialize WaveSimTwoDimElliptical instance:",
       error,
     );
     throw error;

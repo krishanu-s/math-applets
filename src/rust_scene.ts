@@ -1,10 +1,4 @@
-import {
-  multiply,
-  createWaveSimOneDim,
-  createWaveSimTwoDim,
-  getWaveSimOneDimClass,
-  getWaveSimTwoDimClass,
-} from "./rust-calc-browser";
+import { createWaveSimOneDim, createWaveSimTwoDim } from "./rust-calc-browser";
 import { Button } from "./lib/interactive/button";
 import { Slider } from "./lib/interactive/slider";
 import {
@@ -19,50 +13,7 @@ import { funspace, prepare_canvas, delay, HeatMap } from "./lib/base";
 // Testing out performance of Rust bound in via WASM.
 (async function () {
   document.addEventListener("DOMContentLoaded", async function () {
-    (async function rust_calc() {
-      const name = "rust-calc";
-
-      // // Load the WASM module
-      // try {
-      //   await loadWasm();
-      // } catch (error) {
-      //   console.error("Failed to load WASM module:", error);
-      // }
-      // TODO: Implement some more interesting Rust calculations for comparison, such as modifying an
-      // array entry-by-entry.
-
-      let a = Math.floor(Math.random() * 2 ** 16);
-      let b = Math.floor(Math.random() * 2 ** 16);
-      let c: number;
-      let numCalls = 1000;
-      console.log(`Product of ${a} and ${b}.`);
-
-      // Button which, when clicked, calls a rust function to do calculations
-      let rustButton = Button(
-        document.getElementById(name + "-button-1") as HTMLElement,
-        async function handleClick() {
-          for (let i = 0; i < numCalls; i++) {
-            const result = await multiply(a, b);
-          }
-          console.log(`${numCalls} calls completed`);
-        },
-      );
-      rustButton.textContent = "Rust implementation";
-
-      // Button which, when clicked, calls TS to do calculations
-      let tsButton = Button(
-        document.getElementById(name + "-button-2") as HTMLElement,
-        async function handleClick() {
-          for (let i = 0; i < numCalls; i++) {
-            c = a * b;
-          }
-          console.log(`${numCalls} calls completed`);
-        },
-      );
-      tsButton.textContent = "TS implementation";
-    })();
-
-    (async function rust_wave_eq_one_dim() {
+    await (async function rust_wave_eq_one_dim() {
       const name = "rust-wave-eq-one-dim";
 
       const width = 50000;
@@ -130,7 +81,7 @@ import { funspace, prepare_canvas, delay, HeatMap } from "./lib/base";
     })();
 
     // Animate a 2D wave equation heatmap scene, non-interactively.
-    (async function rust_wave_eq_two_dim(width: number, height: number) {
+    await (async function rust_wave_eq_two_dim(width: number, height: number) {
       const name = "rust-wave-eq-two-dim";
       const dt = 0.01;
       const num_steps = 300;

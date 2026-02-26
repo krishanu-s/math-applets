@@ -1,5 +1,4 @@
 import { Scene, prepare_canvas, Line } from "./lib/base";
-import { BezierCurve } from "./lib/base/bezier.js";
 import { Slider } from "./lib/interactive";
 import {
   Vec3D,

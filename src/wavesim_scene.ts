@@ -31,6 +31,7 @@ import {
 import {
   createWaveSimOneDim,
   createWaveSimTwoDim,
+  createWaveSimTwoDimElliptical,
   getWaveSimOneDimClass,
   getWaveSimTwoDimClass,
   createSmoothOpenPathBezier,
@@ -1370,10 +1371,15 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
       const imageData = ctx.createImageData(width, height);
 
       // Create the simulator
-      let sim = new WaveSimTwoDimEllipticReflector(width, height, dt);
-      sim.wave_propagation_speed = 0.1 * width;
-      sim.set_attr("w", 6.0);
-      sim.remove_pml_layers();
+      // let sim = new WaveSimTwoDimEllipticReflector(width, height, dt);
+      let sim = await createWaveSimTwoDimElliptical(width, height, dt);
+      sim.recalculate_masks();
+      sim.set_attr("wave_propagation_speed", 0.1 * width);
+
+      // TODO Set the focus
+      let a = 5.0;
+      let w = 5.0;
+      sim.add_point_source(sim.get_focus_x(0), sim.get_focus_y(0), w, a, 0);
 
       // Create a handler
       let handler = new InteractiveHandler(sim);
@@ -1382,8 +1388,8 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
       let solver = await createSmoothOpenPathBezier(100);
       let conic = new ParametricFunction(
         (t) => [
-          (sim.semimajor_axis / width) * (xmax - xmin) * Math.cos(t),
-          (sim.semiminor_axis / height) * (ymax - ymin) * Math.sin(t),
+          (sim.get_semimajor_axis() / width) * (xmax - xmin) * Math.cos(t),
+          (sim.get_semiminor_axis() / height) * (ymax - ymin) * Math.sin(t),
         ],
         0,
         Math.PI * 2,
@@ -1405,33 +1411,33 @@ import { SceneFromSimulator, InteractiveHandler } from "./lib/simulator/sim";
       handler.add_scene(scene);
 
       // Make a slider which controls the eccentricity
-      let e_slider = Slider(
-        document.getElementById(name + "-slider-1") as HTMLElement,
-        function (val: number) {
-          handler.add_to_queue(() => {
-            sim.set_attr("semiminor_axis", val);
-            conic.set_function((t) => [
-              (sim.semimajor_axis / width) * (xmax - xmin) * Math.cos(t),
-              (val / height) * (ymax - ymin) * Math.sin(t),
-            ]);
-            scene.draw();
-          });
-        },
-        {
-          name: "Vertical size",
-          initial_value: "60",
-          min: 30,
-          max: 100,
-          step: 1,
-        },
-      );
+      // let e_slider = Slider(
+      //   document.getElementById(name + "-slider-1") as HTMLElement,
+      //   function (val: number) {
+      //     handler.add_to_queue(() => {
+      //       sim.set_attr("semiminor_axis", val);
+      //       conic.set_function((t) => [
+      //         (sim.get_semimajor_axis() / width) * (xmax - xmin) * Math.cos(t),
+      //         (val / height) * (ymax - ymin) * Math.sin(t),
+      //       ]);
+      //       scene.draw();
+      //     });
+      //   },
+      //   {
+      //     name: "Vertical size",
+      //     initial_value: "60",
+      //     min: 30,
+      //     max: 100,
+      //     step: 1,
+      //   },
+      // );
 
       // Make a slider which controls the frequency
       let w_slider = Slider(
         document.getElementById(name + "-slider-2") as HTMLElement,
         function (val: number) {
           handler.add_to_queue(() => {
-            sim.set_attr("w", val);
+            sim.modify_point_source_frequency(0, val);
           });
         },
         {

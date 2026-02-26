@@ -1,103 +1,5 @@
 /* @ts-self-types="./rust_calc.d.ts" */
 
-export class PointSource {
-    static __wrap(ptr) {
-        ptr = ptr >>> 0;
-        const obj = Object.create(PointSource.prototype);
-        obj.__wbg_ptr = ptr;
-        PointSourceFinalization.register(obj, obj.__wbg_ptr, obj);
-        return obj;
-    }
-    __destroy_into_raw() {
-        const ptr = this.__wbg_ptr;
-        this.__wbg_ptr = 0;
-        PointSourceFinalization.unregister(this);
-        return ptr;
-    }
-    free() {
-        const ptr = this.__destroy_into_raw();
-        wasm.__wbg_pointsource_free(ptr, 0);
-    }
-    /**
-     * @returns {number}
-     */
-    get amplitude() {
-        const ret = wasm.__wbg_get_pointsource_amplitude(this.__wbg_ptr);
-        return ret;
-    }
-    /**
-     * @returns {number}
-     */
-    get frequency() {
-        const ret = wasm.__wbg_get_pointsource_frequency(this.__wbg_ptr);
-        return ret;
-    }
-    /**
-     * @returns {number}
-     */
-    get phase() {
-        const ret = wasm.__wbg_get_pointsource_phase(this.__wbg_ptr);
-        return ret;
-    }
-    /**
-     * @returns {number}
-     */
-    get x() {
-        const ret = wasm.__wbg_get_pointsource_x(this.__wbg_ptr);
-        return ret >>> 0;
-    }
-    /**
-     * @returns {number}
-     */
-    get y() {
-        const ret = wasm.__wbg_get_pointsource_y(this.__wbg_ptr);
-        return ret >>> 0;
-    }
-    /**
-     * @param {number} x
-     * @param {number} y
-     * @param {number} amplitude
-     * @param {number} frequency
-     * @param {number} phase
-     * @returns {PointSource}
-     */
-    static new(x, y, amplitude, frequency, phase) {
-        const ret = wasm.pointsource_new(x, y, amplitude, frequency, phase);
-        return PointSource.__wrap(ret);
-    }
-    /**
-     * @param {number} arg0
-     */
-    set amplitude(arg0) {
-        wasm.__wbg_set_pointsource_amplitude(this.__wbg_ptr, arg0);
-    }
-    /**
-     * @param {number} arg0
-     */
-    set frequency(arg0) {
-        wasm.__wbg_set_pointsource_frequency(this.__wbg_ptr, arg0);
-    }
-    /**
-     * @param {number} arg0
-     */
-    set phase(arg0) {
-        wasm.__wbg_set_pointsource_phase(this.__wbg_ptr, arg0);
-    }
-    /**
-     * @param {number} arg0
-     */
-    set x(arg0) {
-        wasm.__wbg_set_pointsource_x(this.__wbg_ptr, arg0);
-    }
-    /**
-     * @param {number} arg0
-     */
-    set y(arg0) {
-        wasm.__wbg_set_pointsource_y(this.__wbg_ptr, arg0);
-    }
-}
-if (Symbol.dispose) PointSource.prototype[Symbol.dispose] = PointSource.prototype.free;
-
 export class SmoothOpenPathBezierHandleCalculator {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
@@ -154,6 +56,15 @@ export class WaveSimOneDim {
         wasm.__wbg_wavesimonedim_free(ptr, 0);
     }
     /**
+     * @param {number} x
+     * @param {number} frequency
+     * @param {number} amplitude
+     * @param {number} phase
+     */
+    add_point_source(x, frequency, amplitude, phase) {
+        wasm.wavesimonedim_add_point_source(this.__wbg_ptr, x, frequency, amplitude, phase);
+    }
+    /**
      * @returns {Float64Array}
      */
     get_uValues() {
@@ -163,39 +74,37 @@ export class WaveSimOneDim {
     /**
      * @returns {Float64Array}
      */
-    get_u_values() {
-        const ptr = this.__destroy_into_raw();
-        const ret = wasm.wavesimonedim_get_u_values(ptr);
-        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v1;
-    }
-    /**
-     * @returns {Float64Array}
-     */
     get_vValues() {
         const ret = wasm.wavesimonedim_get_vValues(this.__wbg_ptr);
         return ret;
     }
     /**
-     * @returns {Float64Array}
+     * @param {number} index
+     * @param {number} amplitude
      */
-    get_v_values() {
-        const ptr = this.__destroy_into_raw();
-        const ret = wasm.wavesimonedim_get_v_values(ptr);
-        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v1;
+    modify_point_source_amplitude(index, amplitude) {
+        wasm.wavesimonedim_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
     }
     /**
-     * @returns {Float64Array}
+     * @param {number} index
+     * @param {number} frequency
      */
-    get_vals() {
-        const ptr = this.__destroy_into_raw();
-        const ret = wasm.wavesimonedim_get_vals(ptr);
-        var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-        return v1;
+    modify_point_source_frequency(index, frequency) {
+        wasm.wavesimonedim_modify_point_source_frequency(this.__wbg_ptr, index, frequency);
+    }
+    /**
+     * @param {number} index
+     * @param {number} phase
+     */
+    modify_point_source_phase(index, phase) {
+        wasm.wavesimonedim_modify_point_source_phase(this.__wbg_ptr, index, phase);
+    }
+    /**
+     * @param {number} index
+     * @param {number} x
+     */
+    modify_point_source_x(index, x) {
+        wasm.wavesimonedim_modify_point_source_x(this.__wbg_ptr, index, x);
     }
     /**
      * @param {number} width
@@ -226,37 +135,6 @@ export class WaveSimOneDim {
         const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.wavesimonedim_set_attr(this.__wbg_ptr, ptr0, len0, val);
-    }
-    /**
-     * @param {Float64Array} vals
-     */
-    set_u_vals(vals) {
-        const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.wavesimonedim_set_u_vals(this.__wbg_ptr, ptr0, len0);
-    }
-    /**
-     * @param {Float64Array} vals
-     */
-    set_v_vals(vals) {
-        const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.wavesimonedim_set_v_vals(this.__wbg_ptr, ptr0, len0);
-    }
-    /**
-     * @param {number} index
-     * @param {number} val
-     */
-    set_val(index, val) {
-        wasm.wavesimonedim_set_val(this.__wbg_ptr, index, val);
-    }
-    /**
-     * @param {Float64Array} vals
-     */
-    set_vals(vals) {
-        const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.wavesimonedim_set_vals(this.__wbg_ptr, ptr0, len0);
     }
     step() {
         wasm.wavesimonedim_step(this.__wbg_ptr);
@@ -375,45 +253,149 @@ export class WaveSimTwoDim {
 }
 if (Symbol.dispose) WaveSimTwoDim.prototype[Symbol.dispose] = WaveSimTwoDim.prototype.free;
 
-/**
- * @param {number} left
- * @param {number} right
- * @returns {number}
- */
-export function divide(left, right) {
-    const ret = wasm.divide(left, right);
-    return ret;
+export class WaveSimTwoDimElliptical {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        WaveSimTwoDimEllipticalFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_wavesimtwodimelliptical_free(ptr, 0);
+    }
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {number} frequency
+     * @param {number} amplitude
+     * @param {number} phase
+     */
+    add_point_source(x, y, frequency, amplitude, phase) {
+        wasm.wavesimtwodimelliptical_add_point_source(this.__wbg_ptr, x, y, frequency, amplitude, phase);
+    }
+    /**
+     * @param {number} index
+     * @returns {number}
+     */
+    get_focus_x(index) {
+        const ret = wasm.wavesimtwodimelliptical_get_focus_x(this.__wbg_ptr, index);
+        return ret >>> 0;
+    }
+    /**
+     * @param {number} index
+     * @returns {number}
+     */
+    get_focus_y(index) {
+        const ret = wasm.wavesimtwodimelliptical_get_focus_y(this.__wbg_ptr, index);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get_semimajor_axis() {
+        const ret = wasm.wavesimtwodimelliptical_get_semimajor_axis(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get_semiminor_axis() {
+        const ret = wasm.wavesimtwodimelliptical_get_semiminor_axis(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {Float64Array}
+     */
+    get_uValues() {
+        const ret = wasm.wavesimtwodimelliptical_get_uValues(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {Float64Array}
+     */
+    get_vValues() {
+        const ret = wasm.wavesimtwodimelliptical_get_vValues(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {number} index
+     * @param {number} amplitude
+     */
+    modify_point_source_amplitude(index, amplitude) {
+        wasm.wavesimtwodimelliptical_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
+    }
+    /**
+     * @param {number} index
+     * @param {number} frequency
+     */
+    modify_point_source_frequency(index, frequency) {
+        wasm.wavesimtwodimelliptical_modify_point_source_frequency(this.__wbg_ptr, index, frequency);
+    }
+    /**
+     * @param {number} index
+     * @param {number} phase
+     */
+    modify_point_source_phase(index, phase) {
+        wasm.wavesimtwodimelliptical_modify_point_source_phase(this.__wbg_ptr, index, phase);
+    }
+    /**
+     * @param {number} index
+     * @param {number} x
+     */
+    modify_point_source_x(index, x) {
+        wasm.wavesimtwodimelliptical_modify_point_source_x(this.__wbg_ptr, index, x);
+    }
+    /**
+     * @param {number} index
+     * @param {number} y
+     */
+    modify_point_source_y(index, y) {
+        wasm.wavesimtwodimelliptical_modify_point_source_y(this.__wbg_ptr, index, y);
+    }
+    /**
+     * @param {number} width
+     * @param {number} height
+     * @param {number} dt
+     */
+    constructor(width, height, dt) {
+        const ret = wasm.wavesimtwodimelliptical_new(width, height, dt);
+        this.__wbg_ptr = ret >>> 0;
+        WaveSimTwoDimEllipticalFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    recalculate_masks() {
+        wasm.wavesimtwodimelliptical_recalculate_masks(this.__wbg_ptr);
+    }
+    remove_pml_layers() {
+        wasm.wavesimtwodimelliptical_remove_pml_layers(this.__wbg_ptr);
+    }
+    reset() {
+        wasm.wavesimtwodimelliptical_reset(this.__wbg_ptr);
+    }
+    /**
+     * @param {string} name
+     * @param {number} val
+     */
+    set_attr(name, val) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.wavesimtwodimelliptical_set_attr(this.__wbg_ptr, ptr0, len0, val);
+    }
+    /**
+     * @param {boolean} x_direction
+     * @param {boolean} positive
+     * @param {number} width
+     * @param {number} strength
+     */
+    set_pml_layer(x_direction, positive, width, strength) {
+        wasm.wavesimtwodimelliptical_set_pml_layer(this.__wbg_ptr, x_direction, positive, width, strength);
+    }
+    step() {
+        wasm.wavesimtwodimelliptical_step(this.__wbg_ptr);
+    }
 }
-
-/**
- * @param {number} left
- * @param {number} right
- * @returns {number}
- */
-export function multiply(left, right) {
-    const ret = wasm.multiply(left, right);
-    return ret;
-}
-
-/**
- * @param {number} left
- * @param {number} right
- * @returns {number}
- */
-export function subtract(left, right) {
-    const ret = wasm.subtract(left, right);
-    return ret;
-}
-
-/**
- * @param {number} left
- * @param {number} right
- * @returns {number}
- */
-export function sum(left, right) {
-    const ret = wasm.sum(left, right);
-    return ret;
-}
+if (Symbol.dispose) WaveSimTwoDimElliptical.prototype[Symbol.dispose] = WaveSimTwoDimElliptical.prototype.free;
 
 function __wbg_get_imports() {
     const import0 = {
@@ -448,9 +430,6 @@ function __wbg_get_imports() {
     };
 }
 
-const PointSourceFinalization = (typeof FinalizationRegistry === 'undefined')
-    ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(ptr => wasm.__wbg_pointsource_free(ptr >>> 0, 1));
 const SmoothOpenPathBezierHandleCalculatorFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_smoothopenpathbezierhandlecalculator_free(ptr >>> 0, 1));
@@ -460,6 +439,9 @@ const WaveSimOneDimFinalization = (typeof FinalizationRegistry === 'undefined')
 const WaveSimTwoDimFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_wavesimtwodim_free(ptr >>> 0, 1));
+const WaveSimTwoDimEllipticalFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_wavesimtwodimelliptical_free(ptr >>> 0, 1));
 
 function getArrayF64FromWasm0(ptr, len) {
     ptr = ptr >>> 0;

@@ -1963,114 +1963,13 @@ var HeatMap = class extends MObject {
 // rust-calc/pkg/rust_calc.js
 var rust_calc_exports = {};
 __export(rust_calc_exports, {
-  PointSource: () => PointSource,
   SmoothOpenPathBezierHandleCalculator: () => SmoothOpenPathBezierHandleCalculator,
   WaveSimOneDim: () => WaveSimOneDim,
   WaveSimTwoDim: () => WaveSimTwoDim,
+  WaveSimTwoDimElliptical: () => WaveSimTwoDimElliptical,
   default: () => __wbg_init,
-  divide: () => divide,
-  initSync: () => initSync,
-  multiply: () => multiply,
-  subtract: () => subtract,
-  sum: () => sum
+  initSync: () => initSync
 });
-var PointSource = class _PointSource {
-  static __wrap(ptr) {
-    ptr = ptr >>> 0;
-    const obj = Object.create(_PointSource.prototype);
-    obj.__wbg_ptr = ptr;
-    PointSourceFinalization.register(obj, obj.__wbg_ptr, obj);
-    return obj;
-  }
-  __destroy_into_raw() {
-    const ptr = this.__wbg_ptr;
-    this.__wbg_ptr = 0;
-    PointSourceFinalization.unregister(this);
-    return ptr;
-  }
-  free() {
-    const ptr = this.__destroy_into_raw();
-    wasm.__wbg_pointsource_free(ptr, 0);
-  }
-  /**
-   * @returns {number}
-   */
-  get amplitude() {
-    const ret = wasm.__wbg_get_pointsource_amplitude(this.__wbg_ptr);
-    return ret;
-  }
-  /**
-   * @returns {number}
-   */
-  get frequency() {
-    const ret = wasm.__wbg_get_pointsource_frequency(this.__wbg_ptr);
-    return ret;
-  }
-  /**
-   * @returns {number}
-   */
-  get phase() {
-    const ret = wasm.__wbg_get_pointsource_phase(this.__wbg_ptr);
-    return ret;
-  }
-  /**
-   * @returns {number}
-   */
-  get x() {
-    const ret = wasm.__wbg_get_pointsource_x(this.__wbg_ptr);
-    return ret >>> 0;
-  }
-  /**
-   * @returns {number}
-   */
-  get y() {
-    const ret = wasm.__wbg_get_pointsource_y(this.__wbg_ptr);
-    return ret >>> 0;
-  }
-  /**
-   * @param {number} x
-   * @param {number} y
-   * @param {number} amplitude
-   * @param {number} frequency
-   * @param {number} phase
-   * @returns {PointSource}
-   */
-  static new(x, y, amplitude, frequency, phase) {
-    const ret = wasm.pointsource_new(x, y, amplitude, frequency, phase);
-    return _PointSource.__wrap(ret);
-  }
-  /**
-   * @param {number} arg0
-   */
-  set amplitude(arg0) {
-    wasm.__wbg_set_pointsource_amplitude(this.__wbg_ptr, arg0);
-  }
-  /**
-   * @param {number} arg0
-   */
-  set frequency(arg0) {
-    wasm.__wbg_set_pointsource_frequency(this.__wbg_ptr, arg0);
-  }
-  /**
-   * @param {number} arg0
-   */
-  set phase(arg0) {
-    wasm.__wbg_set_pointsource_phase(this.__wbg_ptr, arg0);
-  }
-  /**
-   * @param {number} arg0
-   */
-  set x(arg0) {
-    wasm.__wbg_set_pointsource_x(this.__wbg_ptr, arg0);
-  }
-  /**
-   * @param {number} arg0
-   */
-  set y(arg0) {
-    wasm.__wbg_set_pointsource_y(this.__wbg_ptr, arg0);
-  }
-};
-if (Symbol.dispose) PointSource.prototype[Symbol.dispose] = PointSource.prototype.free;
 var SmoothOpenPathBezierHandleCalculator = class {
   __destroy_into_raw() {
     const ptr = this.__wbg_ptr;
@@ -2126,6 +2025,15 @@ var WaveSimOneDim = class {
     wasm.__wbg_wavesimonedim_free(ptr, 0);
   }
   /**
+   * @param {number} x
+   * @param {number} frequency
+   * @param {number} amplitude
+   * @param {number} phase
+   */
+  add_point_source(x, frequency, amplitude, phase) {
+    wasm.wavesimonedim_add_point_source(this.__wbg_ptr, x, frequency, amplitude, phase);
+  }
+  /**
    * @returns {Float64Array}
    */
   get_uValues() {
@@ -2135,39 +2043,37 @@ var WaveSimOneDim = class {
   /**
    * @returns {Float64Array}
    */
-  get_u_values() {
-    const ptr = this.__destroy_into_raw();
-    const ret = wasm.wavesimonedim_get_u_values(ptr);
-    var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v1;
-  }
-  /**
-   * @returns {Float64Array}
-   */
   get_vValues() {
     const ret = wasm.wavesimonedim_get_vValues(this.__wbg_ptr);
     return ret;
   }
   /**
-   * @returns {Float64Array}
+   * @param {number} index
+   * @param {number} amplitude
    */
-  get_v_values() {
-    const ptr = this.__destroy_into_raw();
-    const ret = wasm.wavesimonedim_get_v_values(ptr);
-    var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v1;
+  modify_point_source_amplitude(index, amplitude) {
+    wasm.wavesimonedim_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
   }
   /**
-   * @returns {Float64Array}
+   * @param {number} index
+   * @param {number} frequency
    */
-  get_vals() {
-    const ptr = this.__destroy_into_raw();
-    const ret = wasm.wavesimonedim_get_vals(ptr);
-    var v1 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v1;
+  modify_point_source_frequency(index, frequency) {
+    wasm.wavesimonedim_modify_point_source_frequency(this.__wbg_ptr, index, frequency);
+  }
+  /**
+   * @param {number} index
+   * @param {number} phase
+   */
+  modify_point_source_phase(index, phase) {
+    wasm.wavesimonedim_modify_point_source_phase(this.__wbg_ptr, index, phase);
+  }
+  /**
+   * @param {number} index
+   * @param {number} x
+   */
+  modify_point_source_x(index, x) {
+    wasm.wavesimonedim_modify_point_source_x(this.__wbg_ptr, index, x);
   }
   /**
    * @param {number} width
@@ -2198,37 +2104,6 @@ var WaveSimOneDim = class {
     const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
     wasm.wavesimonedim_set_attr(this.__wbg_ptr, ptr0, len0, val);
-  }
-  /**
-   * @param {Float64Array} vals
-   */
-  set_u_vals(vals) {
-    const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedim_set_u_vals(this.__wbg_ptr, ptr0, len0);
-  }
-  /**
-   * @param {Float64Array} vals
-   */
-  set_v_vals(vals) {
-    const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedim_set_v_vals(this.__wbg_ptr, ptr0, len0);
-  }
-  /**
-   * @param {number} index
-   * @param {number} val
-   */
-  set_val(index, val) {
-    wasm.wavesimonedim_set_val(this.__wbg_ptr, index, val);
-  }
-  /**
-   * @param {Float64Array} vals
-   */
-  set_vals(vals) {
-    const ptr0 = passArrayF64ToWasm0(vals, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.wavesimonedim_set_vals(this.__wbg_ptr, ptr0, len0);
   }
   step() {
     wasm.wavesimonedim_step(this.__wbg_ptr);
@@ -2345,22 +2220,149 @@ var WaveSimTwoDim = class {
   }
 };
 if (Symbol.dispose) WaveSimTwoDim.prototype[Symbol.dispose] = WaveSimTwoDim.prototype.free;
-function divide(left, right) {
-  const ret = wasm.divide(left, right);
-  return ret;
-}
-function multiply(left, right) {
-  const ret = wasm.multiply(left, right);
-  return ret;
-}
-function subtract(left, right) {
-  const ret = wasm.subtract(left, right);
-  return ret;
-}
-function sum(left, right) {
-  const ret = wasm.sum(left, right);
-  return ret;
-}
+var WaveSimTwoDimElliptical = class {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    WaveSimTwoDimEllipticalFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_wavesimtwodimelliptical_free(ptr, 0);
+  }
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} frequency
+   * @param {number} amplitude
+   * @param {number} phase
+   */
+  add_point_source(x, y, frequency, amplitude, phase) {
+    wasm.wavesimtwodimelliptical_add_point_source(this.__wbg_ptr, x, y, frequency, amplitude, phase);
+  }
+  /**
+   * @param {number} index
+   * @returns {number}
+   */
+  get_focus_x(index) {
+    const ret = wasm.wavesimtwodimelliptical_get_focus_x(this.__wbg_ptr, index);
+    return ret >>> 0;
+  }
+  /**
+   * @param {number} index
+   * @returns {number}
+   */
+  get_focus_y(index) {
+    const ret = wasm.wavesimtwodimelliptical_get_focus_y(this.__wbg_ptr, index);
+    return ret >>> 0;
+  }
+  /**
+   * @returns {number}
+   */
+  get_semimajor_axis() {
+    const ret = wasm.wavesimtwodimelliptical_get_semimajor_axis(this.__wbg_ptr);
+    return ret >>> 0;
+  }
+  /**
+   * @returns {number}
+   */
+  get_semiminor_axis() {
+    const ret = wasm.wavesimtwodimelliptical_get_semiminor_axis(this.__wbg_ptr);
+    return ret >>> 0;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_uValues() {
+    const ret = wasm.wavesimtwodimelliptical_get_uValues(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_vValues() {
+    const ret = wasm.wavesimtwodimelliptical_get_vValues(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @param {number} index
+   * @param {number} amplitude
+   */
+  modify_point_source_amplitude(index, amplitude) {
+    wasm.wavesimtwodimelliptical_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
+  }
+  /**
+   * @param {number} index
+   * @param {number} frequency
+   */
+  modify_point_source_frequency(index, frequency) {
+    wasm.wavesimtwodimelliptical_modify_point_source_frequency(this.__wbg_ptr, index, frequency);
+  }
+  /**
+   * @param {number} index
+   * @param {number} phase
+   */
+  modify_point_source_phase(index, phase) {
+    wasm.wavesimtwodimelliptical_modify_point_source_phase(this.__wbg_ptr, index, phase);
+  }
+  /**
+   * @param {number} index
+   * @param {number} x
+   */
+  modify_point_source_x(index, x) {
+    wasm.wavesimtwodimelliptical_modify_point_source_x(this.__wbg_ptr, index, x);
+  }
+  /**
+   * @param {number} index
+   * @param {number} y
+   */
+  modify_point_source_y(index, y) {
+    wasm.wavesimtwodimelliptical_modify_point_source_y(this.__wbg_ptr, index, y);
+  }
+  /**
+   * @param {number} width
+   * @param {number} height
+   * @param {number} dt
+   */
+  constructor(width, height, dt) {
+    const ret = wasm.wavesimtwodimelliptical_new(width, height, dt);
+    this.__wbg_ptr = ret >>> 0;
+    WaveSimTwoDimEllipticalFinalization.register(this, this.__wbg_ptr, this);
+    return this;
+  }
+  recalculate_masks() {
+    wasm.wavesimtwodimelliptical_recalculate_masks(this.__wbg_ptr);
+  }
+  remove_pml_layers() {
+    wasm.wavesimtwodimelliptical_remove_pml_layers(this.__wbg_ptr);
+  }
+  reset() {
+    wasm.wavesimtwodimelliptical_reset(this.__wbg_ptr);
+  }
+  /**
+   * @param {string} name
+   * @param {number} val
+   */
+  set_attr(name, val) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.wavesimtwodimelliptical_set_attr(this.__wbg_ptr, ptr0, len0, val);
+  }
+  /**
+   * @param {boolean} x_direction
+   * @param {boolean} positive
+   * @param {number} width
+   * @param {number} strength
+   */
+  set_pml_layer(x_direction, positive, width, strength) {
+    wasm.wavesimtwodimelliptical_set_pml_layer(this.__wbg_ptr, x_direction, positive, width, strength);
+  }
+  step() {
+    wasm.wavesimtwodimelliptical_step(this.__wbg_ptr);
+  }
+};
+if (Symbol.dispose) WaveSimTwoDimElliptical.prototype[Symbol.dispose] = WaveSimTwoDimElliptical.prototype.free;
 function __wbg_get_imports() {
   const import0 = {
     __proto__: null,
@@ -2393,9 +2395,6 @@ function __wbg_get_imports() {
     "./rust_calc_bg.js": import0
   };
 }
-var PointSourceFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
-}, unregister: () => {
-} } : new FinalizationRegistry((ptr) => wasm.__wbg_pointsource_free(ptr >>> 0, 1));
 var SmoothOpenPathBezierHandleCalculatorFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
 }, unregister: () => {
 } } : new FinalizationRegistry((ptr) => wasm.__wbg_smoothopenpathbezierhandlecalculator_free(ptr >>> 0, 1));
@@ -2405,6 +2404,9 @@ var WaveSimOneDimFinalization = typeof FinalizationRegistry === "undefined" ? { 
 var WaveSimTwoDimFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
 }, unregister: () => {
 } } : new FinalizationRegistry((ptr) => wasm.__wbg_wavesimtwodim_free(ptr >>> 0, 1));
+var WaveSimTwoDimEllipticalFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+}, unregister: () => {
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_wavesimtwodimelliptical_free(ptr >>> 0, 1));
 function getArrayF64FromWasm0(ptr, len) {
   ptr = ptr >>> 0;
   return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
@@ -2578,9 +2580,6 @@ async function initWasm() {
     isInitialized = true;
   }
 }
-function isWasmInitialized() {
-  return isInitialized;
-}
 async function createWaveSimTwoDim(width, height, dt) {
   await initWasm();
   if (!WaveSimTwoDim) {
@@ -2594,6 +2593,25 @@ async function createWaveSimTwoDim(width, height, dt) {
   } catch (error) {
     console.error(
       "Failed to create or initialize WaveSimOneDimRust instance:",
+      error
+    );
+    throw error;
+  }
+  return instance;
+}
+async function createWaveSimTwoDimElliptical(width, height, dt) {
+  await initWasm();
+  if (!WaveSimTwoDimElliptical) {
+    throw new Error("WaveSimTwoDimElliptical not found in rust-calc exports");
+  }
+  const WaveSimTwoDimElliptical2 = WaveSimTwoDimElliptical;
+  let instance;
+  try {
+    instance = new WaveSimTwoDimElliptical2(width, height, dt);
+    console.log("WaveSimTwoDimElliptical instance created:", instance);
+  } catch (error) {
+    console.error(
+      "Failed to create or initialize WaveSimTwoDimElliptical instance:",
       error
     );
     throw error;
@@ -2810,63 +2828,14 @@ var SceneViewTranslator = class {
 };
 
 // src/lib/base/bezier.ts
-var initializationStarted = false;
-var initializationPromise = null;
-async function ensureWasmInitialized() {
-  if (isWasmInitialized()) {
-    return;
-  }
-  if (!initializationStarted) {
-    initializationStarted = true;
-    initializationPromise = initWasm();
-  }
-  await initializationPromise;
-}
 var BezierSpline = class extends LineLikeMObject {
   constructor(num_steps, solver) {
     super();
-    this.solverInitialized = true;
-    this.solverInitializing = true;
     this.num_steps = num_steps;
     this.solver = solver;
     this.anchors = [];
     for (let i = 0; i < num_steps + 1; i++) {
       this.anchors.push([0, 0]);
-    }
-    this.initializeSolver();
-  }
-  async initializeSolver() {
-    if (this.solverInitializing || this.solverInitialized) {
-      console.log("Solver initialization already in progress or completed");
-      return;
-    }
-    this.solverInitializing = true;
-    console.log("Starting solver initialization...");
-    try {
-      console.log("Ensuring WebAssembly is initialized...");
-      await ensureWasmInitialized();
-      console.log("WebAssembly initialization complete");
-      console.log("Creating SmoothOpenPathBezier with n =", this.num_steps);
-      this.solver = await createSmoothOpenPathBezier(this.num_steps);
-      console.log("Solver created:", this.solver);
-      if (this.solver && typeof this.solver.get_bezier_handles === "function") {
-        this.solverInitialized = true;
-        console.log("Bezier solver initialized successfully");
-      } else {
-        console.error(
-          "Bezier solver created but doesn't have get_bezier_handles method. Solver:",
-          this.solver
-        );
-        this.solver = null;
-      }
-    } catch (error) {
-      console.error("Failed to initialize Bezier solver:", error);
-    } finally {
-      this.solverInitializing = false;
-      console.log(
-        "Solver initialization attempt completed. solverInitialized =",
-        this.solverInitialized
-      );
     }
   }
   set_anchors(new_anchors) {
@@ -2880,18 +2849,10 @@ var BezierSpline = class extends LineLikeMObject {
   }
   // Draw the Bezier curve using the solver
   _draw(ctx, scene) {
-    console.log(
-      "BezierSpline._draw called. solverInitialized =",
-      this.solverInitialized,
-      "solver =",
-      this.solver
-    );
-    if (!this.solverInitialized || !this.solver) {
-      console.log("Using fallback drawing");
-      this.drawFallback(ctx, scene);
+    if (!this.solver) {
+      this._drawFallback(ctx, scene);
       return;
     }
-    console.log("Using solver for drawing");
     let a_x, a_y, a;
     a = this.get_anchor(0);
     [a_x, a_y] = scene.v2c(a);
@@ -2902,10 +2863,7 @@ var BezierSpline = class extends LineLikeMObject {
       []
     );
     try {
-      console.log("Getting bezier handles for ", anchors_flat);
-      console.log("Solver:", this.solver);
       let handles_flat = this.solver.get_bezier_handles(anchors_flat);
-      console.log("Gotten bezier handles");
       let handles = [];
       for (let i = 0; i < handles_flat.length; i += 2) {
         handles.push([handles_flat[i], handles_flat[i + 1]]);
@@ -2920,12 +2878,12 @@ var BezierSpline = class extends LineLikeMObject {
       }
       ctx.stroke();
     } catch (error) {
-      console.warn("Error drawing Bezier spline, using fallback:", error);
-      this.drawFallback(ctx, scene);
+      console.warn("Error with solver, drawing with fallback method.");
+      this._drawFallback(ctx, scene);
     }
   }
   // Draw a simple piecewise linear as fallback
-  drawFallback(ctx, scene) {
+  _drawFallback(ctx, scene) {
     if (this.anchors.length === 0) return;
     let [x, y] = scene.v2c(this.get_anchor(0));
     ctx.beginPath();
@@ -2967,7 +2925,7 @@ var ParametricFunction = class extends BezierSpline {
   }
   _draw(ctx, scene) {
     if (this.mode == "jagged") {
-      this.drawFallback(ctx, scene);
+      this._drawFallback(ctx, scene);
     } else {
       super._draw(ctx, scene);
     }
@@ -3599,7 +3557,7 @@ var PointSourceOneDim = class {
     this.turn_on_time = time;
   }
 };
-var PointSource2 = class {
+var PointSource = class {
   // Time at which the source turns on
   constructor(x, y, w, a, p) {
     this.x = x;
@@ -4174,270 +4132,6 @@ var WaveSimTwoDim2 = class extends StateSimulator {
         this.clamp_value
       );
     }
-  }
-};
-var WaveSimTwoDimReflector = class extends WaveSimTwoDim2 {
-  constructor(width, height, dt) {
-    super(width, height, dt);
-    // For each point p in the domain, and each possible direction N, S, E, W,
-    // if the adjacent grid point to p in the chosen direction lies outside
-    // of the domain, then we note down the distance to the region boundary in that direction.
-    // Otherwise, we note the number 1 (which is the maximum possible value).
-    this.x_pos_mask = new Array(this.size()).fill(1);
-    this.x_neg_mask = new Array(this.size()).fill(1);
-    this.y_pos_mask = new Array(this.size()).fill(1);
-    this.y_neg_mask = new Array(this.size()).fill(1);
-    this._recalculate_masks();
-  }
-  set_attr(name, val) {
-    super.set_attr(name, val);
-    this._recalculate_masks();
-    this.zero_outside_region();
-  }
-  // *** Encodes geometry ***
-  // Returns whether the point (x, y) in array coordinates is inside the domain.
-  inside_region(x, y) {
-    return true;
-  }
-  // Helper functions which return the fraction of leeway right, left, up and down
-  // from the given array lattice point to the boundary.
-  _x_plus(x, y) {
-    return 1;
-  }
-  _x_minus(x, y) {
-    return 1;
-  }
-  _y_plus(x, y) {
-    return 1;
-  }
-  _y_minus(x, y) {
-    return 1;
-  }
-  // Recalculate mask arrays based on current geometry
-  _recalculate_masks() {
-    let ind;
-    for (let y_arr = 0; y_arr < this.height; y_arr++) {
-      for (let x_arr = 0; x_arr < this.width; x_arr++) {
-        ind = this.index(x_arr, y_arr);
-        [this.x_pos_mask[ind], this.x_neg_mask[ind]] = this._calc_bdy_dists_x(
-          x_arr,
-          y_arr
-        );
-        [this.y_pos_mask[ind], this.y_neg_mask[ind]] = this._calc_bdy_dists_y(
-          x_arr,
-          y_arr
-        );
-      }
-    }
-  }
-  // [0, 0] / [1, 1] means an exterior / interior point
-  // A value between 0 and 1 in the first coordinate means moving to the right crosses the boundary
-  // A value between 0 and 1 in the second coordinate means moving to the left crosses the boundary
-  _calc_bdy_dists_x(x_arr, y_arr) {
-    if (!this.inside_region(x_arr, y_arr)) {
-      return [0, 0];
-    } else {
-      let a_pos, a_neg;
-      if (!this.inside_region(x_arr + 1, y_arr)) {
-        a_pos = this._x_plus(x_arr, y_arr);
-      } else {
-        a_pos = 1;
-      }
-      if (!this.inside_region(x_arr - 1, y_arr)) {
-        a_neg = this._x_minus(x_arr, y_arr);
-      } else {
-        a_neg = 1;
-      }
-      return [a_pos, a_neg];
-    }
-  }
-  _calc_bdy_dists_y(x_arr, y_arr) {
-    if (!this.inside_region(x_arr, y_arr)) {
-      return [0, 0];
-    } else {
-      let a_plus, a_minus;
-      if (!this.inside_region(x_arr, y_arr + 1)) {
-        a_plus = this._y_plus(x_arr, y_arr);
-      } else {
-        a_plus = 1;
-      }
-      if (!this.inside_region(x_arr, y_arr - 1)) {
-        a_minus = this._y_minus(x_arr, y_arr);
-      } else {
-        a_minus = 1;
-      }
-      return [a_plus, a_minus];
-    }
-  }
-  // Sets all points outside the region to 0
-  zero_outside_region() {
-    let ind;
-    for (let y_arr = 0; y_arr < this.height; y_arr++) {
-      for (let x_arr = 0; x_arr < this.width; x_arr++) {
-        if (!this.inside_region(x_arr, y_arr)) {
-          ind = this.index(x_arr, y_arr);
-          this.vals[ind] = 0;
-          this.vals[ind + this.size()] = 0;
-          this.vals[ind + 2 * this.size()] = 0;
-          this.vals[ind + 3 * this.size()] = 0;
-        }
-      }
-    }
-  }
-  // *** Called during simulation ***
-  get_bdy_dists_x(x_arr, y_arr) {
-    return [
-      this.x_pos_mask[this.index(x_arr, y_arr)],
-      this.x_neg_mask[this.index(x_arr, y_arr)]
-    ];
-  }
-  get_bdy_dists_y(x_arr, y_arr) {
-    return [
-      this.y_pos_mask[this.index(x_arr, y_arr)],
-      this.y_neg_mask[this.index(x_arr, y_arr)]
-    ];
-  }
-  d_x_entry(arr, x, y) {
-    let [a_plus, a_minus] = this.get_bdy_dists_x(x, y);
-    if (a_plus == 0 && a_minus == 0) {
-      return 0;
-    } else if (a_plus == 1 && a_minus == 1) {
-      return super.d_x_entry(arr, x, y);
-    } else {
-      return (a_minus * this._two_dim_state.d_x_plus(arr, x, y) / a_plus + a_plus * this._two_dim_state.d_x_minus(arr, x, y) / a_minus) / (a_minus + a_plus);
-    }
-  }
-  d_y_entry(arr, x, y) {
-    let [a_plus, a_minus] = this.get_bdy_dists_y(x, y);
-    if (a_plus == 0 && a_minus == 0) {
-      return 0;
-    } else if (a_plus == 1 && a_minus == 1) {
-      return super.d_y_entry(arr, x, y);
-    } else {
-      return (a_minus * this._two_dim_state.d_y_plus(arr, x, y) / a_plus + a_plus * this._two_dim_state.d_y_minus(arr, x, y) / a_minus) / (a_minus + a_plus);
-    }
-  }
-  // Calculates an entry of (d/dx)(d/dx)(array)
-  l_x_entry(arr, x, y) {
-    let [a_plus, a_minus] = this.get_bdy_dists_x(x, y);
-    if (a_plus == 0 && a_minus == 0) {
-      return 0;
-    } else if (a_plus == 1 && a_minus == 1) {
-      return super.l_x_entry(arr, x, y);
-    } else {
-      return (this._two_dim_state.d_x_plus(arr, x, y) / a_plus - this._two_dim_state.d_x_minus(arr, x, y) / a_minus) / ((a_minus + a_plus) / 2);
-    }
-  }
-  // Calculates an entry of (d/dy)(d/dy)(array)
-  l_y_entry(arr, x, y) {
-    let [a_plus, a_minus] = this.get_bdy_dists_y(x, y);
-    if (a_plus == 0 && a_minus == 0) {
-      return 0;
-    } else if (a_plus == 1 && a_minus == 1) {
-      return super.l_y_entry(arr, x, y);
-    } else {
-      return (this._two_dim_state.d_y_plus(arr, x, y) / a_plus - this._two_dim_state.d_y_minus(arr, x, y) / a_minus) / ((a_minus + a_plus) / 2);
-    }
-  }
-};
-var WaveSimTwoDimEllipticReflector = class extends WaveSimTwoDimReflector {
-  constructor(width, height, dt) {
-    super(width, height, dt);
-    // TODO: Ensure PML layer doesn't interfere with the region.
-    this.semimajor_axis = 80;
-    this.semiminor_axis = 60;
-    this.w = 5;
-    // Frequency
-    this.a = 5;
-    // Amplitude
-    this.foci = [
-      [
-        Math.floor(
-          this.width / 2 + Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2)
-        ),
-        Math.floor(this.height / 2)
-      ],
-      [
-        Math.floor(
-          this.width / 2 - Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2)
-        ),
-        Math.floor(this.height / 2)
-      ]
-    ];
-    let [x, y] = this.foci[0];
-    this.point_sources = [new PointSource2(x, y, 5, 5, 0)];
-  }
-  _recalculate_foci() {
-    let focus_1_x, focus_1_y;
-    let focus_2_x, focus_2_y;
-    if (this.semimajor_axis > this.semiminor_axis) {
-      [focus_1_x, focus_1_y] = [
-        Math.floor(
-          this.width / 2 + Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2)
-        ),
-        Math.floor(this.height / 2)
-      ];
-      [focus_2_x, focus_2_y] = [
-        Math.floor(
-          this.width / 2 - Math.sqrt(this.semimajor_axis ** 2 - this.semiminor_axis ** 2)
-        ),
-        Math.floor(this.height / 2)
-      ];
-    } else {
-      [focus_1_x, focus_1_y] = [
-        Math.floor(this.width / 2),
-        Math.floor(
-          this.height / 2 + Math.sqrt(this.semiminor_axis ** 2 - this.semimajor_axis ** 2)
-        )
-      ];
-      [focus_2_x, focus_2_y] = [
-        Math.floor(this.width / 2),
-        Math.floor(
-          this.height / 2 - Math.sqrt(this.semiminor_axis ** 2 - this.semimajor_axis ** 2)
-        )
-      ];
-    }
-    this.point_sources = {
-      0: new PointSource2(focus_1_x, focus_1_y, 5, 5, 0)
-    };
-    this.foci = [
-      [focus_1_x, focus_1_y],
-      [focus_2_x, focus_2_y]
-    ];
-  }
-  set_attr(name, val) {
-    let p = this.point_sources[0];
-    if (name == "w") {
-      p.set_w(val);
-    } else if (name == "a") {
-      p.set_a(val);
-    } else {
-      this._recalculate_foci();
-    }
-    super.set_attr(name, val);
-  }
-  inside_region(x_arr, y_arr) {
-    return ((x_arr - this.width / 2) / this.semimajor_axis) ** 2 + ((y_arr - this.height / 2) / this.semiminor_axis) ** 2 < 1;
-  }
-  _x_plus(x, y) {
-    return Math.abs(
-      this.semimajor_axis * Math.sqrt(1 - ((y - this.height / 2) / this.semiminor_axis) ** 2) - x + this.width / 2
-    );
-  }
-  _x_minus(x, y) {
-    return Math.abs(
-      this.semimajor_axis * Math.sqrt(1 - ((y - this.height / 2) / this.semiminor_axis) ** 2) + x - this.width / 2
-    );
-  }
-  _y_plus(x, y) {
-    return Math.abs(
-      this.semiminor_axis * Math.sqrt(1 - ((x - this.width / 2) / this.semimajor_axis) ** 2) - y + this.height / 2
-    );
-  }
-  _y_minus(x, y) {
-    return Math.abs(
-      this.semiminor_axis * Math.sqrt(1 - ((x - this.width / 2) / this.semimajor_axis) ** 2) + y - this.height / 2
-    );
   }
 };
 var WaveSimTwoDimPointsHeatmapScene = class extends SceneFromSimulator {
@@ -5604,12 +5298,12 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
       }
       reset_simulation();
       for (let i = 0; i < total_arr_width; i++) {
-        sim.add_point_source(new PointSource2(i, 0, 0, 0, 0));
-        sim.add_point_source(new PointSource2(i, total_arr_height - 1, 0, 0, 0));
+        sim.add_point_source(new PointSource(i, 0, 0, 0, 0));
+        sim.add_point_source(new PointSource(i, total_arr_height - 1, 0, 0, 0));
       }
       for (let j = 1; j < total_arr_height - 1; j++) {
-        sim.add_point_source(new PointSource2(0, j, 0, 0, 0));
-        sim.add_point_source(new PointSource2(total_arr_width - 1, j, 0, 0, 0));
+        sim.add_point_source(new PointSource(0, j, 0, 0, 0));
+        sim.add_point_source(new PointSource(total_arr_width - 1, j, 0, 0, 0));
       }
       let zoom_ratio = 1;
       let scene = new WaveSimTwoDimThreeDScene(
@@ -5740,16 +5434,18 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
         throw new Error("Failed to get 2D context");
       }
       const imageData = ctx.createImageData(width, height);
-      let sim = new WaveSimTwoDimEllipticReflector(width, height, dt);
-      sim.wave_propagation_speed = 0.1 * width;
-      sim.set_attr("w", 6);
-      sim.remove_pml_layers();
+      let sim = await createWaveSimTwoDimElliptical(width, height, dt);
+      sim.recalculate_masks();
+      sim.set_attr("wave_propagation_speed", 0.1 * width);
+      let a = 5;
+      let w = 5;
+      sim.add_point_source(sim.get_focus_x(0), sim.get_focus_y(0), w, a, 0);
       let handler = new InteractiveHandler(sim);
       let solver = await createSmoothOpenPathBezier(100);
       let conic = new ParametricFunction(
         (t) => [
-          sim.semimajor_axis / width * (xmax - xmin) * Math.cos(t),
-          sim.semiminor_axis / height * (ymax - ymin) * Math.sin(t)
+          sim.get_semimajor_axis() / width * (xmax - xmin) * Math.cos(t),
+          sim.get_semiminor_axis() / height * (ymax - ymin) * Math.sin(t)
         ],
         0,
         Math.PI * 2,
@@ -5766,31 +5462,11 @@ var WaveSimTwoDimThreeDScene = class extends InteractivePlayingThreeDScene {
       scene.add("conic", conic);
       scene.draw();
       handler.add_scene(scene);
-      let e_slider = Slider(
-        document.getElementById(name + "-slider-1"),
-        function(val) {
-          handler.add_to_queue(() => {
-            sim.set_attr("semiminor_axis", val);
-            conic.set_function((t) => [
-              sim.semimajor_axis / width * (xmax - xmin) * Math.cos(t),
-              val / height * (ymax - ymin) * Math.sin(t)
-            ]);
-            scene.draw();
-          });
-        },
-        {
-          name: "Vertical size",
-          initial_value: "60",
-          min: 30,
-          max: 100,
-          step: 1
-        }
-      );
       let w_slider = Slider(
         document.getElementById(name + "-slider-2"),
         function(val) {
           handler.add_to_queue(() => {
-            sim.set_attr("w", val);
+            sim.modify_point_source_frequency(0, val);
           });
         },
         {
