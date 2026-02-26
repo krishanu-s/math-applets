@@ -18,6 +18,8 @@ export {
   rot_x,
   rot_y,
   rot_z,
+  spherical_to_cartesian,
+  cartesian_to_spherical,
 } from "./matvec";
 export { Vec3D, Mat3by3 } from "./matvec";
 export { Camera3D, ThreeDScene } from "./scene";
@@ -36,4 +38,6 @@ export {
   TwoHeadedArrow3D,
   Cube,
   ParametrizedCurve3D,
+  PolygonPanel3D,
 } from "./mobjects";
+export { SphereHeatMap } from "./surfaces";

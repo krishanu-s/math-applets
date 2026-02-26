@@ -1,5 +1,5 @@
 // Heat equation simulator
-
+import { gaussian_normal_pdf } from "../base";
 import {
   StateSimulator,
   TwoDimDrawable,
@@ -116,10 +116,57 @@ export class HeatSimSpherical
     let dS = new Array(this.state_size).fill(0);
     for (let theta = 0; theta <= this.num_theta; theta++) {
       for (let phi = 0; phi < this.num_phi; phi++) {
-        dS[this.index(theta, phi)] = this.laplacian_entry(vals, theta, phi);
+        dS[this.index(theta, phi)] =
+          this.heat_propagation_speed * this.laplacian_entry(vals, theta, phi);
       }
     }
-    // console.log(dS);
     return dS;
+  }
+}
+
+// A heat equation simulation on the surface of a sphere where each pole is
+// held at a different, constant temperature.
+export class HeatSimPoles extends HeatSimSpherical {
+  n_pole_temp: number = 20;
+  s_pole_temp: number = -20;
+  // Heat/cold sources are modeled locally using a normal distribution, to avoid sharp edges
+  bump_std: number = 0.05;
+  bump_vals: number[] = [];
+  constructor(num_theta: number, num_phi: number, dt: number) {
+    super(num_theta, num_phi, dt);
+    this._make_bump_vals();
+  }
+  _make_bump_vals(): void {
+    let i = 0;
+    let bump_val = gaussian_normal_pdf(
+      0,
+      this.bump_std,
+      (i * Math.PI) / this.num_theta,
+    );
+    this.bump_vals = [];
+    while (bump_val > 0.2) {
+      this.bump_vals.push(bump_val);
+      i++;
+      bump_val = gaussian_normal_pdf(
+        0,
+        this.bump_std,
+        (i * Math.PI) / this.num_theta,
+      );
+    }
+  }
+  set_n_pole_temp(temp: number): void {
+    this.n_pole_temp = temp;
+  }
+  set_s_pole_temp(temp: number): void {
+    this.s_pole_temp = temp;
+  }
+  set_boundary_conditions(s: Array<number>, t: number): void {
+    for (let phi = 0; phi < this.num_phi; phi++) {
+      for (let j = 0; j < this.bump_vals.length; j++) {
+        let bump_val = this.bump_vals[j] as number;
+        s[this.index(j, phi)] = this.n_pole_temp * bump_val;
+        s[this.index(this.num_theta - j, phi)] = this.s_pole_temp * bump_val;
+      }
+    }
   }
 }

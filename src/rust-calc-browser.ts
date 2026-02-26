@@ -145,6 +145,68 @@ export async function createWaveSimTwoDim(
   return instance;
 }
 
+// TODO Move this to lib/simulator/heatsim.ts
+export async function createHeatSimTwoDim(
+  width: number,
+  height: number,
+  dt: number,
+): Promise<any> {
+  await initWasm();
+
+  if (!(rustCalc as any).HeatSimTwoDim) {
+    throw new Error("HeatSimTwoDim not found in rust-calc exports");
+  }
+
+  const HeatSimTwoDim = (rustCalc as any).HeatSimTwoDim;
+
+  let instance;
+
+  try {
+    // Create instance
+    instance = new HeatSimTwoDim(width, height, dt);
+    console.log("HeatSimTwoDim instance created:", instance);
+  } catch (error) {
+    console.error(
+      "Failed to create or initialize HeatSimTwoDimRust instance:",
+      error,
+    );
+    throw error;
+  }
+
+  return instance;
+}
+
+// TODO Move this to lib/simulator/heatsim.ts
+export async function createHeatSimSphere(
+  num_theta: number,
+  num_phi: number,
+  dt: number,
+): Promise<any> {
+  await initWasm();
+
+  if (!(rustCalc as any).HeatSimSphere) {
+    throw new Error("HeatSimSphere not found in rust-calc exports");
+  }
+
+  const HeatSimSphere = (rustCalc as any).HeatSimSphere;
+
+  let instance;
+
+  try {
+    // Create instance
+    instance = new HeatSimSphere(num_theta, num_phi, dt);
+    console.log("HeatSimSphere instance created:", instance);
+  } catch (error) {
+    console.error(
+      "Failed to create or initialize HeatSimSphereRust instance:",
+      error,
+    );
+    throw error;
+  }
+
+  return instance;
+}
+
 // TODO Move this to lib/simulator/wavesim.ts
 export async function createWaveSimTwoDimElliptical(
   width: number,

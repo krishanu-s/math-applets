@@ -31,6 +31,20 @@ export abstract class Simulator {
       this[name as keyof typeof Simulator] = val;
     }
   }
+  // Reveals version of internal state for drawing purposes
+  get_drawable(): number[] {
+    return this.get_uValues();
+  }
+  // Returns full internal state
+  get_uValues(): number[] {
+    return [];
+  }
+  get_time(): number {
+    return this.time;
+  }
+  get_dt(): number {
+    return this.dt;
+  }
 }
 // Identical extension of ThreeDScene as InteractivePlayingScene is of Scene
 // TODO This is deprecated, now interactive scenes linked to a simulator are managed
@@ -171,7 +185,7 @@ export class SceneFromSimulator extends Scene {
     // Implement reset logic
   }
   update_mobjects_from_simulator(simulator: Simulator) {
-    // Implement update logic, calling from the simulator
+    // Implement update logic, calling get_uValues() from the simulator
   }
   toggle_pause() {}
   toggle_unpause() {}
@@ -200,6 +214,7 @@ export class InteractiveHandler {
   time: number = 0;
   dt: number = 0.01;
   end_time: number | undefined; // Store a known end-time in case the simulation is paused and unpaused
+  num_steps_per_frame: number = 1; // Number of simulator steps before updating scenes
   constructor(simulator: Simulator) {
     this.simulator = simulator;
   }
@@ -224,6 +239,10 @@ export class InteractiveHandler {
     attr_val: number,
   ) {
     this.simulator.set_attr(attr_name, attr_val);
+  }
+  set_num_steps_per_frame(num_steps: number) {
+    this.num_steps_per_frame = num_steps;
+    return this;
   }
   add_pause_button(container: HTMLElement): HTMLButtonElement {
     let self = this;
@@ -291,8 +310,10 @@ export class InteractiveHandler {
       else if (this.time > (until as number)) {
         return;
       } else {
-        this.simulator.step();
-        this.time += this.simulator.dt;
+        for (let i = 0; i < this.num_steps_per_frame; i++) {
+          this.simulator.step();
+        }
+        this.time = this.simulator.get_time();
         for (let scene of this.scenes) {
           scene.update_mobjects_from_simulator(this.simulator);
           scene.draw();

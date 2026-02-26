@@ -1963,6 +1963,8 @@ var HeatMap = class extends MObject {
 // rust-calc/pkg/rust_calc.js
 var rust_calc_exports = {};
 __export(rust_calc_exports, {
+  HeatSimSphere: () => HeatSimSphere,
+  HeatSimTwoDim: () => HeatSimTwoDim,
   SmoothOpenPathBezierHandleCalculator: () => SmoothOpenPathBezierHandleCalculator,
   WaveSimOneDim: () => WaveSimOneDim,
   WaveSimTwoDim: () => WaveSimTwoDim,
@@ -1970,6 +1972,233 @@ __export(rust_calc_exports, {
   default: () => __wbg_init,
   initSync: () => initSync
 });
+var HeatSimSphere = class {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    HeatSimSphereFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_heatsimsphere_free(ptr, 0);
+  }
+  /**
+   * @param {number} theta
+   * @param {number} amplitude
+   */
+  add_latitude_source(theta, amplitude) {
+    wasm.heatsimsphere_add_latitude_source(this.__wbg_ptr, theta, amplitude);
+  }
+  /**
+   * @param {number} phi
+   * @param {number} amplitude
+   */
+  add_longitude_source(phi, amplitude) {
+    wasm.heatsimsphere_add_longitude_source(this.__wbg_ptr, phi, amplitude);
+  }
+  /**
+   * @param {number} theta
+   * @param {number} phi
+   * @param {number} amplitude
+   */
+  add_point_source(theta, phi, amplitude) {
+    wasm.heatsimsphere_add_point_source(this.__wbg_ptr, theta, phi, amplitude);
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_drawable() {
+    const ret = wasm.heatsimsphere_get_drawable(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get_dt() {
+    const ret = wasm.heatsimsphere_get_dt(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get_time() {
+    const ret = wasm.heatsimsphere_get_time(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_uValues() {
+    const ret = wasm.heatsimsphere_get_uValues(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @param {number} index
+   * @param {number} amplitude
+   */
+  modify_latitude_source_amplitude(index, amplitude) {
+    wasm.heatsimsphere_modify_latitude_source_amplitude(this.__wbg_ptr, index, amplitude);
+  }
+  /**
+   * @param {number} index
+   * @param {number} theta
+   */
+  modify_latitude_source_theta(index, theta) {
+    wasm.heatsimsphere_modify_latitude_source_theta(this.__wbg_ptr, index, theta);
+  }
+  /**
+   * @param {number} index
+   * @param {number} amplitude
+   */
+  modify_longitude_source_amplitude(index, amplitude) {
+    wasm.heatsimsphere_modify_longitude_source_amplitude(this.__wbg_ptr, index, amplitude);
+  }
+  /**
+   * @param {number} index
+   * @param {number} phi
+   */
+  modify_longitude_source_phi(index, phi) {
+    wasm.heatsimsphere_modify_longitude_source_phi(this.__wbg_ptr, index, phi);
+  }
+  /**
+   * @param {number} index
+   * @param {number} amplitude
+   */
+  modify_point_source_amplitude(index, amplitude) {
+    wasm.heatsimsphere_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
+  }
+  /**
+   * @param {number} index
+   * @param {number} phi
+   */
+  modify_point_source_phi(index, phi) {
+    wasm.heatsimsphere_modify_point_source_phi(this.__wbg_ptr, index, phi);
+  }
+  /**
+   * @param {number} index
+   * @param {number} theta
+   */
+  modify_point_source_theta(index, theta) {
+    wasm.heatsimsphere_modify_point_source_theta(this.__wbg_ptr, index, theta);
+  }
+  /**
+   * @param {number} num_theta
+   * @param {number} num_phi
+   * @param {number} dt
+   */
+  constructor(num_theta, num_phi, dt) {
+    const ret = wasm.heatsimsphere_new(num_theta, num_phi, dt);
+    this.__wbg_ptr = ret >>> 0;
+    HeatSimSphereFinalization.register(this, this.__wbg_ptr, this);
+    return this;
+  }
+  reset() {
+    wasm.heatsimsphere_reset(this.__wbg_ptr);
+  }
+  /**
+   * @param {string} name
+   * @param {number} val
+   */
+  set_attr(name, val) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.heatsimsphere_set_attr(this.__wbg_ptr, ptr0, len0, val);
+  }
+  step() {
+    wasm.heatsimsphere_step(this.__wbg_ptr);
+  }
+};
+if (Symbol.dispose) HeatSimSphere.prototype[Symbol.dispose] = HeatSimSphere.prototype.free;
+var HeatSimTwoDim = class {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    HeatSimTwoDimFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_heatsimtwodim_free(ptr, 0);
+  }
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} amplitude
+   */
+  add_point_source(x, y, amplitude) {
+    wasm.heatsimtwodim_add_point_source(this.__wbg_ptr, x, y, amplitude);
+  }
+  /**
+   * @returns {number}
+   */
+  get_dt() {
+    const ret = wasm.heatsimtwodim_get_dt(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get_time() {
+    const ret = wasm.heatsimtwodim_get_time(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_uValues() {
+    const ret = wasm.heatsimtwodim_get_uValues(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @param {number} index
+   * @param {number} amplitude
+   */
+  modify_point_source_amplitude(index, amplitude) {
+    wasm.heatsimtwodim_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
+  }
+  /**
+   * @param {number} index
+   * @param {number} x
+   */
+  modify_point_source_x(index, x) {
+    wasm.heatsimtwodim_modify_point_source_x(this.__wbg_ptr, index, x);
+  }
+  /**
+   * @param {number} index
+   * @param {number} y
+   */
+  modify_point_source_y(index, y) {
+    wasm.heatsimtwodim_modify_point_source_y(this.__wbg_ptr, index, y);
+  }
+  /**
+   * @param {number} width
+   * @param {number} height
+   * @param {number} dt
+   */
+  constructor(width, height, dt) {
+    const ret = wasm.heatsimtwodim_new(width, height, dt);
+    this.__wbg_ptr = ret >>> 0;
+    HeatSimTwoDimFinalization.register(this, this.__wbg_ptr, this);
+    return this;
+  }
+  reset() {
+    wasm.heatsimtwodim_reset(this.__wbg_ptr);
+  }
+  /**
+   * @param {string} name
+   * @param {number} val
+   */
+  set_attr(name, val) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.heatsimtwodim_set_attr(this.__wbg_ptr, ptr0, len0, val);
+  }
+  step() {
+    wasm.heatsimtwodim_step(this.__wbg_ptr);
+  }
+};
+if (Symbol.dispose) HeatSimTwoDim.prototype[Symbol.dispose] = HeatSimTwoDim.prototype.free;
 var SmoothOpenPathBezierHandleCalculator = class {
   __destroy_into_raw() {
     const ptr = this.__wbg_ptr;
@@ -2032,6 +2261,20 @@ var WaveSimOneDim = class {
    */
   add_point_source(x, frequency, amplitude, phase) {
     wasm.wavesimonedim_add_point_source(this.__wbg_ptr, x, frequency, amplitude, phase);
+  }
+  /**
+   * @returns {number}
+   */
+  get_dt() {
+    const ret = wasm.wavesimonedim_get_dt(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get_time() {
+    const ret = wasm.wavesimonedim_get_time(this.__wbg_ptr);
+    return ret;
   }
   /**
    * @returns {Float64Array}
@@ -2130,6 +2373,20 @@ var WaveSimTwoDim = class {
    */
   add_point_source(x, y, frequency, amplitude, phase) {
     wasm.wavesimtwodim_add_point_source(this.__wbg_ptr, x, y, frequency, amplitude, phase);
+  }
+  /**
+   * @returns {number}
+   */
+  get_dt() {
+    const ret = wasm.wavesimtwodim_get_dt(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get_time() {
+    const ret = wasm.wavesimtwodim_get_time(this.__wbg_ptr);
+    return ret;
   }
   /**
    * @returns {Float64Array}
@@ -2242,6 +2499,13 @@ var WaveSimTwoDimElliptical = class {
     wasm.wavesimtwodimelliptical_add_point_source(this.__wbg_ptr, x, y, frequency, amplitude, phase);
   }
   /**
+   * @returns {number}
+   */
+  get_dt() {
+    const ret = wasm.wavesimtwodimelliptical_get_dt(this.__wbg_ptr);
+    return ret;
+  }
+  /**
    * @param {number} index
    * @returns {number}
    */
@@ -2270,6 +2534,13 @@ var WaveSimTwoDimElliptical = class {
   get_semiminor_axis() {
     const ret = wasm.wavesimtwodimelliptical_get_semiminor_axis(this.__wbg_ptr);
     return ret >>> 0;
+  }
+  /**
+   * @returns {number}
+   */
+  get_time() {
+    const ret = wasm.wavesimtwodimelliptical_get_time(this.__wbg_ptr);
+    return ret;
   }
   /**
    * @returns {Float64Array}
@@ -2395,6 +2666,12 @@ function __wbg_get_imports() {
     "./rust_calc_bg.js": import0
   };
 }
+var HeatSimSphereFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+}, unregister: () => {
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_heatsimsphere_free(ptr >>> 0, 1));
+var HeatSimTwoDimFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+}, unregister: () => {
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_heatsimtwodim_free(ptr >>> 0, 1));
 var SmoothOpenPathBezierHandleCalculatorFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
 }, unregister: () => {
 } } : new FinalizationRegistry((ptr) => wasm.__wbg_smoothopenpathbezierhandlecalculator_free(ptr >>> 0, 1));
@@ -3139,6 +3416,20 @@ var Simulator = class {
       this[name] = val;
     }
   }
+  // Reveals version of internal state for drawing purposes
+  get_drawable() {
+    return this.get_uValues();
+  }
+  // Returns full internal state
+  get_uValues() {
+    return [];
+  }
+  get_time() {
+    return this.time;
+  }
+  get_dt() {
+    return this.dt;
+  }
 };
 var InteractivePlayingThreeDScene = class extends ThreeDScene {
   constructor(canvas, simulators) {
@@ -3260,13 +3551,15 @@ var SceneFromSimulator = class extends Scene {
   }
 };
 var InteractiveHandler = class {
-  // Store a known end-time in case the simulation is paused and unpaused
+  // Number of simulator steps before updating scenes
   constructor(simulator) {
     this.scenes = [];
     this.action_queue = [];
     this.paused = true;
     this.time = 0;
     this.dt = 0.01;
+    // Store a known end-time in case the simulation is paused and unpaused
+    this.num_steps_per_frame = 1;
     this.simulator = simulator;
   }
   // Adds a scene
@@ -3286,6 +3579,10 @@ var InteractiveHandler = class {
   }
   set_simulator_attr(simulator_ind, attr_name, attr_val) {
     this.simulator.set_attr(attr_name, attr_val);
+  }
+  set_num_steps_per_frame(num_steps) {
+    this.num_steps_per_frame = num_steps;
+    return this;
   }
   add_pause_button(container) {
     let self = this;
@@ -3341,8 +3638,10 @@ var InteractiveHandler = class {
       } else if (this.time > until) {
         return;
       } else {
-        this.simulator.step();
-        this.time += this.simulator.dt;
+        for (let i = 0; i < this.num_steps_per_frame; i++) {
+          this.simulator.step();
+        }
+        this.time = this.simulator.get_time();
         for (let scene of this.scenes) {
           scene.update_mobjects_from_simulator(this.simulator);
           scene.draw();

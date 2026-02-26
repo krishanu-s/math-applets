@@ -86,25 +86,25 @@ export function vec3_normalize(v: Vec3D): Vec3D {
   }
 }
 
-// Converts a vector from spherical coordinates to Cartesian coordinates
-export function spherical_to_cartesian(c: SphericalVec3D): Vec3D {
+// Spherical coordinates to cartesian coordinates
+export function spherical_to_cartesian(
+  radius: number,
+  theta_rad: number,
+  phi_rad: number,
+): Vec3D {
   return [
-    Math.cos(c[0]) * Math.cos(c[1]),
-    Math.cos(c[0]) * Math.sin(c[1]),
-    Math.sin(c[0]),
+    radius * Math.sin(theta_rad) * Math.cos(phi_rad),
+    radius * Math.sin(theta_rad) * Math.sin(phi_rad),
+    radius * Math.cos(theta_rad),
   ];
 }
 
-// Converts a vector from Cartesian coordinates to spherical coordinates
-export function cartesian_to_spherical(v: Vec3D): SphericalVec3D {
-  let nv = vec3_normalize(v);
-  let theta = Math.asin(nv[2]);
-  let phi = Math.acos(nv[0] / Math.cos(theta));
-  if (nv[1] / Math.cos(theta) > 0) {
-    return [theta, phi];
-  } else {
-    return [theta, 2 * Math.PI - phi];
-  }
+// Cartesian coordinates to spherical coordinates
+export function cartesian_to_spherical(x: number, y: number, z: number): Vec3D {
+  let r = Math.sqrt(x * x + y * y + z * z);
+  let theta = Math.acos(z / r);
+  let phi = Math.atan2(y, x);
+  return [r, theta, phi];
 }
 
 // Multiplies a 3x3 matrix by a vector to produce another vector

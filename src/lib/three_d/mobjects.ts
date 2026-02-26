@@ -1004,3 +1004,44 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
     ctx.stroke();
   }
 }
+
+// A polygon in 3D where the points are assumed to be coplanar.
+export class PolygonPanel3D extends ThreeDFillLikeMObject {
+  points: Vec3D[];
+  constructor(points: Vec3D[]) {
+    super();
+    this.points = points;
+  }
+  // TODO Fix this and fix visibility condition
+  depth(scene: ThreeDScene): number {
+    return scene.camera.depth(
+      vec3_scale(vec3_sum_list(this.points), 1 / this.points.length),
+    );
+  }
+  _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
+    let current_point = this.points[0] as Vec3D;
+    let current_point_camera_view = scene.camera_view(current_point) as Vec2D;
+    let [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+    ctx.moveTo(cp_x, cp_y);
+    ctx.beginPath();
+    for (let i = 1; i < this.points.length; i++) {
+      current_point = this.points[i] as Vec3D;
+      current_point_camera_view = scene.camera_view(current_point) as Vec2D;
+      [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+      ctx.lineTo(cp_x, cp_y);
+    }
+    current_point = this.points[0] as Vec3D;
+    current_point_camera_view = scene.camera_view(current_point) as Vec2D;
+    [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+    ctx.lineTo(cp_x, cp_y);
+
+    ctx.closePath();
+    // ctx.stroke();
+
+    if (this.fill_options.fill) {
+      ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;
+      ctx.fill();
+      ctx.globalAlpha = ctx.globalAlpha / this.fill_options.fill_alpha;
+    }
+  }
+}

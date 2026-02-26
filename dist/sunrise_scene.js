@@ -963,15 +963,11 @@ function vec3_normalize(v) {
     return vec3_scale(v, 1 / n);
   }
 }
-function cartesian_to_spherical(v) {
-  let nv = vec3_normalize(v);
-  let theta = Math.asin(nv[2]);
-  let phi = Math.acos(nv[0] / Math.cos(theta));
-  if (nv[1] / Math.cos(theta) > 0) {
-    return [theta, phi];
-  } else {
-    return [theta, 2 * Math.PI - phi];
-  }
+function cartesian_to_spherical(x, y, z) {
+  let r = Math.sqrt(x * x + y * y + z * z);
+  let theta = Math.acos(z / r);
+  let phi = Math.atan2(y, x);
+  return [r, theta, phi];
 }
 function matmul_vec(m, v) {
   let result = [0, 0, 0];
@@ -2105,7 +2101,8 @@ function sun_zenith_and_azimuth(year_angle, day_angle, tilt, latitude) {
   v = rot_z(v, latitude);
   v = rot_y(v, -Math.PI / 2);
   v = rot_z(v, -Math.PI / 2);
-  let [theta, phi] = cartesian_to_spherical(v);
+  let [r, theta, phi] = cartesian_to_spherical(v[0], v[1], v[2]);
+  theta -= Math.PI / 2;
   if (phi < 0 || phi > 2 * Math.PI) {
     console.log(phi);
     throw new Error("Invalid azimuth");

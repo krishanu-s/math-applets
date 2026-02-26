@@ -11,7 +11,6 @@ import {
   rot_z,
   rot_x,
   cartesian_to_spherical,
-  spherical_to_cartesian,
   rot,
 } from "./lib/three_d/matvec.js";
 import { ColorMap } from "./lib/base/color.js";
@@ -62,7 +61,8 @@ function sun_zenith_and_azimuth(
   // Correct for different coordinate systems.
   v = rot_y(v, -Math.PI / 2);
   v = rot_z(v, -Math.PI / 2);
-  let [theta, phi] = cartesian_to_spherical(v);
+  let [r, theta, phi] = cartesian_to_spherical(v[0], v[1], v[2]);
+  theta -= Math.PI / 2;
   if (phi < 0 || phi > 2 * Math.PI) {
     console.log(phi);
     throw new Error("Invalid azimuth");

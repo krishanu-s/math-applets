@@ -1787,6 +1787,20 @@ var Simulator = class {
       this[name] = val;
     }
   }
+  // Reveals version of internal state for drawing purposes
+  get_drawable() {
+    return this.get_uValues();
+  }
+  // Returns full internal state
+  get_uValues() {
+    return [];
+  }
+  get_time() {
+    return this.time;
+  }
+  get_dt() {
+    return this.dt;
+  }
 };
 var SceneFromSimulator = class extends Scene {
   constructor(canvas) {
@@ -1802,13 +1816,15 @@ var SceneFromSimulator = class extends Scene {
   }
 };
 var InteractiveHandler = class {
-  // Store a known end-time in case the simulation is paused and unpaused
+  // Number of simulator steps before updating scenes
   constructor(simulator) {
     this.scenes = [];
     this.action_queue = [];
     this.paused = true;
     this.time = 0;
     this.dt = 0.01;
+    // Store a known end-time in case the simulation is paused and unpaused
+    this.num_steps_per_frame = 1;
     this.simulator = simulator;
   }
   // Adds a scene
@@ -1828,6 +1844,10 @@ var InteractiveHandler = class {
   }
   set_simulator_attr(simulator_ind, attr_name, attr_val) {
     this.simulator.set_attr(attr_name, attr_val);
+  }
+  set_num_steps_per_frame(num_steps) {
+    this.num_steps_per_frame = num_steps;
+    return this;
   }
   add_pause_button(container) {
     let self = this;
@@ -1883,8 +1903,10 @@ var InteractiveHandler = class {
       } else if (this.time > until) {
         return;
       } else {
-        this.simulator.step();
-        this.time += this.simulator.dt;
+        for (let i = 0; i < this.num_steps_per_frame; i++) {
+          this.simulator.step();
+        }
+        this.time = this.simulator.get_time();
         for (let scene of this.scenes) {
           scene.update_mobjects_from_simulator(this.simulator);
           scene.draw();

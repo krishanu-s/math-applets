@@ -307,7 +307,7 @@ export class SphericalState {
     this.num_phi = num_phi;
   }
   index(theta: number, phi: number) {
-    return phi * (this.num_theta + 1) + theta;
+    return theta + phi * (this.num_theta + 1);
   }
   new_arr(): Array<number> {
     return new Array<number>((this.num_theta + 1) * this.num_phi).fill(0);
@@ -343,31 +343,21 @@ export class SphericalState {
     let l_theta: number, l_phi: number;
     if (theta == 0) {
       // North pole
-      l_theta = 0;
-      let val = this.get_val(arr, theta, phi);
-      let n = Math.floor(this.num_phi / 2);
-      for (let p = 0; p < n; p++) {
-        l_theta +=
-          this.get_val(arr, 1, p) +
-          this.get_val(arr, 1, (p + n) % this.num_phi) -
-          2 * val;
+      l_theta = -this.num_phi * this.get_val(arr, 0, phi);
+      for (let p = 0; p < this.num_phi; p++) {
+        l_theta += this.get_val(arr, 1, p);
       }
-      l_theta *= 1 / n;
+      l_theta *= 2 / this.num_phi;
       l_theta *= 1 / this.dtheta() ** 2;
       // console.log(l_theta, theta, phi);
       return l_theta;
     } else if (theta == this.num_theta) {
       // South pole
-      l_theta = 0;
-      let val = this.get_val(arr, theta, phi);
-      let n = Math.floor(this.num_phi / 2);
-      for (let p = 0; p < n; p++) {
-        l_theta +=
-          this.get_val(arr, this.num_theta - 2, p) +
-          this.get_val(arr, this.num_theta - 2, (p + n) % this.num_phi) -
-          2 * val;
+      l_theta = -this.num_phi * this.get_val(arr, this.num_theta, phi);
+      for (let p = 0; p < this.num_phi; p++) {
+        l_theta += this.get_val(arr, this.num_theta - 1, p);
       }
-      l_theta *= 1 / n;
+      l_theta *= 2 / this.num_phi;
       l_theta *= 1 / this.dtheta() ** 2;
       // console.log(l_theta, theta, phi);
       return l_theta;

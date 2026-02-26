@@ -7,6 +7,8 @@ var __export = (target, all) => {
 // rust-calc/pkg/rust_calc.js
 var rust_calc_exports = {};
 __export(rust_calc_exports, {
+  HeatSimSphere: () => HeatSimSphere,
+  HeatSimTwoDim: () => HeatSimTwoDim,
   SmoothOpenPathBezierHandleCalculator: () => SmoothOpenPathBezierHandleCalculator,
   WaveSimOneDim: () => WaveSimOneDim,
   WaveSimTwoDim: () => WaveSimTwoDim,
@@ -14,6 +16,233 @@ __export(rust_calc_exports, {
   default: () => __wbg_init,
   initSync: () => initSync
 });
+var HeatSimSphere = class {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    HeatSimSphereFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_heatsimsphere_free(ptr, 0);
+  }
+  /**
+   * @param {number} theta
+   * @param {number} amplitude
+   */
+  add_latitude_source(theta, amplitude) {
+    wasm.heatsimsphere_add_latitude_source(this.__wbg_ptr, theta, amplitude);
+  }
+  /**
+   * @param {number} phi
+   * @param {number} amplitude
+   */
+  add_longitude_source(phi, amplitude) {
+    wasm.heatsimsphere_add_longitude_source(this.__wbg_ptr, phi, amplitude);
+  }
+  /**
+   * @param {number} theta
+   * @param {number} phi
+   * @param {number} amplitude
+   */
+  add_point_source(theta, phi, amplitude) {
+    wasm.heatsimsphere_add_point_source(this.__wbg_ptr, theta, phi, amplitude);
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_drawable() {
+    const ret = wasm.heatsimsphere_get_drawable(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get_dt() {
+    const ret = wasm.heatsimsphere_get_dt(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get_time() {
+    const ret = wasm.heatsimsphere_get_time(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_uValues() {
+    const ret = wasm.heatsimsphere_get_uValues(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @param {number} index
+   * @param {number} amplitude
+   */
+  modify_latitude_source_amplitude(index, amplitude) {
+    wasm.heatsimsphere_modify_latitude_source_amplitude(this.__wbg_ptr, index, amplitude);
+  }
+  /**
+   * @param {number} index
+   * @param {number} theta
+   */
+  modify_latitude_source_theta(index, theta) {
+    wasm.heatsimsphere_modify_latitude_source_theta(this.__wbg_ptr, index, theta);
+  }
+  /**
+   * @param {number} index
+   * @param {number} amplitude
+   */
+  modify_longitude_source_amplitude(index, amplitude) {
+    wasm.heatsimsphere_modify_longitude_source_amplitude(this.__wbg_ptr, index, amplitude);
+  }
+  /**
+   * @param {number} index
+   * @param {number} phi
+   */
+  modify_longitude_source_phi(index, phi) {
+    wasm.heatsimsphere_modify_longitude_source_phi(this.__wbg_ptr, index, phi);
+  }
+  /**
+   * @param {number} index
+   * @param {number} amplitude
+   */
+  modify_point_source_amplitude(index, amplitude) {
+    wasm.heatsimsphere_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
+  }
+  /**
+   * @param {number} index
+   * @param {number} phi
+   */
+  modify_point_source_phi(index, phi) {
+    wasm.heatsimsphere_modify_point_source_phi(this.__wbg_ptr, index, phi);
+  }
+  /**
+   * @param {number} index
+   * @param {number} theta
+   */
+  modify_point_source_theta(index, theta) {
+    wasm.heatsimsphere_modify_point_source_theta(this.__wbg_ptr, index, theta);
+  }
+  /**
+   * @param {number} num_theta
+   * @param {number} num_phi
+   * @param {number} dt
+   */
+  constructor(num_theta, num_phi, dt) {
+    const ret = wasm.heatsimsphere_new(num_theta, num_phi, dt);
+    this.__wbg_ptr = ret >>> 0;
+    HeatSimSphereFinalization.register(this, this.__wbg_ptr, this);
+    return this;
+  }
+  reset() {
+    wasm.heatsimsphere_reset(this.__wbg_ptr);
+  }
+  /**
+   * @param {string} name
+   * @param {number} val
+   */
+  set_attr(name, val) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.heatsimsphere_set_attr(this.__wbg_ptr, ptr0, len0, val);
+  }
+  step() {
+    wasm.heatsimsphere_step(this.__wbg_ptr);
+  }
+};
+if (Symbol.dispose) HeatSimSphere.prototype[Symbol.dispose] = HeatSimSphere.prototype.free;
+var HeatSimTwoDim = class {
+  __destroy_into_raw() {
+    const ptr = this.__wbg_ptr;
+    this.__wbg_ptr = 0;
+    HeatSimTwoDimFinalization.unregister(this);
+    return ptr;
+  }
+  free() {
+    const ptr = this.__destroy_into_raw();
+    wasm.__wbg_heatsimtwodim_free(ptr, 0);
+  }
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} amplitude
+   */
+  add_point_source(x, y, amplitude) {
+    wasm.heatsimtwodim_add_point_source(this.__wbg_ptr, x, y, amplitude);
+  }
+  /**
+   * @returns {number}
+   */
+  get_dt() {
+    const ret = wasm.heatsimtwodim_get_dt(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get_time() {
+    const ret = wasm.heatsimtwodim_get_time(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {Float64Array}
+   */
+  get_uValues() {
+    const ret = wasm.heatsimtwodim_get_uValues(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @param {number} index
+   * @param {number} amplitude
+   */
+  modify_point_source_amplitude(index, amplitude) {
+    wasm.heatsimtwodim_modify_point_source_amplitude(this.__wbg_ptr, index, amplitude);
+  }
+  /**
+   * @param {number} index
+   * @param {number} x
+   */
+  modify_point_source_x(index, x) {
+    wasm.heatsimtwodim_modify_point_source_x(this.__wbg_ptr, index, x);
+  }
+  /**
+   * @param {number} index
+   * @param {number} y
+   */
+  modify_point_source_y(index, y) {
+    wasm.heatsimtwodim_modify_point_source_y(this.__wbg_ptr, index, y);
+  }
+  /**
+   * @param {number} width
+   * @param {number} height
+   * @param {number} dt
+   */
+  constructor(width, height, dt) {
+    const ret = wasm.heatsimtwodim_new(width, height, dt);
+    this.__wbg_ptr = ret >>> 0;
+    HeatSimTwoDimFinalization.register(this, this.__wbg_ptr, this);
+    return this;
+  }
+  reset() {
+    wasm.heatsimtwodim_reset(this.__wbg_ptr);
+  }
+  /**
+   * @param {string} name
+   * @param {number} val
+   */
+  set_attr(name, val) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.heatsimtwodim_set_attr(this.__wbg_ptr, ptr0, len0, val);
+  }
+  step() {
+    wasm.heatsimtwodim_step(this.__wbg_ptr);
+  }
+};
+if (Symbol.dispose) HeatSimTwoDim.prototype[Symbol.dispose] = HeatSimTwoDim.prototype.free;
 var SmoothOpenPathBezierHandleCalculator = class {
   __destroy_into_raw() {
     const ptr = this.__wbg_ptr;
@@ -76,6 +305,20 @@ var WaveSimOneDim = class {
    */
   add_point_source(x, frequency, amplitude, phase) {
     wasm.wavesimonedim_add_point_source(this.__wbg_ptr, x, frequency, amplitude, phase);
+  }
+  /**
+   * @returns {number}
+   */
+  get_dt() {
+    const ret = wasm.wavesimonedim_get_dt(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get_time() {
+    const ret = wasm.wavesimonedim_get_time(this.__wbg_ptr);
+    return ret;
   }
   /**
    * @returns {Float64Array}
@@ -174,6 +417,20 @@ var WaveSimTwoDim = class {
    */
   add_point_source(x, y, frequency, amplitude, phase) {
     wasm.wavesimtwodim_add_point_source(this.__wbg_ptr, x, y, frequency, amplitude, phase);
+  }
+  /**
+   * @returns {number}
+   */
+  get_dt() {
+    const ret = wasm.wavesimtwodim_get_dt(this.__wbg_ptr);
+    return ret;
+  }
+  /**
+   * @returns {number}
+   */
+  get_time() {
+    const ret = wasm.wavesimtwodim_get_time(this.__wbg_ptr);
+    return ret;
   }
   /**
    * @returns {Float64Array}
@@ -286,6 +543,13 @@ var WaveSimTwoDimElliptical = class {
     wasm.wavesimtwodimelliptical_add_point_source(this.__wbg_ptr, x, y, frequency, amplitude, phase);
   }
   /**
+   * @returns {number}
+   */
+  get_dt() {
+    const ret = wasm.wavesimtwodimelliptical_get_dt(this.__wbg_ptr);
+    return ret;
+  }
+  /**
    * @param {number} index
    * @returns {number}
    */
@@ -314,6 +578,13 @@ var WaveSimTwoDimElliptical = class {
   get_semiminor_axis() {
     const ret = wasm.wavesimtwodimelliptical_get_semiminor_axis(this.__wbg_ptr);
     return ret >>> 0;
+  }
+  /**
+   * @returns {number}
+   */
+  get_time() {
+    const ret = wasm.wavesimtwodimelliptical_get_time(this.__wbg_ptr);
+    return ret;
   }
   /**
    * @returns {Float64Array}
@@ -439,6 +710,12 @@ function __wbg_get_imports() {
     "./rust_calc_bg.js": import0
   };
 }
+var HeatSimSphereFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+}, unregister: () => {
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_heatsimsphere_free(ptr >>> 0, 1));
+var HeatSimTwoDimFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+}, unregister: () => {
+} } : new FinalizationRegistry((ptr) => wasm.__wbg_heatsimtwodim_free(ptr >>> 0, 1));
 var SmoothOpenPathBezierHandleCalculatorFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
 }, unregister: () => {
 } } : new FinalizationRegistry((ptr) => wasm.__wbg_smoothopenpathbezierhandlecalculator_free(ptr >>> 0, 1));
@@ -662,6 +939,44 @@ async function createWaveSimTwoDim(width, height, dt) {
   }
   return instance;
 }
+async function createHeatSimTwoDim(width, height, dt) {
+  await initWasm();
+  if (!HeatSimTwoDim) {
+    throw new Error("HeatSimTwoDim not found in rust-calc exports");
+  }
+  const HeatSimTwoDim3 = HeatSimTwoDim;
+  let instance;
+  try {
+    instance = new HeatSimTwoDim3(width, height, dt);
+    console.log("HeatSimTwoDim instance created:", instance);
+  } catch (error) {
+    console.error(
+      "Failed to create or initialize HeatSimTwoDimRust instance:",
+      error
+    );
+    throw error;
+  }
+  return instance;
+}
+async function createHeatSimSphere(num_theta, num_phi, dt) {
+  await initWasm();
+  if (!HeatSimSphere) {
+    throw new Error("HeatSimSphere not found in rust-calc exports");
+  }
+  const HeatSimSphere2 = HeatSimSphere;
+  let instance;
+  try {
+    instance = new HeatSimSphere2(num_theta, num_phi, dt);
+    console.log("HeatSimSphere instance created:", instance);
+  } catch (error) {
+    console.error(
+      "Failed to create or initialize HeatSimSphereRust instance:",
+      error
+    );
+    throw error;
+  }
+  return instance;
+}
 console.log("rust-calc exports:", Object.keys(rust_calc_exports));
 
 // src/lib/interactive/button.ts
@@ -737,8 +1052,28 @@ function Slider(container, callback, kwargs) {
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
+function vec2_normalize(x) {
+  let n = vec2_norm(x);
+  if (n == 0) {
+    throw new Error("Can't normalize the zero vector");
+  } else {
+    return vec2_scale(x, 1 / n);
+  }
+}
+function vec2_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
+function vec2_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
 function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
+}
+function vec2_rot(v, angle) {
+  const [x, y] = v;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return [x * cos - y * sin, x * sin + y * cos];
 }
 
 // src/lib/base/style_options.ts
@@ -759,6 +1094,9 @@ function sigmoid(x) {
 function funspace(func, start, stop, num) {
   const step = (stop - start) / (num - 1);
   return Array.from({ length: num }, (_, i) => func(start + i * step));
+}
+function gaussian_normal_pdf(mean, stdev, x) {
+  return Math.exp(-Math.pow(x - mean, 2) / (2 * Math.pow(stdev, 2))) / (stdev * Math.sqrt(2 * Math.PI));
 }
 var StrokeOptions = class {
   constructor() {
@@ -1128,6 +1466,9 @@ function touch_event_coords(event) {
 }
 
 // src/lib/base/color.ts
+function colorval_to_rgba(color) {
+  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
+}
 function rb_colormap(z) {
   const gray = sigmoid(z);
   if (gray < 0.5) {
@@ -1575,17 +1916,148 @@ var Rectangle = class extends FillLikeMObject {
 var DraggableRectangle = makeDraggable(Rectangle);
 
 // src/lib/three_d/matvec.ts
+function vec3_norm(x) {
+  return Math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2);
+}
+function vec3_dot(v, w) {
+  let result = 0;
+  for (let i = 0; i < 3; i++) {
+    result += v[i] * w[i];
+  }
+  return result;
+}
 function vec3_scale(x, factor) {
   return [x[0] * factor, x[1] * factor, x[2] * factor];
 }
 function vec3_sum(x, y) {
   return [x[0] + y[0], x[1] + y[1], x[2] + y[2]];
 }
+function vec3_sum_list(xs) {
+  return xs.reduce((acc, x) => vec3_sum(acc, x), [0, 0, 0]);
+}
 function vec3_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1], x[2] - y[2]];
 }
+function transpose(m) {
+  return [
+    [m[0][0], m[1][0], m[2][0]],
+    [m[0][1], m[1][1], m[2][1]],
+    [m[0][2], m[1][2], m[2][2]]
+  ];
+}
+function mat_inv(m) {
+  let det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  if (det == 0) {
+    throw new Error("Can't invert a singular matrix");
+  }
+  let inv_det = 1 / det;
+  return [
+    [
+      inv_det * (m[1][1] * m[2][2] - m[1][2] * m[2][1]),
+      inv_det * (m[0][2] * m[2][1] - m[0][1] * m[2][2]),
+      inv_det * (m[0][1] * m[1][2] - m[0][2] * m[1][1])
+    ],
+    [
+      inv_det * (m[1][2] * m[2][0] - m[1][0] * m[2][2]),
+      inv_det * (m[0][0] * m[2][2] - m[0][2] * m[2][0]),
+      inv_det * (m[0][2] * m[1][0] - m[0][0] * m[1][2])
+    ],
+    [
+      inv_det * (m[1][0] * m[2][1] - m[1][1] * m[2][0]),
+      inv_det * (m[0][1] * m[2][0] - m[0][0] * m[2][1]),
+      inv_det * (m[0][0] * m[1][1] - m[0][1] * m[1][0])
+    ]
+  ];
+}
 function get_column(m, i) {
   return [m[0][i], m[1][i], m[2][i]];
+}
+function vec3_normalize(v) {
+  let n = vec3_norm(v);
+  if (n == 0) {
+    throw new Error("Can't normalize the zero vector");
+  } else {
+    return vec3_scale(v, 1 / n);
+  }
+}
+function spherical_to_cartesian(radius, theta_rad, phi_rad) {
+  return [
+    radius * Math.sin(theta_rad) * Math.cos(phi_rad),
+    radius * Math.sin(theta_rad) * Math.sin(phi_rad),
+    radius * Math.cos(theta_rad)
+  ];
+}
+function matmul_vec(m, v) {
+  let result = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    result[i] = vec3_dot(m[i], v);
+  }
+  return result;
+}
+function matmul_mat(m1, m2) {
+  let result = [];
+  for (let i = 0; i < 3; i++) {
+    result.push(matmul_vec(m1, [m2[0][i], m2[1][i], m2[2][i]]));
+  }
+  return transpose(result);
+}
+function rot_z_matrix(theta) {
+  return [
+    [Math.cos(theta), -Math.sin(theta), 0],
+    [Math.sin(theta), Math.cos(theta), 0],
+    [0, 0, 1]
+  ];
+}
+function rot_z(v, theta) {
+  return matmul_vec(rot_z_matrix(theta), v);
+}
+function rot_y_matrix(theta) {
+  return [
+    [Math.cos(theta), 0, Math.sin(theta)],
+    [0, 1, 0],
+    [-Math.sin(theta), 0, Math.cos(theta)]
+  ];
+}
+function rot_y(v, theta) {
+  return matmul_vec(rot_y_matrix(theta), v);
+}
+function rot_x_matrix(theta) {
+  return [
+    [1, 0, 0],
+    [0, Math.cos(theta), -Math.sin(theta)],
+    [0, Math.sin(theta), Math.cos(theta)]
+  ];
+}
+function rot_x(v, theta) {
+  return matmul_vec(rot_x_matrix(theta), v);
+}
+function rot_matrix(axis, angle) {
+  let [x, y, z] = vec3_normalize(axis);
+  let theta = Math.acos(z);
+  let phi = Math.acos(x / Math.sin(theta));
+  if (y / Math.sin(theta) < 0) {
+    phi = 2 * Math.PI - phi;
+  }
+  let result = rot_z_matrix(-phi);
+  result = matmul_mat(rot_y_matrix(-theta), result);
+  result = matmul_mat(rot_z_matrix(angle), result);
+  result = matmul_mat(rot_y_matrix(theta), result);
+  result = matmul_mat(rot_z_matrix(phi), result);
+  return result;
+}
+function rot(v, axis, angle) {
+  let [x, y, z] = vec3_normalize(axis);
+  let theta = Math.acos(z);
+  let phi = Math.acos(x / Math.sin(theta));
+  if (y / Math.sin(theta) < 0) {
+    phi = 2 * Math.PI - phi;
+  }
+  let result = rot_z(v, -phi);
+  result = rot_y(result, -theta);
+  result = rot_z(result, angle);
+  result = rot_y(result, theta);
+  result = rot_z(result, phi);
+  return result;
 }
 
 // src/lib/three_d/mobjects.ts
@@ -1656,6 +2128,46 @@ var ThreeDMObject = class extends MObject {
   _draw_simple(ctx, scene) {
   }
 };
+var ThreeDMObjectGroup = class extends ThreeDMObject {
+  constructor() {
+    super(...arguments);
+    this.children = {};
+  }
+  add_mobj(name, child) {
+    this.children[name] = child;
+  }
+  remove_mobj(name) {
+    delete this.children[name];
+  }
+  move_by(p) {
+    Object.values(this.children).forEach((child) => child.move_by(p));
+  }
+  clear() {
+    Object.keys(this.children).forEach((key) => {
+      delete this.children[key];
+    });
+  }
+  get_mobj(name) {
+    if (!this.children[name]) {
+      throw new Error(`Child with name ${name} not found`);
+    }
+    return this.children[name];
+  }
+  // TODO Depth-calculation should be done object-by-object.
+  depth(scene) {
+    return Math.max(
+      ...Object.values(this.children).map((child) => child.depth(scene))
+    );
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    Object.values(this.children).forEach((child) => {
+      child.draw(canvas, scene, args);
+    });
+  }
+};
 var ThreeDLineLikeMObject = class extends ThreeDMObject {
   // Sets the context drawer settings for drawing behind linked FillLike objects.
   set_behind_linked_mobjects(ctx) {
@@ -1676,6 +2188,33 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
     } else {
       this._draw(ctx, scene, args);
     }
+  }
+};
+var ThreeDLineLikeMObjectGroup = class extends ThreeDMObjectGroup {
+  constructor() {
+    super(...arguments);
+    this.stroke_options = new StrokeOptions();
+  }
+  set_stroke_color(color) {
+    this.stroke_options.set_stroke_color(color);
+    return this;
+  }
+  set_stroke_width(width) {
+    this.stroke_options.set_stroke_width(width);
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_options.set_stroke_style(style);
+    return this;
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    Object.values(this.children).forEach((child) => {
+      child._draw(ctx, scene, args);
+    });
   }
 };
 var ThreeDFillLikeMObject = class extends ThreeDMObject {
@@ -1939,6 +2478,251 @@ var Line3D = class extends ThreeDLineLikeMObject {
     ctx.stroke();
   }
 };
+var TwoHeadedArrow3D = class extends Line3D {
+  constructor(start, end) {
+    super(start, end);
+    this.arrow_size = 0.3;
+    this.fill_color = this.stroke_options.stroke_color;
+  }
+  set_arrow_size(size) {
+    this.arrow_size = size;
+  }
+  _draw(ctx, scene) {
+    super._draw(ctx, scene);
+    ctx.fillStyle = this.fill_color;
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [end_x, end_y] = scene.v2c(e);
+    let [start_x, start_y] = scene.v2c(s);
+    let length = vec2_norm(vec2_sub(s, e));
+    let v = vec2_scale(vec2_sub(s, e), this.arrow_size / length);
+    let [ax, ay] = scene.v2c(vec2_sum(e, vec2_rot(v, Math.PI / 6)));
+    let [bx, by] = scene.v2c(vec2_sum(e, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(end_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
+    v = vec2_scale(vec2_sub(e, s), this.arrow_size / length);
+    [ax, ay] = scene.v2c(vec2_sum(s, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(s, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(start_x, start_y);
+    ctx.closePath();
+    ctx.fill();
+  }
+};
+var PolygonPanel3D = class extends ThreeDFillLikeMObject {
+  constructor(points) {
+    super();
+    this.points = points;
+  }
+  // TODO Fix this and fix visibility condition
+  depth(scene) {
+    return scene.camera.depth(
+      vec3_scale(vec3_sum_list(this.points), 1 / this.points.length)
+    );
+  }
+  _draw(ctx, scene) {
+    let current_point = this.points[0];
+    let current_point_camera_view = scene.camera_view(current_point);
+    let [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+    ctx.moveTo(cp_x, cp_y);
+    ctx.beginPath();
+    for (let i = 1; i < this.points.length; i++) {
+      current_point = this.points[i];
+      current_point_camera_view = scene.camera_view(current_point);
+      [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+      ctx.lineTo(cp_x, cp_y);
+    }
+    current_point = this.points[0];
+    current_point_camera_view = scene.camera_view(current_point);
+    [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+    ctx.lineTo(cp_x, cp_y);
+    ctx.closePath();
+    if (this.fill_options.fill) {
+      ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;
+      ctx.fill();
+      ctx.globalAlpha = ctx.globalAlpha / this.fill_options.fill_alpha;
+    }
+  }
+};
+
+// src/lib/base/cartesian.ts
+var AxisOptions = class {
+  constructor() {
+    this.stroke_width = 0.1;
+    this.arrow_size = 0.3;
+  }
+  update(options) {
+    Object.assign(this, options);
+  }
+};
+var TickOptions = class {
+  constructor() {
+    this.distance = 1;
+    this.size = 0.2;
+    this.alpha = 1;
+    this.stroke_width = 0.08;
+  }
+  update(options) {
+    Object.assign(this, options);
+  }
+};
+var Axis3D = class extends ThreeDMObjectGroup {
+  constructor(lims, type) {
+    super();
+    this.axis_options = new AxisOptions();
+    this.tick_options = new TickOptions();
+    this.lims = lims;
+    this.type = type;
+    this._make_axis();
+    this._make_ticks();
+  }
+  _make_axis() {
+    let [cmin, cmax] = this.lims;
+    let axis;
+    if (this.type === "x") {
+      axis = new TwoHeadedArrow3D([cmin, 0, 0], [cmax, 0, 0]);
+    } else if (this.type === "y") {
+      axis = new TwoHeadedArrow3D([0, cmin, 0], [0, cmax, 0]);
+    } else {
+      axis = new TwoHeadedArrow3D([0, 0, cmin], [0, 0, cmax]);
+    }
+    axis.set_arrow_size(0.2);
+    axis.set_stroke_width(this.axis_options.stroke_width);
+    this.add_mobj("axis", axis);
+  }
+  _make_ticks() {
+    let [cmin, cmax] = this.lims;
+    let ticks = new ThreeDLineLikeMObjectGroup().set_alpha(0.3);
+    for (let c = this.tick_options.distance * Math.floor(cmin / this.tick_options.distance + 1); c < this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance); c += this.tick_options.distance) {
+      if (this.type == "x") {
+        ticks.add_mobj(
+          `tick-(${c})`,
+          new Line3D(
+            [c, -this.tick_options.size / 2, 0],
+            [c, this.tick_options.size / 2, 0]
+          )
+        );
+      } else if (this.type == "y") {
+        ticks.add_mobj(
+          `tick-(${c})`,
+          new Line3D(
+            [0, c, -this.tick_options.size / 2],
+            [0, c, this.tick_options.size / 2]
+          )
+        );
+      } else if (this.type == "z") {
+        ticks.add_mobj(
+          `tick-(${c})`,
+          new Line3D(
+            [-this.tick_options.size / 2, 0, c],
+            [this.tick_options.size / 2, 0, c]
+          )
+        );
+      }
+    }
+    this.add_mobj("ticks", ticks);
+  }
+  axis() {
+    return this.get_mobj("axis");
+  }
+  ticks() {
+    return this.get_mobj("ticks");
+  }
+  set_lims(lims) {
+    this.lims = lims;
+    this.remove_mobj("axis");
+    this.remove_mobj("ticks");
+    this._make_axis();
+    this._make_ticks();
+  }
+  set_axis_options(options) {
+    this.axis_options.update(options);
+    this.remove_mobj("axis");
+    this._make_axis();
+  }
+  set_tick_options(options) {
+    this.tick_options.update(options);
+    this.remove_mobj("ticks");
+    this._make_ticks();
+  }
+  set_tick_distance(distance) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
+  }
+  set_tick_size(size) {
+    this.tick_options.size = size;
+    this.set_tick_options(this.tick_options);
+  }
+};
+var CoordinateAxes3d = class extends ThreeDMObjectGroup {
+  constructor(xlims, ylims, zlims) {
+    super();
+    this.axis_options = new AxisOptions();
+    this.tick_options = new TickOptions();
+    this.xlims = xlims;
+    this.ylims = ylims;
+    this.zlims = zlims;
+    this._make_axes();
+  }
+  _make_axes() {
+    let x_axis = new Axis3D(this.xlims, "x");
+    x_axis.set_axis_options(this.axis_options);
+    x_axis.set_tick_options(this.tick_options);
+    this.add_mobj("x-axis", x_axis);
+    let y_axis = new Axis3D(this.ylims, "y");
+    y_axis.set_axis_options(this.axis_options);
+    y_axis.set_tick_options(this.tick_options);
+    this.add_mobj("y-axis", y_axis);
+    let z_axis = new Axis3D(this.zlims, "z");
+    z_axis.set_axis_options(this.axis_options);
+    z_axis.set_tick_options(this.tick_options);
+    this.add_mobj("z-axis", z_axis);
+  }
+  x_axis() {
+    return this.get_mobj("x-axis");
+  }
+  y_axis() {
+    return this.get_mobj("y-axis");
+  }
+  z_axis() {
+    return this.get_mobj("z-axis");
+  }
+  set_axis_options(options) {
+    this.axis_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+    return this;
+  }
+  set_axis_stroke_width(width) {
+    this.axis_options.stroke_width = width;
+    this.set_axis_options(this.axis_options);
+  }
+  set_tick_options(options) {
+    this.tick_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+    return this;
+  }
+  set_tick_size(size) {
+    this.tick_options.size = size;
+    this.set_tick_options(this.tick_options);
+  }
+  set_tick_distance(distance) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
+  }
+};
 
 // src/lib/base/heatmap.ts
 var HeatMap = class extends MObject {
@@ -1973,6 +2757,194 @@ var HeatMap = class extends MObject {
   }
 };
 
+// src/lib/three_d/scene.ts
+var Camera3D = class {
+  constructor() {
+    // Position of the camera in 3D space
+    this.pos = [0, 0, 0];
+    // The 0th, 1st, and 2nd columns of the camera frame matrix are the
+    // x-direction, y-direction, and z-direction of the camera view, respectively.
+    // The inverse of the camera frame matrix is the main object that is manipulated.
+    this.camera_frame_inv = [
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1]
+    ];
+    // Determines whether retrieval of the 2D view is perspective or orthographic.
+    this.mode = "perspective";
+  }
+  // Set the camera position
+  move_to(pos) {
+    this.pos = pos;
+  }
+  // Translate the camera matrix by a given vector
+  move_by(v) {
+    this.pos = vec3_sum(this.pos, v);
+  }
+  // Get the camera frame inverse matrix
+  get_camera_frame_inv() {
+    return this.camera_frame_inv;
+  }
+  // Set the camera frame inverse matrix
+  set_camera_frame_inv(frame_inv) {
+    this.camera_frame_inv = frame_inv;
+  }
+  // Get the camera frame matrix
+  get_camera_frame() {
+    return mat_inv(this.camera_frame_inv);
+  }
+  // Converts a point to camera space
+  _to_camera_space(p) {
+    return matmul_vec(this.camera_frame_inv, vec3_sub(p, this.pos));
+  }
+  // Rotate the camera matrix around the z-axis.
+  rot_view_z(angle) {
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_z_matrix(-angle)
+    );
+  }
+  // Rotate the camera matrix around the y-axis.
+  rot_view_y(angle) {
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_y_matrix(-angle)
+    );
+  }
+  // Rotate the camera matrix around the x-axis.
+  rot_view_x(angle) {
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_x_matrix(-angle)
+    );
+  }
+  // Rotate the camera matrix around a given axis
+  rot_view(axis, angle) {
+    this.camera_frame_inv = matmul_mat(
+      this.camera_frame_inv,
+      rot_matrix(axis, -angle)
+    );
+  }
+  // Rotates the camera view around various axes
+  rot_pos_and_view_z(angle) {
+    this.rot_view_z(angle);
+    this.move_to(rot_z(this.pos, angle));
+  }
+  rot_pos_and_view_y(angle) {
+    this.rot_view_y(angle);
+    this.move_to(rot_y(this.pos, angle));
+  }
+  rot_pos_and_view_x(angle) {
+    this.rot_view_x(angle);
+    this.move_to(rot_x(this.pos, angle));
+  }
+  rot_pos_and_view(axis, angle) {
+    this.rot_view(axis, angle);
+    this.move_to(rot(this.pos, axis, angle));
+  }
+  // Projects a 3D point onto the camera view plane. Does not include perspective.
+  orthographic_view(p) {
+    let [vx, vy, vz] = this._to_camera_space(p);
+    return [vx, vy];
+  }
+  // Projects a 3D point onto the camera view plane, and then divides by the third coordinate.
+  // Returns null if the third coordinate is nonpositive (i.e., the point is behind the camera).
+  perspective_view(p) {
+    let [vx, vy, vz] = this._to_camera_space(p);
+    if (vz <= 0) {
+      return null;
+    } else {
+      return [vx / vz, vy / vz];
+    }
+  }
+  // Returns the depth of a point in camera space
+  depth(p) {
+    let [vx, vy, vz] = this._to_camera_space(p);
+    return vz;
+  }
+};
+var ThreeDScene = class extends Scene {
+  constructor() {
+    super(...arguments);
+    this.mobjects = {};
+    this.camera = new Camera3D();
+    this.mode = "perspective";
+  }
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names, group_name) {
+    let group = new ThreeDMObjectGroup();
+    names.forEach((name) => {
+      group.add_mobj(name, this.get_mobj(name));
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name) {
+    let group = this.mobjects[group_name];
+    if (group == void 0) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj);
+    });
+    delete this.mobjects[group_name];
+  }
+  // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
+  scale() {
+    let [xmin, xmax] = this.xlims;
+    return this.canvas.width / (xmax - xmin);
+  }
+  // Modes of viewing/drawing
+  set_view_mode(mode) {
+    this.mode = mode;
+  }
+  camera_view(p) {
+    if (this.mode == "perspective") {
+      return this.camera.perspective_view(p);
+    } else {
+      return this.camera.orthographic_view(p);
+    }
+  }
+  // Converts a 2D vector in the view to world coordinates
+  v2w(v) {
+    let frame = this.camera.get_camera_frame();
+    return matmul_vec(frame, [v[0], v[1], 0]);
+  }
+  // Draw
+  draw(args) {
+    let ctx = this.canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.draw_background(ctx);
+    let ordered_names = Object.keys(this.mobjects).sort((a, b) => {
+      let depth_a = this.mobjects[a].depth(this);
+      let depth_b = this.mobjects[b].depth(this);
+      return depth_b - depth_a;
+    });
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      if (mobj instanceof ThreeDFillLikeMObject) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      if (mobj instanceof ThreeDLineLikeMObject) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    for (let name of ordered_names) {
+      let mobj = this.mobjects[name];
+      if (mobj == void 0) throw new Error(`${name} not found`);
+      if (!(mobj instanceof ThreeDFillLikeMObject) && !(mobj instanceof ThreeDLineLikeMObject)) {
+        mobj.draw(this.canvas, this);
+      }
+    }
+    this.draw_border(ctx);
+  }
+};
+
 // src/lib/simulator/sim.ts
 var Simulator = class {
   // Length of time in each simulation step
@@ -1992,6 +2964,20 @@ var Simulator = class {
       this[name] = val;
     }
   }
+  // Reveals version of internal state for drawing purposes
+  get_drawable() {
+    return this.get_uValues();
+  }
+  // Returns full internal state
+  get_uValues() {
+    return [];
+  }
+  get_time() {
+    return this.time;
+  }
+  get_dt() {
+    return this.dt;
+  }
 };
 var SceneFromSimulator = class extends Scene {
   constructor(canvas) {
@@ -2006,14 +2992,29 @@ var SceneFromSimulator = class extends Scene {
   toggle_unpause() {
   }
 };
+var ThreeDSceneFromSimulator = class extends ThreeDScene {
+  constructor(canvas) {
+    super(canvas);
+  }
+  reset() {
+  }
+  update_mobjects_from_simulator(simulator) {
+  }
+  toggle_pause() {
+  }
+  toggle_unpause() {
+  }
+};
 var InteractiveHandler = class {
-  // Store a known end-time in case the simulation is paused and unpaused
+  // Number of simulator steps before updating scenes
   constructor(simulator) {
     this.scenes = [];
     this.action_queue = [];
     this.paused = true;
     this.time = 0;
     this.dt = 0.01;
+    // Store a known end-time in case the simulation is paused and unpaused
+    this.num_steps_per_frame = 1;
     this.simulator = simulator;
   }
   // Adds a scene
@@ -2033,6 +3034,10 @@ var InteractiveHandler = class {
   }
   set_simulator_attr(simulator_ind, attr_name, attr_val) {
     this.simulator.set_attr(attr_name, attr_val);
+  }
+  set_num_steps_per_frame(num_steps) {
+    this.num_steps_per_frame = num_steps;
+    return this;
   }
   add_pause_button(container) {
     let self = this;
@@ -2088,8 +3093,10 @@ var InteractiveHandler = class {
       } else if (this.time > until) {
         return;
       } else {
-        this.simulator.step();
-        this.time += this.simulator.dt;
+        for (let i = 0; i < this.num_steps_per_frame; i++) {
+          this.simulator.step();
+        }
+        this.time = this.simulator.get_time();
         for (let scene of this.scenes) {
           scene.update_mobjects_from_simulator(this.simulator);
           scene.draw();
@@ -2254,6 +3261,70 @@ var TwoDimState = class {
       return 2 * arr[this.index(x, this.height - 1)] - 5 * arr[this.index(x, this.height - 2)] + 4 * arr[this.index(x, this.height - 3)] - arr[this.index(x, this.height - 4)];
     } else {
       return arr[this.index(x, y + 1)] - 2 * arr[this.index(x, y)] + arr[this.index(x, y - 1)];
+    }
+  }
+};
+var SphericalState = class {
+  constructor(num_theta, num_phi) {
+    if (num_phi % 2 !== 0) {
+      throw new Error("num_phi must be even");
+    }
+    this.num_theta = num_theta;
+    this.num_phi = num_phi;
+  }
+  index(theta, phi) {
+    return theta + phi * (this.num_theta + 1);
+  }
+  new_arr() {
+    return new Array((this.num_theta + 1) * this.num_phi).fill(0);
+  }
+  // Takes an array of shape (num_theta + 1, num_phi) and downshifts it to shape (num_theta, num_phi)
+  // by averaging adjacent rows.
+  downshift_values(vals) {
+    let downshifted_vals = new Array(this.num_theta * this.num_phi);
+    let ind;
+    for (let phi = 0; phi < this.num_phi; phi++) {
+      for (let theta = 0; theta < this.num_theta; theta++) {
+        ind = phi * this.num_theta + theta;
+        let val = (vals[this.index(theta, phi)] + vals[this.index(theta + 1, phi)]) / 2;
+        downshifted_vals[ind] = val;
+      }
+    }
+    return downshifted_vals;
+  }
+  dtheta() {
+    return Math.PI / this.num_theta;
+  }
+  dphi() {
+    return 2 * Math.PI / this.num_phi;
+  }
+  get_val(arr, theta, phi) {
+    return arr[this.index(theta, phi)];
+  }
+  l_entry(arr, theta, phi) {
+    let theta_val = theta * Math.PI / this.num_theta;
+    let l_theta, l_phi;
+    if (theta == 0) {
+      l_theta = -this.num_phi * this.get_val(arr, 0, phi);
+      for (let p = 0; p < this.num_phi; p++) {
+        l_theta += this.get_val(arr, 1, p);
+      }
+      l_theta *= 2 / this.num_phi;
+      l_theta *= 1 / this.dtheta() ** 2;
+      return l_theta;
+    } else if (theta == this.num_theta) {
+      l_theta = -this.num_phi * this.get_val(arr, this.num_theta, phi);
+      for (let p = 0; p < this.num_phi; p++) {
+        l_theta += this.get_val(arr, this.num_theta - 1, p);
+      }
+      l_theta *= 2 / this.num_phi;
+      l_theta *= 1 / this.dtheta() ** 2;
+      return l_theta;
+    } else {
+      l_theta = (this.get_val(arr, theta + 1, phi) + this.get_val(arr, theta - 1, phi) - 2 * this.get_val(arr, theta, phi)) / this.dtheta() ** 2;
+      l_theta += (this.get_val(arr, theta + 1, phi) - this.get_val(arr, theta - 1, phi)) / (2 * this.dtheta() * Math.tan(theta_val));
+      l_phi = (this.get_val(arr, theta, (phi + 1) % this.num_phi) + this.get_val(arr, theta, (phi + this.num_phi - 1) % this.num_phi) - 2 * this.get_val(arr, theta, phi)) / (this.dphi() * Math.sin(theta_val)) ** 2;
+      return l_theta + l_phi;
     }
   }
 };
@@ -2659,6 +3730,342 @@ var WaveSimTwoDimHeatMapScene = class extends SceneFromSimulator {
   }
 };
 
+// src/lib/simulator/heatsim.ts
+var HeatSimTwoDim2 = class extends StateSimulator {
+  constructor(width, height, dt) {
+    super(width * height, dt);
+    this.heat_propagation_speed = 20;
+    this.width = width;
+    this.height = height;
+    this._two_dim_state = new TwoDimState(width, height);
+  }
+  size() {
+    return this.width * this.height;
+  }
+  index(x, y) {
+    return this._two_dim_state.index(x, y);
+  }
+  set_heat_propagation_speed(speed) {
+    this.heat_propagation_speed = speed;
+  }
+  // Named portions of the state values
+  get_uValues() {
+    return this._get_uValues(this.vals);
+  }
+  _get_uValues(vals) {
+    return vals.slice(0, this.size());
+  }
+  // Sets the initial conditions of the simulation
+  set_init_conditions(u0) {
+    for (let i = 0; i < this.size(); i++) {
+      this.vals[i] = u0[i];
+    }
+    this.time = 0;
+    this.set_boundary_conditions(this.vals, this.time);
+  }
+  laplacian_entry(vals, x, y) {
+    return this._two_dim_state.l_x_entry(vals, x, y) + this._two_dim_state.l_y_entry(vals, x, y);
+  }
+  dot(vals, time) {
+    let dS = new Array(this.state_size);
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        dS[this.index(x, y)] = this.heat_propagation_speed * this.laplacian_entry(vals, x, y);
+      }
+    }
+    return dS;
+  }
+};
+var HeatSimSpherical = class extends StateSimulator {
+  constructor(num_theta, num_phi, dt) {
+    super((num_theta + 1) * num_phi, dt);
+    this.heat_propagation_speed = 20;
+    this.num_theta = num_theta;
+    this.num_phi = num_phi;
+    this._spherical_state = new SphericalState(num_theta, num_phi);
+  }
+  // Size of the 2D grid
+  size() {
+    return this.num_theta * this.num_phi;
+  }
+  index(x, y) {
+    return this._spherical_state.index(x, y);
+  }
+  set_heat_propagation_speed(speed) {
+    this.heat_propagation_speed = speed;
+  }
+  // Named portions of the state values
+  get_uValues() {
+    return this._get_uValues(this.vals);
+  }
+  _get_uValues(vals) {
+    return vals.slice(0, this.size());
+  }
+  // Downshifts the value array from shape (num_theta + 1, num_phi) to (num_theta, num_phi)
+  // by averaging adjacent rows.
+  get_drawable() {
+    return this._spherical_state.downshift_values(this.get_uValues());
+  }
+  // Sets the initial conditions of the simulation
+  set_init_conditions(u0) {
+    for (let i = 0; i < this.size(); i++) {
+      this.vals[i] = u0[i];
+    }
+    this.time = 0;
+    this.set_boundary_conditions(this.vals, this.time);
+  }
+  laplacian_entry(vals, theta, phi) {
+    return this._spherical_state.l_entry(vals, theta, phi);
+  }
+  dot(vals, time) {
+    let dS = new Array(this.state_size).fill(0);
+    for (let theta = 0; theta <= this.num_theta; theta++) {
+      for (let phi = 0; phi < this.num_phi; phi++) {
+        dS[this.index(theta, phi)] = this.heat_propagation_speed * this.laplacian_entry(vals, theta, phi);
+      }
+    }
+    return dS;
+  }
+};
+var HeatSimPoles = class extends HeatSimSpherical {
+  constructor(num_theta, num_phi, dt) {
+    super(num_theta, num_phi, dt);
+    this.n_pole_temp = 20;
+    this.s_pole_temp = -20;
+    // Heat/cold sources are modeled locally using a normal distribution, to avoid sharp edges
+    this.bump_std = 0.05;
+    this.bump_vals = [];
+    this._make_bump_vals();
+  }
+  _make_bump_vals() {
+    let i = 0;
+    let bump_val = gaussian_normal_pdf(
+      0,
+      this.bump_std,
+      i * Math.PI / this.num_theta
+    );
+    this.bump_vals = [];
+    while (bump_val > 0.2) {
+      this.bump_vals.push(bump_val);
+      i++;
+      bump_val = gaussian_normal_pdf(
+        0,
+        this.bump_std,
+        i * Math.PI / this.num_theta
+      );
+    }
+  }
+  set_n_pole_temp(temp) {
+    this.n_pole_temp = temp;
+  }
+  set_s_pole_temp(temp) {
+    this.s_pole_temp = temp;
+  }
+  set_boundary_conditions(s, t) {
+    for (let phi = 0; phi < this.num_phi; phi++) {
+      for (let j = 0; j < this.bump_vals.length; j++) {
+        let bump_val = this.bump_vals[j];
+        s[this.index(j, phi)] = this.n_pole_temp * bump_val;
+        s[this.index(this.num_theta - j, phi)] = this.s_pole_temp * bump_val;
+      }
+    }
+  }
+};
+
+// src/lib/interactive/arcball.ts
+var Arcball = class {
+  constructor(scene) {
+    this.drag = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.dragDiff = [0, 0];
+    this.mode = "Translate";
+    this.scene = scene;
+  }
+  set_mode(mode) {
+    this.mode = mode;
+  }
+  switch_mode() {
+    this.mode = this.mode == "Translate" ? "Rotate" : "Translate";
+  }
+  click(event) {
+    this.dragStart = [
+      event.pageX - this.scene.canvas.offsetLeft,
+      event.pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
+  }
+  touch(event) {
+    let touch = event.touches[0];
+    this.dragStart = [
+      touch.pageX - this.scene.canvas.offsetLeft,
+      touch.pageY - this.scene.canvas.offsetTop
+    ];
+    this.drag = true;
+  }
+  unclick(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  untouch(event) {
+    this.drag = false;
+  }
+  mouse_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.pageX - this.scene.canvas.offsetLeft,
+        event.pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  touch_drag_cursor(event) {
+    if (this.drag) {
+      let touch = event.touches[0];
+      this.dragEnd = [
+        touch.pageX - this.scene.canvas.offsetLeft,
+        touch.pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  // Updates the scene to account for a dragged cursor position
+  _drag_cursor() {
+    let dragDiff = vec2_sub(
+      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
+      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
+    );
+    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
+      return;
+    }
+    if (this.mode == "Translate") {
+      this.scene.camera.move_by(
+        matmul_vec(this.scene.camera.get_camera_frame(), [
+          dragDiff[0],
+          dragDiff[1],
+          0
+        ])
+      );
+    } else if (this.mode == "Rotate") {
+      let v = vec2_normalize([dragDiff[1], -dragDiff[0]]);
+      let rot_axis = matmul_vec(this.scene.camera.get_camera_frame(), [
+        v[0],
+        v[1],
+        0
+      ]);
+      let n = vec2_norm(dragDiff);
+      this.scene.camera.rot_pos_and_view(rot_axis, n);
+    }
+    this.scene.draw();
+    this.dragStart = this.dragEnd;
+  }
+  add() {
+    let self = this;
+    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
+  }
+  remove() {
+    let self = this;
+    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.removeEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.removeEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
+  }
+};
+
+// src/lib/three_d/surfaces.ts
+var SphereHeatMap = class extends ThreeDMObjectGroup {
+  constructor(radius, num_theta, num_phi) {
+    super();
+    this.colormap = rb_colormap;
+    this.radius = radius;
+    this.num_theta = num_theta;
+    this.num_phi = num_phi;
+    this._spherical_state = new SphericalState(num_theta - 1, num_phi);
+    this._make_panels();
+  }
+  // Sets the colormap for the MObject
+  set_colormap(colormap) {
+    this.colormap = colormap;
+  }
+  // Re-makes the panels
+  _make_panels() {
+    this.clear();
+    let theta_rad, next_theta_rad;
+    let phi_rad, next_phi_rad;
+    for (let theta = 0; theta < this.num_theta; theta++) {
+      theta_rad = Math.PI * theta / this.num_theta;
+      next_theta_rad = Math.PI * (theta + 1) / this.num_theta;
+      for (let phi = 0; phi < this.num_phi; phi++) {
+        phi_rad = 2 * Math.PI * phi / this.num_phi;
+        next_phi_rad = 2 * Math.PI * (phi + 1) / this.num_phi;
+        this.add_mobj(
+          `p_${theta}_${phi}`,
+          new PolygonPanel3D([
+            spherical_to_cartesian(this.radius, theta_rad, phi_rad),
+            spherical_to_cartesian(this.radius, theta_rad, next_phi_rad),
+            spherical_to_cartesian(this.radius, next_theta_rad, next_phi_rad),
+            spherical_to_cartesian(this.radius, next_theta_rad, phi_rad)
+          ]).set_fill_color("red").set_fill_alpha(0.3).set_stroke_width(1e-3)
+        );
+      }
+    }
+  }
+  // Get the panel at the given theta and phi angles
+  get_panel(theta, phi) {
+    return this.get_mobj(`p_${theta}_${phi}`);
+  }
+  // Loads the colors from an array of values with shape (num_theta + 1, num_phi)
+  load_colors_from_array(vals) {
+    for (let theta = 0; theta < this.num_theta; theta++) {
+      for (let phi = 0; phi < this.num_phi; phi++) {
+        let val = vals[this._spherical_state.index(theta, phi)];
+        this.get_panel(theta, phi).set_fill_color(
+          colorval_to_rgba(this.colormap(val))
+        );
+      }
+    }
+  }
+};
+var SphereHeatMapScene = class extends ThreeDSceneFromSimulator {
+  constructor(canvas, radius, num_theta, num_phi) {
+    super(canvas);
+    let sphere = new SphereHeatMap(radius, num_theta, num_phi);
+    this.add("sphere", sphere);
+  }
+  set_colormap(colormap) {
+    let sphere = this.get_mobj("sphere");
+    sphere.set_colormap(colormap);
+  }
+  // Load new colors from the simulator
+  update_mobjects_from_simulator(simulator) {
+    let vals = simulator.get_drawable();
+    let sphere = this.get_mobj("sphere");
+    sphere.load_colors_from_array(vals);
+  }
+};
+
 // src/rust_scene.ts
 (async function() {
   document.addEventListener("DOMContentLoaded", async function() {
@@ -2855,5 +4262,430 @@ var WaveSimTwoDimHeatMapScene = class extends SceneFromSimulator {
         }
       );
     })(200, 200);
+    (function heatsim_2d_ts(width, height) {
+      const name = "heatsim-2d-ts";
+      let canvas = prepare_canvas(width, height, name);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+      let dt = 0.01;
+      class Sim extends HeatSimTwoDim2 {
+        constructor() {
+          super(...arguments);
+          this.center_temperature = 10;
+          this.boundary_temperature = 0;
+        }
+        set_center_temperature(temp) {
+          this.center_temperature = temp;
+        }
+        set_boundary_temperature(temp) {
+          this.boundary_temperature = temp;
+        }
+        set_boundary_conditions(s, t) {
+          let [center_x, center_y] = [
+            Math.floor(this.width / 2),
+            Math.floor(this.height / 2)
+          ];
+          for (let i = -2; i <= 2; i++) {
+            for (let j = -2; j <= 2; j++) {
+              s[this.index(center_x + i, center_y + j)] = this.center_temperature;
+            }
+          }
+          for (let x = 0; x < this.width; x++) {
+            s[this.index(x, 0)] = this.boundary_temperature;
+            s[this.index(x, this.height - 1)] = this.boundary_temperature;
+          }
+          for (let y = 0; y < this.height; y++) {
+            s[this.index(0, y)] = this.boundary_temperature;
+            s[this.index(this.width - 1, y)] = this.boundary_temperature;
+          }
+        }
+      }
+      let sim = new Sim(width, height, dt);
+      sim.set_heat_propagation_speed(20);
+      let handler = new InteractiveHandler(sim);
+      class S extends SceneFromSimulator {
+        constructor(canvas2, width2, height2, imageData2) {
+          super(canvas2);
+          this.width = width2;
+          this.height = height2;
+          this.imageData = imageData2;
+          let heatmap = new HeatMap(
+            width2,
+            height2,
+            -100,
+            100,
+            new Array(width2 * height2).fill(0)
+          );
+          this.add("heatmap", heatmap);
+        }
+        update_mobjects_from_simulator(simulator) {
+          let mobj = this.get_mobj("heatmap");
+          mobj.set_vals(simulator.get_uValues());
+        }
+        draw_mobject(mobj) {
+          if (mobj instanceof HeatMap) {
+            mobj.draw(this.canvas, this, this.imageData);
+          } else {
+            mobj.draw(this.canvas, this);
+          }
+        }
+      }
+      let scene = new S(canvas, width, height, imageData);
+      handler.add_scene(scene);
+      handler.draw();
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(name + "-button-1")
+      );
+      let clearButton = Button(
+        document.getElementById(name + "-button-2"),
+        function() {
+          handler.add_to_queue(sim.reset.bind(sim));
+        }
+      );
+      clearButton.textContent = "Clear";
+      let c_slider = Slider(
+        document.getElementById(name + "-slider-1"),
+        function(t) {
+          handler.add_to_queue(() => {
+            sim.set_center_temperature(Number(t));
+          });
+        },
+        {
+          name: "Center temperature",
+          initial_value: "10",
+          min: -10,
+          max: 10,
+          step: 0.05
+        }
+      );
+      let b_slider = Slider(
+        document.getElementById(name + "-slider-2"),
+        function(t) {
+          handler.add_to_queue(() => {
+            sim.set_boundary_temperature(Number(t));
+          });
+        },
+        {
+          name: "Boundary temperature",
+          initial_value: "0",
+          min: -10,
+          max: 10,
+          step: 0.05
+        }
+      );
+      handler.play(void 0);
+    })(300, 300);
+    await (async function heatsim_2d_rust(width, height) {
+      const name = "heatsim-2d-rust";
+      let canvas = prepare_canvas(width, height, name);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      const imageData = ctx.createImageData(width, height);
+      let dt = 0.01;
+      let sim = await createHeatSimTwoDim(width, height, dt);
+      sim.set_attr("heat_propagation_speed", 20);
+      sim.reset();
+      let [center_x, center_y] = [
+        Math.floor(width / 2),
+        Math.floor(height / 2)
+      ];
+      let center_source_padding = 2;
+      for (let i = -center_source_padding; i <= center_source_padding; i++) {
+        for (let j = -center_source_padding; j <= center_source_padding; j++) {
+          sim.add_point_source(center_x + i, center_y + j, 10);
+        }
+      }
+      for (let x = 0; x < width; x++) {
+        sim.add_point_source(x, 0, -10);
+        sim.add_point_source(x, height - 1, -10);
+      }
+      for (let y = 1; y < height - 1; y++) {
+        sim.add_point_source(0, y, -10);
+        sim.add_point_source(width - 1, y, -10);
+      }
+      let handler = new InteractiveHandler(sim);
+      class S extends SceneFromSimulator {
+        constructor(canvas2, width2, height2, imageData2) {
+          super(canvas2);
+          this.width = width2;
+          this.height = height2;
+          this.imageData = imageData2;
+          let heatmap = new HeatMap(
+            width2,
+            height2,
+            -100,
+            100,
+            new Array(width2 * height2).fill(0)
+          );
+          this.add("heatmap", heatmap);
+        }
+        update_mobjects_from_simulator(simulator) {
+          let mobj = this.get_mobj("heatmap");
+          mobj.set_vals(simulator.get_uValues());
+        }
+        draw_mobject(mobj) {
+          if (mobj instanceof HeatMap) {
+            mobj.draw(this.canvas, this, this.imageData);
+          } else {
+            mobj.draw(this.canvas, this);
+          }
+        }
+      }
+      let scene = new S(canvas, width, height, imageData);
+      handler.add_scene(scene);
+      handler.draw();
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(name + "-button-1")
+      );
+      let clearButton = Button(
+        document.getElementById(name + "-button-2"),
+        function() {
+          handler.add_to_queue(sim.reset.bind(sim));
+        }
+      );
+      clearButton.textContent = "Clear";
+      let c_slider = Slider(
+        document.getElementById(name + "-slider-1"),
+        function(t) {
+          handler.add_to_queue(() => {
+            for (let i = 0; i < (2 * center_source_padding + 1) ** 2; i++) {
+              sim.modify_point_source_amplitude(i, Number(t));
+            }
+          });
+        },
+        {
+          name: "Center temperature",
+          initial_value: "10",
+          min: -10,
+          max: 10,
+          step: 0.05
+        }
+      );
+      let b_slider = Slider(
+        document.getElementById(name + "-slider-2"),
+        function(t) {
+          handler.add_to_queue(() => {
+            for (let i = 0; i < 2 * (width + height - 2); i++) {
+              sim.modify_point_source_amplitude(
+                i + (2 * center_source_padding + 1) ** 2,
+                Number(t)
+              );
+            }
+          });
+        },
+        {
+          name: "Boundary temperature",
+          initial_value: "0",
+          min: -10,
+          max: 10,
+          step: 0.05
+        }
+      );
+      handler.play(void 0);
+    })(300, 300);
+    (function heatsim_sphere_ts(width, height) {
+      const name = "heatsim-sphere-ts";
+      let canvas = prepare_canvas(width, height, name);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      let num_theta = 50;
+      let num_phi = 100;
+      let dt = 1e-3;
+      let sim = new HeatSimPoles(num_theta, num_phi, dt);
+      sim.set_heat_propagation_speed(1);
+      let handler = new InteractiveHandler(sim);
+      let radius = 1;
+      let zoom_ratio = 1;
+      let scene = new SphereHeatMapScene(canvas, radius, num_theta, num_phi);
+      scene.set_frame_lims([-2, 2], [-2, 2]);
+      scene.set_zoom(zoom_ratio);
+      scene.set_view_mode("orthographic");
+      scene.camera.move_to([0, 0, -2]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        Math.PI / 3
+      );
+      let arcball = new Arcball(scene);
+      arcball.set_mode("Rotate");
+      arcball.add();
+      let [xmin, xmax] = [-2, 2];
+      let [ymin, ymax] = [-2, 2];
+      let [zmin, zmax] = [-2, 2];
+      let axes = new CoordinateAxes3d([xmin, xmax], [ymin, ymax], [zmin, zmax]);
+      axes.set_tick_size(0.1);
+      axes.set_alpha(0.5);
+      axes.set_axis_stroke_width(0.01);
+      scene.add("axes", axes);
+      handler.add_scene(scene);
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(name + "-button-1")
+      );
+      let clearButton = Button(
+        document.getElementById(name + "-button-2"),
+        function() {
+          handler.add_to_queue(sim.reset.bind(sim));
+          handler.add_to_queue(handler.draw.bind(handler));
+        }
+      );
+      clearButton.textContent = "Clear";
+      let n_slider = Slider(
+        document.getElementById(name + "-slider-1"),
+        function(t) {
+          handler.add_to_queue(() => {
+            sim.set_n_pole_temp(Number(t));
+          });
+        },
+        {
+          name: "North pole temperature",
+          initial_value: "20",
+          min: -50,
+          max: 50,
+          step: 0.05
+        }
+      );
+      let s_slider = Slider(
+        document.getElementById(name + "-slider-2"),
+        function(t) {
+          handler.add_to_queue(() => {
+            sim.set_s_pole_temp(Number(t));
+          });
+        },
+        {
+          name: "South pole temperature",
+          initial_value: "-20",
+          min: -50,
+          max: 50,
+          step: 0.05
+        }
+      );
+      handler.draw();
+      handler.play(void 0);
+    })(300, 300);
+    await (async function heatsim_sphere_rust(width, height) {
+      const name = "heatsim-sphere-rust";
+      let canvas = prepare_canvas(width, height, name);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Failed to get 2D context");
+      }
+      let num_theta = 50;
+      let num_phi = 100;
+      let dt = 1e-3;
+      let sim = await createHeatSimSphere(num_theta, num_phi, dt);
+      sim.set_attr("heat_propagation_speed", 1);
+      sim.reset();
+      let bump_std = 0.1;
+      let bump_vals = [];
+      let num_lines = 0;
+      let bump_val = gaussian_normal_pdf(
+        0,
+        bump_std,
+        num_lines * Math.PI / num_theta
+      );
+      while (bump_val > 0.2) {
+        bump_vals.push(bump_val);
+        num_lines++;
+        bump_val = gaussian_normal_pdf(
+          0,
+          bump_std,
+          num_lines * Math.PI / num_theta
+        );
+      }
+      for (let i = 0; i < num_lines; i++) {
+        sim.add_latitude_source(i, bump_vals[i] * 10);
+      }
+      for (let i = 0; i < num_lines; i++) {
+        sim.add_latitude_source(
+          num_theta - i,
+          bump_vals[i] * -10
+        );
+      }
+      let handler = new InteractiveHandler(sim);
+      let radius = 1;
+      let zoom_ratio = 1;
+      let scene = new SphereHeatMapScene(canvas, radius, num_theta, num_phi);
+      scene.set_frame_lims([-2, 2], [-2, 2]);
+      scene.set_zoom(zoom_ratio);
+      scene.set_view_mode("orthographic");
+      scene.camera.move_to([0, 0, -2]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        Math.PI / 3
+      );
+      let arcball = new Arcball(scene);
+      arcball.set_mode("Rotate");
+      arcball.add();
+      let [xmin, xmax] = [-2, 2];
+      let [ymin, ymax] = [-2, 2];
+      let [zmin, zmax] = [-2, 2];
+      let axes = new CoordinateAxes3d([xmin, xmax], [ymin, ymax], [zmin, zmax]);
+      axes.set_tick_size(0.1);
+      axes.set_alpha(0.5);
+      axes.set_axis_stroke_width(0.01);
+      scene.add("axes", axes);
+      handler.add_scene(scene);
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(name + "-button-1")
+      );
+      let clearButton = Button(
+        document.getElementById(name + "-button-2"),
+        function() {
+          handler.add_to_queue(sim.reset.bind(sim));
+          handler.add_to_queue(handler.draw.bind(handler));
+        }
+      );
+      clearButton.textContent = "Clear";
+      let n_slider = Slider(
+        document.getElementById(name + "-slider-1"),
+        function(t) {
+          handler.add_to_queue(() => {
+            for (let i = 0; i < num_lines; i++) {
+              sim.modify_latitude_source_amplitude(
+                i,
+                bump_vals[i] * Number(t)
+              );
+            }
+          });
+        },
+        {
+          name: "North pole temperature",
+          initial_value: "20",
+          min: -50,
+          max: 50,
+          step: 0.05
+        }
+      );
+      let s_slider = Slider(
+        document.getElementById(name + "-slider-2"),
+        function(t) {
+          handler.add_to_queue(() => {
+            for (let i = 0; i < num_lines; i++) {
+              sim.modify_latitude_source_amplitude(
+                i + num_lines,
+                bump_vals[i] * Number(t)
+              );
+            }
+          });
+        },
+        {
+          name: "South pole temperature",
+          initial_value: "-20",
+          min: -50,
+          max: 50,
+          step: 0.05
+        }
+      );
+      handler.draw();
+      handler.play(void 0);
+    })(300, 300);
   });
 })();
