@@ -1,0 +1,3 @@
+[submodule "rust-calc"]
+	path = rust-calc
+	url = https://github.com/krishanu-s/rust-calc
