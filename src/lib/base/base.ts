@@ -60,6 +60,15 @@ export function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Smooth function [0, 1] -> [0, 1], for animation
+export function smooth(t: number, inflection: number = 10.0) {
+  let error = sigmoid(-inflection / 2);
+  return Math.min(
+    Math.max((sigmoid(inflection * (t - 0.5)) - error) / (1 - 2 * error), 0),
+    1,
+  );
+}
+
 // *** CTX OPTIONS ***
 
 // Options for ctx.stroke() drawing.

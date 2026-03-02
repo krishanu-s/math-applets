@@ -124,6 +124,11 @@ export class ParametricFunction extends BezierSpline {
     this.function = new_f;
     this._make_anchors();
   }
+  set_lims(tmin: number, tmax: number) {
+    this.tmin = tmin;
+    this.tmax = tmax;
+    this._make_anchors();
+  }
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
     if (this.mode == "jagged") {
       this._drawFallback(ctx, scene);

@@ -25,6 +25,7 @@ export {
   gaussianRandom,
   gaussian_normal_pdf,
   delay,
+  smooth,
   StrokeOptions,
   FillOptions,
   MObject,

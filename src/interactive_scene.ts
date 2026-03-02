@@ -14,6 +14,8 @@ import {
   Line,
   LaTeXMObject,
   LatexCache,
+  sigmoid,
+  smooth,
 } from "./lib/base";
 import { BezierSpline } from "./lib/base/bezier.js";
 import {
@@ -50,7 +52,7 @@ import { ParametricFunction } from "./lib/base/bezier";
 import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 
 (function () {
-  document.addEventListener("DOMContentLoaded", function () {
+  document.addEventListener("DOMContentLoaded", async function () {
     // A Bezier curve defined by a sequence of control points, where the points can be dragged around.
     (function draggable_dots_bezier(width: number, height: number) {
       let canvas = prepare_canvas(width, height, "draggable-dot-bezier");
@@ -121,6 +123,14 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
     })(500, 500);
 
     // A pair of Cartesian axes, with grid lines
+    // Displaying a function and its integral
+
+    //
+    // TODO Add a visualization of why 1 / (1 + x) = 1 - x + x^2 - x^3 + ... for x in [0, 1]
+    //
+    // TODO Add a visualization of why 1 + 1/2 + 1/3 + ... + 1/n ~ ln(n)
+    // TODO Add a visualization of why ln(2) + ... + ln(n) ~ ...
+    // TODO Add a visualization of why ln(2) + ... + ln(n) ~ ...
     (function cartesian_2d(width: number, height: number) {
       const name = "cartesian-2d";
       let canvas = prepare_canvas(width, height, name);
@@ -203,6 +213,203 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 
       scene.draw();
     })(500, 500);
+
+    // TODO Add a playable animation which visually shows why ln(ab) = ln(a) + ln(b)
+
+    // TODO Add an applet showing the Taylor polynomials of ln(1 + x) and animation
+    // which adds them in, one-by-one. Also have a formula which fades in terms, one-by-one.
+    await (async function log_series(width: number, height: number) {
+      const name = "log-series";
+
+      // Initiate the Bezier solver for smooth curve approximation
+      let num_pts = 100;
+      let solver = await createSmoothOpenPathBezier(num_pts);
+
+      // Set up the two scenes
+      let xmin = -5;
+      let xmax = 5;
+      let ymin = -5;
+      let ymax = 5;
+
+      let log_canvas = prepare_canvas(width, height, name);
+      let log_scene = new Scene(log_canvas);
+      log_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      log_scene.add("axes", new CoordinateAxes2d([xmin, xmax], [ymin, ymax]));
+
+      let hyp_canvas = prepare_canvas(width, height, "log-series-hyperbola");
+      let hyp_scene = new Scene(hyp_canvas);
+      hyp_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      hyp_scene.add("axes", new CoordinateAxes2d([xmin, xmax], [ymin, ymax]));
+
+      // TODO Add ability to zoom in and out
+
+      // Add Taylor approximations
+      let degree = 1;
+
+      log_scene.add(
+        "approx_to_curve",
+        new ParametricFunction(
+          (t) => [t, t],
+          xmin,
+          xmax,
+          num_pts,
+          solver,
+        ).set_stroke_color("red"),
+      );
+      log_scene.add(
+        "curve",
+        new ParametricFunction(
+          (t) => [t, Math.log(1 + t)],
+          -0.98,
+          xmax,
+          num_pts,
+          solver,
+        ),
+      );
+
+      hyp_scene.add(
+        "approx_to_curve",
+        new ParametricFunction(
+          (t) => [t, 1.0] as Vec2D,
+          xmin,
+          xmax,
+          num_pts,
+          solver,
+        ).set_stroke_color("red"),
+      );
+      hyp_scene.add(
+        "curve",
+        new ParametricFunction(
+          (t) => [t, 1 / (1 + t)],
+          -0.98,
+          xmax,
+          num_pts,
+          solver,
+        ),
+      );
+
+      // Add a view translator and callbacks to update the axes and functions when the view changes
+      let log_canvas_translator = new SceneViewTranslator(log_scene);
+      log_canvas_translator.add_callback(() => {
+        (log_scene.get_mobj("axes") as CoordinateAxes2d).set_lims(
+          log_scene.view_xlims,
+          log_scene.view_ylims,
+        );
+        (log_scene.get_mobj("curve") as ParametricFunction).set_lims(
+          -0.99,
+          log_scene.view_xlims[1],
+        );
+        (log_scene.get_mobj("approx_to_curve") as ParametricFunction).set_lims(
+          log_scene.view_xlims[0],
+          log_scene.view_xlims[1],
+        );
+      });
+      log_canvas_translator.add();
+
+      let hyp_canvas_translator = new SceneViewTranslator(hyp_scene);
+      hyp_canvas_translator.add_callback(() => {
+        (hyp_scene.get_mobj("axes") as CoordinateAxes2d).set_lims(
+          hyp_scene.view_xlims,
+          hyp_scene.view_ylims,
+        );
+        (hyp_scene.get_mobj("curve") as ParametricFunction).set_lims(
+          -0.99,
+          hyp_scene.view_xlims[1],
+        );
+        (hyp_scene.get_mobj("approx_to_curve") as ParametricFunction).set_lims(
+          hyp_scene.view_xlims[0],
+          hyp_scene.view_xlims[1],
+        );
+      });
+      hyp_canvas_translator.add();
+
+      // Add buttons to increment/decrement degree
+      const num_frames = 50;
+      async function setApproxDegree(oldDegree: number, newDegree: number) {
+        for (let frame = 1; frame <= num_frames; frame++) {
+          (
+            log_scene.get_mobj("approx_to_curve") as ParametricFunction
+          ).set_function((t) => {
+            let result = 0;
+            if (oldDegree > newDegree) {
+              for (let i = 1; i <= newDegree; i++) {
+                result -= Math.pow(-t, i) / i;
+              }
+              for (let i = newDegree + 1; i <= oldDegree; i++) {
+                result -=
+                  (smooth((num_frames - frame) / num_frames) *
+                    Math.pow(-t, i)) /
+                  i;
+              }
+            } else {
+              for (let i = 1; i <= oldDegree; i++) {
+                result -= Math.pow(-t, i) / i;
+              }
+              for (let i = oldDegree + 1; i <= newDegree; i++) {
+                result -= (smooth(frame / num_frames) * Math.pow(-t, i)) / i;
+              }
+            }
+            return [t, result];
+          });
+
+          (
+            hyp_scene.get_mobj("approx_to_curve") as ParametricFunction
+          ).set_function((t) => {
+            let result = 0;
+            if (oldDegree > newDegree) {
+              for (let i = 1; i <= newDegree; i++) {
+                result += Math.pow(-t, i - 1);
+              }
+              for (let i = newDegree + 1; i <= oldDegree; i++) {
+                result +=
+                  smooth((num_frames - frame) / num_frames) *
+                  Math.pow(-t, i - 1);
+              }
+            } else {
+              for (let i = 1; i <= oldDegree; i++) {
+                result += Math.pow(-t, i - 1);
+              }
+              for (let i = oldDegree + 1; i <= newDegree; i++) {
+                result += smooth(frame / num_frames) * Math.pow(-t, i - 1);
+              }
+            }
+            return [t, result];
+          });
+
+          log_scene.draw();
+          hyp_scene.draw();
+          await delay(20);
+        }
+      }
+      let upButton = Button(
+        document.getElementById(name + "-button-1") as HTMLElement,
+        () => {
+          setApproxDegree(degree, degree + 1);
+          degree++;
+        },
+      );
+      let downButton = Button(
+        document.getElementById(name + "-button-2") as HTMLElement,
+        () => {
+          if (degree == 1) {
+            return;
+          }
+          setApproxDegree(degree, degree - 1);
+          degree--;
+        },
+      );
+      log_scene.draw();
+      hyp_scene.draw();
+    })(300, 300);
+
+    // TODO Add a visualization of why the integral of x^n from x = 0 to x = 1 is 1/(n+1), for
+    // - n = 1
+    // - n = 2
+    // - n = 3
+    // - General slider and sum
+    // - n = 0
+
+    // TODO Add a visualization of why 1 / (1 + x) = 1 - x + x^2 - x^3 + ... for x in [0, 1]
 
     // A triple of Cartesian axes
     (function cartesian_3d(width: number, height: number) {

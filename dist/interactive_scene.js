@@ -41,6 +41,19 @@ var DEFAULT_STROKE_WIDTH = 0.08;
 var DEFAULT_FILL_COLOR = "black";
 
 // src/lib/base/base.ts
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-x));
+}
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function smooth(t, inflection = 10) {
+  let error = sigmoid(-inflection / 2);
+  return Math.min(
+    Math.max((sigmoid(inflection * (t - 0.5)) - error) / (1 - 2 * error), 0),
+    1
+  );
+}
 var StrokeOptions = class {
   constructor() {
     this.stroke_width = DEFAULT_STROKE_WIDTH;
@@ -2090,6 +2103,47 @@ var BezierSpline = class extends LineLikeMObject {
     ctx.stroke();
   }
 };
+var ParametricFunction = class extends BezierSpline {
+  constructor(f, tmin, tmax, num_steps, solver) {
+    super(num_steps, solver);
+    this.mode = "smooth";
+    this.function = f;
+    this.tmin = tmin;
+    this.tmax = tmax;
+    this._make_anchors();
+  }
+  _make_anchors() {
+    let anchors = [this.function(this.tmin)];
+    for (let i = 1; i <= this.num_steps; i++) {
+      anchors.push(
+        this.function(
+          this.tmin + i / this.num_steps * (this.tmax - this.tmin)
+        )
+      );
+    }
+    this.set_anchors(anchors);
+  }
+  // Jagged doesn't use Bezier curves. It is faster to compute and render.
+  set_mode(mode) {
+    this.mode = mode;
+  }
+  set_function(new_f) {
+    this.function = new_f;
+    this._make_anchors();
+  }
+  set_lims(tmin, tmax) {
+    this.tmin = tmin;
+    this.tmax = tmax;
+    this._make_anchors();
+  }
+  _draw(ctx, scene) {
+    if (this.mode == "jagged") {
+      this._drawFallback(ctx, scene);
+    } else {
+      super._draw(ctx, scene);
+    }
+  }
+};
 
 // src/lib/interactive/arcball.ts
 var Arcball = class {
@@ -2400,6 +2454,23 @@ var ThreeDScene = class extends Scene {
     this.draw_border(ctx);
   }
 };
+
+// src/lib/interactive/button.ts
+function Button(container, callback) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "interactiveButton";
+  button.style.padding = "15px";
+  container.appendChild(button);
+  button.addEventListener("click", (event) => {
+    callback();
+    button.style.transform = "scale(0.95)";
+    setTimeout(() => {
+      button.style.transform = "scale(1)";
+    }, 100);
+  });
+  return button;
+}
 
 // src/lib/interactive/slider.ts
 function Slider(container, callback, kwargs) {
@@ -3492,7 +3563,7 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
 
 // src/interactive_scene.ts
 (function() {
-  document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("DOMContentLoaded", async function() {
     (function draggable_dots_bezier(width, height) {
       let canvas = prepare_canvas(width, height, "draggable-dot-bezier");
       let scene = new Scene(canvas);
@@ -3616,6 +3687,161 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
       translator.add();
       scene.draw();
     })(500, 500);
+    await (async function log_series(width, height) {
+      const name = "log-series";
+      let num_pts = 100;
+      let solver = await createSmoothOpenPathBezier(num_pts);
+      let xmin = -5;
+      let xmax = 5;
+      let ymin = -5;
+      let ymax = 5;
+      let log_canvas = prepare_canvas(width, height, name);
+      let log_scene = new Scene(log_canvas);
+      log_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      log_scene.add("axes", new CoordinateAxes2d([xmin, xmax], [ymin, ymax]));
+      let hyp_canvas = prepare_canvas(width, height, "log-series-hyperbola");
+      let hyp_scene = new Scene(hyp_canvas);
+      hyp_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      hyp_scene.add("axes", new CoordinateAxes2d([xmin, xmax], [ymin, ymax]));
+      let degree = 1;
+      log_scene.add(
+        "approx_to_curve",
+        new ParametricFunction(
+          (t) => [t, t],
+          xmin,
+          xmax,
+          num_pts,
+          solver
+        ).set_stroke_color("red")
+      );
+      log_scene.add(
+        "curve",
+        new ParametricFunction(
+          (t) => [t, Math.log(1 + t)],
+          -0.98,
+          xmax,
+          num_pts,
+          solver
+        )
+      );
+      hyp_scene.add(
+        "approx_to_curve",
+        new ParametricFunction(
+          (t) => [t, 1],
+          xmin,
+          xmax,
+          num_pts,
+          solver
+        ).set_stroke_color("red")
+      );
+      hyp_scene.add(
+        "curve",
+        new ParametricFunction(
+          (t) => [t, 1 / (1 + t)],
+          -0.98,
+          xmax,
+          num_pts,
+          solver
+        )
+      );
+      let log_canvas_translator = new SceneViewTranslator(log_scene);
+      log_canvas_translator.add_callback(() => {
+        log_scene.get_mobj("axes").set_lims(
+          log_scene.view_xlims,
+          log_scene.view_ylims
+        );
+        log_scene.get_mobj("curve").set_lims(
+          -0.99,
+          log_scene.view_xlims[1]
+        );
+        log_scene.get_mobj("approx_to_curve").set_lims(
+          log_scene.view_xlims[0],
+          log_scene.view_xlims[1]
+        );
+      });
+      log_canvas_translator.add();
+      let hyp_canvas_translator = new SceneViewTranslator(hyp_scene);
+      hyp_canvas_translator.add_callback(() => {
+        hyp_scene.get_mobj("axes").set_lims(
+          hyp_scene.view_xlims,
+          hyp_scene.view_ylims
+        );
+        hyp_scene.get_mobj("curve").set_lims(
+          -0.99,
+          hyp_scene.view_xlims[1]
+        );
+        hyp_scene.get_mobj("approx_to_curve").set_lims(
+          hyp_scene.view_xlims[0],
+          hyp_scene.view_xlims[1]
+        );
+      });
+      hyp_canvas_translator.add();
+      const num_frames = 50;
+      async function setApproxDegree(oldDegree, newDegree) {
+        for (let frame = 1; frame <= num_frames; frame++) {
+          log_scene.get_mobj("approx_to_curve").set_function((t) => {
+            let result = 0;
+            if (oldDegree > newDegree) {
+              for (let i = 1; i <= newDegree; i++) {
+                result -= Math.pow(-t, i) / i;
+              }
+              for (let i = newDegree + 1; i <= oldDegree; i++) {
+                result -= smooth((num_frames - frame) / num_frames) * Math.pow(-t, i) / i;
+              }
+            } else {
+              for (let i = 1; i <= oldDegree; i++) {
+                result -= Math.pow(-t, i) / i;
+              }
+              for (let i = oldDegree + 1; i <= newDegree; i++) {
+                result -= smooth(frame / num_frames) * Math.pow(-t, i) / i;
+              }
+            }
+            return [t, result];
+          });
+          hyp_scene.get_mobj("approx_to_curve").set_function((t) => {
+            let result = 0;
+            if (oldDegree > newDegree) {
+              for (let i = 1; i <= newDegree; i++) {
+                result += Math.pow(-t, i - 1);
+              }
+              for (let i = newDegree + 1; i <= oldDegree; i++) {
+                result += smooth((num_frames - frame) / num_frames) * Math.pow(-t, i - 1);
+              }
+            } else {
+              for (let i = 1; i <= oldDegree; i++) {
+                result += Math.pow(-t, i - 1);
+              }
+              for (let i = oldDegree + 1; i <= newDegree; i++) {
+                result += smooth(frame / num_frames) * Math.pow(-t, i - 1);
+              }
+            }
+            return [t, result];
+          });
+          log_scene.draw();
+          hyp_scene.draw();
+          await delay(20);
+        }
+      }
+      let upButton = Button(
+        document.getElementById(name + "-button-1"),
+        () => {
+          setApproxDegree(degree, degree + 1);
+          degree++;
+        }
+      );
+      let downButton = Button(
+        document.getElementById(name + "-button-2"),
+        () => {
+          if (degree == 1) {
+            return;
+          }
+          setApproxDegree(degree, degree - 1);
+          degree--;
+        }
+      );
+      log_scene.draw();
+      hyp_scene.draw();
+    })(300, 300);
     (function cartesian_3d(width, height) {
       const name = "cartesian-3d";
       let canvas = prepare_canvas(width, height, name);
