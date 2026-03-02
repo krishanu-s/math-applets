@@ -43,6 +43,7 @@ export {
   Axis3D,
   CoordinateAxes3d,
   Integral,
+  IntegralBetween,
 } from "./cartesian";
 export {
   colorval_to_rgba,

@@ -9,6 +9,7 @@ import {
   vec2_sum,
   vec2_norm,
   vec2_normalize,
+  Dot,
   DraggableDot,
   Polygon,
   Line,
@@ -47,6 +48,7 @@ import {
   CoordinateAxes2d,
   CoordinateAxes3d,
   Integral,
+  IntegralBetween,
 } from "./lib/base/cartesian";
 import { ParametricFunction } from "./lib/base/bezier";
 import { createSmoothOpenPathBezier } from "./rust-calc-browser";
@@ -225,21 +227,40 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
       let num_pts = 100;
       let solver = await createSmoothOpenPathBezier(num_pts);
 
+      // Make a LaTeX cache
+      // TODO Pre-populate it.
+      let cache = new LatexCache();
+      // for (let d = 0; d <= 10; d++) {
+      //   cache.add(`d=${d}`, "black", 12);
+      // }
+
       // Set up the two scenes
-      let xmin = -5;
-      let xmax = 5;
-      let ymin = -5;
-      let ymax = 5;
+      let xmin = -1;
+      let xmax = 2;
+      let ymin = -1;
+      let ymax = 2;
 
       let log_canvas = prepare_canvas(width, height, name);
       let log_scene = new Scene(log_canvas);
       log_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      log_scene.add("axes", new CoordinateAxes2d([xmin, xmax], [ymin, ymax]));
+      log_scene.add(
+        "axes",
+        new CoordinateAxes2d([xmin, xmax], [ymin, ymax])
+          .set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 })
+          .set_tick_options({ stroke_width: 0.04, size: 0.08 })
+          .set_grid_options({ stroke_width: 0.02, distance: 0.5 }),
+      );
 
       let hyp_canvas = prepare_canvas(width, height, "log-series-hyperbola");
       let hyp_scene = new Scene(hyp_canvas);
       hyp_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      hyp_scene.add("axes", new CoordinateAxes2d([xmin, xmax], [ymin, ymax]));
+      hyp_scene.add(
+        "axes",
+        new CoordinateAxes2d([xmin, xmax], [ymin, ymax])
+          .set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 })
+          .set_tick_options({ stroke_width: 0.04, size: 0.08 })
+          .set_grid_options({ stroke_width: 0.02, distance: 0.5 }),
+      );
 
       // TODO Add ability to zoom in and out
 
@@ -247,14 +268,14 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
       let degree = 1;
 
       log_scene.add(
+        "latex",
+        new LaTeXMObject(`d=${degree}`, [-0.5, 1.5], cache),
+      );
+      log_scene.add(
         "approx_to_curve",
-        new ParametricFunction(
-          (t) => [t, t],
-          xmin,
-          xmax,
-          num_pts,
-          solver,
-        ).set_stroke_color("red"),
+        new ParametricFunction((t) => [t, t], xmin, xmax, num_pts, solver)
+          .set_stroke_color("red")
+          .set_stroke_width(0.04),
       );
       log_scene.add(
         "curve",
@@ -264,7 +285,7 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
           xmax,
           num_pts,
           solver,
-        ),
+        ).set_stroke_width(0.04),
       );
 
       hyp_scene.add(
@@ -275,7 +296,9 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
           xmax,
           num_pts,
           solver,
-        ).set_stroke_color("red"),
+        )
+          .set_stroke_width(0.04)
+          .set_stroke_color("blue"),
       );
       hyp_scene.add(
         "curve",
@@ -285,8 +308,56 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
           xmax,
           num_pts,
           solver,
-        ),
+        ).set_stroke_width(0.04),
       );
+
+      // Add draggable point
+      let x_val = 0.5;
+      let x_pt = new DraggableDot([x_val, Math.log(1 + x_val)], 0.08);
+      let approx_x_pt = new Dot(
+        [x_val, approxFunctionLog(degree)(x_val)],
+        0.08,
+      ).set_color("red");
+      hyp_scene.add(
+        "approx_integral",
+        new IntegralBetween(
+          (t) => 1.0,
+          (t) => 0,
+          0,
+          x_val,
+          num_pts,
+        )
+          .set_stroke_width(0.02)
+          .set_fill_color("red")
+          .set_fill_alpha(0.2),
+      );
+      hyp_scene.add(
+        "integral",
+        new IntegralBetween(
+          (t) => 1 / (1 + t),
+          (t) => 0,
+          0,
+          x_val,
+          num_pts,
+        )
+          .set_stroke_width(0.02)
+          .set_fill_color("gray")
+          .set_fill_alpha(0.4),
+      );
+      x_pt.add_callback(() => {
+        x_val = x_pt.center[0];
+        x_pt.move_to([x_val, Math.log(1 + x_val)]);
+        (hyp_scene.get_mobj("integral") as IntegralBetween).set_right_endpoint(
+          x_val,
+        );
+        (
+          hyp_scene.get_mobj("approx_integral") as IntegralBetween
+        ).set_right_endpoint(x_val);
+        approx_x_pt.move_to([x_val, approxFunctionLog(degree)(x_val)]);
+        hyp_scene.draw();
+      });
+      log_scene.add("approx_x_pt", approx_x_pt);
+      log_scene.add("x_pt", x_pt);
 
       // Add a view translator and callbacks to update the axes and functions when the view changes
       let log_canvas_translator = new SceneViewTranslator(log_scene);
@@ -325,8 +396,27 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 
       // Add buttons to increment/decrement degree
       const num_frames = 50;
+      function approxFunctionLog(d: number): (t: number) => number {
+        return (t: number) => {
+          let result = 0;
+          for (let i = 1; i <= d; i++) {
+            result -= Math.pow(-t, i) / i;
+          }
+          return result;
+        };
+      }
+      function approxFunctionHyp(d: number): (t: number) => number {
+        return (t: number) => {
+          let result = 0;
+          for (let i = 1; i <= d; i++) {
+            result += Math.pow(-t, i - 1);
+          }
+          return result;
+        };
+      }
       async function setApproxDegree(oldDegree: number, newDegree: number) {
         for (let frame = 1; frame <= num_frames; frame++) {
+          let alpha = frame / num_frames;
           (
             log_scene.get_mobj("approx_to_curve") as ParametricFunction
           ).set_function((t) => {
@@ -336,17 +426,14 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
                 result -= Math.pow(-t, i) / i;
               }
               for (let i = newDegree + 1; i <= oldDegree; i++) {
-                result -=
-                  (smooth((num_frames - frame) / num_frames) *
-                    Math.pow(-t, i)) /
-                  i;
+                result -= (smooth(1 - alpha) * Math.pow(-t, i)) / i;
               }
             } else {
               for (let i = 1; i <= oldDegree; i++) {
                 result -= Math.pow(-t, i) / i;
               }
               for (let i = oldDegree + 1; i <= newDegree; i++) {
-                result -= (smooth(frame / num_frames) * Math.pow(-t, i)) / i;
+                result -= (smooth(alpha) * Math.pow(-t, i)) / i;
               }
             }
             return [t, result];
@@ -361,43 +448,80 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
                 result += Math.pow(-t, i - 1);
               }
               for (let i = newDegree + 1; i <= oldDegree; i++) {
-                result +=
-                  smooth((num_frames - frame) / num_frames) *
-                  Math.pow(-t, i - 1);
+                result += smooth(1 - alpha) * Math.pow(-t, i - 1);
               }
             } else {
               for (let i = 1; i <= oldDegree; i++) {
                 result += Math.pow(-t, i - 1);
               }
               for (let i = oldDegree + 1; i <= newDegree; i++) {
-                result += smooth(frame / num_frames) * Math.pow(-t, i - 1);
+                result += smooth(alpha) * Math.pow(-t, i - 1);
               }
             }
             return [t, result];
           });
+          (hyp_scene.get_mobj("approx_integral") as IntegralBetween).set_f(
+            (t) => {
+              let result = 0;
+              if (oldDegree > newDegree) {
+                for (let i = 1; i <= newDegree; i++) {
+                  result += Math.pow(-t, i - 1);
+                }
+                for (let i = newDegree + 1; i <= oldDegree; i++) {
+                  result += smooth(1 - alpha) * Math.pow(-t, i - 1);
+                }
+              } else {
+                for (let i = 1; i <= oldDegree; i++) {
+                  result += Math.pow(-t, i - 1);
+                }
+                for (let i = oldDegree + 1; i <= newDegree; i++) {
+                  result += smooth(alpha) * Math.pow(-t, i - 1);
+                }
+              }
+              return result;
+            },
+          );
+
+          approx_x_pt.move_to([
+            x_val,
+            (1 - alpha) * approxFunctionLog(oldDegree)(x_val) +
+              alpha * approxFunctionLog(newDegree)(x_val),
+          ]);
 
           log_scene.draw();
           hyp_scene.draw();
-          await delay(20);
+          await delay(10);
         }
       }
       let upButton = Button(
         document.getElementById(name + "-button-1") as HTMLElement,
         () => {
+          // TODO First make the integral under the curve x^d in the hyperbola scene,
+          // and homotope it
           setApproxDegree(degree, degree + 1);
           degree++;
+          (log_scene.get_mobj("latex") as LaTeXMObject).set_tex(`d=${degree}`);
+          log_scene.draw();
+          hyp_scene.draw();
         },
       );
+      upButton.textContent = "Increase degree";
       let downButton = Button(
         document.getElementById(name + "-button-2") as HTMLElement,
         () => {
           if (degree == 1) {
             return;
           }
+          // TODO First make the integral under the curve x^{d-1} in the hyperbola scene,
+          // and homotope it
           setApproxDegree(degree, degree - 1);
           degree--;
+          (log_scene.get_mobj("latex") as LaTeXMObject).set_tex(`d=${degree}`);
+          log_scene.draw();
+          hyp_scene.draw();
         },
       );
+      downButton.textContent = "Decrease degree";
       log_scene.draw();
       hyp_scene.draw();
     })(300, 300);

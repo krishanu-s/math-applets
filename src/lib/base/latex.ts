@@ -48,6 +48,9 @@ export class LaTeXMObject extends MObject {
       ...katexOptions,
     };
   }
+  set_tex(latex: string) {
+    this.latex = latex;
+  }
   set_fontSize(size: number) {
     this.fontSize = size;
   }

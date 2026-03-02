@@ -504,3 +504,85 @@ export class Integral extends Polygon {
     this._recompute_points();
   }
 }
+
+// A polygon representing the area between two functions over an interval.
+// TODO Deal with the case where f and g cross, using different colors.
+export class IntegralBetween extends Polygon {
+  f: (t: number) => number;
+  g: (t: number) => number;
+  left_endpoint: number;
+  right_endpoint: number;
+  num_points: number;
+  constructor(
+    f: (t: number) => number,
+    g: (t: number) => number,
+    left_endpoint: number,
+    right_endpoint: number,
+    num_points: number,
+  ) {
+    const points: Vec2D[] = [];
+    for (let i = 0; i <= num_points; i++) {
+      const t =
+        left_endpoint + ((right_endpoint - left_endpoint) * i) / num_points;
+      points.push([t, f(t)]);
+    }
+    for (let i = num_points; i >= 0; i--) {
+      const t =
+        left_endpoint + ((right_endpoint - left_endpoint) * i) / num_points;
+      points.push([t, g(t)]);
+    }
+    super(points);
+
+    this.f = f;
+    this.g = g;
+    this.left_endpoint = left_endpoint;
+    this.right_endpoint = right_endpoint;
+    this.num_points = num_points;
+  }
+  _recompute_points() {
+    this.points = [];
+    for (let i = 0; i <= this.num_points; i++) {
+      const t =
+        this.left_endpoint +
+        ((this.right_endpoint - this.left_endpoint) * i) / this.num_points;
+      this.points.push([t, this.f(t)]);
+    }
+    for (let i = this.num_points; i >= 0; i--) {
+      const t =
+        this.left_endpoint +
+        ((this.right_endpoint - this.left_endpoint) * i) / this.num_points;
+      this.points.push([t, this.g(t)]);
+    }
+  }
+  set_left_endpoint(left_endpoint: number) {
+    this.left_endpoint = left_endpoint;
+    this._recompute_points();
+    return this;
+  }
+  set_right_endpoint(right_endpoint: number) {
+    this.right_endpoint = right_endpoint;
+    this._recompute_points();
+    return this;
+  }
+  set_lims(left_endpoint: number, right_endpoint: number) {
+    this.left_endpoint = left_endpoint;
+    this.right_endpoint = right_endpoint;
+    this._recompute_points();
+    return this;
+  }
+  set_num_points(num_points: number) {
+    this.num_points = num_points;
+    this._recompute_points();
+    return this;
+  }
+  set_f(f: (t: number) => number) {
+    this.f = f;
+    this._recompute_points();
+    return this;
+  }
+  set_g(g: (t: number) => number) {
+    this.g = g;
+    this._recompute_points();
+    return this;
+  }
+}
