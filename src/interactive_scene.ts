@@ -484,8 +484,8 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 
           approx_x_pt.move_to([
             x_val,
-            (1 - alpha) * approxFunctionLog(oldDegree)(x_val) +
-              alpha * approxFunctionLog(newDegree)(x_val),
+            (1 - smooth(alpha)) * approxFunctionLog(oldDegree)(x_val) +
+              smooth(alpha) * approxFunctionLog(newDegree)(x_val),
           ]);
 
           log_scene.draw();
