@@ -14,7 +14,12 @@ import {
   delay,
   Line,
 } from "./lib/base";
-import { SceneViewTranslator, Button, Slider } from "./lib/interactive";
+import {
+  SceneViewTranslator,
+  Button,
+  Slider,
+  CSlider,
+} from "./lib/interactive";
 import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 
 (function () {
@@ -41,6 +46,9 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
       let canvas = prepare_canvas(width, height, name);
       let scene = new Scene(canvas);
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      const tick_size = 0.1;
+      const tex_offset_x = 0.2;
+      const tex_offset_y = 0.1;
 
       scene.add(
         "axes",
@@ -49,8 +57,8 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
           .set_tick_options({ stroke_width: 0.04, size: 0.08 })
           .set_grid_options({
             stroke_width: 0.02,
-            x_distance: 0.5,
-            y_distance: 0.5,
+            x_distance: 1.0,
+            y_distance: 1.0,
           }),
       );
       scene.add(
@@ -85,35 +93,52 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
       );
       scene.add(
         "tick_a",
-        new Line([a, -0.1], [a, 0.1])
+        new Line([a, -tick_size], [a, tick_size])
           .set_stroke_width(0.08)
           .set_stroke_color("red"),
       );
       scene.add(
         "tick_b",
-        new Line([b, -0.1], [b, 0.1])
+        new Line([b, -tick_size], [b, tick_size])
           .set_stroke_width(0.08)
           .set_stroke_color("blue"),
       );
       scene.add(
         "tick_ab",
-        new Line([a * b, -0.1], [a * b, 0.1])
+        new Line([a * b, -tick_size], [a * b, tick_size])
           .set_stroke_width(0.08)
           .set_stroke_color("purple"),
       );
-      scene.add(
-        "tex_a",
-        new LaTeXMObject("a", [a - 0.2, -0.1], cache).set_fontSize(12),
-      );
 
       scene.add(
+        "tex_a",
+        new LaTeXMObject(
+          "a",
+          [a - tex_offset_x, -tex_offset_y],
+          cache,
+        ).set_fontSize(12),
+      );
+      scene.add(
         "tex_b",
-        new LaTeXMObject("b", [b - 0.2, -0.1], cache).set_fontSize(12),
+        new LaTeXMObject(
+          "b",
+          [b - tex_offset_x, -tex_offset_y],
+          cache,
+        ).set_fontSize(12),
       );
       scene.add(
         "tex_ab",
-        new LaTeXMObject("ab", [a * b - 0.2, -0.1], cache).set_fontSize(12),
+        new LaTeXMObject(
+          "ab",
+          [a * b - tex_offset_x, -tex_offset_y],
+          cache,
+        ).set_fontSize(12),
       );
+
+      // Pre-render all LaTeX objects in the scene
+      await (scene.get_mobj("tex_a") as LaTeXMObject).add_to_cache();
+      await (scene.get_mobj("tex_b") as LaTeXMObject).add_to_cache();
+      await (scene.get_mobj("tex_ab") as LaTeXMObject).add_to_cache();
 
       // Add a scene view translator
       let scene_view_translator = new SceneViewTranslator(scene).add_callback(
@@ -130,6 +155,42 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
       );
       scene_view_translator.add();
       scene.draw();
+
+      function update_scene(a_val: number, b_val: number) {
+        (scene.get_mobj("scaled_curve") as ParametricFunction).set_function(
+          (t) => [t, b_val / t],
+        );
+        if (horizontally_stretched) {
+          (scene.get_mobj("integral_ln_a") as Integral).set_lims(
+            b_val,
+            a_val * b_val,
+          );
+        } else {
+          (scene.get_mobj("integral_ln_a") as Integral).set_lims(1, a_val);
+        }
+        (scene.get_mobj("integral_ln_b") as Integral).set_lims(1, b_val);
+        (scene.get_mobj("tex_a") as LaTeXMObject).move_to([
+          a_val - tex_offset_x,
+          -tex_offset_y,
+        ]);
+        (scene.get_mobj("tex_b") as LaTeXMObject).move_to([
+          b_val - tex_offset_x,
+          -tex_offset_y,
+        ]);
+        (scene.get_mobj("tex_ab") as LaTeXMObject).move_to([
+          a_val * b_val - tex_offset_x,
+          -tex_offset_y,
+        ]);
+        (scene.get_mobj("tick_a") as Line)
+          .move_start([a_val, -tick_size])
+          .move_end([a_val, tick_size]);
+        (scene.get_mobj("tick_b") as Line)
+          .move_start([b_val, -tick_size])
+          .move_end([b_val, tick_size]);
+        (scene.get_mobj("tick_ab") as Line)
+          .move_start([a_val * b_val, -tick_size])
+          .move_end([a_val * b_val, tick_size]);
+      }
 
       // Animate the movement of the integral
       const num_frames = 50;
@@ -191,6 +252,38 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
         () => {},
       );
       displayButton.textContent = `Red area = ${Math.log(a).toFixed(3)}, Blue area = ${Math.log(b).toFixed(3)}`;
+
+      // Sliders
+      let aSlider = Slider(
+        document.getElementById(name + "-slider-1") as HTMLElement,
+        (x: number) => {
+          a = x;
+          update_scene(a, b);
+          scene.draw();
+        },
+        {
+          name: "a value",
+          initial_value: "2.5",
+          min: 0.2,
+          max: 8,
+          step: 0.01,
+        },
+      );
+      let bSlider = Slider(
+        document.getElementById(name + "-slider-2") as HTMLElement,
+        (x: number) => {
+          b = x;
+          update_scene(a, b);
+          scene.draw();
+        },
+        {
+          name: "b value",
+          initial_value: "3.0",
+          min: 0.2,
+          max: 8,
+          step: 0.01,
+        },
+      );
     })(300, 300);
 
     // TODO Add an applet showing the Taylor polynomials of ln(1 + x) and animation
@@ -246,10 +339,18 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
       // Add Taylor approximations
       let degree = 1;
 
+      // Pre-render LaTeX
       log_scene.add(
         "latex",
         new LaTeXMObject(`d=${degree}`, [-0.5, 1.5], cache),
       );
+      await (log_scene.get_mobj("latex") as LaTeXMObject).add_to_cache();
+      for (let d = 2; d < 7; d++) {
+        (log_scene.get_mobj("latex") as LaTeXMObject).set_tex(`d=${d}`);
+        await (log_scene.get_mobj("latex") as LaTeXMObject).add_to_cache();
+      }
+      (log_scene.get_mobj("latex") as LaTeXMObject).set_tex(`d=${degree}`);
+
       log_scene.add(
         "approx_to_curve",
         new ParametricFunction((t) => [t, t], xmin, xmax, num_pts, solver)

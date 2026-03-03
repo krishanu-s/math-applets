@@ -240,13 +240,16 @@ export class Line extends LineLikeMObject {
   // Moves the start and end points
   move_start(p: Vec2D) {
     this.start = p;
+    return this;
   }
   move_end(p: Vec2D) {
     this.end = p;
+    return this;
   }
   move_by(p: Vec2D) {
     this.start = vec2_sum(this.start, p);
     this.end = vec2_sum(this.end, p);
+    return this;
   }
   length(): number {
     return vec2_norm(vec2_sub(this.start, this.end));

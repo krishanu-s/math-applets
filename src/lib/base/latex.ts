@@ -64,6 +64,10 @@ export class LaTeXMObject extends MObject {
     this.color = color;
     return this;
   }
+  move_to(pos: Vec2D) {
+    this.pos = pos;
+    return this;
+  }
   // Draw a rendered LaTeX image
   _drawRendered(
     ctx: CanvasRenderingContext2D,
@@ -160,6 +164,26 @@ export class LaTeXMObject extends MObject {
       // Cleanup
       document.body.removeChild(container);
     }
+  }
+
+  // Adds this LaTeX object to the cache for faster rendering-on-demand in future.
+  async add_to_cache() {
+    // Check if the image is cached.
+    let [isCached, cachedCanvas] = this.latex_cache.is_cached(
+      this.latex,
+      this.color,
+      this.fontSize,
+    );
+    if (isCached) {
+      return;
+    }
+    // If not, render it.
+    let [container, tempCanvas] = await this._render();
+
+    // Add to the cache
+    this.latex_cache.add(this.latex, this.color, this.fontSize, tempCanvas);
+
+    return this;
   }
 }
 
