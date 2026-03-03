@@ -49,7 +49,11 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
         new CoordinateAxes2d([xmin, xmax], [ymin, ymax])
           .set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 })
           .set_tick_options({ stroke_width: 0.04, size: 0.08 })
-          .set_grid_options({ stroke_width: 0.02, distance: 0.5 }),
+          .set_grid_options({
+            stroke_width: 0.02,
+            x_distance: 0.5,
+            y_distance: 0.5,
+          }),
       );
 
       let hyp_canvas = prepare_canvas(width, height, "log-series-hyperbola");
@@ -60,7 +64,11 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
         new CoordinateAxes2d([xmin, xmax], [ymin, ymax])
           .set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 })
           .set_tick_options({ stroke_width: 0.04, size: 0.08 })
-          .set_grid_options({ stroke_width: 0.02, distance: 0.5 }),
+          .set_grid_options({
+            stroke_width: 0.02,
+            x_distance: 0.5,
+            y_distance: 0.5,
+          }),
       );
 
       // TODO Add ability to zoom in and out
@@ -333,6 +341,218 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
     // - n = 3
     // - General slider and sum
     // - n = 0
+    await (async function poly_quadrature(width: number, height: number) {
+      const name = "poly-quadrature";
+
+      // Initiate the Bezier solver for smooth curve approximation
+      let num_pts = 100;
+      let solver = await createSmoothOpenPathBezier(num_pts);
+
+      // Make a LaTeX cache
+      // TODO Pre-populate it.
+      let cache = new LatexCache();
+
+      // Set up the scene
+      let xmin = -0.5;
+      let xmax = 2.5;
+      let ymin = -0.5;
+      let ymax = 10;
+
+      let canvas = prepare_canvas(width, height, name);
+      let scene = new Scene(canvas);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+
+      scene.add(
+        "axes",
+        new CoordinateAxes2d([xmin, xmax], [ymin, ymax])
+          .set_axis_options({ arrow_size: 0.2, stroke_width: 0.03 })
+          .set_tick_options({ stroke_width: 0.04, size: 0.0 })
+          .set_grid_options({
+            stroke_width: 0.02,
+            x_distance: 1.0,
+            y_distance: 4.0,
+          }),
+      );
+
+      let degree = 2;
+      scene.add(
+        "curve",
+        new ParametricFunction(
+          (t) => [t, Math.pow(t, degree)],
+          xmin,
+          xmax,
+          num_pts,
+          solver,
+        ).set_stroke_width(0.04),
+      );
+      scene.add(
+        "int_1",
+        new Integral((t) => Math.pow(t, degree), 0, 1, num_pts)
+          .set_stroke_width(0.02)
+          .set_fill_alpha(0.3),
+      );
+
+      // Pre-calculate binomial coefficients
+      let binom: number[][] = [[1]];
+      for (let n = 1; n < 20; n++) {
+        let current: number[] = [1];
+        let last = binom[n - 1] as number[];
+        for (let k = 1; k < n; k++) {
+          current.push((last[k - 1] as number) + (last[k] as number));
+        }
+        current.push(1);
+        binom.push(current);
+      }
+
+      // Add intermediate integrals
+      const colors = ["red", "blue", "green", "yellow", "purple"];
+      for (let i = 0; i <= degree; i++) {
+        scene.add(
+          `int_2_${i}`,
+          new IntegralBetween(
+            (t) => {
+              let result = 0;
+              for (let j = 0; j < i; j++) {
+                result += Math.pow(t - 1, j) * (binom[degree] as number[])[j];
+              }
+              return result;
+            },
+            (t) => {
+              let result = 0;
+              for (let j = 0; j <= i; j++) {
+                result += Math.pow(t - 1, j) * (binom[degree] as number[])[j];
+              }
+              return result;
+            },
+            1,
+            2,
+            num_pts,
+          )
+            .set_stroke_width(0.02)
+            .set_fill_color(colors[i] as string)
+            .set_fill_alpha(0.3),
+        );
+      }
+
+      // Add a view translator and callbacks to update the axes and functions when the view changes
+      let scene_view_translator = new SceneViewTranslator(scene);
+      scene_view_translator.add_callback(() => {
+        (scene.get_mobj("axes") as CoordinateAxes2d).set_lims(
+          scene.view_xlims,
+          scene.view_ylims,
+        );
+        (scene.get_mobj("curve") as ParametricFunction).set_lims(
+          scene.view_xlims[0],
+          scene.view_xlims[1],
+        );
+      });
+      scene_view_translator.add();
+
+      let upButton = Button(
+        document.getElementById(name + "-button-1") as HTMLElement,
+        () => {
+          for (let i = 0; i <= degree; i++) {
+            scene.remove(`int_2_${i}`);
+          }
+          degree++;
+
+          // Redraw the curve and integrals
+          (scene.get_mobj("curve") as ParametricFunction).set_function((t) => [
+            t,
+            Math.pow(t, degree),
+          ]);
+          (scene.get_mobj("int_1") as Integral).set_func((t) =>
+            Math.pow(t, degree),
+          );
+
+          for (let i = 0; i <= degree; i++) {
+            scene.add(
+              `int_2_${i}`,
+              new IntegralBetween(
+                (t) => {
+                  let result = 0;
+                  for (let j = 0; j < i; j++) {
+                    result +=
+                      Math.pow(t - 1, j) * (binom[degree] as number[])[j];
+                  }
+                  return result;
+                },
+                (t) => {
+                  let result = 0;
+                  for (let j = 0; j <= i; j++) {
+                    result +=
+                      Math.pow(t - 1, j) * (binom[degree] as number[])[j];
+                  }
+                  return result;
+                },
+                1,
+                2,
+                num_pts,
+              )
+                .set_stroke_width(0.02)
+                .set_fill_color(colors[i] as string)
+                .set_fill_alpha(0.3),
+            );
+          }
+          scene.draw();
+        },
+      );
+      upButton.textContent = "Increase degree";
+      let downButton = Button(
+        document.getElementById(name + "-button-2") as HTMLElement,
+        () => {
+          if (degree == 1) {
+            return;
+          }
+          for (let i = 0; i <= degree; i++) {
+            scene.remove(`int_2_${i}`);
+          }
+          degree--;
+          // Redraw the curve and integrals
+          (scene.get_mobj("curve") as ParametricFunction).set_function((t) => [
+            t,
+            Math.pow(t, degree),
+          ]);
+
+          (scene.get_mobj("int_1") as Integral).set_func((t) =>
+            Math.pow(t, degree),
+          );
+          for (let i = 0; i <= degree; i++) {
+            scene.add(
+              `int_2_${i}`,
+              new IntegralBetween(
+                (t) => {
+                  let result = 0;
+                  for (let j = 0; j < i; j++) {
+                    result +=
+                      Math.pow(t - 1, j) * (binom[degree] as number[])[j];
+                  }
+                  return result;
+                },
+                (t) => {
+                  let result = 0;
+                  for (let j = 0; j <= i; j++) {
+                    result +=
+                      Math.pow(t - 1, j) * (binom[degree] as number[])[j];
+                  }
+                  return result;
+                },
+                1,
+                2,
+                num_pts,
+              )
+                .set_stroke_width(0.02)
+                .set_fill_color(colors[i] as string)
+                .set_fill_alpha(0.3),
+            );
+          }
+          scene.draw();
+        },
+      );
+      downButton.textContent = "Decrease degree";
+
+      scene.draw();
+    })(300, 300);
 
     // TODO Add a visualization of why 1 / (1 + x) = 1 - x + x^2 - x^3 + ... for x in [0, 1]
   });

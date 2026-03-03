@@ -175,7 +175,8 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
             stroke_width: 0.08 / zr,
           });
           axes.set_grid_options({
-            distance: Math.exp(Math.LN2 * Math.ceil(-Math.log2(zr))),
+            x_distance: Math.exp(Math.LN2 * Math.ceil(-Math.log2(zr))),
+            y_distance: Math.exp(Math.LN2 * Math.ceil(-Math.log2(zr))),
             alpha: 0.2,
             stroke_width: 0.05 / zr,
           });
@@ -248,7 +249,11 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
         new CoordinateAxes2d([xmin, xmax], [ymin, ymax])
           .set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 })
           .set_tick_options({ stroke_width: 0.04, size: 0.08 })
-          .set_grid_options({ stroke_width: 0.02, distance: 0.5 }),
+          .set_grid_options({
+            stroke_width: 0.02,
+            x_distance: 0.5,
+            y_distance: 0.5,
+          }),
       );
 
       let hyp_canvas = prepare_canvas(width, height, "log-series-hyperbola");
@@ -259,7 +264,11 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
         new CoordinateAxes2d([xmin, xmax], [ymin, ymax])
           .set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 })
           .set_tick_options({ stroke_width: 0.04, size: 0.08 })
-          .set_grid_options({ stroke_width: 0.02, distance: 0.5 }),
+          .set_grid_options({
+            stroke_width: 0.02,
+            x_distance: 0.5,
+            y_distance: 0.5,
+          }),
       );
 
       // TODO Add ability to zoom in and out

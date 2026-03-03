@@ -39,7 +39,8 @@ class TickOptions {
 }
 
 class GridOptions {
-  distance: number = 1;
+  x_distance: number = 1;
+  y_distance: number = 1;
   alpha: number = 0.2;
   stroke_width: number = 0.05;
   update(options: Partial<GridOptions>) {
@@ -90,7 +91,7 @@ export class Axis extends MObjectGroup {
     ) {
       if (this.type == "x") {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-x-(${c})`,
           new Line(
             [c, -this.tick_options.size / 2],
             [c, this.tick_options.size / 2],
@@ -98,7 +99,7 @@ export class Axis extends MObjectGroup {
         );
       } else {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-y-(${c})`,
           new Line(
             [-this.tick_options.size / 2, c],
             [this.tick_options.size / 2, c],
@@ -179,11 +180,12 @@ export class CoordinateAxes2d extends MObjectGroup {
       .set_stroke_width(this.grid_options.stroke_width);
     for (
       let x =
-        this.grid_options.distance *
-        Math.floor(xmin / this.grid_options.distance + 1);
+        this.grid_options.x_distance *
+        Math.floor(xmin / this.grid_options.x_distance + 1);
       x <
-      this.grid_options.distance * Math.ceil(xmax / this.grid_options.distance);
-      x += this.grid_options.distance
+      this.grid_options.x_distance *
+        Math.ceil(xmax / this.grid_options.x_distance);
+      x += this.grid_options.x_distance
     ) {
       x_grid.add_mobj(`line-(${x})`, new Line([x, ymin], [x, ymax]));
     }
@@ -198,11 +200,12 @@ export class CoordinateAxes2d extends MObjectGroup {
       .set_stroke_width(this.grid_options.stroke_width);
     for (
       let y =
-        this.grid_options.distance *
-        Math.floor(ymin / this.grid_options.distance + 1);
+        this.grid_options.y_distance *
+        Math.floor(ymin / this.grid_options.y_distance + 1);
       y <
-      this.grid_options.distance * Math.ceil(ymax / this.grid_options.distance);
-      y += this.grid_options.distance
+      this.grid_options.y_distance *
+        Math.ceil(ymax / this.grid_options.y_distance);
+      y += this.grid_options.y_distance
     ) {
       y_grid.add_mobj(`line-(${y})`, new Line([xmin, y], [xmax, y]));
     }
@@ -258,7 +261,8 @@ export class CoordinateAxes2d extends MObjectGroup {
     return this;
   }
   set_grid_distance(distance: number) {
-    this.grid_options.distance = distance;
+    this.grid_options.x_distance = distance;
+    this.grid_options.y_distance = distance;
     this.set_grid_options(this.grid_options);
     return this;
   }
@@ -325,7 +329,7 @@ export class Axis3D extends ThreeDMObjectGroup {
     ) {
       if (this.type == "x") {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-x-(${c})`,
           new Line3D(
             [c, -this.tick_options.size / 2, 0],
             [c, this.tick_options.size / 2, 0],
@@ -333,7 +337,7 @@ export class Axis3D extends ThreeDMObjectGroup {
         );
       } else if (this.type == "y") {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-y-(${c})`,
           new Line3D(
             [0, c, -this.tick_options.size / 2],
             [0, c, this.tick_options.size / 2],
@@ -341,7 +345,7 @@ export class Axis3D extends ThreeDMObjectGroup {
         );
       } else if (this.type == "z") {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-z-(${c})`,
           new Line3D(
             [-this.tick_options.size / 2, 0, c],
             [this.tick_options.size / 2, 0, c],

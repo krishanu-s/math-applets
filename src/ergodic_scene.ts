@@ -42,7 +42,11 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
         new CoordinateAxes2d([xmin, xmax], [ymin, ymax])
           .set_axis_options({ arrow_size: 0.1, stroke_width: 0.03, alpha: 0.6 })
           .set_tick_options({ stroke_width: 0.04, size: 0.08, alpha: 0.6 })
-          .set_grid_options({ stroke_width: 0.01, distance: 0.5 }),
+          .set_grid_options({
+            stroke_width: 0.01,
+            x_distance: 0.5,
+            y_distance: 0.5,
+          }),
       );
 
       // Add Gauss map regions
