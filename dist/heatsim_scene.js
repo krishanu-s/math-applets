@@ -1118,13 +1118,19 @@ var ThreeDMObjectGroup = class extends ThreeDMObject {
       ...Object.values(this.children).map((child) => child.depth(scene))
     );
   }
+  // TODO Sort by depth first.
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    Object.values(this.children).forEach((child) => {
-      child.draw(canvas, scene, args);
+    let ordered_names = Object.keys(this.children).sort((a, b) => {
+      let depth_a = this.children[a].depth(scene);
+      let depth_b = this.children[b].depth(scene);
+      return depth_b - depth_a;
     });
+    for (let name of ordered_names) {
+      this.children[name].draw(canvas, scene, args);
+    }
   }
 };
 var ThreeDLineLikeMObject = class extends ThreeDMObject {
@@ -1480,6 +1486,7 @@ var TwoHeadedArrow3D = class extends Line3D {
 var PolygonPanel3D = class extends ThreeDFillLikeMObject {
   constructor(points) {
     super();
+    this.do_stroke = false;
     this.points = points;
   }
   // TODO Fix this and fix visibility condition
@@ -1487,6 +1494,10 @@ var PolygonPanel3D = class extends ThreeDFillLikeMObject {
     return scene.camera.depth(
       vec3_scale(vec3_sum_list(this.points), 1 / this.points.length)
     );
+  }
+  set_stroke(x) {
+    this.do_stroke = x;
+    return this;
   }
   _draw(ctx, scene) {
     let current_point = this.points[0];
@@ -1505,6 +1516,9 @@ var PolygonPanel3D = class extends ThreeDFillLikeMObject {
     [cp_x, cp_y] = scene.v2c(current_point_camera_view);
     ctx.lineTo(cp_x, cp_y);
     ctx.closePath();
+    if (this.do_stroke) {
+      ctx.stroke();
+    }
     if (this.fill_options.fill) {
       ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;
       ctx.fill();
@@ -1788,13 +1802,25 @@ function Slider(container, callback, kwargs) {
 
 // src/lib/interactive/arcball.ts
 var Arcball = class {
+  // Callbacks which trigger when the arcball is dragged
   constructor(scene) {
     this.drag = false;
     this.dragStart = [0, 0];
     this.dragEnd = [0, 0];
     this.dragDiff = [0, 0];
     this.mode = "Translate";
+    this.callbacks = [];
     this.scene = scene;
+  }
+  // Adds a callback which triggers when the arcball is dragged
+  add_callback(callback) {
+    this.callbacks.push(callback);
+  }
+  // Performs all callbacks
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
   }
   set_mode(mode) {
     this.mode = mode;
@@ -1873,8 +1899,9 @@ var Arcball = class {
       let n = vec2_norm(dragDiff);
       this.scene.camera.rot_pos_and_view(rot_axis, n);
     }
-    this.scene.draw();
     this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    this.scene.draw();
   }
   add() {
     let self = this;

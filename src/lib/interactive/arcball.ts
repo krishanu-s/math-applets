@@ -30,8 +30,19 @@ export class Arcball {
   dragEnd: Vec2D = [0, 0];
   dragDiff: Vec2D = [0, 0];
   mode: "Translate" | "Rotate" = "Translate";
+  callbacks: (() => void)[] = []; // Callbacks which trigger when the arcball is dragged
   constructor(scene: ThreeDScene) {
     this.scene = scene;
+  }
+  // Adds a callback which triggers when the arcball is dragged
+  add_callback(callback: () => void) {
+    this.callbacks.push(callback);
+  }
+  // Performs all callbacks
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
   }
   set_mode(mode: "Translate" | "Rotate") {
     this.mode = mode;
@@ -119,8 +130,9 @@ export class Arcball {
       let n = vec2_norm(dragDiff);
       this.scene.camera.rot_pos_and_view(rot_axis, n);
     }
-    this.scene.draw();
     this.dragStart = this.dragEnd;
+    this.do_callbacks();
+    this.scene.draw();
   }
   add() {
     let self = this;

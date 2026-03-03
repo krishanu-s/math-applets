@@ -1408,13 +1408,19 @@ var ThreeDMObjectGroup = class extends ThreeDMObject {
       ...Object.values(this.children).map((child) => child.depth(scene))
     );
   }
+  // TODO Sort by depth first.
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    Object.values(this.children).forEach((child) => {
-      child.draw(canvas, scene, args);
+    let ordered_names = Object.keys(this.children).sort((a, b) => {
+      let depth_a = this.children[a].depth(scene);
+      let depth_b = this.children[b].depth(scene);
+      return depth_b - depth_a;
     });
+    for (let name of ordered_names) {
+      this.children[name].draw(canvas, scene, args);
+    }
   }
 };
 var ThreeDLineLikeMObject = class extends ThreeDMObject {

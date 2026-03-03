@@ -1,4 +1,3 @@
-// Testing the direct feeding of a pixel array to the canvas
 import { Slider, Button } from "./lib/interactive";
 import {
   MObject,
@@ -150,6 +149,8 @@ export abstract class InteractivePlayingScene extends Scene {
   // Add drawing instructions in the subclass.
   draw_mobject(mobj: MObject) {}
 }
+
+// TODO Clean up the scenes below.
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {

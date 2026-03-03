@@ -132,13 +132,26 @@ export class ThreeDMObjectGroup extends ThreeDMObject {
       ...Object.values(this.children).map((child) => child.depth(scene)),
     );
   }
+  // TODO Sort by depth first.
   draw(canvas: HTMLCanvasElement, scene: ThreeDScene, args?: any): void {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
     ctx.globalAlpha = this.alpha;
-    Object.values(this.children).forEach((child) => {
-      child.draw(canvas, scene, args);
+
+    // Order children by depth
+    let ordered_names = Object.keys(this.children).sort((a, b) => {
+      let depth_a = (this.children[a] as ThreeDMObject).depth(scene);
+      let depth_b = (this.children[b] as ThreeDMObject).depth(scene);
+      return depth_b - depth_a;
     });
+
+    // Then draw
+    for (let name of ordered_names) {
+      (this.children[name] as ThreeDMObject).draw(canvas, scene, args);
+    }
+    // Object.values(this.children).forEach((child) => {
+    //   child.draw(canvas, scene, args);
+    // });
   }
 }
 
@@ -1008,6 +1021,7 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
 // A polygon in 3D where the points are assumed to be coplanar.
 export class PolygonPanel3D extends ThreeDFillLikeMObject {
   points: Vec3D[];
+  do_stroke: boolean = false;
   constructor(points: Vec3D[]) {
     super();
     this.points = points;
@@ -1017,6 +1031,10 @@ export class PolygonPanel3D extends ThreeDFillLikeMObject {
     return scene.camera.depth(
       vec3_scale(vec3_sum_list(this.points), 1 / this.points.length),
     );
+  }
+  set_stroke(x: boolean) {
+    this.do_stroke = x;
+    return this;
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     let current_point = this.points[0] as Vec3D;
@@ -1036,7 +1054,9 @@ export class PolygonPanel3D extends ThreeDFillLikeMObject {
     ctx.lineTo(cp_x, cp_y);
 
     ctx.closePath();
-    // ctx.stroke();
+    if (this.do_stroke) {
+      ctx.stroke();
+    }
 
     if (this.fill_options.fill) {
       ctx.globalAlpha = ctx.globalAlpha * this.fill_options.fill_alpha;

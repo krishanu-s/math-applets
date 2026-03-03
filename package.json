@@ -15,10 +15,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "gl": "^8.1.6",
+    "glsl-shader-loader": "^0.1.6",
     "rust-calc": "file:./rust-calc/pkg"
   },
   "devDependencies": {
     "esbuild": "^0.27.2",
+    "raw-loader": "^4.0.2",
     "typescript": "^5.9.3"
   }
 }

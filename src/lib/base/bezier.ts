@@ -1,5 +1,4 @@
 import { LineLikeMObject, Scene, Vec2D } from ".";
-// TODO Move the two calculator classes into Rust.
 // TODO Make the curve function store calculated handles, and avoid re-calculating unless necessary.
 
 // A sequence of Bezier curves passing through a sequence of points P_0, P_1, ..., P_n.
