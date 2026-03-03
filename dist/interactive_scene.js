@@ -954,13 +954,16 @@ var Line = class extends LineLikeMObject {
   // Moves the start and end points
   move_start(p) {
     this.start = p;
+    return this;
   }
   move_end(p) {
     this.end = p;
+    return this;
   }
   move_by(p) {
     this.start = vec2_sum(this.start, p);
     this.end = vec2_sum(this.end, p);
+    return this;
   }
   length() {
     return vec2_norm(vec2_sub(this.start, this.end));
@@ -2141,6 +2144,10 @@ var LaTeXMObject = class extends MObject {
     this.color = color;
     return this;
   }
+  move_to(pos) {
+    this.pos = pos;
+    return this;
+  }
   // Draw a rendered LaTeX image
   _drawRendered(ctx, scene, renderedImage) {
     let [cx, cy] = scene.v2c(this.pos);
@@ -2210,6 +2217,20 @@ var LaTeXMObject = class extends MObject {
       this._drawRendered(ctx, scene, tempCanvas);
       document.body.removeChild(container);
     }
+  }
+  // Adds this LaTeX object to the cache for faster rendering-on-demand in future.
+  async add_to_cache() {
+    let [isCached, cachedCanvas] = this.latex_cache.is_cached(
+      this.latex,
+      this.color,
+      this.fontSize
+    );
+    if (isCached) {
+      return;
+    }
+    let [container, tempCanvas] = await this._render();
+    this.latex_cache.add(this.latex, this.color, this.fontSize, tempCanvas);
+    return this;
   }
 };
 var LatexCache = class {

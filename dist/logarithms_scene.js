@@ -946,13 +946,16 @@ var Line = class extends LineLikeMObject {
   // Moves the start and end points
   move_start(p) {
     this.start = p;
+    return this;
   }
   move_end(p) {
     this.end = p;
+    return this;
   }
   move_by(p) {
     this.start = vec2_sum(this.start, p);
     this.end = vec2_sum(this.end, p);
+    return this;
   }
   length() {
     return vec2_norm(vec2_sub(this.start, this.end));
@@ -1757,6 +1760,10 @@ var LaTeXMObject = class extends MObject {
     this.color = color;
     return this;
   }
+  move_to(pos) {
+    this.pos = pos;
+    return this;
+  }
   // Draw a rendered LaTeX image
   _drawRendered(ctx, scene, renderedImage) {
     let [cx, cy] = scene.v2c(this.pos);
@@ -1826,6 +1833,20 @@ var LaTeXMObject = class extends MObject {
       this._drawRendered(ctx, scene, tempCanvas);
       document.body.removeChild(container);
     }
+  }
+  // Adds this LaTeX object to the cache for faster rendering-on-demand in future.
+  async add_to_cache() {
+    let [isCached, cachedCanvas] = this.latex_cache.is_cached(
+      this.latex,
+      this.color,
+      this.fontSize
+    );
+    if (isCached) {
+      return;
+    }
+    let [container, tempCanvas] = await this._render();
+    this.latex_cache.add(this.latex, this.color, this.fontSize, tempCanvas);
+    return this;
   }
 };
 var LatexCache = class {
@@ -1998,6 +2019,58 @@ function Button(container, callback) {
     }, 100);
   });
   return button;
+}
+
+// src/lib/interactive/slider.ts
+function Slider(container, callback, kwargs) {
+  let slider = document.createElement("input");
+  slider.type = "range";
+  slider.value = kwargs.initial_value;
+  slider.classList.add("slider");
+  slider.id = "floatSlider";
+  slider.width = 200;
+  let name = kwargs.name;
+  if (name == void 0) {
+    slider.name = "Value";
+  } else {
+    slider.name = name;
+  }
+  let min = kwargs.min;
+  if (min == void 0) {
+    slider.min = "0";
+  } else {
+    slider.min = `${min}`;
+  }
+  let max = kwargs.max;
+  if (max == void 0) {
+    slider.max = "10";
+  } else {
+    slider.max = `${max}`;
+  }
+  let step = kwargs.step;
+  if (step == void 0) {
+    slider.step = ".01";
+  } else {
+    slider.step = `${step}`;
+  }
+  container.appendChild(slider);
+  let valueDisplay = document.createElement("span");
+  valueDisplay.classList.add("value-display");
+  valueDisplay.id = "sliderValue";
+  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+  container.appendChild(valueDisplay);
+  function updateDisplay() {
+    callback(slider.value);
+    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
+    updateSliderColor(slider);
+  }
+  function updateSliderColor(sliderElement) {
+    const value = 100 * parseFloat(sliderElement.value);
+    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
+  }
+  updateDisplay();
+  slider.addEventListener("input", updateDisplay);
+  return slider;
 }
 
 // src/lib/interactive/scene_view_translator.ts
@@ -3063,12 +3136,15 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
       let canvas = prepare_canvas(width, height, name);
       let scene = new Scene(canvas);
       scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      const tick_size = 0.1;
+      const tex_offset_x = 0.2;
+      const tex_offset_y = 0.1;
       scene.add(
         "axes",
         new CoordinateAxes2d([xmin, xmax], [ymin, ymax]).set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 }).set_tick_options({ stroke_width: 0.04, size: 0.08 }).set_grid_options({
           stroke_width: 0.02,
-          x_distance: 0.5,
-          y_distance: 0.5
+          x_distance: 1,
+          y_distance: 1
         })
       );
       scene.add(
@@ -3095,28 +3171,43 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
       );
       scene.add(
         "tick_a",
-        new Line([a, -0.1], [a, 0.1]).set_stroke_width(0.08).set_stroke_color("red")
+        new Line([a, -tick_size], [a, tick_size]).set_stroke_width(0.08).set_stroke_color("red")
       );
       scene.add(
         "tick_b",
-        new Line([b, -0.1], [b, 0.1]).set_stroke_width(0.08).set_stroke_color("blue")
+        new Line([b, -tick_size], [b, tick_size]).set_stroke_width(0.08).set_stroke_color("blue")
       );
       scene.add(
         "tick_ab",
-        new Line([a * b, -0.1], [a * b, 0.1]).set_stroke_width(0.08).set_stroke_color("purple")
+        new Line([a * b, -tick_size], [a * b, tick_size]).set_stroke_width(0.08).set_stroke_color("purple")
       );
       scene.add(
         "tex_a",
-        new LaTeXMObject("a", [a - 0.2, -0.1], cache).set_fontSize(12)
+        new LaTeXMObject(
+          "a",
+          [a - tex_offset_x, -tex_offset_y],
+          cache
+        ).set_fontSize(12)
       );
       scene.add(
         "tex_b",
-        new LaTeXMObject("b", [b - 0.2, -0.1], cache).set_fontSize(12)
+        new LaTeXMObject(
+          "b",
+          [b - tex_offset_x, -tex_offset_y],
+          cache
+        ).set_fontSize(12)
       );
       scene.add(
         "tex_ab",
-        new LaTeXMObject("ab", [a * b - 0.2, -0.1], cache).set_fontSize(12)
+        new LaTeXMObject(
+          "ab",
+          [a * b - tex_offset_x, -tex_offset_y],
+          cache
+        ).set_fontSize(12)
       );
+      await scene.get_mobj("tex_a").add_to_cache();
+      await scene.get_mobj("tex_b").add_to_cache();
+      await scene.get_mobj("tex_ab").add_to_cache();
       let scene_view_translator = new SceneViewTranslator(scene).add_callback(
         () => {
           scene.get_mobj("base_curve").set_lims(
@@ -3131,6 +3222,35 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
       );
       scene_view_translator.add();
       scene.draw();
+      function update_scene(a_val, b_val) {
+        scene.get_mobj("scaled_curve").set_function(
+          (t) => [t, b_val / t]
+        );
+        if (horizontally_stretched) {
+          scene.get_mobj("integral_ln_a").set_lims(
+            b_val,
+            a_val * b_val
+          );
+        } else {
+          scene.get_mobj("integral_ln_a").set_lims(1, a_val);
+        }
+        scene.get_mobj("integral_ln_b").set_lims(1, b_val);
+        scene.get_mobj("tex_a").move_to([
+          a_val - tex_offset_x,
+          -tex_offset_y
+        ]);
+        scene.get_mobj("tex_b").move_to([
+          b_val - tex_offset_x,
+          -tex_offset_y
+        ]);
+        scene.get_mobj("tex_ab").move_to([
+          a_val * b_val - tex_offset_x,
+          -tex_offset_y
+        ]);
+        scene.get_mobj("tick_a").move_start([a_val, -tick_size]).move_end([a_val, tick_size]);
+        scene.get_mobj("tick_b").move_start([b_val, -tick_size]).move_end([b_val, tick_size]);
+        scene.get_mobj("tick_ab").move_start([a_val * b_val, -tick_size]).move_end([a_val * b_val, tick_size]);
+      }
       const num_frames = 50;
       let horizontally_stretched = false;
       let vertically_stretched = false;
@@ -3187,6 +3307,36 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
         }
       );
       displayButton.textContent = `Red area = ${Math.log(a).toFixed(3)}, Blue area = ${Math.log(b).toFixed(3)}`;
+      let aSlider = Slider(
+        document.getElementById(name + "-slider-1"),
+        (x) => {
+          a = x;
+          update_scene(a, b);
+          scene.draw();
+        },
+        {
+          name: "a value",
+          initial_value: "2.5",
+          min: 0.2,
+          max: 8,
+          step: 0.01
+        }
+      );
+      let bSlider = Slider(
+        document.getElementById(name + "-slider-2"),
+        (x) => {
+          b = x;
+          update_scene(a, b);
+          scene.draw();
+        },
+        {
+          name: "b value",
+          initial_value: "3.0",
+          min: 0.2,
+          max: 8,
+          step: 0.01
+        }
+      );
     })(300, 300);
     await (async function log_series(width, height) {
       const name = "log-series";
@@ -3222,6 +3372,12 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
         "latex",
         new LaTeXMObject(`d=${degree}`, [-0.5, 1.5], cache2)
       );
+      await log_scene.get_mobj("latex").add_to_cache();
+      for (let d = 2; d < 7; d++) {
+        log_scene.get_mobj("latex").set_tex(`d=${d}`);
+        await log_scene.get_mobj("latex").add_to_cache();
+      }
+      log_scene.get_mobj("latex").set_tex(`d=${degree}`);
       log_scene.add(
         "approx_to_curve",
         new ParametricFunction((t) => [t, t], xmin, xmax, num_pts, solver).set_stroke_color("red").set_stroke_width(0.04)

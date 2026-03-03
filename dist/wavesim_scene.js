@@ -974,13 +974,16 @@ var Line = class extends LineLikeMObject {
   // Moves the start and end points
   move_start(p) {
     this.start = p;
+    return this;
   }
   move_end(p) {
     this.end = p;
+    return this;
   }
   move_by(p) {
     this.start = vec2_sum(this.start, p);
     this.end = vec2_sum(this.end, p);
+    return this;
   }
   length() {
     return vec2_norm(vec2_sub(this.start, this.end));
