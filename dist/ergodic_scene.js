@@ -8,8 +8,20 @@ var __export = (target, all) => {
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
+function vec2_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
+function vec2_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
 function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
+}
+function vec2_rot(v, angle) {
+  const [x, y] = v;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return [x * cos - y * sin, x * sin + y * cos];
 }
 
 // src/lib/base/style_options.ts
@@ -21,6 +33,12 @@ var DEFAULT_STROKE_WIDTH = 0.08;
 var DEFAULT_FILL_COLOR = "black";
 
 // src/lib/base/base.ts
+function gaussianRandom(mean, stdev) {
+  const u = 1 - Math.random();
+  const v = Math.random();
+  const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  return z * stdev + mean;
+}
 var StrokeOptions = class {
   constructor() {
     this.stroke_width = DEFAULT_STROKE_WIDTH;
@@ -152,6 +170,33 @@ var LineLikeMObject = class extends MObject {
     ctx.globalAlpha = this.alpha;
     this.stroke_options.apply_to(ctx, scene);
     this._draw(ctx, scene, args);
+  }
+};
+var LineLikeMObjectGroup = class extends MObjectGroup {
+  constructor() {
+    super(...arguments);
+    this.stroke_options = new StrokeOptions();
+  }
+  set_stroke_color(color) {
+    this.stroke_options.set_stroke_color(color);
+    return this;
+  }
+  set_stroke_width(width) {
+    this.stroke_options.set_stroke_width(width);
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_options.set_stroke_style(style);
+    return this;
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    Object.values(this.children).forEach((child) => {
+      child._draw(ctx, scene, args);
+    });
   }
 };
 var FillLikeMObject = class extends MObject {
@@ -372,6 +417,39 @@ var Scene = class {
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
+function prepare_canvas(width, height, name) {
+  const container = document.getElementById(name);
+  if (container == null) throw new Error(`${name} not found`);
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+  let wrapper = document.createElement("div");
+  wrapper.classList.add("canvas_container");
+  wrapper.classList.add("non_selectable");
+  wrapper.style.width = `${width}px`;
+  wrapper.style.height = `${height}px`;
+  let canvas = document.createElement("canvas");
+  canvas.classList.add("non_selectable");
+  canvas.style.position = "relative";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.height = height;
+  canvas.width = width;
+  wrapper.appendChild(canvas);
+  container.appendChild(wrapper);
+  prepareCanvasForMobile(canvas);
+  return canvas;
+}
+function prepareCanvasForMobile(canvas) {
+  canvas.ontouchstart = function(e) {
+    e.preventDefault();
+  };
+  canvas.ontouchend = function(e) {
+    e.preventDefault();
+  };
+  canvas.ontouchmove = function(e) {
+    e.preventDefault();
+  };
+}
 function mouse_event_coords(event) {
   return [event.pageX, event.pageY];
 }
@@ -815,7 +893,120 @@ var Rectangle = class extends FillLikeMObject {
     ctx.fill();
   }
 };
+var Polygon = class extends FillLikeMObject {
+  constructor(points) {
+    super();
+    this.points = points;
+  }
+  add_point(point) {
+    this.points.push(point);
+  }
+  remove_point(index) {
+    this.points.splice(index, 1);
+  }
+  move_point(i, new_point) {
+    this.points[i] = new_point;
+  }
+  move_by(p) {
+    for (let i = 0; i < this.points.length; i++) {
+      this.points[i] = vec2_sum(this.points[i], p);
+    }
+  }
+  _draw(ctx, scene) {
+    let [x, y] = scene.v2c(this.points[0]);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let i = 1; i < this.points.length; i++) {
+      [x, y] = scene.v2c(this.points[i]);
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    if (this.fill_options.fill) {
+      ctx.globalAlpha *= this.fill_options.fill_alpha;
+      ctx.fill();
+      ctx.globalAlpha /= this.fill_options.fill_alpha;
+    }
+  }
+};
 var DraggableRectangle = makeDraggable(Rectangle);
+var Line = class extends LineLikeMObject {
+  constructor(start, end) {
+    super();
+    this.start = start;
+    this.end = end;
+  }
+  // Moves the start and end points
+  move_start(p) {
+    this.start = p;
+  }
+  move_end(p) {
+    this.end = p;
+  }
+  move_by(p) {
+    this.start = vec2_sum(this.start, p);
+    this.end = vec2_sum(this.end, p);
+  }
+  length() {
+    return vec2_norm(vec2_sub(this.start, this.end));
+  }
+  // Draws on the canvas
+  _draw(ctx, scene) {
+    let [start_x, start_y] = scene.v2c(this.start);
+    let [end_x, end_y] = scene.v2c(this.end);
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
+  }
+};
+var TwoHeadedArrow = class extends Line {
+  constructor() {
+    super(...arguments);
+    this.arrow_size = 0.3;
+  }
+  set_arrow_size(size) {
+    this.arrow_size = size;
+  }
+  // Draws on the canvas
+  _draw(ctx, scene) {
+    super._draw(ctx, scene);
+    ctx.fillStyle = this.stroke_options.stroke_color;
+    let [end_x, end_y] = scene.v2c(this.end);
+    let [start_x, start_y] = scene.v2c(this.start);
+    let v;
+    let ax;
+    let ay;
+    let bx;
+    let by;
+    v = vec2_scale(
+      vec2_sub(this.start, this.end),
+      this.arrow_size / this.length()
+    );
+    [ax, ay] = scene.v2c(vec2_sum(this.end, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(this.end, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(end_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
+    v = vec2_scale(
+      vec2_sub(this.end, this.start),
+      this.arrow_size / this.length()
+    );
+    [ax, ay] = scene.v2c(vec2_sum(this.start, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(this.start, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(start_x, start_y);
+    ctx.closePath();
+    ctx.fill();
+  }
+};
 
 // src/lib/three_d/matvec.ts
 function vec3_scale(x, factor) {
@@ -1183,167 +1374,361 @@ var Line3D = class extends ThreeDLineLikeMObject {
   }
 };
 
-// src/lib/base/bezier.ts
-var BezierSpline = class extends LineLikeMObject {
-  constructor(num_steps, solver) {
-    super();
-    this.num_steps = num_steps;
-    this.solver = solver;
-    this.anchors = [];
-    for (let i = 0; i < num_steps + 1; i++) {
-      this.anchors.push([0, 0]);
-    }
+// src/lib/base/cartesian.ts
+var AxisOptions = class {
+  constructor() {
+    this.stroke_width = 0.1;
+    this.alpha = 1;
+    this.arrow_size = 0.3;
   }
-  set_anchors(new_anchors) {
-    this.anchors = new_anchors;
-  }
-  set_anchor(index, new_anchor) {
-    this.anchors[index] = new_anchor;
-  }
-  get_anchor(index) {
-    return this.anchors[index];
-  }
-  // Draw the Bezier curve using the solver
-  _draw(ctx, scene) {
-    if (!this.solver) {
-      this._drawFallback(ctx, scene);
-      return;
-    }
-    let a_x, a_y, a;
-    a = this.get_anchor(0);
-    [a_x, a_y] = scene.v2c(a);
-    ctx.beginPath();
-    ctx.moveTo(a_x, a_y);
-    let anchors_flat = this.anchors.reduce(
-      (acc, val) => acc.concat(val),
-      []
-    );
-    try {
-      let handles_flat = this.solver.get_bezier_handles(anchors_flat);
-      let handles = [];
-      for (let i = 0; i < handles_flat.length; i += 2) {
-        handles.push([handles_flat[i], handles_flat[i + 1]]);
-      }
-      let h1_x, h1_y, h2_x, h2_y;
-      for (let i = 0; i < this.num_steps; i++) {
-        [h1_x, h1_y] = scene.v2c(handles[i]);
-        [h2_x, h2_y] = scene.v2c(handles[i + this.num_steps]);
-        a = this.get_anchor(i + 1);
-        [a_x, a_y] = scene.v2c(a);
-        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
-      }
-      ctx.stroke();
-    } catch (error) {
-      console.warn("Error with solver, drawing with fallback method.");
-      this._drawFallback(ctx, scene);
-    }
-  }
-  // Draw a simple piecewise linear as fallback
-  _drawFallback(ctx, scene) {
-    if (this.anchors.length === 0) return;
-    let [x, y] = scene.v2c(this.get_anchor(0));
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    for (let i = 1; i < this.anchors.length; i++) {
-      [x, y] = scene.v2c(this.get_anchor(i));
-      ctx.lineTo(x, y);
-    }
-    ctx.stroke();
+  update(options) {
+    Object.assign(this, options);
   }
 };
-var ParametricFunction = class extends BezierSpline {
-  constructor(f, tmin, tmax, num_steps, solver) {
-    super(num_steps, solver);
-    this.mode = "smooth";
-    this.function = f;
-    this.tmin = tmin;
-    this.tmax = tmax;
-    this._make_anchors();
+var TickOptions = class {
+  constructor() {
+    this.distance = 1;
+    this.size = 0.2;
+    this.alpha = 1;
+    this.stroke_width = 0.08;
   }
-  _make_anchors() {
-    let anchors = [this.function(this.tmin)];
-    for (let i = 1; i <= this.num_steps; i++) {
-      anchors.push(
-        this.function(
-          this.tmin + i / this.num_steps * (this.tmax - this.tmin)
-        )
-      );
-    }
-    this.set_anchors(anchors);
+  update(options) {
+    Object.assign(this, options);
   }
-  // Jagged doesn't use Bezier curves. It is faster to compute and render.
-  set_mode(mode) {
-    this.mode = mode;
+};
+var GridOptions = class {
+  constructor() {
+    this.x_distance = 1;
+    this.y_distance = 1;
+    this.alpha = 0.2;
+    this.stroke_width = 0.05;
   }
-  set_function(new_f) {
-    this.function = new_f;
-    this._make_anchors();
+  update(options) {
+    Object.assign(this, options);
   }
-  set_lims(tmin, tmax) {
-    this.tmin = tmin;
-    this.tmax = tmax;
-    this._make_anchors();
+};
+var Axis = class extends MObjectGroup {
+  constructor(lims, type) {
+    super();
+    this.axis_options = new AxisOptions();
+    this.tick_options = new TickOptions();
+    this.lims = lims;
+    this.type = type;
+    this._make_axis();
+    this._make_ticks();
   }
-  _draw(ctx, scene) {
-    if (this.mode == "jagged") {
-      this._drawFallback(ctx, scene);
+  _make_axis() {
+    let [cmin, cmax] = this.lims;
+    let axis;
+    if (this.type === "x") {
+      axis = new TwoHeadedArrow([cmin, 0], [cmax, 0]);
     } else {
-      super._draw(ctx, scene);
+      axis = new TwoHeadedArrow([0, cmin], [0, cmax]);
     }
+    axis.set_stroke_width(this.axis_options.stroke_width);
+    axis.set_arrow_size(this.axis_options.arrow_size);
+    axis.set_alpha(this.axis_options.alpha);
+    this.add_mobj("axis", axis);
+  }
+  _make_ticks() {
+    let [cmin, cmax] = this.lims;
+    let ticks = new LineLikeMObjectGroup().set_alpha(this.tick_options.alpha).set_stroke_width(this.tick_options.stroke_width);
+    for (let c = this.tick_options.distance * Math.floor(cmin / this.tick_options.distance + 1); c < this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance); c += this.tick_options.distance) {
+      if (this.type == "x") {
+        ticks.add_mobj(
+          `tick-x-(${c})`,
+          new Line(
+            [c, -this.tick_options.size / 2],
+            [c, this.tick_options.size / 2]
+          )
+        );
+      } else {
+        ticks.add_mobj(
+          `tick-y-(${c})`,
+          new Line(
+            [-this.tick_options.size / 2, c],
+            [this.tick_options.size / 2, c]
+          )
+        );
+      }
+    }
+    this.add_mobj("ticks", ticks);
+  }
+  axis() {
+    return this.get_mobj("axis");
+  }
+  ticks() {
+    return this.get_mobj("ticks");
+  }
+  set_lims(lims) {
+    this.lims = lims;
+    this.remove_mobj("axis");
+    this.remove_mobj("ticks");
+    this._make_axis();
+    this._make_ticks();
+  }
+  set_axis_options(options) {
+    this.axis_options.update(options);
+    this.remove_mobj("axis");
+    this._make_axis();
+  }
+  set_tick_options(options) {
+    this.tick_options.update(options);
+    this.remove_mobj("ticks");
+    this._make_ticks();
+    return this;
+  }
+  set_tick_distance(distance) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
+    return this;
+  }
+  set_tick_size(size) {
+    this.tick_options.size = size;
+    this.set_tick_options(this.tick_options);
+    return this;
+  }
+};
+var CoordinateAxes2d = class extends MObjectGroup {
+  constructor(xlims, ylims) {
+    super();
+    this.axis_options = new AxisOptions();
+    this.tick_options = new TickOptions();
+    this.grid_options = new GridOptions();
+    this.xlims = xlims;
+    this.ylims = ylims;
+    this._make_axes();
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
+  }
+  _make_axes() {
+    let x_axis = new Axis(this.xlims, "x");
+    x_axis.set_axis_options(this.axis_options);
+    x_axis.set_tick_options(this.tick_options);
+    this.add_mobj("x-axis", x_axis);
+    let y_axis = new Axis(this.ylims, "y");
+    y_axis.set_axis_options(this.axis_options);
+    y_axis.set_tick_options(this.tick_options);
+    this.add_mobj("y-axis", y_axis);
+  }
+  _make_x_grid_lines() {
+    let [xmin, xmax] = this.xlims;
+    let [ymin, ymax] = this.ylims;
+    let x_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
+    for (let x = this.grid_options.x_distance * Math.floor(xmin / this.grid_options.x_distance + 1); x < this.grid_options.x_distance * Math.ceil(xmax / this.grid_options.x_distance); x += this.grid_options.x_distance) {
+      x_grid.add_mobj(`line-(${x})`, new Line([x, ymin], [x, ymax]));
+    }
+    this.add_mobj("x-grid", x_grid);
+  }
+  _make_y_grid_lines() {
+    let [xmin, xmax] = this.xlims;
+    let [ymin, ymax] = this.ylims;
+    let y_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
+    for (let y = this.grid_options.y_distance * Math.floor(ymin / this.grid_options.y_distance + 1); y < this.grid_options.y_distance * Math.ceil(ymax / this.grid_options.y_distance); y += this.grid_options.y_distance) {
+      y_grid.add_mobj(`line-(${y})`, new Line([xmin, y], [xmax, y]));
+    }
+    this.add_mobj("y-grid", y_grid);
+  }
+  x_axis() {
+    return this.get_mobj("x-axis");
+  }
+  y_axis() {
+    return this.get_mobj("y-axis");
+  }
+  x_grid() {
+    return this.get_mobj("x-grid");
+  }
+  y_grid() {
+    return this.get_mobj("y-grid");
+  }
+  set_axis_options(options) {
+    this.axis_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+    return this;
+  }
+  set_axis_stroke_width(width) {
+    this.axis_options.stroke_width = width;
+    this.set_axis_options(this.axis_options);
+    return this;
+  }
+  set_tick_options(options) {
+    this.tick_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+    return this;
+  }
+  set_tick_size(size) {
+    this.tick_options.size = size;
+    this.set_tick_options(this.tick_options);
+    return this;
+  }
+  set_tick_distance(distance) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
+    return this;
+  }
+  set_grid_options(options) {
+    this.grid_options.update(options);
+    this.remove_mobj("x-grid");
+    this.remove_mobj("y-grid");
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
+    return this;
+  }
+  set_grid_distance(distance) {
+    this.grid_options.x_distance = distance;
+    this.grid_options.y_distance = distance;
+    this.set_grid_options(this.grid_options);
+    return this;
+  }
+  set_grid_alpha(alpha) {
+    this.grid_options.alpha = alpha;
+    this.set_grid_options(this.grid_options);
+    return this;
+  }
+  set_grid_stroke_width(width) {
+    this.grid_options.stroke_width = width;
+    this.set_grid_options(this.grid_options);
+    return this;
+  }
+  set_lims(xlims, ylims) {
+    this.xlims = xlims;
+    this.ylims = ylims;
+    this.x_axis().set_lims(xlims);
+    this.y_axis().set_lims(ylims);
+    this.remove_mobj("x-grid");
+    this.remove_mobj("y-grid");
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
+    return this;
   }
 };
 
-// src/lib/interactive/slider.ts
-function Slider(container, callback, kwargs) {
-  let slider = document.createElement("input");
-  slider.type = "range";
-  slider.value = kwargs.initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
-  slider.width = 200;
-  let name = kwargs.name;
-  if (name == void 0) {
-    slider.name = "Value";
-  } else {
-    slider.name = name;
+// src/lib/interactive/scene_view_translator.ts
+var SceneViewTranslator = class {
+  // Callbacks which trigger when the object is dragged.
+  constructor(scene) {
+    this.drag = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.callbacks = [];
+    this.scene = scene;
+    this.add_callback(() => {
+      if (scene.has_mobj("axes")) {
+        scene.get_mobj("axes").set_lims(
+          scene.view_xlims,
+          scene.view_ylims
+        );
+      }
+    });
   }
-  let min = kwargs.min;
-  if (min == void 0) {
-    slider.min = "0";
-  } else {
-    slider.min = `${min}`;
+  // Adds a callback which triggers when the object is dragged
+  add_callback(callback) {
+    this.callbacks.push(callback);
+    return this;
   }
-  let max = kwargs.max;
-  if (max == void 0) {
-    slider.max = "10";
-  } else {
-    slider.max = `${max}`;
+  // Performs all callbacks (called when the object is dragged)
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
   }
-  let step = kwargs.step;
-  if (step == void 0) {
-    slider.step = ".01";
-  } else {
-    slider.step = `${step}`;
+  click(event) {
+    this.dragStart = [
+      event.pageX - this.scene.canvas.offsetLeft,
+      event.pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
   }
-  container.appendChild(slider);
-  let valueDisplay = document.createElement("span");
-  valueDisplay.classList.add("value-display");
-  valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-  container.appendChild(valueDisplay);
-  function updateDisplay() {
-    callback(slider.value);
-    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-    updateSliderColor(slider);
+  touch(event) {
+    let touch = event.touches[0];
+    this.dragStart = [
+      touch.pageX - this.scene.canvas.offsetLeft,
+      touch.pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
   }
-  function updateSliderColor(sliderElement) {
-    const value = 100 * parseFloat(sliderElement.value);
-    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
+  unclick(event) {
+    this.drag = false;
+    this.scene.unclick();
   }
-  updateDisplay();
-  slider.addEventListener("input", updateDisplay);
-  return slider;
-}
+  untouch(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  mouse_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.pageX - this.scene.canvas.offsetLeft,
+        event.pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  touch_drag_cursor(event) {
+    if (this.drag) {
+      let touch = event.touches[0];
+      this.dragEnd = [
+        touch.pageX - this.scene.canvas.offsetLeft,
+        touch.pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  // Updates the scene to account for a dragged cursor position
+  _drag_cursor() {
+    let dragDiff = vec2_sub(
+      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
+      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
+    );
+    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
+      return;
+    }
+    this.scene.move_view(dragDiff);
+    this.scene.draw();
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+  }
+  add() {
+    let self = this;
+    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
+  }
+  remove() {
+    let self = this;
+    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.removeEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.removeEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
+  }
+};
 
 // rust-calc/pkg/rust_calc.js
 var rust_calc_exports = {};
@@ -2268,68 +2653,74 @@ async function createSmoothOpenPathBezier(n) {
 }
 console.log("rust-calc exports:", Object.keys(rust_calc_exports));
 
-// src/parametric_scene.ts
-(async function() {
+// src/ergodic_scene.ts
+(function() {
   document.addEventListener("DOMContentLoaded", async function() {
-    function prepare_canvas2(width2, height2, name) {
-      const container = document.getElementById(name);
-      if (container == null) throw new Error(`${name} not found`);
-      container.style.width = `${width2}px`;
-      container.style.height = `${height2}px`;
-      let wrapper = document.createElement("div");
-      wrapper.classList.add("canvas_container");
-      wrapper.classList.add("non_selectable");
-      wrapper.style.width = `${width2}px`;
-      wrapper.style.height = `${height2}px`;
-      let canvas2 = document.createElement("canvas");
-      canvas2.classList.add("non_selectable");
-      canvas2.style.position = "relative";
-      canvas2.style.top = "0";
-      canvas2.style.left = "0";
-      canvas2.height = height2;
-      canvas2.width = width2;
-      wrapper.appendChild(canvas2);
-      container.appendChild(wrapper);
-      console.log("Canvas made");
-      return canvas2;
-    }
-    const xmin = -5;
-    const xmax = 5;
-    const ymin = -5;
-    const ymax = 5;
-    let width = 300;
-    let height = 300;
-    let canvas = prepare_canvas2(width, height, "scene-container");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      throw new Error("Failed to get 2D context");
-    }
-    let solver = await createSmoothOpenPathBezier(30);
-    let parametric = new ParametricFunction(
-      (t) => {
-        let r = 1 / (1 + 0.5 * Math.cos(t));
-        return [Math.cos(t) * r, Math.sin(t) * r];
-      },
-      0,
-      2 * Math.PI,
-      30,
-      solver
-    );
-    let scene = new Scene(canvas);
-    scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-    scene.add("parametric_fn", parametric);
-    scene.draw();
-    let ecc_slider = Slider(
-      document.getElementById("slider-container-1"),
-      function(e) {
-        parametric.set_function((t) => {
-          let r = 1 / (1 + e * Math.cos(t));
-          return [Math.cos(t) * r, Math.sin(t) * r];
-        });
-        scene.draw();
-      },
-      { initial_value: "0.5", min: 0, max: 1, step: 0.01 }
-    );
-    ecc_slider.width = 200;
+    await (async function gauss_map_iterates(width, height) {
+      let num_pts = 100;
+      let solver = await createSmoothOpenPathBezier(num_pts);
+      const name = "gauss-map";
+      let canvas = prepare_canvas(width, height, name);
+      let scene = new Scene(canvas);
+      let xmin = -0.5;
+      let xmax = 1.5;
+      let ymin = -0.5;
+      let ymax = 1.5;
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.add(
+        "axes",
+        new CoordinateAxes2d([xmin, xmax], [ymin, ymax]).set_axis_options({ arrow_size: 0.1, stroke_width: 0.03, alpha: 0.6 }).set_tick_options({ stroke_width: 0.04, size: 0.08, alpha: 0.6 }).set_grid_options({
+          stroke_width: 0.01,
+          x_distance: 0.5,
+          y_distance: 0.5
+        })
+      );
+      let gauss_region = new Polygon([
+        [1, 0],
+        [0, 0],
+        [0, 1]
+      ]).set_stroke_width(0.02).set_fill_alpha(0);
+      for (let i = 1; i <= 50; i++) {
+        gauss_region.add_point([i / 50, 1 / (1 + i / 50)]);
+      }
+      scene.add("gauss_region", gauss_region);
+      function f(y) {
+        if (y == 0) {
+          let r = gaussianRandom(0, 1e-3);
+          return r - Math.floor(r);
+        } else if (y < 0) {
+          throw new Error(`Invalid y-value ${y}, less than 0`);
+        } else if (y > 1) {
+          throw new Error(`Invalid y-value ${y}, greater than 1`);
+        } else {
+          return 1 / y - Math.floor(1 / y);
+        }
+      }
+      function T(y, z) {
+        return [f(y), y * (1 - y * z)];
+      }
+      const num_iterates = 100;
+      let dot = new DraggableDot([0.5, 0.5], 0.02).set_color("red");
+      let py, pz;
+      [py, pz] = dot.get_center();
+      for (let i = 1; i < num_iterates; i++) {
+        [py, pz] = T(py, pz);
+        scene.add(
+          `p_${i}`,
+          new Dot([py, pz], 0.02).set_alpha((1 - i / num_iterates) ** 2)
+        );
+      }
+      dot.add_callback(() => {
+        [py, pz] = dot.get_center();
+        for (let i = 1; i < num_iterates; i++) {
+          [py, pz] = T(py, pz);
+          scene.get_mobj(`p_${i}`).move_to([py, pz]);
+        }
+      });
+      scene.add("p_0", dot);
+      let view_translator = new SceneViewTranslator(scene);
+      view_translator.add();
+      scene.draw();
+    })(300, 300);
   });
 })();

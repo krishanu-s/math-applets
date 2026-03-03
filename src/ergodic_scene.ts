@@ -106,12 +106,6 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 
       // Add a view translator and callbacks to update the axes and functions when the view changes
       let view_translator = new SceneViewTranslator(scene);
-      view_translator.add_callback(() => {
-        (scene.get_mobj("axes") as CoordinateAxes2d).set_lims(
-          scene.view_xlims,
-          scene.view_ylims,
-        );
-      });
       view_translator.add();
 
       scene.draw();

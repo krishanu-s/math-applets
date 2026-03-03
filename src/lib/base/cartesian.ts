@@ -501,6 +501,12 @@ export class Integral extends Polygon {
     this.right_endpoint = right_endpoint;
     this._recompute_points();
   }
+  set_lims(left_endpoint: number, right_endpoint: number) {
+    this.left_endpoint = left_endpoint;
+    this.right_endpoint = right_endpoint;
+    this._recompute_points();
+    return this;
+  }
   set_num_points(num_points: number) {
     this.num_points = num_points;
     this._recompute_points();

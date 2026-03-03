@@ -50,15 +50,19 @@ export class LaTeXMObject extends MObject {
   }
   set_tex(latex: string) {
     this.latex = latex;
+    return this;
   }
   set_fontSize(size: number) {
     this.fontSize = size;
+    return this;
   }
   set_rotation(rotation: number) {
     this.rotation = rotation;
+    return this;
   }
   set_color(color: string) {
     this.color = color;
+    return this;
   }
   // Draw a rendered LaTeX image
   _drawRendered(

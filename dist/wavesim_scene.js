@@ -1702,6 +1702,7 @@ var Line3D = class extends ThreeDLineLikeMObject {
 var AxisOptions = class {
   constructor() {
     this.stroke_width = 0.1;
+    this.alpha = 1;
     this.arrow_size = 0.3;
   }
   update(options) {
@@ -1721,7 +1722,8 @@ var TickOptions = class {
 };
 var GridOptions = class {
   constructor() {
-    this.distance = 1;
+    this.x_distance = 1;
+    this.y_distance = 1;
     this.alpha = 0.2;
     this.stroke_width = 0.05;
   }
@@ -1749,6 +1751,7 @@ var Axis = class extends MObjectGroup {
     }
     axis.set_stroke_width(this.axis_options.stroke_width);
     axis.set_arrow_size(this.axis_options.arrow_size);
+    axis.set_alpha(this.axis_options.alpha);
     this.add_mobj("axis", axis);
   }
   _make_ticks() {
@@ -1757,7 +1760,7 @@ var Axis = class extends MObjectGroup {
     for (let c = this.tick_options.distance * Math.floor(cmin / this.tick_options.distance + 1); c < this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance); c += this.tick_options.distance) {
       if (this.type == "x") {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-x-(${c})`,
           new Line(
             [c, -this.tick_options.size / 2],
             [c, this.tick_options.size / 2]
@@ -1765,7 +1768,7 @@ var Axis = class extends MObjectGroup {
         );
       } else {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-y-(${c})`,
           new Line(
             [-this.tick_options.size / 2, c],
             [this.tick_options.size / 2, c]
@@ -1836,7 +1839,7 @@ var CoordinateAxes2d = class extends MObjectGroup {
     let [xmin, xmax] = this.xlims;
     let [ymin, ymax] = this.ylims;
     let x_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
-    for (let x = this.grid_options.distance * Math.floor(xmin / this.grid_options.distance + 1); x < this.grid_options.distance * Math.ceil(xmax / this.grid_options.distance); x += this.grid_options.distance) {
+    for (let x = this.grid_options.x_distance * Math.floor(xmin / this.grid_options.x_distance + 1); x < this.grid_options.x_distance * Math.ceil(xmax / this.grid_options.x_distance); x += this.grid_options.x_distance) {
       x_grid.add_mobj(`line-(${x})`, new Line([x, ymin], [x, ymax]));
     }
     this.add_mobj("x-grid", x_grid);
@@ -1845,7 +1848,7 @@ var CoordinateAxes2d = class extends MObjectGroup {
     let [xmin, xmax] = this.xlims;
     let [ymin, ymax] = this.ylims;
     let y_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
-    for (let y = this.grid_options.distance * Math.floor(ymin / this.grid_options.distance + 1); y < this.grid_options.distance * Math.ceil(ymax / this.grid_options.distance); y += this.grid_options.distance) {
+    for (let y = this.grid_options.y_distance * Math.floor(ymin / this.grid_options.y_distance + 1); y < this.grid_options.y_distance * Math.ceil(ymax / this.grid_options.y_distance); y += this.grid_options.y_distance) {
       y_grid.add_mobj(`line-(${y})`, new Line([xmin, y], [xmax, y]));
     }
     this.add_mobj("y-grid", y_grid);
@@ -1900,7 +1903,8 @@ var CoordinateAxes2d = class extends MObjectGroup {
     return this;
   }
   set_grid_distance(distance) {
-    this.grid_options.distance = distance;
+    this.grid_options.x_distance = distance;
+    this.grid_options.y_distance = distance;
     this.set_grid_options(this.grid_options);
     return this;
   }
@@ -1957,6 +1961,116 @@ var HeatMap = class extends MObject {
       [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]] = this.colorMap(px_val);
     }
     ctx.putImageData(imageData, 0, 0);
+  }
+};
+
+// src/lib/base/bezier.ts
+var BezierSpline = class extends LineLikeMObject {
+  constructor(num_steps, solver) {
+    super();
+    this.num_steps = num_steps;
+    this.solver = solver;
+    this.anchors = [];
+    for (let i = 0; i < num_steps + 1; i++) {
+      this.anchors.push([0, 0]);
+    }
+  }
+  set_anchors(new_anchors) {
+    this.anchors = new_anchors;
+  }
+  set_anchor(index, new_anchor) {
+    this.anchors[index] = new_anchor;
+  }
+  get_anchor(index) {
+    return this.anchors[index];
+  }
+  // Draw the Bezier curve using the solver
+  _draw(ctx, scene) {
+    if (!this.solver) {
+      this._drawFallback(ctx, scene);
+      return;
+    }
+    let a_x, a_y, a;
+    a = this.get_anchor(0);
+    [a_x, a_y] = scene.v2c(a);
+    ctx.beginPath();
+    ctx.moveTo(a_x, a_y);
+    let anchors_flat = this.anchors.reduce(
+      (acc, val) => acc.concat(val),
+      []
+    );
+    try {
+      let handles_flat = this.solver.get_bezier_handles(anchors_flat);
+      let handles = [];
+      for (let i = 0; i < handles_flat.length; i += 2) {
+        handles.push([handles_flat[i], handles_flat[i + 1]]);
+      }
+      let h1_x, h1_y, h2_x, h2_y;
+      for (let i = 0; i < this.num_steps; i++) {
+        [h1_x, h1_y] = scene.v2c(handles[i]);
+        [h2_x, h2_y] = scene.v2c(handles[i + this.num_steps]);
+        a = this.get_anchor(i + 1);
+        [a_x, a_y] = scene.v2c(a);
+        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
+      }
+      ctx.stroke();
+    } catch (error) {
+      console.warn("Error with solver, drawing with fallback method.");
+      this._drawFallback(ctx, scene);
+    }
+  }
+  // Draw a simple piecewise linear as fallback
+  _drawFallback(ctx, scene) {
+    if (this.anchors.length === 0) return;
+    let [x, y] = scene.v2c(this.get_anchor(0));
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let i = 1; i < this.anchors.length; i++) {
+      [x, y] = scene.v2c(this.get_anchor(i));
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+};
+var ParametricFunction = class extends BezierSpline {
+  constructor(f, tmin, tmax, num_steps, solver) {
+    super(num_steps, solver);
+    this.mode = "smooth";
+    this.function = f;
+    this.tmin = tmin;
+    this.tmax = tmax;
+    this._make_anchors();
+  }
+  _make_anchors() {
+    let anchors = [this.function(this.tmin)];
+    for (let i = 1; i <= this.num_steps; i++) {
+      anchors.push(
+        this.function(
+          this.tmin + i / this.num_steps * (this.tmax - this.tmin)
+        )
+      );
+    }
+    this.set_anchors(anchors);
+  }
+  // Jagged doesn't use Bezier curves. It is faster to compute and render.
+  set_mode(mode) {
+    this.mode = mode;
+  }
+  set_function(new_f) {
+    this.function = new_f;
+    this._make_anchors();
+  }
+  set_lims(tmin, tmax) {
+    this.tmin = tmin;
+    this.tmax = tmax;
+    this._make_anchors();
+  }
+  _draw(ctx, scene) {
+    if (this.mode == "jagged") {
+      this._drawFallback(ctx, scene);
+    } else {
+      super._draw(ctx, scene);
+    }
   }
 };
 
@@ -2999,10 +3113,19 @@ var SceneViewTranslator = class {
     this.dragEnd = [0, 0];
     this.callbacks = [];
     this.scene = scene;
+    this.add_callback(() => {
+      if (scene.has_mobj("axes")) {
+        scene.get_mobj("axes").set_lims(
+          scene.view_xlims,
+          scene.view_ylims
+        );
+      }
+    });
   }
   // Adds a callback which triggers when the object is dragged
   add_callback(callback) {
     this.callbacks.push(callback);
+    return this;
   }
   // Performs all callbacks (called when the object is dragged)
   do_callbacks() {
@@ -3101,116 +3224,6 @@ var SceneViewTranslator = class {
       "touchmove",
       self.touch_drag_cursor.bind(self)
     );
-  }
-};
-
-// src/lib/base/bezier.ts
-var BezierSpline = class extends LineLikeMObject {
-  constructor(num_steps, solver) {
-    super();
-    this.num_steps = num_steps;
-    this.solver = solver;
-    this.anchors = [];
-    for (let i = 0; i < num_steps + 1; i++) {
-      this.anchors.push([0, 0]);
-    }
-  }
-  set_anchors(new_anchors) {
-    this.anchors = new_anchors;
-  }
-  set_anchor(index, new_anchor) {
-    this.anchors[index] = new_anchor;
-  }
-  get_anchor(index) {
-    return this.anchors[index];
-  }
-  // Draw the Bezier curve using the solver
-  _draw(ctx, scene) {
-    if (!this.solver) {
-      this._drawFallback(ctx, scene);
-      return;
-    }
-    let a_x, a_y, a;
-    a = this.get_anchor(0);
-    [a_x, a_y] = scene.v2c(a);
-    ctx.beginPath();
-    ctx.moveTo(a_x, a_y);
-    let anchors_flat = this.anchors.reduce(
-      (acc, val) => acc.concat(val),
-      []
-    );
-    try {
-      let handles_flat = this.solver.get_bezier_handles(anchors_flat);
-      let handles = [];
-      for (let i = 0; i < handles_flat.length; i += 2) {
-        handles.push([handles_flat[i], handles_flat[i + 1]]);
-      }
-      let h1_x, h1_y, h2_x, h2_y;
-      for (let i = 0; i < this.num_steps; i++) {
-        [h1_x, h1_y] = scene.v2c(handles[i]);
-        [h2_x, h2_y] = scene.v2c(handles[i + this.num_steps]);
-        a = this.get_anchor(i + 1);
-        [a_x, a_y] = scene.v2c(a);
-        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
-      }
-      ctx.stroke();
-    } catch (error) {
-      console.warn("Error with solver, drawing with fallback method.");
-      this._drawFallback(ctx, scene);
-    }
-  }
-  // Draw a simple piecewise linear as fallback
-  _drawFallback(ctx, scene) {
-    if (this.anchors.length === 0) return;
-    let [x, y] = scene.v2c(this.get_anchor(0));
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    for (let i = 1; i < this.anchors.length; i++) {
-      [x, y] = scene.v2c(this.get_anchor(i));
-      ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  }
-};
-var ParametricFunction = class extends BezierSpline {
-  constructor(f, tmin, tmax, num_steps, solver) {
-    super(num_steps, solver);
-    this.mode = "smooth";
-    this.function = f;
-    this.tmin = tmin;
-    this.tmax = tmax;
-    this._make_anchors();
-  }
-  _make_anchors() {
-    let anchors = [this.function(this.tmin)];
-    for (let i = 1; i <= this.num_steps; i++) {
-      anchors.push(
-        this.function(
-          this.tmin + i / this.num_steps * (this.tmax - this.tmin)
-        )
-      );
-    }
-    this.set_anchors(anchors);
-  }
-  // Jagged doesn't use Bezier curves. It is faster to compute and render.
-  set_mode(mode) {
-    this.mode = mode;
-  }
-  set_function(new_f) {
-    this.function = new_f;
-    this._make_anchors();
-  }
-  set_lims(tmin, tmax) {
-    this.tmin = tmin;
-    this.tmax = tmax;
-    this._make_anchors();
-  }
-  _draw(ctx, scene) {
-    if (this.mode == "jagged") {
-      this._drawFallback(ctx, scene);
-    } else {
-      super._draw(ctx, scene);
-    }
   }
 };
 

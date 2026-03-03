@@ -11,6 +11,7 @@ import {
   vec2_normalize,
   vec2_angle,
   vec2_sum_list,
+  CoordinateAxes2d,
 } from "../base";
 
 export class SceneViewTranslator {
@@ -21,10 +22,20 @@ export class SceneViewTranslator {
   callbacks: (() => void)[] = []; // Callbacks which trigger when the object is dragged.
   constructor(scene: Scene) {
     this.scene = scene;
+    // Automatically shift coordinate axes if they're present
+    this.add_callback(() => {
+      if (scene.has_mobj("axes")) {
+        (scene.get_mobj("axes") as CoordinateAxes2d).set_lims(
+          scene.view_xlims,
+          scene.view_ylims,
+        );
+      }
+    });
   }
   // Adds a callback which triggers when the object is dragged
   add_callback(callback: () => void) {
     this.callbacks.push(callback);
+    return this;
   }
   // Performs all callbacks (called when the object is dragged)
   do_callbacks() {

@@ -75,22 +75,31 @@ body {
     line-height: 1.2;
 }*/
 
-/* Additional elements, experimental*/
+/* Additional elements */
+.row {
+    display: flex;
+    align-items: center; /* Centers vertically */
+}
 .applet-container {
     display: flex;
     justify-content: center; /* Centers horizontally */
     align-items: center; /* Centers vertically */
     width: 50%; /* A width less than 100% is required */
-    /*margin-left: auto;
-    margin-right: auto;*/
-    /*padding: 20px;*/
+    margin-left: auto;
+    margin-right: auto;
+    padding: 20px;
     text-align: center;
     font-family: Arial, sans-serif;
 }
 .slider {
-    width: 100%;
+    display: flex;
+    justify-content: center; /* Centers horizontally */
+    align-items: center; /* Centers vertically */
+    width: 40%;
     height: 25px;
     margin: 20px 0;
+    margin-left: auto;
+    margin-right: auto;
 }
 .value-display {
     font-size: 24px;

@@ -11,22 +11,192 @@ import {
   ParametricFunction,
   LatexCache,
   LaTeXMObject,
+  delay,
+  Line,
 } from "./lib/base";
 import { SceneViewTranslator, Button, Slider } from "./lib/interactive";
 import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
+    // Initiate the Bezier solver for smooth curve approximation
+    let num_pts = 100;
+    let solver = await createSmoothOpenPathBezier(num_pts);
+
+    // Make a LaTeX cache
+    let cache = new LatexCache();
+
     // TODO Add a playable animation which visually shows why ln(ab) = ln(a) + ln(b)
+    await (async function log_stretch(width: number, height: number) {
+      const name = "log-stretch";
+
+      // Set up the scene
+      let xmin = -1;
+      let xmax = 8;
+      let ymin = -1;
+      let ymax = 8;
+      let a = 2.5;
+      let b = 3;
+
+      let canvas = prepare_canvas(width, height, name);
+      let scene = new Scene(canvas);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+
+      scene.add(
+        "axes",
+        new CoordinateAxes2d([xmin, xmax], [ymin, ymax])
+          .set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 })
+          .set_tick_options({ stroke_width: 0.04, size: 0.08 })
+          .set_grid_options({
+            stroke_width: 0.02,
+            x_distance: 0.5,
+            y_distance: 0.5,
+          }),
+      );
+      scene.add(
+        "base_curve",
+        new ParametricFunction(
+          (t) => [t, 1 / t],
+          0.04,
+          xmax,
+          num_pts,
+          solver,
+        ).set_stroke_width(0.04),
+      );
+      scene.add(
+        "scaled_curve",
+        new ParametricFunction((t) => [t, b / t], 0.04, xmax, num_pts, solver)
+          .set_stroke_width(0.04)
+          .set_alpha(0.5),
+      );
+      scene.add(
+        "integral_ln_a",
+        new Integral((t) => 1 / t, 1, a, num_pts)
+          .set_stroke_width(0.04)
+          .set_fill_alpha(0.3)
+          .set_fill_color("red"),
+      );
+      scene.add(
+        "integral_ln_b",
+        new Integral((t) => 1 / t, 1, b, num_pts)
+          .set_stroke_width(0.04)
+          .set_fill_alpha(0.3)
+          .set_fill_color("blue"),
+      );
+      scene.add(
+        "tick_a",
+        new Line([a, -0.1], [a, 0.1])
+          .set_stroke_width(0.08)
+          .set_stroke_color("red"),
+      );
+      scene.add(
+        "tick_b",
+        new Line([b, -0.1], [b, 0.1])
+          .set_stroke_width(0.08)
+          .set_stroke_color("blue"),
+      );
+      scene.add(
+        "tick_ab",
+        new Line([a * b, -0.1], [a * b, 0.1])
+          .set_stroke_width(0.08)
+          .set_stroke_color("purple"),
+      );
+      scene.add(
+        "tex_a",
+        new LaTeXMObject("a", [a - 0.2, -0.1], cache).set_fontSize(12),
+      );
+
+      scene.add(
+        "tex_b",
+        new LaTeXMObject("b", [b - 0.2, -0.1], cache).set_fontSize(12),
+      );
+      scene.add(
+        "tex_ab",
+        new LaTeXMObject("ab", [a * b - 0.2, -0.1], cache).set_fontSize(12),
+      );
+
+      // Add a scene view translator
+      let scene_view_translator = new SceneViewTranslator(scene).add_callback(
+        () => {
+          (scene.get_mobj("base_curve") as ParametricFunction).set_lims(
+            0.04,
+            scene.view_xlims[1],
+          );
+          (scene.get_mobj("scaled_curve") as ParametricFunction).set_lims(
+            0.04,
+            scene.view_xlims[1],
+          );
+        },
+      );
+      scene_view_translator.add();
+      scene.draw();
+
+      // Animate the movement of the integral
+      const num_frames = 50;
+      let horizontally_stretched: boolean = false;
+      let vertically_stretched: boolean = false;
+      let horizontalStretchButton = Button(
+        document.getElementById(name + "-button-1") as HTMLElement,
+        async () => {
+          let alpha;
+          let p: number;
+          for (let frame = 1; frame <= num_frames; frame++) {
+            if (horizontally_stretched) {
+              alpha = smooth(1 - frame / num_frames);
+            } else {
+              alpha = smooth(frame / num_frames);
+            }
+            p = b * alpha + 1 * (1 - alpha);
+            (scene.get_mobj("integral_ln_a") as Integral)
+              .set_lims(p, p * a)
+              .set_func((t) => p / t);
+            scene.draw();
+            displayButton.textContent = `Red area = ${(Math.log(a) * p).toFixed(3)}, Blue area = ${Math.log(b).toFixed(3)}`;
+            await delay(10);
+          }
+          horizontally_stretched = !horizontally_stretched;
+        },
+      );
+      horizontalStretchButton.textContent = "Step 1";
+      let verticalStretchButton = Button(
+        document.getElementById(name + "-button-2") as HTMLElement,
+        async () => {
+          if (!horizontally_stretched) {
+            return;
+          }
+          let alpha;
+          let p: number;
+          for (let frame = 1; frame <= num_frames; frame++) {
+            if (vertically_stretched) {
+              alpha = smooth(1 - frame / num_frames);
+            } else {
+              alpha = smooth(frame / num_frames);
+            }
+            p = b * alpha + 1 * (1 - alpha);
+            (scene.get_mobj("integral_ln_a") as Integral).set_func(
+              (t) => b / p / t,
+            );
+            scene.draw();
+            displayButton.textContent = `Red area = ${((Math.log(a) * b) / p).toFixed(3)}, Blue area = ${Math.log(b).toFixed(3)}`;
+            await delay(10);
+          }
+          vertically_stretched = !vertically_stretched;
+        },
+      );
+      verticalStretchButton.textContent = "Step 2";
+
+      // Display value, unclickable
+      let displayButton = Button(
+        document.getElementById(name + "-button-3") as HTMLElement,
+        () => {},
+      );
+      displayButton.textContent = `Red area = ${Math.log(a).toFixed(3)}, Blue area = ${Math.log(b).toFixed(3)}`;
+    })(300, 300);
 
     // TODO Add an applet showing the Taylor polynomials of ln(1 + x) and animation
     // which adds them in, one-by-one. Also have a formula which fades in terms, one-by-one.
     await (async function log_series(width: number, height: number) {
       const name = "log-series";
-
-      // Initiate the Bezier solver for smooth curve approximation
-      let num_pts = 100;
-      let solver = await createSmoothOpenPathBezier(num_pts);
 
       // Make a LaTeX cache
       // TODO Pre-populate it.
@@ -171,10 +341,6 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
       // Add a view translator and callbacks to update the axes and functions when the view changes
       let log_canvas_translator = new SceneViewTranslator(log_scene);
       log_canvas_translator.add_callback(() => {
-        (log_scene.get_mobj("axes") as CoordinateAxes2d).set_lims(
-          log_scene.view_xlims,
-          log_scene.view_ylims,
-        );
         (log_scene.get_mobj("curve") as ParametricFunction).set_lims(
           -0.99,
           log_scene.view_xlims[1],
@@ -188,10 +354,6 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 
       let hyp_canvas_translator = new SceneViewTranslator(hyp_scene);
       hyp_canvas_translator.add_callback(() => {
-        (hyp_scene.get_mobj("axes") as CoordinateAxes2d).set_lims(
-          hyp_scene.view_xlims,
-          hyp_scene.view_ylims,
-        );
         (hyp_scene.get_mobj("curve") as ParametricFunction).set_lims(
           -0.99,
           hyp_scene.view_xlims[1],
@@ -344,13 +506,7 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
     await (async function poly_quadrature(width: number, height: number) {
       const name = "poly-quadrature";
 
-      // Initiate the Bezier solver for smooth curve approximation
-      let num_pts = 100;
-      let solver = await createSmoothOpenPathBezier(num_pts);
-
-      // Make a LaTeX cache
-      // TODO Pre-populate it.
-      let cache = new LatexCache();
+      // TODO Pre-populate LaTeX cache.
 
       // Set up the scene
       let xmin = -0.5;

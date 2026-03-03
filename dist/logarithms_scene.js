@@ -8,8 +8,20 @@ var __export = (target, all) => {
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
+function vec2_scale(x, factor) {
+  return [x[0] * factor, x[1] * factor];
+}
+function vec2_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
 function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
+}
+function vec2_rot(v, angle) {
+  const [x, y] = v;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return [x * cos - y * sin, x * sin + y * cos];
 }
 
 // src/lib/base/style_options.ts
@@ -21,6 +33,19 @@ var DEFAULT_STROKE_WIDTH = 0.08;
 var DEFAULT_FILL_COLOR = "black";
 
 // src/lib/base/base.ts
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-x));
+}
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function smooth(t, inflection = 10) {
+  let error = sigmoid(-inflection / 2);
+  return Math.min(
+    Math.max((sigmoid(inflection * (t - 0.5)) - error) / (1 - 2 * error), 0),
+    1
+  );
+}
 var StrokeOptions = class {
   constructor() {
     this.stroke_width = DEFAULT_STROKE_WIDTH;
@@ -152,6 +177,33 @@ var LineLikeMObject = class extends MObject {
     ctx.globalAlpha = this.alpha;
     this.stroke_options.apply_to(ctx, scene);
     this._draw(ctx, scene, args);
+  }
+};
+var LineLikeMObjectGroup = class extends MObjectGroup {
+  constructor() {
+    super(...arguments);
+    this.stroke_options = new StrokeOptions();
+  }
+  set_stroke_color(color) {
+    this.stroke_options.set_stroke_color(color);
+    return this;
+  }
+  set_stroke_width(width) {
+    this.stroke_options.set_stroke_width(width);
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_options.set_stroke_style(style);
+    return this;
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    Object.values(this.children).forEach((child) => {
+      child._draw(ctx, scene, args);
+    });
   }
 };
 var FillLikeMObject = class extends MObject {
@@ -372,6 +424,39 @@ var Scene = class {
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
+function prepare_canvas(width, height, name) {
+  const container = document.getElementById(name);
+  if (container == null) throw new Error(`${name} not found`);
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+  let wrapper = document.createElement("div");
+  wrapper.classList.add("canvas_container");
+  wrapper.classList.add("non_selectable");
+  wrapper.style.width = `${width}px`;
+  wrapper.style.height = `${height}px`;
+  let canvas = document.createElement("canvas");
+  canvas.classList.add("non_selectable");
+  canvas.style.position = "relative";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.height = height;
+  canvas.width = width;
+  wrapper.appendChild(canvas);
+  container.appendChild(wrapper);
+  prepareCanvasForMobile(canvas);
+  return canvas;
+}
+function prepareCanvasForMobile(canvas) {
+  canvas.ontouchstart = function(e) {
+    e.preventDefault();
+  };
+  canvas.ontouchend = function(e) {
+    e.preventDefault();
+  };
+  canvas.ontouchmove = function(e) {
+    e.preventDefault();
+  };
+}
 function mouse_event_coords(event) {
   return [event.pageX, event.pageY];
 }
@@ -815,7 +900,120 @@ var Rectangle = class extends FillLikeMObject {
     ctx.fill();
   }
 };
+var Polygon = class extends FillLikeMObject {
+  constructor(points) {
+    super();
+    this.points = points;
+  }
+  add_point(point) {
+    this.points.push(point);
+  }
+  remove_point(index) {
+    this.points.splice(index, 1);
+  }
+  move_point(i, new_point) {
+    this.points[i] = new_point;
+  }
+  move_by(p) {
+    for (let i = 0; i < this.points.length; i++) {
+      this.points[i] = vec2_sum(this.points[i], p);
+    }
+  }
+  _draw(ctx, scene) {
+    let [x, y] = scene.v2c(this.points[0]);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let i = 1; i < this.points.length; i++) {
+      [x, y] = scene.v2c(this.points[i]);
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    if (this.fill_options.fill) {
+      ctx.globalAlpha *= this.fill_options.fill_alpha;
+      ctx.fill();
+      ctx.globalAlpha /= this.fill_options.fill_alpha;
+    }
+  }
+};
 var DraggableRectangle = makeDraggable(Rectangle);
+var Line = class extends LineLikeMObject {
+  constructor(start, end) {
+    super();
+    this.start = start;
+    this.end = end;
+  }
+  // Moves the start and end points
+  move_start(p) {
+    this.start = p;
+  }
+  move_end(p) {
+    this.end = p;
+  }
+  move_by(p) {
+    this.start = vec2_sum(this.start, p);
+    this.end = vec2_sum(this.end, p);
+  }
+  length() {
+    return vec2_norm(vec2_sub(this.start, this.end));
+  }
+  // Draws on the canvas
+  _draw(ctx, scene) {
+    let [start_x, start_y] = scene.v2c(this.start);
+    let [end_x, end_y] = scene.v2c(this.end);
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(end_x, end_y);
+    ctx.stroke();
+  }
+};
+var TwoHeadedArrow = class extends Line {
+  constructor() {
+    super(...arguments);
+    this.arrow_size = 0.3;
+  }
+  set_arrow_size(size) {
+    this.arrow_size = size;
+  }
+  // Draws on the canvas
+  _draw(ctx, scene) {
+    super._draw(ctx, scene);
+    ctx.fillStyle = this.stroke_options.stroke_color;
+    let [end_x, end_y] = scene.v2c(this.end);
+    let [start_x, start_y] = scene.v2c(this.start);
+    let v;
+    let ax;
+    let ay;
+    let bx;
+    let by;
+    v = vec2_scale(
+      vec2_sub(this.start, this.end),
+      this.arrow_size / this.length()
+    );
+    [ax, ay] = scene.v2c(vec2_sum(this.end, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(this.end, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(end_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
+    v = vec2_scale(
+      vec2_sub(this.end, this.start),
+      this.arrow_size / this.length()
+    );
+    [ax, ay] = scene.v2c(vec2_sum(this.start, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(this.start, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(start_x, start_y);
+    ctx.closePath();
+    ctx.fill();
+  }
+};
 
 // src/lib/three_d/matvec.ts
 function vec3_scale(x, factor) {
@@ -1183,6 +1381,498 @@ var Line3D = class extends ThreeDLineLikeMObject {
   }
 };
 
+// src/lib/base/cartesian.ts
+var AxisOptions = class {
+  constructor() {
+    this.stroke_width = 0.1;
+    this.alpha = 1;
+    this.arrow_size = 0.3;
+  }
+  update(options) {
+    Object.assign(this, options);
+  }
+};
+var TickOptions = class {
+  constructor() {
+    this.distance = 1;
+    this.size = 0.2;
+    this.alpha = 1;
+    this.stroke_width = 0.08;
+  }
+  update(options) {
+    Object.assign(this, options);
+  }
+};
+var GridOptions = class {
+  constructor() {
+    this.x_distance = 1;
+    this.y_distance = 1;
+    this.alpha = 0.2;
+    this.stroke_width = 0.05;
+  }
+  update(options) {
+    Object.assign(this, options);
+  }
+};
+var Axis = class extends MObjectGroup {
+  constructor(lims, type) {
+    super();
+    this.axis_options = new AxisOptions();
+    this.tick_options = new TickOptions();
+    this.lims = lims;
+    this.type = type;
+    this._make_axis();
+    this._make_ticks();
+  }
+  _make_axis() {
+    let [cmin, cmax] = this.lims;
+    let axis;
+    if (this.type === "x") {
+      axis = new TwoHeadedArrow([cmin, 0], [cmax, 0]);
+    } else {
+      axis = new TwoHeadedArrow([0, cmin], [0, cmax]);
+    }
+    axis.set_stroke_width(this.axis_options.stroke_width);
+    axis.set_arrow_size(this.axis_options.arrow_size);
+    axis.set_alpha(this.axis_options.alpha);
+    this.add_mobj("axis", axis);
+  }
+  _make_ticks() {
+    let [cmin, cmax] = this.lims;
+    let ticks = new LineLikeMObjectGroup().set_alpha(this.tick_options.alpha).set_stroke_width(this.tick_options.stroke_width);
+    for (let c = this.tick_options.distance * Math.floor(cmin / this.tick_options.distance + 1); c < this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance); c += this.tick_options.distance) {
+      if (this.type == "x") {
+        ticks.add_mobj(
+          `tick-x-(${c})`,
+          new Line(
+            [c, -this.tick_options.size / 2],
+            [c, this.tick_options.size / 2]
+          )
+        );
+      } else {
+        ticks.add_mobj(
+          `tick-y-(${c})`,
+          new Line(
+            [-this.tick_options.size / 2, c],
+            [this.tick_options.size / 2, c]
+          )
+        );
+      }
+    }
+    this.add_mobj("ticks", ticks);
+  }
+  axis() {
+    return this.get_mobj("axis");
+  }
+  ticks() {
+    return this.get_mobj("ticks");
+  }
+  set_lims(lims) {
+    this.lims = lims;
+    this.remove_mobj("axis");
+    this.remove_mobj("ticks");
+    this._make_axis();
+    this._make_ticks();
+  }
+  set_axis_options(options) {
+    this.axis_options.update(options);
+    this.remove_mobj("axis");
+    this._make_axis();
+  }
+  set_tick_options(options) {
+    this.tick_options.update(options);
+    this.remove_mobj("ticks");
+    this._make_ticks();
+    return this;
+  }
+  set_tick_distance(distance) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
+    return this;
+  }
+  set_tick_size(size) {
+    this.tick_options.size = size;
+    this.set_tick_options(this.tick_options);
+    return this;
+  }
+};
+var CoordinateAxes2d = class extends MObjectGroup {
+  constructor(xlims, ylims) {
+    super();
+    this.axis_options = new AxisOptions();
+    this.tick_options = new TickOptions();
+    this.grid_options = new GridOptions();
+    this.xlims = xlims;
+    this.ylims = ylims;
+    this._make_axes();
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
+  }
+  _make_axes() {
+    let x_axis = new Axis(this.xlims, "x");
+    x_axis.set_axis_options(this.axis_options);
+    x_axis.set_tick_options(this.tick_options);
+    this.add_mobj("x-axis", x_axis);
+    let y_axis = new Axis(this.ylims, "y");
+    y_axis.set_axis_options(this.axis_options);
+    y_axis.set_tick_options(this.tick_options);
+    this.add_mobj("y-axis", y_axis);
+  }
+  _make_x_grid_lines() {
+    let [xmin, xmax] = this.xlims;
+    let [ymin, ymax] = this.ylims;
+    let x_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
+    for (let x = this.grid_options.x_distance * Math.floor(xmin / this.grid_options.x_distance + 1); x < this.grid_options.x_distance * Math.ceil(xmax / this.grid_options.x_distance); x += this.grid_options.x_distance) {
+      x_grid.add_mobj(`line-(${x})`, new Line([x, ymin], [x, ymax]));
+    }
+    this.add_mobj("x-grid", x_grid);
+  }
+  _make_y_grid_lines() {
+    let [xmin, xmax] = this.xlims;
+    let [ymin, ymax] = this.ylims;
+    let y_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
+    for (let y = this.grid_options.y_distance * Math.floor(ymin / this.grid_options.y_distance + 1); y < this.grid_options.y_distance * Math.ceil(ymax / this.grid_options.y_distance); y += this.grid_options.y_distance) {
+      y_grid.add_mobj(`line-(${y})`, new Line([xmin, y], [xmax, y]));
+    }
+    this.add_mobj("y-grid", y_grid);
+  }
+  x_axis() {
+    return this.get_mobj("x-axis");
+  }
+  y_axis() {
+    return this.get_mobj("y-axis");
+  }
+  x_grid() {
+    return this.get_mobj("x-grid");
+  }
+  y_grid() {
+    return this.get_mobj("y-grid");
+  }
+  set_axis_options(options) {
+    this.axis_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+    return this;
+  }
+  set_axis_stroke_width(width) {
+    this.axis_options.stroke_width = width;
+    this.set_axis_options(this.axis_options);
+    return this;
+  }
+  set_tick_options(options) {
+    this.tick_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+    return this;
+  }
+  set_tick_size(size) {
+    this.tick_options.size = size;
+    this.set_tick_options(this.tick_options);
+    return this;
+  }
+  set_tick_distance(distance) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
+    return this;
+  }
+  set_grid_options(options) {
+    this.grid_options.update(options);
+    this.remove_mobj("x-grid");
+    this.remove_mobj("y-grid");
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
+    return this;
+  }
+  set_grid_distance(distance) {
+    this.grid_options.x_distance = distance;
+    this.grid_options.y_distance = distance;
+    this.set_grid_options(this.grid_options);
+    return this;
+  }
+  set_grid_alpha(alpha) {
+    this.grid_options.alpha = alpha;
+    this.set_grid_options(this.grid_options);
+    return this;
+  }
+  set_grid_stroke_width(width) {
+    this.grid_options.stroke_width = width;
+    this.set_grid_options(this.grid_options);
+    return this;
+  }
+  set_lims(xlims, ylims) {
+    this.xlims = xlims;
+    this.ylims = ylims;
+    this.x_axis().set_lims(xlims);
+    this.y_axis().set_lims(ylims);
+    this.remove_mobj("x-grid");
+    this.remove_mobj("y-grid");
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
+    return this;
+  }
+};
+var Integral = class extends Polygon {
+  constructor(f, left_endpoint, right_endpoint, num_points) {
+    const points = [];
+    for (let i = 0; i <= num_points; i++) {
+      const t = left_endpoint + (right_endpoint - left_endpoint) * i / num_points;
+      points.push([t, f(t)]);
+    }
+    points.push([right_endpoint, 0]);
+    points.push([left_endpoint, 0]);
+    super(points);
+    this.f = f;
+    this.left_endpoint = left_endpoint;
+    this.right_endpoint = right_endpoint;
+    this.num_points = num_points;
+  }
+  _recompute_points() {
+    this.points = [];
+    for (let i = 0; i <= this.num_points; i++) {
+      const t = this.left_endpoint + (this.right_endpoint - this.left_endpoint) * i / this.num_points;
+      this.points.push([t, this.f(t)]);
+    }
+    this.points.push([this.right_endpoint, 0]);
+    this.points.push([this.left_endpoint, 0]);
+  }
+  set_left_endpoint(left_endpoint) {
+    this.left_endpoint = left_endpoint;
+    this._recompute_points();
+  }
+  set_right_endpoint(right_endpoint) {
+    this.right_endpoint = right_endpoint;
+    this._recompute_points();
+  }
+  set_lims(left_endpoint, right_endpoint) {
+    this.left_endpoint = left_endpoint;
+    this.right_endpoint = right_endpoint;
+    this._recompute_points();
+    return this;
+  }
+  set_num_points(num_points) {
+    this.num_points = num_points;
+    this._recompute_points();
+  }
+  set_func(f) {
+    this.f = f;
+    this._recompute_points();
+  }
+};
+var IntegralBetween = class extends Polygon {
+  constructor(f, g, left_endpoint, right_endpoint, num_points) {
+    const points = [];
+    for (let i = 0; i <= num_points; i++) {
+      const t = left_endpoint + (right_endpoint - left_endpoint) * i / num_points;
+      points.push([t, f(t)]);
+    }
+    for (let i = num_points; i >= 0; i--) {
+      const t = left_endpoint + (right_endpoint - left_endpoint) * i / num_points;
+      points.push([t, g(t)]);
+    }
+    super(points);
+    this.f = f;
+    this.g = g;
+    this.left_endpoint = left_endpoint;
+    this.right_endpoint = right_endpoint;
+    this.num_points = num_points;
+  }
+  _recompute_points() {
+    this.points = [];
+    for (let i = 0; i <= this.num_points; i++) {
+      const t = this.left_endpoint + (this.right_endpoint - this.left_endpoint) * i / this.num_points;
+      this.points.push([t, this.f(t)]);
+    }
+    for (let i = this.num_points; i >= 0; i--) {
+      const t = this.left_endpoint + (this.right_endpoint - this.left_endpoint) * i / this.num_points;
+      this.points.push([t, this.g(t)]);
+    }
+  }
+  set_left_endpoint(left_endpoint) {
+    this.left_endpoint = left_endpoint;
+    this._recompute_points();
+    return this;
+  }
+  set_right_endpoint(right_endpoint) {
+    this.right_endpoint = right_endpoint;
+    this._recompute_points();
+    return this;
+  }
+  set_lims(left_endpoint, right_endpoint) {
+    this.left_endpoint = left_endpoint;
+    this.right_endpoint = right_endpoint;
+    this._recompute_points();
+    return this;
+  }
+  set_num_points(num_points) {
+    this.num_points = num_points;
+    this._recompute_points();
+    return this;
+  }
+  set_f(f) {
+    this.f = f;
+    this._recompute_points();
+    return this;
+  }
+  set_g(g) {
+    this.g = g;
+    this._recompute_points();
+    return this;
+  }
+};
+
+// src/lib/base/latex.ts
+var LaTeXMObject = class extends MObject {
+  // Cache for rendered LaTeX images.
+  constructor(latex, pos, latex_cache, katexOptions) {
+    super();
+    // The position of the LaTeX object.
+    this.rotation = 0;
+    this.color = "black";
+    this.fontSize = 16;
+    this.pos = pos;
+    this.latex = latex;
+    this.latex_cache = latex_cache;
+    this.katexOptions = {
+      throwOnError: false,
+      displayMode: false,
+      fleqn: true,
+      ...katexOptions
+    };
+  }
+  set_tex(latex) {
+    this.latex = latex;
+    return this;
+  }
+  set_fontSize(size) {
+    this.fontSize = size;
+    return this;
+  }
+  set_rotation(rotation) {
+    this.rotation = rotation;
+    return this;
+  }
+  set_color(color) {
+    this.color = color;
+    return this;
+  }
+  // Draw a rendered LaTeX image
+  _drawRendered(ctx, scene, renderedImage) {
+    let [cx, cy] = scene.v2c(this.pos);
+    if (this.rotation !== 0) {
+      ctx.translate(cx, cy);
+      ctx.rotate(this.rotation * Math.PI / 180);
+      ctx.drawImage(renderedImage, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.drawImage(renderedImage, cx, cy);
+    }
+  }
+  // Renders a LaTeX expression and outputs an image.
+  async _render() {
+    if (!window.katex) {
+      throw new Error("KaTeX is not loaded. Please include KaTeX library.");
+    }
+    if (!window.html2canvas) {
+      throw new Error(
+        "html2canvas is not loaded. Please include html2canvas library."
+      );
+    }
+    const container = document.createElement("div");
+    container.style.cssText = `
+            position: fixed;
+            left: 0;
+            top: 0;
+            color: ${this.color};
+            font-size: ${this.fontSize}px;
+            display: inline-block;
+            transform: translate(${this.pos[0]}px, ${this.pos[1]}px) rotate(${this.rotation}deg);
+            transform-origin: 0 0;
+            white-space: nowrap;
+            z-index: 9999;
+        `;
+    container.style.backgroundColor = "white";
+    container.style.padding = "2px 4px";
+    container.style.borderRadius = "3px";
+    document.body.appendChild(container);
+    window.katex.render(this.latex, container, {
+      ...this.katexOptions,
+      fontSize: this.fontSize + "px"
+    });
+    let tempCanvas = await window.html2canvas(container, {
+      backgroundColor: null,
+      scale: 1,
+      logging: false,
+      useCORS: true,
+      allowTaint: true
+    });
+    return [container, tempCanvas];
+  }
+  // Draw the LaTeX object, either by using the cache (if it has been rendered before)
+  // or by rendering it from scratch (if this is the first time).
+  async _draw(ctx, scene) {
+    let [isCached, cachedCanvas] = this.latex_cache.is_cached(
+      this.latex,
+      this.color,
+      this.fontSize
+    );
+    if (isCached) {
+      this._drawRendered(ctx, scene, cachedCanvas);
+    } else {
+      let [container, tempCanvas] = await this._render();
+      this.latex_cache.add(this.latex, this.color, this.fontSize, tempCanvas);
+      ctx.save();
+      this._drawRendered(ctx, scene, tempCanvas);
+      document.body.removeChild(container);
+    }
+  }
+};
+var LatexCache = class {
+  constructor() {
+    this.cache = /* @__PURE__ */ new Map();
+    this.maxSize = 100;
+    this.ttl = 30 * 60 * 1e3;
+  }
+  // 30 minutes
+  // Returns a cache entry image if it exists and is not expired.
+  is_cached(latex, color, fontSize) {
+    if (this.cache.size >= this.maxSize) {
+      this.cleanup();
+    }
+    const key = this.generateKey(latex, color, fontSize);
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < this.ttl) {
+      cached.hits++;
+      return [true, cached.image];
+    } else {
+      return [false, void 0];
+    }
+  }
+  // Adds a new entry to the cache.
+  add(latex, color, fontSize, image) {
+    this.cache.set(this.generateKey(latex, color, fontSize), {
+      image,
+      timestamp: Date.now(),
+      hits: 1
+    });
+  }
+  generateKey(latex, color, fontSize) {
+    return `${latex}|${color}|${fontSize}`;
+  }
+  cleanup() {
+    const entries = Array.from(this.cache.entries());
+    entries.sort((a, b) => {
+      if (a[1].hits !== b[1].hits) return a[1].hits - b[1].hits;
+      return a[1].timestamp - b[1].timestamp;
+    });
+    const toRemove = Math.max(1, Math.floor(this.cache.size * 0.2));
+    for (let i = 0; i < toRemove; i++) {
+      this.cache.delete(entries[i][0]);
+    }
+  }
+};
+
 // src/lib/base/bezier.ts
 var BezierSpline = class extends LineLikeMObject {
   constructor(num_steps, solver) {
@@ -1293,57 +1983,145 @@ var ParametricFunction = class extends BezierSpline {
   }
 };
 
-// src/lib/interactive/slider.ts
-function Slider(container, callback, kwargs) {
-  let slider = document.createElement("input");
-  slider.type = "range";
-  slider.value = kwargs.initial_value;
-  slider.classList.add("slider");
-  slider.id = "floatSlider";
-  slider.width = 200;
-  let name = kwargs.name;
-  if (name == void 0) {
-    slider.name = "Value";
-  } else {
-    slider.name = name;
-  }
-  let min = kwargs.min;
-  if (min == void 0) {
-    slider.min = "0";
-  } else {
-    slider.min = `${min}`;
-  }
-  let max = kwargs.max;
-  if (max == void 0) {
-    slider.max = "10";
-  } else {
-    slider.max = `${max}`;
-  }
-  let step = kwargs.step;
-  if (step == void 0) {
-    slider.step = ".01";
-  } else {
-    slider.step = `${step}`;
-  }
-  container.appendChild(slider);
-  let valueDisplay = document.createElement("span");
-  valueDisplay.classList.add("value-display");
-  valueDisplay.id = "sliderValue";
-  valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-  container.appendChild(valueDisplay);
-  function updateDisplay() {
-    callback(slider.value);
-    valueDisplay.textContent = `${slider.name} = ${slider.value}`;
-    updateSliderColor(slider);
-  }
-  function updateSliderColor(sliderElement) {
-    const value = 100 * parseFloat(sliderElement.value);
-    sliderElement.style.background = `linear-gradient(to right, #4CAF50 0%, #4CAF50 ${value}%, #ddd ${value}%, #ddd 100%)`;
-  }
-  updateDisplay();
-  slider.addEventListener("input", updateDisplay);
-  return slider;
+// src/lib/interactive/button.ts
+function Button(container, callback) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "interactiveButton";
+  button.style.padding = "15px";
+  container.appendChild(button);
+  button.addEventListener("click", (event) => {
+    callback();
+    button.style.transform = "scale(0.95)";
+    setTimeout(() => {
+      button.style.transform = "scale(1)";
+    }, 100);
+  });
+  return button;
 }
+
+// src/lib/interactive/scene_view_translator.ts
+var SceneViewTranslator = class {
+  // Callbacks which trigger when the object is dragged.
+  constructor(scene) {
+    this.drag = false;
+    this.dragStart = [0, 0];
+    this.dragEnd = [0, 0];
+    this.callbacks = [];
+    this.scene = scene;
+    this.add_callback(() => {
+      if (scene.has_mobj("axes")) {
+        scene.get_mobj("axes").set_lims(
+          scene.view_xlims,
+          scene.view_ylims
+        );
+      }
+    });
+  }
+  // Adds a callback which triggers when the object is dragged
+  add_callback(callback) {
+    this.callbacks.push(callback);
+    return this;
+  }
+  // Performs all callbacks (called when the object is dragged)
+  do_callbacks() {
+    for (const callback of this.callbacks) {
+      callback();
+    }
+  }
+  click(event) {
+    this.dragStart = [
+      event.pageX - this.scene.canvas.offsetLeft,
+      event.pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
+  }
+  touch(event) {
+    let touch = event.touches[0];
+    this.dragStart = [
+      touch.pageX - this.scene.canvas.offsetLeft,
+      touch.pageY - this.scene.canvas.offsetTop
+    ];
+    if (!this.scene.is_dragging) {
+      this.drag = true;
+      this.scene.click();
+    }
+  }
+  unclick(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  untouch(event) {
+    this.drag = false;
+    this.scene.unclick();
+  }
+  mouse_drag_cursor(event) {
+    if (this.drag) {
+      this.dragEnd = [
+        event.pageX - this.scene.canvas.offsetLeft,
+        event.pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  touch_drag_cursor(event) {
+    if (this.drag) {
+      let touch = event.touches[0];
+      this.dragEnd = [
+        touch.pageX - this.scene.canvas.offsetLeft,
+        touch.pageY - this.scene.canvas.offsetTop
+      ];
+      this._drag_cursor();
+    }
+  }
+  // Updates the scene to account for a dragged cursor position
+  _drag_cursor() {
+    let dragDiff = vec2_sub(
+      this.scene.c2v(this.dragStart[0], this.dragStart[1]),
+      this.scene.c2v(this.dragEnd[0], this.dragEnd[1])
+    );
+    if (dragDiff[0] == 0 && dragDiff[1] == 0) {
+      return;
+    }
+    this.scene.move_view(dragDiff);
+    this.scene.draw();
+    this.dragStart = this.dragEnd;
+    this.do_callbacks();
+  }
+  add() {
+    let self = this;
+    this.scene.canvas.addEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.addEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.addEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.addEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.addEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.addEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
+  }
+  remove() {
+    let self = this;
+    this.scene.canvas.removeEventListener("mousedown", self.click.bind(self));
+    this.scene.canvas.removeEventListener("mouseup", self.unclick.bind(self));
+    this.scene.canvas.removeEventListener(
+      "mousemove",
+      self.mouse_drag_cursor.bind(self)
+    );
+    this.scene.canvas.removeEventListener("touchstart", self.touch.bind(self));
+    this.scene.canvas.removeEventListener("touchend", self.untouch.bind(self));
+    this.scene.canvas.removeEventListener(
+      "touchmove",
+      self.touch_drag_cursor.bind(self)
+    );
+  }
+};
 
 // rust-calc/pkg/rust_calc.js
 var rust_calc_exports = {};
@@ -2268,68 +3046,563 @@ async function createSmoothOpenPathBezier(n) {
 }
 console.log("rust-calc exports:", Object.keys(rust_calc_exports));
 
-// src/parametric_scene.ts
-(async function() {
+// src/logarithms_scene.ts
+(function() {
   document.addEventListener("DOMContentLoaded", async function() {
-    function prepare_canvas2(width2, height2, name) {
-      const container = document.getElementById(name);
-      if (container == null) throw new Error(`${name} not found`);
-      container.style.width = `${width2}px`;
-      container.style.height = `${height2}px`;
-      let wrapper = document.createElement("div");
-      wrapper.classList.add("canvas_container");
-      wrapper.classList.add("non_selectable");
-      wrapper.style.width = `${width2}px`;
-      wrapper.style.height = `${height2}px`;
-      let canvas2 = document.createElement("canvas");
-      canvas2.classList.add("non_selectable");
-      canvas2.style.position = "relative";
-      canvas2.style.top = "0";
-      canvas2.style.left = "0";
-      canvas2.height = height2;
-      canvas2.width = width2;
-      wrapper.appendChild(canvas2);
-      container.appendChild(wrapper);
-      console.log("Canvas made");
-      return canvas2;
-    }
-    const xmin = -5;
-    const xmax = 5;
-    const ymin = -5;
-    const ymax = 5;
-    let width = 300;
-    let height = 300;
-    let canvas = prepare_canvas2(width, height, "scene-container");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      throw new Error("Failed to get 2D context");
-    }
-    let solver = await createSmoothOpenPathBezier(30);
-    let parametric = new ParametricFunction(
-      (t) => {
-        let r = 1 / (1 + 0.5 * Math.cos(t));
-        return [Math.cos(t) * r, Math.sin(t) * r];
-      },
-      0,
-      2 * Math.PI,
-      30,
-      solver
-    );
-    let scene = new Scene(canvas);
-    scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-    scene.add("parametric_fn", parametric);
-    scene.draw();
-    let ecc_slider = Slider(
-      document.getElementById("slider-container-1"),
-      function(e) {
-        parametric.set_function((t) => {
-          let r = 1 / (1 + e * Math.cos(t));
-          return [Math.cos(t) * r, Math.sin(t) * r];
-        });
-        scene.draw();
-      },
-      { initial_value: "0.5", min: 0, max: 1, step: 0.01 }
-    );
-    ecc_slider.width = 200;
+    let num_pts = 100;
+    let solver = await createSmoothOpenPathBezier(num_pts);
+    let cache = new LatexCache();
+    await (async function log_stretch(width, height) {
+      const name = "log-stretch";
+      let xmin = -1;
+      let xmax = 8;
+      let ymin = -1;
+      let ymax = 8;
+      let a = 2.5;
+      let b = 3;
+      let canvas = prepare_canvas(width, height, name);
+      let scene = new Scene(canvas);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.add(
+        "axes",
+        new CoordinateAxes2d([xmin, xmax], [ymin, ymax]).set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 }).set_tick_options({ stroke_width: 0.04, size: 0.08 }).set_grid_options({
+          stroke_width: 0.02,
+          x_distance: 0.5,
+          y_distance: 0.5
+        })
+      );
+      scene.add(
+        "base_curve",
+        new ParametricFunction(
+          (t) => [t, 1 / t],
+          0.04,
+          xmax,
+          num_pts,
+          solver
+        ).set_stroke_width(0.04)
+      );
+      scene.add(
+        "scaled_curve",
+        new ParametricFunction((t) => [t, b / t], 0.04, xmax, num_pts, solver).set_stroke_width(0.04).set_alpha(0.5)
+      );
+      scene.add(
+        "integral_ln_a",
+        new Integral((t) => 1 / t, 1, a, num_pts).set_stroke_width(0.04).set_fill_alpha(0.3).set_fill_color("red")
+      );
+      scene.add(
+        "integral_ln_b",
+        new Integral((t) => 1 / t, 1, b, num_pts).set_stroke_width(0.04).set_fill_alpha(0.3).set_fill_color("blue")
+      );
+      scene.add(
+        "tick_a",
+        new Line([a, -0.1], [a, 0.1]).set_stroke_width(0.08).set_stroke_color("red")
+      );
+      scene.add(
+        "tick_b",
+        new Line([b, -0.1], [b, 0.1]).set_stroke_width(0.08).set_stroke_color("blue")
+      );
+      scene.add(
+        "tick_ab",
+        new Line([a * b, -0.1], [a * b, 0.1]).set_stroke_width(0.08).set_stroke_color("purple")
+      );
+      scene.add(
+        "tex_a",
+        new LaTeXMObject("a", [a - 0.2, -0.1], cache).set_fontSize(12)
+      );
+      scene.add(
+        "tex_b",
+        new LaTeXMObject("b", [b - 0.2, -0.1], cache).set_fontSize(12)
+      );
+      scene.add(
+        "tex_ab",
+        new LaTeXMObject("ab", [a * b - 0.2, -0.1], cache).set_fontSize(12)
+      );
+      let scene_view_translator = new SceneViewTranslator(scene).add_callback(
+        () => {
+          scene.get_mobj("base_curve").set_lims(
+            0.04,
+            scene.view_xlims[1]
+          );
+          scene.get_mobj("scaled_curve").set_lims(
+            0.04,
+            scene.view_xlims[1]
+          );
+        }
+      );
+      scene_view_translator.add();
+      scene.draw();
+      const num_frames = 50;
+      let horizontally_stretched = false;
+      let vertically_stretched = false;
+      let horizontalStretchButton = Button(
+        document.getElementById(name + "-button-1"),
+        async () => {
+          let alpha;
+          let p;
+          for (let frame = 1; frame <= num_frames; frame++) {
+            if (horizontally_stretched) {
+              alpha = smooth(1 - frame / num_frames);
+            } else {
+              alpha = smooth(frame / num_frames);
+            }
+            p = b * alpha + 1 * (1 - alpha);
+            scene.get_mobj("integral_ln_a").set_lims(p, p * a).set_func((t) => p / t);
+            scene.draw();
+            displayButton.textContent = `Red area = ${(Math.log(a) * p).toFixed(3)}, Blue area = ${Math.log(b).toFixed(3)}`;
+            await delay(10);
+          }
+          horizontally_stretched = !horizontally_stretched;
+        }
+      );
+      horizontalStretchButton.textContent = "Step 1";
+      let verticalStretchButton = Button(
+        document.getElementById(name + "-button-2"),
+        async () => {
+          if (!horizontally_stretched) {
+            return;
+          }
+          let alpha;
+          let p;
+          for (let frame = 1; frame <= num_frames; frame++) {
+            if (vertically_stretched) {
+              alpha = smooth(1 - frame / num_frames);
+            } else {
+              alpha = smooth(frame / num_frames);
+            }
+            p = b * alpha + 1 * (1 - alpha);
+            scene.get_mobj("integral_ln_a").set_func(
+              (t) => b / p / t
+            );
+            scene.draw();
+            displayButton.textContent = `Red area = ${(Math.log(a) * b / p).toFixed(3)}, Blue area = ${Math.log(b).toFixed(3)}`;
+            await delay(10);
+          }
+          vertically_stretched = !vertically_stretched;
+        }
+      );
+      verticalStretchButton.textContent = "Step 2";
+      let displayButton = Button(
+        document.getElementById(name + "-button-3"),
+        () => {
+        }
+      );
+      displayButton.textContent = `Red area = ${Math.log(a).toFixed(3)}, Blue area = ${Math.log(b).toFixed(3)}`;
+    })(300, 300);
+    await (async function log_series(width, height) {
+      const name = "log-series";
+      let cache2 = new LatexCache();
+      let xmin = -1;
+      let xmax = 2;
+      let ymin = -1;
+      let ymax = 2;
+      let log_canvas = prepare_canvas(width, height, name);
+      let log_scene = new Scene(log_canvas);
+      log_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      log_scene.add(
+        "axes",
+        new CoordinateAxes2d([xmin, xmax], [ymin, ymax]).set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 }).set_tick_options({ stroke_width: 0.04, size: 0.08 }).set_grid_options({
+          stroke_width: 0.02,
+          x_distance: 0.5,
+          y_distance: 0.5
+        })
+      );
+      let hyp_canvas = prepare_canvas(width, height, "log-series-hyperbola");
+      let hyp_scene = new Scene(hyp_canvas);
+      hyp_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      hyp_scene.add(
+        "axes",
+        new CoordinateAxes2d([xmin, xmax], [ymin, ymax]).set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 }).set_tick_options({ stroke_width: 0.04, size: 0.08 }).set_grid_options({
+          stroke_width: 0.02,
+          x_distance: 0.5,
+          y_distance: 0.5
+        })
+      );
+      let degree = 1;
+      log_scene.add(
+        "latex",
+        new LaTeXMObject(`d=${degree}`, [-0.5, 1.5], cache2)
+      );
+      log_scene.add(
+        "approx_to_curve",
+        new ParametricFunction((t) => [t, t], xmin, xmax, num_pts, solver).set_stroke_color("red").set_stroke_width(0.04)
+      );
+      log_scene.add(
+        "curve",
+        new ParametricFunction(
+          (t) => [t, Math.log(1 + t)],
+          -0.98,
+          xmax,
+          num_pts,
+          solver
+        ).set_stroke_width(0.04)
+      );
+      hyp_scene.add(
+        "approx_to_curve",
+        new ParametricFunction(
+          (t) => [t, 1],
+          xmin,
+          xmax,
+          num_pts,
+          solver
+        ).set_stroke_width(0.04).set_stroke_color("blue")
+      );
+      hyp_scene.add(
+        "curve",
+        new ParametricFunction(
+          (t) => [t, 1 / (1 + t)],
+          -0.98,
+          xmax,
+          num_pts,
+          solver
+        ).set_stroke_width(0.04)
+      );
+      let x_val = 0.5;
+      let x_pt = new DraggableDot([x_val, Math.log(1 + x_val)], 0.08);
+      let approx_x_pt = new Dot(
+        [x_val, approxFunctionLog(degree)(x_val)],
+        0.08
+      ).set_color("red");
+      hyp_scene.add(
+        "approx_integral",
+        new IntegralBetween(
+          (t) => 1,
+          (t) => 0,
+          0,
+          x_val,
+          num_pts
+        ).set_stroke_width(0.02).set_fill_color("red").set_fill_alpha(0.2)
+      );
+      hyp_scene.add(
+        "integral",
+        new IntegralBetween(
+          (t) => 1 / (1 + t),
+          (t) => 0,
+          0,
+          x_val,
+          num_pts
+        ).set_stroke_width(0.02).set_fill_color("gray").set_fill_alpha(0.4)
+      );
+      x_pt.add_callback(() => {
+        x_val = x_pt.center[0];
+        x_pt.move_to([x_val, Math.log(1 + x_val)]);
+        hyp_scene.get_mobj("integral").set_right_endpoint(
+          x_val
+        );
+        hyp_scene.get_mobj("approx_integral").set_right_endpoint(x_val);
+        approx_x_pt.move_to([x_val, approxFunctionLog(degree)(x_val)]);
+        hyp_scene.draw();
+      });
+      log_scene.add("approx_x_pt", approx_x_pt);
+      log_scene.add("x_pt", x_pt);
+      let log_canvas_translator = new SceneViewTranslator(log_scene);
+      log_canvas_translator.add_callback(() => {
+        log_scene.get_mobj("curve").set_lims(
+          -0.99,
+          log_scene.view_xlims[1]
+        );
+        log_scene.get_mobj("approx_to_curve").set_lims(
+          log_scene.view_xlims[0],
+          log_scene.view_xlims[1]
+        );
+      });
+      log_canvas_translator.add();
+      let hyp_canvas_translator = new SceneViewTranslator(hyp_scene);
+      hyp_canvas_translator.add_callback(() => {
+        hyp_scene.get_mobj("curve").set_lims(
+          -0.99,
+          hyp_scene.view_xlims[1]
+        );
+        hyp_scene.get_mobj("approx_to_curve").set_lims(
+          hyp_scene.view_xlims[0],
+          hyp_scene.view_xlims[1]
+        );
+      });
+      hyp_canvas_translator.add();
+      const num_frames = 50;
+      function approxFunctionLog(d) {
+        return (t) => {
+          let result = 0;
+          for (let i = 1; i <= d; i++) {
+            result -= Math.pow(-t, i) / i;
+          }
+          return result;
+        };
+      }
+      function approxFunctionHyp(d) {
+        return (t) => {
+          let result = 0;
+          for (let i = 1; i <= d; i++) {
+            result += Math.pow(-t, i - 1);
+          }
+          return result;
+        };
+      }
+      async function setApproxDegree(oldDegree, newDegree) {
+        for (let frame = 1; frame <= num_frames; frame++) {
+          let alpha = frame / num_frames;
+          log_scene.get_mobj("approx_to_curve").set_function((t) => {
+            let result = 0;
+            if (oldDegree > newDegree) {
+              for (let i = 1; i <= newDegree; i++) {
+                result -= Math.pow(-t, i) / i;
+              }
+              for (let i = newDegree + 1; i <= oldDegree; i++) {
+                result -= smooth(1 - alpha) * Math.pow(-t, i) / i;
+              }
+            } else {
+              for (let i = 1; i <= oldDegree; i++) {
+                result -= Math.pow(-t, i) / i;
+              }
+              for (let i = oldDegree + 1; i <= newDegree; i++) {
+                result -= smooth(alpha) * Math.pow(-t, i) / i;
+              }
+            }
+            return [t, result];
+          });
+          hyp_scene.get_mobj("approx_to_curve").set_function((t) => {
+            let result = 0;
+            if (oldDegree > newDegree) {
+              for (let i = 1; i <= newDegree; i++) {
+                result += Math.pow(-t, i - 1);
+              }
+              for (let i = newDegree + 1; i <= oldDegree; i++) {
+                result += smooth(1 - alpha) * Math.pow(-t, i - 1);
+              }
+            } else {
+              for (let i = 1; i <= oldDegree; i++) {
+                result += Math.pow(-t, i - 1);
+              }
+              for (let i = oldDegree + 1; i <= newDegree; i++) {
+                result += smooth(alpha) * Math.pow(-t, i - 1);
+              }
+            }
+            return [t, result];
+          });
+          hyp_scene.get_mobj("approx_integral").set_f(
+            (t) => {
+              let result = 0;
+              if (oldDegree > newDegree) {
+                for (let i = 1; i <= newDegree; i++) {
+                  result += Math.pow(-t, i - 1);
+                }
+                for (let i = newDegree + 1; i <= oldDegree; i++) {
+                  result += smooth(1 - alpha) * Math.pow(-t, i - 1);
+                }
+              } else {
+                for (let i = 1; i <= oldDegree; i++) {
+                  result += Math.pow(-t, i - 1);
+                }
+                for (let i = oldDegree + 1; i <= newDegree; i++) {
+                  result += smooth(alpha) * Math.pow(-t, i - 1);
+                }
+              }
+              return result;
+            }
+          );
+          approx_x_pt.move_to([
+            x_val,
+            (1 - smooth(alpha)) * approxFunctionLog(oldDegree)(x_val) + smooth(alpha) * approxFunctionLog(newDegree)(x_val)
+          ]);
+          log_scene.draw();
+          hyp_scene.draw();
+          await delay(10);
+        }
+      }
+      let upButton = Button(
+        document.getElementById(name + "-button-1"),
+        () => {
+          setApproxDegree(degree, degree + 1);
+          degree++;
+          log_scene.get_mobj("latex").set_tex(`d=${degree}`);
+          log_scene.draw();
+          hyp_scene.draw();
+        }
+      );
+      upButton.textContent = "Increase degree";
+      let downButton = Button(
+        document.getElementById(name + "-button-2"),
+        () => {
+          if (degree == 1) {
+            return;
+          }
+          setApproxDegree(degree, degree - 1);
+          degree--;
+          log_scene.get_mobj("latex").set_tex(`d=${degree}`);
+          log_scene.draw();
+          hyp_scene.draw();
+        }
+      );
+      downButton.textContent = "Decrease degree";
+      log_scene.draw();
+      hyp_scene.draw();
+    })(300, 300);
+    await (async function poly_quadrature(width, height) {
+      const name = "poly-quadrature";
+      let xmin = -0.5;
+      let xmax = 2.5;
+      let ymin = -0.5;
+      let ymax = 10;
+      let canvas = prepare_canvas(width, height, name);
+      let scene = new Scene(canvas);
+      scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
+      scene.add(
+        "axes",
+        new CoordinateAxes2d([xmin, xmax], [ymin, ymax]).set_axis_options({ arrow_size: 0.2, stroke_width: 0.03 }).set_tick_options({ stroke_width: 0.04, size: 0 }).set_grid_options({
+          stroke_width: 0.02,
+          x_distance: 1,
+          y_distance: 4
+        })
+      );
+      let degree = 2;
+      scene.add(
+        "curve",
+        new ParametricFunction(
+          (t) => [t, Math.pow(t, degree)],
+          xmin,
+          xmax,
+          num_pts,
+          solver
+        ).set_stroke_width(0.04)
+      );
+      scene.add(
+        "int_1",
+        new Integral((t) => Math.pow(t, degree), 0, 1, num_pts).set_stroke_width(0.02).set_fill_alpha(0.3)
+      );
+      let binom = [[1]];
+      for (let n = 1; n < 20; n++) {
+        let current = [1];
+        let last = binom[n - 1];
+        for (let k = 1; k < n; k++) {
+          current.push(last[k - 1] + last[k]);
+        }
+        current.push(1);
+        binom.push(current);
+      }
+      const colors = ["red", "blue", "green", "yellow", "purple"];
+      for (let i = 0; i <= degree; i++) {
+        scene.add(
+          `int_2_${i}`,
+          new IntegralBetween(
+            (t) => {
+              let result = 0;
+              for (let j = 0; j < i; j++) {
+                result += Math.pow(t - 1, j) * binom[degree][j];
+              }
+              return result;
+            },
+            (t) => {
+              let result = 0;
+              for (let j = 0; j <= i; j++) {
+                result += Math.pow(t - 1, j) * binom[degree][j];
+              }
+              return result;
+            },
+            1,
+            2,
+            num_pts
+          ).set_stroke_width(0.02).set_fill_color(colors[i]).set_fill_alpha(0.3)
+        );
+      }
+      let scene_view_translator = new SceneViewTranslator(scene);
+      scene_view_translator.add_callback(() => {
+        scene.get_mobj("axes").set_lims(
+          scene.view_xlims,
+          scene.view_ylims
+        );
+        scene.get_mobj("curve").set_lims(
+          scene.view_xlims[0],
+          scene.view_xlims[1]
+        );
+      });
+      scene_view_translator.add();
+      let upButton = Button(
+        document.getElementById(name + "-button-1"),
+        () => {
+          for (let i = 0; i <= degree; i++) {
+            scene.remove(`int_2_${i}`);
+          }
+          degree++;
+          scene.get_mobj("curve").set_function((t) => [
+            t,
+            Math.pow(t, degree)
+          ]);
+          scene.get_mobj("int_1").set_func(
+            (t) => Math.pow(t, degree)
+          );
+          for (let i = 0; i <= degree; i++) {
+            scene.add(
+              `int_2_${i}`,
+              new IntegralBetween(
+                (t) => {
+                  let result = 0;
+                  for (let j = 0; j < i; j++) {
+                    result += Math.pow(t - 1, j) * binom[degree][j];
+                  }
+                  return result;
+                },
+                (t) => {
+                  let result = 0;
+                  for (let j = 0; j <= i; j++) {
+                    result += Math.pow(t - 1, j) * binom[degree][j];
+                  }
+                  return result;
+                },
+                1,
+                2,
+                num_pts
+              ).set_stroke_width(0.02).set_fill_color(colors[i]).set_fill_alpha(0.3)
+            );
+          }
+          scene.draw();
+        }
+      );
+      upButton.textContent = "Increase degree";
+      let downButton = Button(
+        document.getElementById(name + "-button-2"),
+        () => {
+          if (degree == 1) {
+            return;
+          }
+          for (let i = 0; i <= degree; i++) {
+            scene.remove(`int_2_${i}`);
+          }
+          degree--;
+          scene.get_mobj("curve").set_function((t) => [
+            t,
+            Math.pow(t, degree)
+          ]);
+          scene.get_mobj("int_1").set_func(
+            (t) => Math.pow(t, degree)
+          );
+          for (let i = 0; i <= degree; i++) {
+            scene.add(
+              `int_2_${i}`,
+              new IntegralBetween(
+                (t) => {
+                  let result = 0;
+                  for (let j = 0; j < i; j++) {
+                    result += Math.pow(t - 1, j) * binom[degree][j];
+                  }
+                  return result;
+                },
+                (t) => {
+                  let result = 0;
+                  for (let j = 0; j <= i; j++) {
+                    result += Math.pow(t - 1, j) * binom[degree][j];
+                  }
+                  return result;
+                },
+                1,
+                2,
+                num_pts
+              ).set_stroke_width(0.02).set_fill_color(colors[i]).set_fill_alpha(0.3)
+            );
+          }
+          scene.draw();
+        }
+      );
+      downButton.textContent = "Decrease degree";
+      scene.draw();
+    })(300, 300);
   });
 })();

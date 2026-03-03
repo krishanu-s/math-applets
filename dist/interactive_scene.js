@@ -1621,6 +1621,7 @@ var TwoHeadedArrow3D = class extends Line3D {
 var AxisOptions = class {
   constructor() {
     this.stroke_width = 0.1;
+    this.alpha = 1;
     this.arrow_size = 0.3;
   }
   update(options) {
@@ -1640,7 +1641,8 @@ var TickOptions = class {
 };
 var GridOptions = class {
   constructor() {
-    this.distance = 1;
+    this.x_distance = 1;
+    this.y_distance = 1;
     this.alpha = 0.2;
     this.stroke_width = 0.05;
   }
@@ -1668,6 +1670,7 @@ var Axis = class extends MObjectGroup {
     }
     axis.set_stroke_width(this.axis_options.stroke_width);
     axis.set_arrow_size(this.axis_options.arrow_size);
+    axis.set_alpha(this.axis_options.alpha);
     this.add_mobj("axis", axis);
   }
   _make_ticks() {
@@ -1676,7 +1679,7 @@ var Axis = class extends MObjectGroup {
     for (let c = this.tick_options.distance * Math.floor(cmin / this.tick_options.distance + 1); c < this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance); c += this.tick_options.distance) {
       if (this.type == "x") {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-x-(${c})`,
           new Line(
             [c, -this.tick_options.size / 2],
             [c, this.tick_options.size / 2]
@@ -1684,7 +1687,7 @@ var Axis = class extends MObjectGroup {
         );
       } else {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-y-(${c})`,
           new Line(
             [-this.tick_options.size / 2, c],
             [this.tick_options.size / 2, c]
@@ -1755,7 +1758,7 @@ var CoordinateAxes2d = class extends MObjectGroup {
     let [xmin, xmax] = this.xlims;
     let [ymin, ymax] = this.ylims;
     let x_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
-    for (let x = this.grid_options.distance * Math.floor(xmin / this.grid_options.distance + 1); x < this.grid_options.distance * Math.ceil(xmax / this.grid_options.distance); x += this.grid_options.distance) {
+    for (let x = this.grid_options.x_distance * Math.floor(xmin / this.grid_options.x_distance + 1); x < this.grid_options.x_distance * Math.ceil(xmax / this.grid_options.x_distance); x += this.grid_options.x_distance) {
       x_grid.add_mobj(`line-(${x})`, new Line([x, ymin], [x, ymax]));
     }
     this.add_mobj("x-grid", x_grid);
@@ -1764,7 +1767,7 @@ var CoordinateAxes2d = class extends MObjectGroup {
     let [xmin, xmax] = this.xlims;
     let [ymin, ymax] = this.ylims;
     let y_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
-    for (let y = this.grid_options.distance * Math.floor(ymin / this.grid_options.distance + 1); y < this.grid_options.distance * Math.ceil(ymax / this.grid_options.distance); y += this.grid_options.distance) {
+    for (let y = this.grid_options.y_distance * Math.floor(ymin / this.grid_options.y_distance + 1); y < this.grid_options.y_distance * Math.ceil(ymax / this.grid_options.y_distance); y += this.grid_options.y_distance) {
       y_grid.add_mobj(`line-(${y})`, new Line([xmin, y], [xmax, y]));
     }
     this.add_mobj("y-grid", y_grid);
@@ -1819,7 +1822,8 @@ var CoordinateAxes2d = class extends MObjectGroup {
     return this;
   }
   set_grid_distance(distance) {
-    this.grid_options.distance = distance;
+    this.grid_options.x_distance = distance;
+    this.grid_options.y_distance = distance;
     this.set_grid_options(this.grid_options);
     return this;
   }
@@ -1875,7 +1879,7 @@ var Axis3D = class extends ThreeDMObjectGroup {
     for (let c = this.tick_options.distance * Math.floor(cmin / this.tick_options.distance + 1); c < this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance); c += this.tick_options.distance) {
       if (this.type == "x") {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-x-(${c})`,
           new Line3D(
             [c, -this.tick_options.size / 2, 0],
             [c, this.tick_options.size / 2, 0]
@@ -1883,7 +1887,7 @@ var Axis3D = class extends ThreeDMObjectGroup {
         );
       } else if (this.type == "y") {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-y-(${c})`,
           new Line3D(
             [0, c, -this.tick_options.size / 2],
             [0, c, this.tick_options.size / 2]
@@ -1891,7 +1895,7 @@ var Axis3D = class extends ThreeDMObjectGroup {
         );
       } else if (this.type == "z") {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-z-(${c})`,
           new Line3D(
             [-this.tick_options.size / 2, 0, c],
             [this.tick_options.size / 2, 0, c]
@@ -2025,6 +2029,12 @@ var Integral = class extends Polygon {
     this.right_endpoint = right_endpoint;
     this._recompute_points();
   }
+  set_lims(left_endpoint, right_endpoint) {
+    this.left_endpoint = left_endpoint;
+    this.right_endpoint = right_endpoint;
+    this._recompute_points();
+    return this;
+  }
   set_num_points(num_points) {
     this.num_points = num_points;
     this._recompute_points();
@@ -2032,6 +2042,218 @@ var Integral = class extends Polygon {
   set_func(f) {
     this.f = f;
     this._recompute_points();
+  }
+};
+var IntegralBetween = class extends Polygon {
+  constructor(f, g, left_endpoint, right_endpoint, num_points) {
+    const points = [];
+    for (let i = 0; i <= num_points; i++) {
+      const t = left_endpoint + (right_endpoint - left_endpoint) * i / num_points;
+      points.push([t, f(t)]);
+    }
+    for (let i = num_points; i >= 0; i--) {
+      const t = left_endpoint + (right_endpoint - left_endpoint) * i / num_points;
+      points.push([t, g(t)]);
+    }
+    super(points);
+    this.f = f;
+    this.g = g;
+    this.left_endpoint = left_endpoint;
+    this.right_endpoint = right_endpoint;
+    this.num_points = num_points;
+  }
+  _recompute_points() {
+    this.points = [];
+    for (let i = 0; i <= this.num_points; i++) {
+      const t = this.left_endpoint + (this.right_endpoint - this.left_endpoint) * i / this.num_points;
+      this.points.push([t, this.f(t)]);
+    }
+    for (let i = this.num_points; i >= 0; i--) {
+      const t = this.left_endpoint + (this.right_endpoint - this.left_endpoint) * i / this.num_points;
+      this.points.push([t, this.g(t)]);
+    }
+  }
+  set_left_endpoint(left_endpoint) {
+    this.left_endpoint = left_endpoint;
+    this._recompute_points();
+    return this;
+  }
+  set_right_endpoint(right_endpoint) {
+    this.right_endpoint = right_endpoint;
+    this._recompute_points();
+    return this;
+  }
+  set_lims(left_endpoint, right_endpoint) {
+    this.left_endpoint = left_endpoint;
+    this.right_endpoint = right_endpoint;
+    this._recompute_points();
+    return this;
+  }
+  set_num_points(num_points) {
+    this.num_points = num_points;
+    this._recompute_points();
+    return this;
+  }
+  set_f(f) {
+    this.f = f;
+    this._recompute_points();
+    return this;
+  }
+  set_g(g) {
+    this.g = g;
+    this._recompute_points();
+    return this;
+  }
+};
+
+// src/lib/base/latex.ts
+var LaTeXMObject = class extends MObject {
+  // Cache for rendered LaTeX images.
+  constructor(latex, pos, latex_cache, katexOptions) {
+    super();
+    // The position of the LaTeX object.
+    this.rotation = 0;
+    this.color = "black";
+    this.fontSize = 16;
+    this.pos = pos;
+    this.latex = latex;
+    this.latex_cache = latex_cache;
+    this.katexOptions = {
+      throwOnError: false,
+      displayMode: false,
+      fleqn: true,
+      ...katexOptions
+    };
+  }
+  set_tex(latex) {
+    this.latex = latex;
+    return this;
+  }
+  set_fontSize(size) {
+    this.fontSize = size;
+    return this;
+  }
+  set_rotation(rotation) {
+    this.rotation = rotation;
+    return this;
+  }
+  set_color(color) {
+    this.color = color;
+    return this;
+  }
+  // Draw a rendered LaTeX image
+  _drawRendered(ctx, scene, renderedImage) {
+    let [cx, cy] = scene.v2c(this.pos);
+    if (this.rotation !== 0) {
+      ctx.translate(cx, cy);
+      ctx.rotate(this.rotation * Math.PI / 180);
+      ctx.drawImage(renderedImage, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.drawImage(renderedImage, cx, cy);
+    }
+  }
+  // Renders a LaTeX expression and outputs an image.
+  async _render() {
+    if (!window.katex) {
+      throw new Error("KaTeX is not loaded. Please include KaTeX library.");
+    }
+    if (!window.html2canvas) {
+      throw new Error(
+        "html2canvas is not loaded. Please include html2canvas library."
+      );
+    }
+    const container = document.createElement("div");
+    container.style.cssText = `
+            position: fixed;
+            left: 0;
+            top: 0;
+            color: ${this.color};
+            font-size: ${this.fontSize}px;
+            display: inline-block;
+            transform: translate(${this.pos[0]}px, ${this.pos[1]}px) rotate(${this.rotation}deg);
+            transform-origin: 0 0;
+            white-space: nowrap;
+            z-index: 9999;
+        `;
+    container.style.backgroundColor = "white";
+    container.style.padding = "2px 4px";
+    container.style.borderRadius = "3px";
+    document.body.appendChild(container);
+    window.katex.render(this.latex, container, {
+      ...this.katexOptions,
+      fontSize: this.fontSize + "px"
+    });
+    let tempCanvas = await window.html2canvas(container, {
+      backgroundColor: null,
+      scale: 1,
+      logging: false,
+      useCORS: true,
+      allowTaint: true
+    });
+    return [container, tempCanvas];
+  }
+  // Draw the LaTeX object, either by using the cache (if it has been rendered before)
+  // or by rendering it from scratch (if this is the first time).
+  async _draw(ctx, scene) {
+    let [isCached, cachedCanvas] = this.latex_cache.is_cached(
+      this.latex,
+      this.color,
+      this.fontSize
+    );
+    if (isCached) {
+      this._drawRendered(ctx, scene, cachedCanvas);
+    } else {
+      let [container, tempCanvas] = await this._render();
+      this.latex_cache.add(this.latex, this.color, this.fontSize, tempCanvas);
+      ctx.save();
+      this._drawRendered(ctx, scene, tempCanvas);
+      document.body.removeChild(container);
+    }
+  }
+};
+var LatexCache = class {
+  constructor() {
+    this.cache = /* @__PURE__ */ new Map();
+    this.maxSize = 100;
+    this.ttl = 30 * 60 * 1e3;
+  }
+  // 30 minutes
+  // Returns a cache entry image if it exists and is not expired.
+  is_cached(latex, color, fontSize) {
+    if (this.cache.size >= this.maxSize) {
+      this.cleanup();
+    }
+    const key = this.generateKey(latex, color, fontSize);
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < this.ttl) {
+      cached.hits++;
+      return [true, cached.image];
+    } else {
+      return [false, void 0];
+    }
+  }
+  // Adds a new entry to the cache.
+  add(latex, color, fontSize, image) {
+    this.cache.set(this.generateKey(latex, color, fontSize), {
+      image,
+      timestamp: Date.now(),
+      hits: 1
+    });
+  }
+  generateKey(latex, color, fontSize) {
+    return `${latex}|${color}|${fontSize}`;
+  }
+  cleanup() {
+    const entries = Array.from(this.cache.entries());
+    entries.sort((a, b) => {
+      if (a[1].hits !== b[1].hits) return a[1].hits - b[1].hits;
+      return a[1].timestamp - b[1].timestamp;
+    });
+    const toRemove = Math.max(1, Math.floor(this.cache.size * 0.2));
+    for (let i = 0; i < toRemove; i++) {
+      this.cache.delete(entries[i][0]);
+    }
   }
 };
 
@@ -2533,10 +2755,19 @@ var SceneViewTranslator = class {
     this.dragEnd = [0, 0];
     this.callbacks = [];
     this.scene = scene;
+    this.add_callback(() => {
+      if (scene.has_mobj("axes")) {
+        scene.get_mobj("axes").set_lims(
+          scene.view_xlims,
+          scene.view_ylims
+        );
+      }
+    });
   }
   // Adds a callback which triggers when the object is dragged
   add_callback(callback) {
     this.callbacks.push(callback);
+    return this;
   }
   // Performs all callbacks (called when the object is dragged)
   do_callbacks() {
@@ -3651,7 +3882,8 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
             stroke_width: 0.08 / zr
           });
           axes.set_grid_options({
-            distance: Math.exp(Math.LN2 * Math.ceil(-Math.log2(zr))),
+            x_distance: Math.exp(Math.LN2 * Math.ceil(-Math.log2(zr))),
+            y_distance: Math.exp(Math.LN2 * Math.ceil(-Math.log2(zr))),
             alpha: 0.2,
             stroke_width: 0.05 / zr
           });
@@ -3691,28 +3923,41 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
       const name = "log-series";
       let num_pts = 100;
       let solver = await createSmoothOpenPathBezier(num_pts);
-      let xmin = -5;
-      let xmax = 5;
-      let ymin = -5;
-      let ymax = 5;
+      let cache = new LatexCache();
+      let xmin = -1;
+      let xmax = 2;
+      let ymin = -1;
+      let ymax = 2;
       let log_canvas = prepare_canvas(width, height, name);
       let log_scene = new Scene(log_canvas);
       log_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      log_scene.add("axes", new CoordinateAxes2d([xmin, xmax], [ymin, ymax]));
+      log_scene.add(
+        "axes",
+        new CoordinateAxes2d([xmin, xmax], [ymin, ymax]).set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 }).set_tick_options({ stroke_width: 0.04, size: 0.08 }).set_grid_options({
+          stroke_width: 0.02,
+          x_distance: 0.5,
+          y_distance: 0.5
+        })
+      );
       let hyp_canvas = prepare_canvas(width, height, "log-series-hyperbola");
       let hyp_scene = new Scene(hyp_canvas);
       hyp_scene.set_frame_lims([xmin, xmax], [ymin, ymax]);
-      hyp_scene.add("axes", new CoordinateAxes2d([xmin, xmax], [ymin, ymax]));
+      hyp_scene.add(
+        "axes",
+        new CoordinateAxes2d([xmin, xmax], [ymin, ymax]).set_axis_options({ arrow_size: 0.1, stroke_width: 0.04 }).set_tick_options({ stroke_width: 0.04, size: 0.08 }).set_grid_options({
+          stroke_width: 0.02,
+          x_distance: 0.5,
+          y_distance: 0.5
+        })
+      );
       let degree = 1;
       log_scene.add(
+        "latex",
+        new LaTeXMObject(`d=${degree}`, [-0.5, 1.5], cache)
+      );
+      log_scene.add(
         "approx_to_curve",
-        new ParametricFunction(
-          (t) => [t, t],
-          xmin,
-          xmax,
-          num_pts,
-          solver
-        ).set_stroke_color("red")
+        new ParametricFunction((t) => [t, t], xmin, xmax, num_pts, solver).set_stroke_color("red").set_stroke_width(0.04)
       );
       log_scene.add(
         "curve",
@@ -3722,7 +3967,7 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
           xmax,
           num_pts,
           solver
-        )
+        ).set_stroke_width(0.04)
       );
       hyp_scene.add(
         "approx_to_curve",
@@ -3732,7 +3977,7 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
           xmax,
           num_pts,
           solver
-        ).set_stroke_color("red")
+        ).set_stroke_width(0.04).set_stroke_color("blue")
       );
       hyp_scene.add(
         "curve",
@@ -3742,8 +3987,46 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
           xmax,
           num_pts,
           solver
-        )
+        ).set_stroke_width(0.04)
       );
+      let x_val = 0.5;
+      let x_pt = new DraggableDot([x_val, Math.log(1 + x_val)], 0.08);
+      let approx_x_pt = new Dot(
+        [x_val, approxFunctionLog(degree)(x_val)],
+        0.08
+      ).set_color("red");
+      hyp_scene.add(
+        "approx_integral",
+        new IntegralBetween(
+          (t) => 1,
+          (t) => 0,
+          0,
+          x_val,
+          num_pts
+        ).set_stroke_width(0.02).set_fill_color("red").set_fill_alpha(0.2)
+      );
+      hyp_scene.add(
+        "integral",
+        new IntegralBetween(
+          (t) => 1 / (1 + t),
+          (t) => 0,
+          0,
+          x_val,
+          num_pts
+        ).set_stroke_width(0.02).set_fill_color("gray").set_fill_alpha(0.4)
+      );
+      x_pt.add_callback(() => {
+        x_val = x_pt.center[0];
+        x_pt.move_to([x_val, Math.log(1 + x_val)]);
+        hyp_scene.get_mobj("integral").set_right_endpoint(
+          x_val
+        );
+        hyp_scene.get_mobj("approx_integral").set_right_endpoint(x_val);
+        approx_x_pt.move_to([x_val, approxFunctionLog(degree)(x_val)]);
+        hyp_scene.draw();
+      });
+      log_scene.add("approx_x_pt", approx_x_pt);
+      log_scene.add("x_pt", x_pt);
       let log_canvas_translator = new SceneViewTranslator(log_scene);
       log_canvas_translator.add_callback(() => {
         log_scene.get_mobj("axes").set_lims(
@@ -3777,8 +4060,27 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
       });
       hyp_canvas_translator.add();
       const num_frames = 50;
+      function approxFunctionLog(d) {
+        return (t) => {
+          let result = 0;
+          for (let i = 1; i <= d; i++) {
+            result -= Math.pow(-t, i) / i;
+          }
+          return result;
+        };
+      }
+      function approxFunctionHyp(d) {
+        return (t) => {
+          let result = 0;
+          for (let i = 1; i <= d; i++) {
+            result += Math.pow(-t, i - 1);
+          }
+          return result;
+        };
+      }
       async function setApproxDegree(oldDegree, newDegree) {
         for (let frame = 1; frame <= num_frames; frame++) {
+          let alpha = frame / num_frames;
           log_scene.get_mobj("approx_to_curve").set_function((t) => {
             let result = 0;
             if (oldDegree > newDegree) {
@@ -3786,14 +4088,14 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
                 result -= Math.pow(-t, i) / i;
               }
               for (let i = newDegree + 1; i <= oldDegree; i++) {
-                result -= smooth((num_frames - frame) / num_frames) * Math.pow(-t, i) / i;
+                result -= smooth(1 - alpha) * Math.pow(-t, i) / i;
               }
             } else {
               for (let i = 1; i <= oldDegree; i++) {
                 result -= Math.pow(-t, i) / i;
               }
               for (let i = oldDegree + 1; i <= newDegree; i++) {
-                result -= smooth(frame / num_frames) * Math.pow(-t, i) / i;
+                result -= smooth(alpha) * Math.pow(-t, i) / i;
               }
             }
             return [t, result];
@@ -3805,21 +4107,46 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
                 result += Math.pow(-t, i - 1);
               }
               for (let i = newDegree + 1; i <= oldDegree; i++) {
-                result += smooth((num_frames - frame) / num_frames) * Math.pow(-t, i - 1);
+                result += smooth(1 - alpha) * Math.pow(-t, i - 1);
               }
             } else {
               for (let i = 1; i <= oldDegree; i++) {
                 result += Math.pow(-t, i - 1);
               }
               for (let i = oldDegree + 1; i <= newDegree; i++) {
-                result += smooth(frame / num_frames) * Math.pow(-t, i - 1);
+                result += smooth(alpha) * Math.pow(-t, i - 1);
               }
             }
             return [t, result];
           });
+          hyp_scene.get_mobj("approx_integral").set_f(
+            (t) => {
+              let result = 0;
+              if (oldDegree > newDegree) {
+                for (let i = 1; i <= newDegree; i++) {
+                  result += Math.pow(-t, i - 1);
+                }
+                for (let i = newDegree + 1; i <= oldDegree; i++) {
+                  result += smooth(1 - alpha) * Math.pow(-t, i - 1);
+                }
+              } else {
+                for (let i = 1; i <= oldDegree; i++) {
+                  result += Math.pow(-t, i - 1);
+                }
+                for (let i = oldDegree + 1; i <= newDegree; i++) {
+                  result += smooth(alpha) * Math.pow(-t, i - 1);
+                }
+              }
+              return result;
+            }
+          );
+          approx_x_pt.move_to([
+            x_val,
+            (1 - smooth(alpha)) * approxFunctionLog(oldDegree)(x_val) + smooth(alpha) * approxFunctionLog(newDegree)(x_val)
+          ]);
           log_scene.draw();
           hyp_scene.draw();
-          await delay(20);
+          await delay(10);
         }
       }
       let upButton = Button(
@@ -3827,8 +4154,12 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
         () => {
           setApproxDegree(degree, degree + 1);
           degree++;
+          log_scene.get_mobj("latex").set_tex(`d=${degree}`);
+          log_scene.draw();
+          hyp_scene.draw();
         }
       );
+      upButton.textContent = "Increase degree";
       let downButton = Button(
         document.getElementById(name + "-button-2"),
         () => {
@@ -3837,8 +4168,12 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
           }
           setApproxDegree(degree, degree - 1);
           degree--;
+          log_scene.get_mobj("latex").set_tex(`d=${degree}`);
+          log_scene.draw();
+          hyp_scene.draw();
         }
       );
+      downButton.textContent = "Decrease degree";
       log_scene.draw();
       hyp_scene.draw();
     })(300, 300);

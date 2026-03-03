@@ -1543,6 +1543,7 @@ var Line3D = class extends ThreeDLineLikeMObject {
 var AxisOptions = class {
   constructor() {
     this.stroke_width = 0.1;
+    this.alpha = 1;
     this.arrow_size = 0.3;
   }
   update(options) {
@@ -1562,7 +1563,8 @@ var TickOptions = class {
 };
 var GridOptions = class {
   constructor() {
-    this.distance = 1;
+    this.x_distance = 1;
+    this.y_distance = 1;
     this.alpha = 0.2;
     this.stroke_width = 0.05;
   }
@@ -1590,6 +1592,7 @@ var Axis = class extends MObjectGroup {
     }
     axis.set_stroke_width(this.axis_options.stroke_width);
     axis.set_arrow_size(this.axis_options.arrow_size);
+    axis.set_alpha(this.axis_options.alpha);
     this.add_mobj("axis", axis);
   }
   _make_ticks() {
@@ -1598,7 +1601,7 @@ var Axis = class extends MObjectGroup {
     for (let c = this.tick_options.distance * Math.floor(cmin / this.tick_options.distance + 1); c < this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance); c += this.tick_options.distance) {
       if (this.type == "x") {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-x-(${c})`,
           new Line(
             [c, -this.tick_options.size / 2],
             [c, this.tick_options.size / 2]
@@ -1606,7 +1609,7 @@ var Axis = class extends MObjectGroup {
         );
       } else {
         ticks.add_mobj(
-          `tick-(${c})`,
+          `tick-y-(${c})`,
           new Line(
             [-this.tick_options.size / 2, c],
             [this.tick_options.size / 2, c]
@@ -1677,7 +1680,7 @@ var CoordinateAxes2d = class extends MObjectGroup {
     let [xmin, xmax] = this.xlims;
     let [ymin, ymax] = this.ylims;
     let x_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
-    for (let x = this.grid_options.distance * Math.floor(xmin / this.grid_options.distance + 1); x < this.grid_options.distance * Math.ceil(xmax / this.grid_options.distance); x += this.grid_options.distance) {
+    for (let x = this.grid_options.x_distance * Math.floor(xmin / this.grid_options.x_distance + 1); x < this.grid_options.x_distance * Math.ceil(xmax / this.grid_options.x_distance); x += this.grid_options.x_distance) {
       x_grid.add_mobj(`line-(${x})`, new Line([x, ymin], [x, ymax]));
     }
     this.add_mobj("x-grid", x_grid);
@@ -1686,7 +1689,7 @@ var CoordinateAxes2d = class extends MObjectGroup {
     let [xmin, xmax] = this.xlims;
     let [ymin, ymax] = this.ylims;
     let y_grid = new LineLikeMObjectGroup().set_alpha(this.grid_options.alpha).set_stroke_width(this.grid_options.stroke_width);
-    for (let y = this.grid_options.distance * Math.floor(ymin / this.grid_options.distance + 1); y < this.grid_options.distance * Math.ceil(ymax / this.grid_options.distance); y += this.grid_options.distance) {
+    for (let y = this.grid_options.y_distance * Math.floor(ymin / this.grid_options.y_distance + 1); y < this.grid_options.y_distance * Math.ceil(ymax / this.grid_options.y_distance); y += this.grid_options.y_distance) {
       y_grid.add_mobj(`line-(${y})`, new Line([xmin, y], [xmax, y]));
     }
     this.add_mobj("y-grid", y_grid);
@@ -1741,7 +1744,8 @@ var CoordinateAxes2d = class extends MObjectGroup {
     return this;
   }
   set_grid_distance(distance) {
-    this.grid_options.distance = distance;
+    this.grid_options.x_distance = distance;
+    this.grid_options.y_distance = distance;
     this.set_grid_options(this.grid_options);
     return this;
   }
