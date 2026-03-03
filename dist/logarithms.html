@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+        />
+        <link rel="stylesheet" type="text/css" href="./styles.css" />
+        <title>Logarithms</title>
+        <base href="." />
+        <!-- MathJax -->
+        <script>
+            MathJax = {
+                tex: {
+                    inlineMath: { "[+]": [["$", "$"]] },
+                },
+            };
+        </script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
+        ></script>
+        <!--<!-- KaTeX JS -->
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+        ></script>
+        <!-- html2canvas -->
+        <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+        <!--Script for this scene-->
+        <script src="logarithms_scene.js"></script>
+    </head>
+    <body>
+        <div style="text-align: center; margin: 10px auto">
+            <h3>The natural logarithm</h3>
+            <p>TODO Define a logarithm in terms of its key properties.</p>
+            <p>TODO Historical use: made multiplication easier</p>
+            <p>
+                TODO Geometric picture definition of the hyperbolic logarithm,
+                also called the natural logarithm, as an area.
+            </p>
+            <p>
+                Multiplication of values corresponds to addition of area.
+                Addition of points on the hyperbola.
+            </p>
+            <h3>Logarithm Taylor Series</h3>
+            <p>The natural logarithm $\ln(x)$ has</p>
+            <p>
+                Displaying the Taylor polynomials for $\frac{1}{1+x}$ and
+                $\ln(1+x)$, and showing that the integral of the first yields
+                the second. The graph on the right shows the function
+                $\frac{1}{1+x} = 1-x+x^2-x^3+x^4-\ldots$ in black, and its
+                degree-$(d-1)$ approximation $1 - x + x^2 -x^3 + \ldots +
+                (-1)^{d-1}x^{d-1}$ in blue. The area under the curve, shown in
+                gray (and depicted on the left as a black curve), approximates
+                the integral $$\ln(1+x) = \int_0^x \frac{1}{1+t} dt$$ On the
+                right in red is shown the area under the approximation $1 - x +
+                x^2 -x^3 + \ldots + (-1)^{d-1}x^{d-1}$, i.e. the function
+                $x-\frac{x^2}{2} + \frac{x^3}{3} - \ldots +
+                (-1)^{d-1}\frac{x^d}{d}$. This is depicted on the left as a red
+                curve.
+            </p>
+            <p>
+                By pressing the buttons below, you can increase or decrease the
+                approximation degree $d$. You can also click and drag the black
+                point in the graph on the left to change the $x$-value being
+                approximated, and therefore the limits on integration on the
+                right. Observe that the approximation gets better as $d$
+                increases if $x$ is between $-1$ and $1$, but otherwise it gets
+                worse!
+            </p>
+
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="log-series"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="log-series-hyperbola"
+                ></div>
+            </div>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="slider"
+                    id="log-series-button-1"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="slider"
+                    id="log-series-button-2"
+                ></div>
+            </div>
+        </div>
+
+        <a href="./index.html">back to main page</a>
+    </body>
+</html>

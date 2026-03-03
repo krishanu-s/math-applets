@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+        />
+        <link rel="stylesheet" type="text/css" href="./styles.css" />
+        <title>Logarithms</title>
+        <base href="." />
+        <!-- MathJax -->
+        <script>
+            MathJax = {
+                tex: {
+                    inlineMath: { "[+]": [["$", "$"]] },
+                },
+            };
+        </script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
+        ></script>
+        <!--<!-- KaTeX JS -->
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+        ></script>
+        <!-- html2canvas -->
+        <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+        <!--Script for this scene-->
+        <script src="ergodic_scene.js"></script>
+    </head>
+    <body>
+        <div style="text-align: center; margin: 10px auto">
+            <h2>Decimal expansions</h2>
+            <p>
+                Any positive real number $x$ between $0$ and $1$ has a unique
+                <b>decimal expansions</b> $$x=0.a_1a_2a_3a_4a_5\ldots$$ where
+                the digits $a_1, a_2, a_3, a_4, \ldots$ are nonnegative integers
+                between 0 and 9.
+            </p>
+            <p>
+                <b> Question 1:</b> If $x$ is chosen randomly in the interval
+                $(0, 1)$, how often does each of the digits 0 through 9 appear
+                in the decimal expansion of $x$?
+            </p>
+
+            <p>
+                Next, consider the powers of 2. For each one, note its
+                <b>leading digit</b>, which is an integer between 1 and 9,
+                inclusive. $$\mathbf{1}, \mathbf{2}, \mathbf{4}, \mathbf{8},
+                \mathbf{1}6, \mathbf{3}2, \mathbf{6}4, \mathbf{1}28,
+                \mathbf{2}56, \mathbf{5}12, \mathbf{1}024, \mathbf{2}048,
+                \ldots$$
+            </p>
+            <p>
+                <b>Question 2:</b> How often does each possible leading digit
+                appear in this list?
+            </p>
+            <h2>Continued fractions and the Gauss map</h2>
+            <p>
+                Any positive real number $x$ between $0$ and $1$ has a unique
+                <b>continued fraction expansion</b> $$x=
+                \frac{1}{a_1+\frac{1}{a_2+\frac{1}{a_3+\ldots}}}$$ where the
+                coefficients $a_1, a_2, a_3, a_4, \ldots$ are positive integers.
+                Unlike decimal expansions, the coefficients can be
+                <i>any</i> positive integer.
+            </p>
+            <p>
+                <b> Question 3:</b> If $x$ is chosen randomly in the interval
+                $(0, 1)$, how often does each of the coefficients 1, 2, 3, 4,
+                ... appear in its continued fraction expansion?
+            </p>
+
+            <div
+                style="width: 100%"
+                class="applet-container"
+                id="gauss-map"
+            ></div>
+        </div>
+
+        <a href="./index.html">back to main page</a>
+    </body>
+</html>

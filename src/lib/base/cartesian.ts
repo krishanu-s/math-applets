@@ -21,6 +21,7 @@ import {
 
 class AxisOptions {
   stroke_width: number = 0.1;
+  alpha: number = 1.0;
   arrow_size: number = 0.3;
   update(options: Partial<AxisOptions>) {
     Object.assign(this, options);
@@ -32,7 +33,7 @@ class TickOptions {
   size: number = 0.2;
   alpha: number = 1.0;
   stroke_width: number = 0.08;
-  update(options: Partial<AxisOptions>) {
+  update(options: Partial<TickOptions>) {
     Object.assign(this, options);
   }
 }
@@ -41,7 +42,7 @@ class GridOptions {
   distance: number = 1;
   alpha: number = 0.2;
   stroke_width: number = 0.05;
-  update(options: Partial<AxisOptions>) {
+  update(options: Partial<GridOptions>) {
     Object.assign(this, options);
   }
 }
@@ -71,6 +72,7 @@ export class Axis extends MObjectGroup {
     }
     axis.set_stroke_width(this.axis_options.stroke_width);
     axis.set_arrow_size(this.axis_options.arrow_size);
+    axis.set_alpha(this.axis_options.alpha);
     this.add_mobj("axis", axis);
   }
   _make_ticks() {

@@ -68,3 +68,4 @@ export {
   Arrow,
   TwoHeadedArrow,
 } from "./geometry";
+export { ParametricFunction, BezierSpline } from "./bezier";
