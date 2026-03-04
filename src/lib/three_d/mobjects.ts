@@ -21,6 +21,7 @@ import {
   Vec3D,
   vec3_scale,
   vec3_dot,
+  vec3_cross,
   vec3_norm,
   vec3_sum,
   vec3_sub,
@@ -1021,10 +1022,22 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
 // A polygon in 3D where the points are assumed to be coplanar.
 export class PolygonPanel3D extends ThreeDFillLikeMObject {
   points: Vec3D[];
+  normal_vec: Vec3D = [0, 0, 0]; // Normal vector, used for shading
   do_stroke: boolean = false;
   constructor(points: Vec3D[]) {
     super();
     this.points = points;
+  }
+  set_normal_vector(v: Vec3D) {
+    this.normal_vec = v;
+    return this;
+  }
+  // Default calculation of normal vector
+  _calculate_normal_vector(): Vec3D {
+    return vec3_cross(
+      vec3_sub(this.points[1] as Vec3D, this.points[0] as Vec3D),
+      vec3_sub(this.points[2] as Vec3D, this.points[1] as Vec3D),
+    );
   }
   // TODO Fix this and fix visibility condition
   depth(scene: ThreeDScene): number {

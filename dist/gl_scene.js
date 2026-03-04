@@ -19,8 +19,17 @@ function vec2_normalize(x) {
 function vec2_scale(x, factor) {
   return [x[0] * factor, x[1] * factor];
 }
+function vec2_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
 function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
+}
+function vec2_rot(v, angle) {
+  const [x, y] = v;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return [x * cos - y * sin, x * sin + y * cos];
 }
 
 // src/lib/base/style_options.ts
@@ -847,6 +856,13 @@ function vec3_dot(v, w) {
   }
   return result;
 }
+function vec3_cross(v, w) {
+  return [
+    v[1] * w[2] - v[2] * w[1],
+    v[2] * w[0] - v[0] * w[2],
+    v[0] * w[1] - v[1] * w[0]
+  ];
+}
 function vec3_scale(x, factor) {
   return [x[0] * factor, x[1] * factor, x[2] * factor];
 }
@@ -1108,6 +1124,33 @@ var ThreeDLineLikeMObject = class extends ThreeDMObject {
     } else {
       this._draw(ctx, scene, args);
     }
+  }
+};
+var ThreeDLineLikeMObjectGroup = class extends ThreeDMObjectGroup {
+  constructor() {
+    super(...arguments);
+    this.stroke_options = new StrokeOptions();
+  }
+  set_stroke_color(color) {
+    this.stroke_options.set_stroke_color(color);
+    return this;
+  }
+  set_stroke_width(width) {
+    this.stroke_options.set_stroke_width(width);
+    return this;
+  }
+  set_stroke_style(style) {
+    this.stroke_options.set_stroke_style(style);
+    return this;
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = this.alpha;
+    this.stroke_options.apply_to(ctx, scene);
+    Object.values(this.children).forEach((child) => {
+      child._draw(ctx, scene, args);
+    });
   }
 };
 var ThreeDFillLikeMObject = class extends ThreeDMObject {
@@ -1505,11 +1548,64 @@ var LineSequence3D = class extends ThreeDLineLikeMObject {
     ctx.stroke();
   }
 };
+var TwoHeadedArrow3D = class extends Line3D {
+  constructor(start, end) {
+    super(start, end);
+    this.arrow_size = 0.3;
+    this.fill_color = this.stroke_options.stroke_color;
+  }
+  set_arrow_size(size) {
+    this.arrow_size = size;
+  }
+  _draw(ctx, scene) {
+    super._draw(ctx, scene);
+    ctx.fillStyle = this.fill_color;
+    let s = scene.camera_view(this.start);
+    let e = scene.camera_view(this.end);
+    if (s == null || e == null) return;
+    let [end_x, end_y] = scene.v2c(e);
+    let [start_x, start_y] = scene.v2c(s);
+    let length = vec2_norm(vec2_sub(s, e));
+    let v = vec2_scale(vec2_sub(s, e), this.arrow_size / length);
+    let [ax, ay] = scene.v2c(vec2_sum(e, vec2_rot(v, Math.PI / 6)));
+    let [bx, by] = scene.v2c(vec2_sum(e, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(end_x, end_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(end_x, end_y);
+    ctx.closePath();
+    ctx.fill();
+    v = vec2_scale(vec2_sub(e, s), this.arrow_size / length);
+    [ax, ay] = scene.v2c(vec2_sum(s, vec2_rot(v, Math.PI / 6)));
+    [bx, by] = scene.v2c(vec2_sum(s, vec2_rot(v, -Math.PI / 6)));
+    ctx.beginPath();
+    ctx.moveTo(start_x, start_y);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.lineTo(start_x, start_y);
+    ctx.closePath();
+    ctx.fill();
+  }
+};
 var PolygonPanel3D = class extends ThreeDFillLikeMObject {
   constructor(points) {
     super();
+    this.normal_vec = [0, 0, 0];
+    // Normal vector, used for shading
     this.do_stroke = false;
     this.points = points;
+  }
+  set_normal_vector(v) {
+    this.normal_vec = v;
+    return this;
+  }
+  // Default calculation of normal vector
+  _calculate_normal_vector() {
+    return vec3_cross(
+      vec3_sub(this.points[1], this.points[0]),
+      vec3_sub(this.points[2], this.points[1])
+    );
   }
   // TODO Fix this and fix visibility condition
   depth(scene) {
@@ -1546,6 +1642,177 @@ var PolygonPanel3D = class extends ThreeDFillLikeMObject {
       ctx.fill();
       ctx.globalAlpha = ctx.globalAlpha / this.fill_options.fill_alpha;
     }
+  }
+};
+
+// src/lib/base/cartesian.ts
+var AxisOptions = class {
+  constructor() {
+    this.stroke_width = 0.1;
+    this.alpha = 1;
+    this.arrow_size = 0.3;
+  }
+  update(options) {
+    Object.assign(this, options);
+  }
+};
+var TickOptions = class {
+  constructor() {
+    this.distance = 1;
+    this.size = 0.2;
+    this.alpha = 1;
+    this.stroke_width = 0.08;
+  }
+  update(options) {
+    Object.assign(this, options);
+  }
+};
+var Axis3D = class extends ThreeDMObjectGroup {
+  constructor(lims, type) {
+    super();
+    this.axis_options = new AxisOptions();
+    this.tick_options = new TickOptions();
+    this.lims = lims;
+    this.type = type;
+    this._make_axis();
+    this._make_ticks();
+  }
+  _make_axis() {
+    let [cmin, cmax] = this.lims;
+    let axis;
+    if (this.type === "x") {
+      axis = new TwoHeadedArrow3D([cmin, 0, 0], [cmax, 0, 0]);
+    } else if (this.type === "y") {
+      axis = new TwoHeadedArrow3D([0, cmin, 0], [0, cmax, 0]);
+    } else {
+      axis = new TwoHeadedArrow3D([0, 0, cmin], [0, 0, cmax]);
+    }
+    axis.set_arrow_size(this.axis_options.arrow_size);
+    axis.set_stroke_width(this.axis_options.stroke_width);
+    this.add_mobj("axis", axis);
+  }
+  _make_ticks() {
+    let [cmin, cmax] = this.lims;
+    let ticks = new ThreeDLineLikeMObjectGroup().set_alpha(0.3);
+    for (let c = this.tick_options.distance * Math.floor(cmin / this.tick_options.distance + 1); c < this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance); c += this.tick_options.distance) {
+      if (this.type == "x") {
+        ticks.add_mobj(
+          `tick-x-(${c})`,
+          new Line3D(
+            [c, -this.tick_options.size / 2, 0],
+            [c, this.tick_options.size / 2, 0]
+          )
+        );
+      } else if (this.type == "y") {
+        ticks.add_mobj(
+          `tick-y-(${c})`,
+          new Line3D(
+            [0, c, -this.tick_options.size / 2],
+            [0, c, this.tick_options.size / 2]
+          )
+        );
+      } else if (this.type == "z") {
+        ticks.add_mobj(
+          `tick-z-(${c})`,
+          new Line3D(
+            [-this.tick_options.size / 2, 0, c],
+            [this.tick_options.size / 2, 0, c]
+          )
+        );
+      }
+    }
+    this.add_mobj("ticks", ticks);
+  }
+  axis() {
+    return this.get_mobj("axis");
+  }
+  ticks() {
+    return this.get_mobj("ticks");
+  }
+  set_lims(lims) {
+    this.lims = lims;
+    this.remove_mobj("axis");
+    this.remove_mobj("ticks");
+    this._make_axis();
+    this._make_ticks();
+  }
+  set_axis_options(options) {
+    this.axis_options.update(options);
+    this.remove_mobj("axis");
+    this._make_axis();
+  }
+  set_tick_options(options) {
+    this.tick_options.update(options);
+    this.remove_mobj("ticks");
+    this._make_ticks();
+  }
+  set_tick_distance(distance) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
+  }
+  set_tick_size(size) {
+    this.tick_options.size = size;
+    this.set_tick_options(this.tick_options);
+  }
+};
+var CoordinateAxes3d = class extends ThreeDMObjectGroup {
+  constructor(xlims, ylims, zlims) {
+    super();
+    this.axis_options = new AxisOptions();
+    this.tick_options = new TickOptions();
+    this.xlims = xlims;
+    this.ylims = ylims;
+    this.zlims = zlims;
+    this._make_axes();
+  }
+  _make_axes() {
+    let x_axis = new Axis3D(this.xlims, "x");
+    x_axis.set_axis_options(this.axis_options);
+    x_axis.set_tick_options(this.tick_options);
+    this.add_mobj("x-axis", x_axis);
+    let y_axis = new Axis3D(this.ylims, "y");
+    y_axis.set_axis_options(this.axis_options);
+    y_axis.set_tick_options(this.tick_options);
+    this.add_mobj("y-axis", y_axis);
+    let z_axis = new Axis3D(this.zlims, "z");
+    z_axis.set_axis_options(this.axis_options);
+    z_axis.set_tick_options(this.tick_options);
+    this.add_mobj("z-axis", z_axis);
+  }
+  x_axis() {
+    return this.get_mobj("x-axis");
+  }
+  y_axis() {
+    return this.get_mobj("y-axis");
+  }
+  z_axis() {
+    return this.get_mobj("z-axis");
+  }
+  set_axis_options(options) {
+    this.axis_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+    return this;
+  }
+  set_axis_stroke_width(width) {
+    this.axis_options.stroke_width = width;
+    this.set_axis_options(this.axis_options);
+  }
+  set_tick_options(options) {
+    this.tick_options.update(options);
+    this.remove_mobj("x-axis");
+    this.remove_mobj("y-axis");
+    this._make_axes();
+    return this;
+  }
+  set_tick_size(size) {
+    this.tick_options.size = size;
+    this.set_tick_options(this.tick_options);
+  }
+  set_tick_distance(distance) {
+    this.tick_options.distance = distance;
+    this.set_tick_options(this.tick_options);
   }
 };
 
@@ -1869,6 +2136,377 @@ var ThreeDScene = class extends Scene {
       }
     }
     this.draw_border(ctx);
+  }
+};
+
+// src/lib/three_d/bezier.ts
+var BezierSpline3D = class extends ThreeDMObject {
+  constructor(num_steps, solver) {
+    super();
+    this.num_steps = num_steps;
+    this.solver = solver;
+    this.anchors = [];
+    for (let i = 0; i < num_steps + 1; i++) {
+      this.anchors.push([0, 0, 0]);
+    }
+  }
+  set_anchors(new_anchors) {
+    this.anchors = new_anchors;
+    return this;
+  }
+  set_anchor(index, new_anchor) {
+    this.anchors[index] = new_anchor;
+    return this;
+  }
+  get_anchor(index) {
+    return this.anchors[index];
+  }
+  // Draw the Bezier curve using the solver
+  _draw(ctx, scene) {
+    if (!this.solver) {
+      this._drawFallback(ctx, scene);
+      return;
+    }
+    let a_x, a_y, a;
+    a = this.get_anchor(0);
+    [a_x, a_y] = scene.v2c(scene.camera_view(a));
+    ctx.beginPath();
+    ctx.moveTo(a_x, a_y);
+    let anchors_flat = this.anchors.reduce(
+      (acc, val) => acc.concat(val),
+      []
+    );
+    try {
+      let handles_flat = this.solver.get_bezier_handles(anchors_flat);
+      let handles = [];
+      for (let i = 0; i < handles_flat.length; i += 3) {
+        handles.push([
+          handles_flat[i],
+          handles_flat[i + 1],
+          handles_flat[i + 2]
+        ]);
+      }
+      let h1_x, h1_y, h2_x, h2_y;
+      for (let i = 0; i < this.num_steps; i++) {
+        [h1_x, h1_y] = scene.v2c(scene.camera_view(handles[i]));
+        [h2_x, h2_y] = scene.v2c(
+          scene.camera_view(handles[i + this.num_steps])
+        );
+        a = this.get_anchor(i + 1);
+        [a_x, a_y] = scene.v2c(scene.camera_view(a));
+        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, a_x, a_y);
+      }
+      ctx.stroke();
+    } catch (error) {
+      console.warn("Error with solver, drawing with fallback method.");
+      this._drawFallback(ctx, scene);
+    }
+  }
+  // Draw a simple piecewise linear as fallback
+  _drawFallback(ctx, scene) {
+    if (this.anchors.length === 0) return;
+    let [x, y] = scene.v2c(scene.camera_view(this.get_anchor(0)));
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let i = 1; i < this.anchors.length; i++) {
+      [x, y] = scene.v2c(scene.camera_view(this.get_anchor(i)));
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+};
+
+// src/lib/three_d/surfaces.ts
+var Torus = class extends ThreeDMObjectGroup {
+  constructor(outer_radius, inner_radius, num_phi, num_theta) {
+    super();
+    this.fill_options = new FillOptions();
+    this.do_stroke = false;
+    this.outer_radius = outer_radius;
+    this.inner_radius = inner_radius;
+    this.num_phi = num_phi;
+    this.num_theta = num_theta;
+    this.clear();
+    this._make_skeleton();
+    this._make_panels();
+  }
+  // Normal vector to the panel parametrized by (phi, theta)
+  _normal_vector(phi, theta) {
+    let phi_rad = 2 * Math.PI * phi / this.num_phi;
+    let theta_rad = 2 * Math.PI * theta / this.num_theta;
+    return [
+      Math.cos(theta_rad) * Math.cos(phi_rad),
+      Math.cos(theta_rad) * Math.sin(phi_rad),
+      Math.sin(theta_rad)
+    ];
+  }
+  // Sets the brightness of the individual panels according to light coming from a direction.
+  _update_panel_brightness(light_source_vec, camera_depth_vec) {
+    let _light_source_vec = vec3_normalize(light_source_vec);
+    let _camera_depth_vec = vec3_normalize(camera_depth_vec);
+    let brightness_val;
+    let b;
+    let colorval_rgba_string;
+    let normal_vector;
+    let reflected_vector;
+    for (let phi = 0; phi < this.num_phi; phi++) {
+      for (let theta = 0; theta < this.num_theta; theta++) {
+        let mobj = this.get_mobj(`p_${phi}_${theta}`);
+        normal_vector = mobj.normal_vec;
+        reflected_vector = vec3_sub(
+          vec3_scale(
+            normal_vector,
+            2 * vec3_dot(_light_source_vec, normal_vector)
+          ),
+          _light_source_vec
+        );
+        b = -vec3_dot(reflected_vector, _camera_depth_vec);
+        brightness_val = Math.max(0, 128 + 128 * b);
+        colorval_rgba_string = `rgba(${brightness_val}, ${brightness_val}, ${brightness_val}, 1.0)`;
+        mobj.set_fill_color(colorval_rgba_string);
+        mobj.set_stroke_color(colorval_rgba_string);
+      }
+    }
+    return this;
+  }
+  set_fill_alpha(alpha) {
+    this.fill_options.set_fill_alpha(alpha);
+    for (let theta = 0; theta < this.num_theta; theta++) {
+      for (let phi = 0; phi < this.num_phi; phi++) {
+        this.get_mobj(`p_${phi}_${theta}`).set_fill_alpha(alpha);
+      }
+    }
+    return this;
+  }
+  set_fill_color(color) {
+    this.fill_options.set_fill_color(color);
+    for (let theta = 0; theta < this.num_theta; theta++) {
+      for (let phi = 0; phi < this.num_phi; phi++) {
+        this.get_mobj(`p_${phi}_${theta}`).set_fill_color(color);
+      }
+    }
+    return this;
+  }
+  _param(phi_rad, theta_rad) {
+    return [
+      (this.outer_radius + this.inner_radius * Math.cos(theta_rad)) * Math.cos(phi_rad),
+      (this.outer_radius + this.inner_radius * Math.cos(theta_rad)) * Math.sin(phi_rad),
+      this.inner_radius * Math.sin(theta_rad)
+    ];
+  }
+  _make_panels() {
+    let theta_rad, next_theta_rad;
+    let phi_rad, next_phi_rad;
+    for (let theta = 0; theta < this.num_theta; theta++) {
+      theta_rad = 2 * Math.PI * (theta - 0.5) / this.num_theta;
+      next_theta_rad = 2 * Math.PI * (theta + 0.5) / this.num_theta;
+      for (let phi = 0; phi < this.num_phi; phi++) {
+        phi_rad = 2 * Math.PI * (phi - 0.5) / this.num_phi;
+        next_phi_rad = 2 * Math.PI * (phi + 0.5) / this.num_phi;
+        this.add_mobj(
+          `p_${phi}_${theta}`,
+          new PolygonPanel3D([
+            this._param(phi_rad, theta_rad),
+            this._param(phi_rad, next_theta_rad),
+            this._param(next_phi_rad, next_theta_rad),
+            this._param(next_phi_rad, theta_rad)
+          ]).set_fill_color(this.fill_options.fill_color).set_fill_alpha(this.fill_options.fill_alpha).set_stroke_color("black").set_stroke_width(0.01).set_stroke(true).set_normal_vector(this._normal_vector(phi, theta))
+        );
+      }
+    }
+  }
+  _make_skeleton() {
+    let theta_rad;
+    let phi_rad;
+    for (let phi = 0; phi < this.num_phi; phi++) {
+      phi_rad = 2 * Math.PI * (phi - 0.5) / this.num_phi;
+      let l = new LineSequence3D([]).set_stroke_width(0.01);
+      if (!this.do_stroke) {
+        l.set_alpha(0);
+      }
+      for (let i = 0; i < 100; i++) {
+        l.add_point(this._param(phi_rad, 2 * Math.PI * i / 100));
+      }
+      this.add_mobj(`l_outer_${phi}`, l);
+    }
+    for (let theta = 0; theta < this.num_theta; theta++) {
+      theta_rad = 2 * Math.PI * (theta - 0.5) / this.num_theta;
+      let l = new LineSequence3D([]).set_stroke_width(0.01);
+      if (!this.do_stroke) {
+        l.set_alpha(0);
+      }
+      for (let i = 0; i < 100; i++) {
+        l.add_point(this._param(2 * Math.PI * i / 100, theta_rad));
+      }
+      this.add_mobj(`l_inner_${theta}`, l);
+    }
+  }
+};
+var Surface = class extends ThreeDMObjectGroup {
+  constructor(f, xlims, ylims, num_x, num_y, solver_x, solver_y) {
+    super();
+    this.grad_f = (_x, _y) => [0, 0, 1];
+    this.fill_options = new FillOptions();
+    this.do_stroke = false;
+    this.f = f;
+    this.xlims = xlims;
+    this.ylims = ylims;
+    this.num_x = num_x;
+    this.num_y = num_y;
+    this.solver_x = solver_x;
+    this.solver_y = solver_y;
+    this.clear();
+    this._make_skeleton();
+    this._make_panels();
+    this._set_normal_vectors();
+  }
+  set_grad_f(grad_f) {
+    this.grad_f = grad_f;
+    this._set_normal_vectors();
+    return this;
+  }
+  set_fill_alpha(alpha) {
+    this.fill_options.set_fill_alpha(alpha);
+    for (let y = 0; y < this.num_y; y++) {
+      for (let x = 0; x < this.num_x; x++) {
+        this.get_mobj(`p_${x}_${y}`).set_fill_alpha(
+          alpha
+        );
+      }
+    }
+    return this;
+  }
+  set_fill_color(color) {
+    this.fill_options.set_fill_color(color);
+    for (let y = 0; y < this.num_y; y++) {
+      for (let x = 0; x < this.num_x; x++) {
+        this.get_mobj(`p_${x}_${y}`).set_fill_color(
+          color
+        );
+      }
+    }
+    return this;
+  }
+  set_do_stroke(d) {
+    this.do_stroke = d;
+    let alpha;
+    if (d) {
+      alpha = 1;
+    } else {
+      alpha = 0;
+    }
+    for (let y = 0; y <= this.num_y; y++) {
+      this.get_mobj(`l_x_${y}`).set_alpha(alpha);
+    }
+    for (let x = 0; x <= this.num_x; x++) {
+      this.get_mobj(`l_y_${x}`).set_alpha(alpha);
+    }
+    return this;
+  }
+  _param(x_val, y_val) {
+    return [x_val, y_val, this.f(x_val, y_val)];
+  }
+  // Sets the brightness of the individual panels according to light coming from a direction.
+  _update_panel_brightness(light_source_vec, camera_depth_vec) {
+    let _light_source_vec = vec3_normalize(light_source_vec);
+    let _camera_depth_vec = vec3_normalize(camera_depth_vec);
+    let brightness_val;
+    let b;
+    let colorval_rgba_string;
+    let normal_vector;
+    let reflected_vector;
+    for (let x = 0; x < this.num_x; x++) {
+      for (let y = 0; y < this.num_y; y++) {
+        let mobj = this.get_mobj(`p_${x}_${y}`);
+        normal_vector = mobj.normal_vec;
+        reflected_vector = vec3_sub(
+          vec3_scale(
+            normal_vector,
+            2 * vec3_dot(_light_source_vec, normal_vector)
+          ),
+          _light_source_vec
+        );
+        b = -vec3_dot(reflected_vector, _camera_depth_vec);
+        brightness_val = Math.max(0, 128 + 128 * b);
+        colorval_rgba_string = `rgba(${brightness_val}, ${brightness_val}, ${brightness_val}, 1.0)`;
+        mobj.set_fill_color(colorval_rgba_string);
+        mobj.set_stroke_color(colorval_rgba_string);
+      }
+    }
+    return this;
+  }
+  // Manually sets the normal vector for the panel at (x, y)
+  set_normal_vector(x, y, v) {
+    this.get_mobj(`p_${x}_${y}`).set_normal_vector(v);
+  }
+  _set_normal_vectors() {
+    let xval, yval;
+    for (let x = 0; x < this.num_x; x++) {
+      xval = this.xlims[0] + (this.xlims[1] - this.xlims[0]) * (x + 0.5) / this.num_x;
+      for (let y = 0; y < this.num_y; y++) {
+        yval = this.ylims[0] + (this.ylims[1] - this.ylims[0]) * (y + 0.5) / this.num_y;
+        console.log(
+          "Normal vector at",
+          x,
+          y,
+          ":",
+          vec3_normalize(this.grad_f(xval, yval))
+        );
+        this.get_mobj(`p_${x}_${y}`).set_normal_vector(
+          vec3_normalize(this.grad_f(xval, yval))
+        );
+      }
+    }
+  }
+  _make_panels() {
+    let xval, next_xval;
+    let yval, next_yval;
+    for (let x = 0; x < this.num_x; x++) {
+      xval = this.xlims[0] + (this.xlims[1] - this.xlims[0]) * x / this.num_x;
+      next_xval = this.xlims[0] + (this.xlims[1] - this.xlims[0]) * (x + 1) / this.num_x;
+      for (let y = 0; y < this.num_y; y++) {
+        yval = this.ylims[0] + (this.ylims[1] - this.ylims[0]) * y / this.num_y;
+        next_yval = this.ylims[0] + (this.ylims[1] - this.ylims[0]) * (y + 1) / this.num_y;
+        this.add_mobj(
+          `p_${x}_${y}`,
+          new PolygonPanel3D([
+            this._param(xval, yval),
+            this._param(xval, next_yval),
+            this._param(next_xval, next_yval),
+            this._param(next_xval, yval)
+          ]).set_fill_color(this.fill_options.fill_color).set_fill_alpha(this.fill_options.fill_alpha).set_stroke_color("black").set_stroke_width(0.01).set_stroke(true)
+        );
+      }
+    }
+  }
+  _make_skeleton() {
+    let xval, yval;
+    for (let y = 0; y <= this.num_y; y++) {
+      yval = this.ylims[0] + (this.ylims[1] - this.ylims[0]) * y / this.num_y;
+      let anchors = [];
+      for (let x = 0; x <= this.num_x; x++) {
+        xval = this.xlims[0] + (this.xlims[1] - this.xlims[0]) * x / this.num_x;
+        anchors.push([xval, yval, this.f(xval, yval)]);
+      }
+      let l = new BezierSpline3D(this.num_x, this.solver_x).set_anchors(anchors).set_stroke_width(0.01);
+      if (!this.do_stroke) {
+        l.set_alpha(0);
+      }
+      this.add_mobj(`l_x_${y}`, l);
+    }
+    for (let x = 0; x <= this.num_x; x++) {
+      xval = this.xlims[0] + (this.xlims[1] - this.xlims[0]) * x / this.num_x;
+      let anchors = [];
+      for (let y = 0; y <= this.num_y; y++) {
+        yval = this.ylims[0] + (this.ylims[1] - this.ylims[0]) * y / this.num_y;
+        anchors.push([xval, yval, this.f(xval, yval)]);
+      }
+      let l = new BezierSpline3D(this.num_y, this.solver_y).set_anchors(anchors).set_stroke_width(0.01);
+      if (!this.do_stroke) {
+        l.set_alpha(0);
+      }
+      this.add_mobj(`l_y_${x}`, l);
+    }
   }
 };
 
@@ -2798,7 +3436,7 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
 // src/gl_scene.ts
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
-    let num_pts = 50;
+    let num_pts = 20;
     let solver = await createSmoothOpenPathBezier(num_pts);
     await (async function make_torus(width, height) {
       let canvas = prepare_canvas(width, height, "torus");
@@ -2815,130 +3453,6 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
       const light_source = [1, 0, 0];
       const inner_radius = 1;
       const outer_radius = 2;
-      class Torus extends ThreeDMObjectGroup {
-        constructor(outer_radius2, inner_radius2, num_phi, num_theta) {
-          super();
-          this.fill_options = new FillOptions();
-          this.do_stroke = false;
-          this.outer_radius = outer_radius2;
-          this.inner_radius = inner_radius2;
-          this.num_phi = num_phi;
-          this.num_theta = num_theta;
-          this.clear();
-          this._make_skeleton();
-          this._make_panels();
-        }
-        _update_panel_brightness(light_source_vec, camera_depth_vec) {
-          let _light_source_vec = vec3_normalize(light_source_vec);
-          let _camera_depth_vec = vec3_normalize(camera_depth_vec);
-          let theta_rad;
-          let phi_rad;
-          let brightness_val;
-          let b;
-          let colorval_rgba_string;
-          let normal_vector;
-          let reflected_vector;
-          for (let phi = 0; phi < this.num_phi; phi++) {
-            phi_rad = 2 * Math.PI * phi / this.num_phi;
-            for (let theta = 0; theta < this.num_theta; theta++) {
-              theta_rad = 2 * Math.PI * theta / this.num_theta;
-              normal_vector = [
-                Math.cos(theta_rad) * Math.cos(phi_rad),
-                Math.cos(theta_rad) * Math.sin(phi_rad),
-                Math.sin(theta_rad)
-              ];
-              reflected_vector = vec3_sub(
-                vec3_scale(
-                  normal_vector,
-                  2 * vec3_dot(_light_source_vec, normal_vector)
-                ),
-                _light_source_vec
-              );
-              b = -vec3_dot(reflected_vector, _camera_depth_vec);
-              brightness_val = Math.max(0, 128 + 128 * b);
-              colorval_rgba_string = `rgba(${brightness_val}, ${brightness_val}, ${brightness_val}, 1.0)`;
-              let mobj = this.get_mobj(
-                `p_${phi}_${theta}`
-              );
-              mobj.set_fill_color(colorval_rgba_string);
-              mobj.set_stroke_color(colorval_rgba_string);
-            }
-          }
-          return this;
-        }
-        set_fill_alpha(alpha) {
-          this.fill_options.set_fill_alpha(alpha);
-          for (let theta = 0; theta < this.num_theta; theta++) {
-            for (let phi = 0; phi < this.num_phi; phi++) {
-              this.get_mobj(`p_${phi}_${theta}`).set_fill_alpha(alpha);
-            }
-          }
-          return this;
-        }
-        set_fill_color(color) {
-          this.fill_options.set_fill_color(color);
-          for (let theta = 0; theta < this.num_theta; theta++) {
-            for (let phi = 0; phi < this.num_phi; phi++) {
-              this.get_mobj(`p_${phi}_${theta}`).set_fill_color(color);
-            }
-          }
-          return this;
-        }
-        _param(phi_rad, theta_rad) {
-          return [
-            (this.outer_radius + this.inner_radius * Math.cos(theta_rad)) * Math.cos(phi_rad),
-            (this.outer_radius + this.inner_radius * Math.cos(theta_rad)) * Math.sin(phi_rad),
-            this.inner_radius * Math.sin(theta_rad)
-          ];
-        }
-        _make_panels() {
-          let theta_rad, next_theta_rad;
-          let phi_rad, next_phi_rad;
-          for (let theta = 0; theta < this.num_theta; theta++) {
-            theta_rad = 2 * Math.PI * (theta - 0.5) / this.num_theta;
-            next_theta_rad = 2 * Math.PI * (theta + 0.5) / this.num_theta;
-            for (let phi = 0; phi < this.num_phi; phi++) {
-              phi_rad = 2 * Math.PI * (phi - 0.5) / this.num_phi;
-              next_phi_rad = 2 * Math.PI * (phi + 0.5) / this.num_phi;
-              this.add_mobj(
-                `p_${phi}_${theta}`,
-                new PolygonPanel3D([
-                  this._param(phi_rad, theta_rad),
-                  this._param(phi_rad, next_theta_rad),
-                  this._param(next_phi_rad, next_theta_rad),
-                  this._param(next_phi_rad, theta_rad)
-                ]).set_fill_color(this.fill_options.fill_color).set_fill_alpha(this.fill_options.fill_alpha).set_stroke_color("black").set_stroke_width(0.01).set_stroke(true)
-              );
-            }
-          }
-        }
-        _make_skeleton() {
-          let theta_rad;
-          let phi_rad;
-          for (let phi = 0; phi < this.num_phi; phi++) {
-            phi_rad = 2 * Math.PI * (phi - 0.5) / this.num_phi;
-            let l = new LineSequence3D([]).set_stroke_width(0.01);
-            if (!this.do_stroke) {
-              l.set_alpha(0);
-            }
-            for (let i = 0; i < 100; i++) {
-              l.add_point(this._param(phi_rad, 2 * Math.PI * i / 100));
-            }
-            this.add_mobj(`l_outer_${phi}`, l);
-          }
-          for (let theta = 0; theta < this.num_theta; theta++) {
-            theta_rad = 2 * Math.PI * (theta - 0.5) / this.num_theta;
-            let l = new LineSequence3D([]).set_stroke_width(0.01);
-            if (!this.do_stroke) {
-              l.set_alpha(0);
-            }
-            for (let i = 0; i < 100; i++) {
-              l.add_point(this._param(2 * Math.PI * i / 100, theta_rad));
-            }
-            this.add_mobj(`l_inner_${theta}`, l);
-          }
-        }
-      }
       let torus = new Torus(outer_radius, inner_radius, 60, 60).set_fill_alpha(
         1
       );
@@ -2954,6 +3468,53 @@ console.log("rust-calc exports:", Object.keys(rust_calc_exports));
         let frame = scene.camera.get_camera_frame();
         let depth_dir = get_column(frame, 2);
         torus._update_panel_brightness(light_source, depth_dir);
+      });
+      arcball.add();
+      scene.set_view_mode("perspective");
+      scene.draw();
+    })(300, 300);
+    await (async function make_surface(width, height) {
+      let canvas = prepare_canvas(width, height, "surface");
+      let zoom_ratio = 3.5;
+      let scene = new ThreeDScene(canvas);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_zoom(zoom_ratio);
+      scene.camera.move_to([0, 0, -12]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        Math.PI / 4
+      );
+      scene.add(
+        "axes",
+        new CoordinateAxes3d([-7, 7], [-7, 7], [-7, 7]).set_axis_options({
+          arrow_size: 0.1
+        })
+      );
+      const light_source = [0, 0, 1];
+      let surface = new Surface(
+        (x, y) => 0.2 * (Math.pow(x, 2) + Math.pow(y, 2)),
+        [-3, 3],
+        [-3, 3],
+        num_pts,
+        num_pts,
+        solver,
+        solver
+      ).set_fill_alpha(1);
+      surface.set_do_stroke(true);
+      surface.set_grad_f((x, y) => [-0.2 * x, -0.2 * y, 0.5]);
+      surface.do_stroke = false;
+      surface._update_panel_brightness(
+        light_source,
+        get_column(scene.camera.get_camera_frame(), 2)
+      );
+      scene.add("surface", surface);
+      let arcball = new Arcball(scene);
+      arcball.set_mode("Rotate");
+      arcball.add_callback(() => {
+        let frame = scene.camera.get_camera_frame();
+        let depth_dir = get_column(frame, 2);
+        surface._update_panel_brightness(light_source, depth_dir);
       });
       arcball.add();
       scene.set_view_mode("perspective");

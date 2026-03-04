@@ -1926,6 +1926,13 @@ function vec3_dot(v, w) {
   }
   return result;
 }
+function vec3_cross(v, w) {
+  return [
+    v[1] * w[2] - v[2] * w[1],
+    v[2] * w[0] - v[0] * w[2],
+    v[0] * w[1] - v[1] * w[0]
+  ];
+}
 function vec3_scale(x, factor) {
   return [x[0] * factor, x[1] * factor, x[2] * factor];
 }
@@ -2527,8 +2534,21 @@ var TwoHeadedArrow3D = class extends Line3D {
 var PolygonPanel3D = class extends ThreeDFillLikeMObject {
   constructor(points) {
     super();
+    this.normal_vec = [0, 0, 0];
+    // Normal vector, used for shading
     this.do_stroke = false;
     this.points = points;
+  }
+  set_normal_vector(v) {
+    this.normal_vec = v;
+    return this;
+  }
+  // Default calculation of normal vector
+  _calculate_normal_vector() {
+    return vec3_cross(
+      vec3_sub(this.points[1], this.points[0]),
+      vec3_sub(this.points[2], this.points[1])
+    );
   }
   // TODO Fix this and fix visibility condition
   depth(scene) {
@@ -2610,7 +2630,7 @@ var Axis3D = class extends ThreeDMObjectGroup {
     } else {
       axis = new TwoHeadedArrow3D([0, 0, cmin], [0, 0, cmax]);
     }
-    axis.set_arrow_size(0.2);
+    axis.set_arrow_size(this.axis_options.arrow_size);
     axis.set_stroke_width(this.axis_options.stroke_width);
     this.add_mobj("axis", axis);
   }

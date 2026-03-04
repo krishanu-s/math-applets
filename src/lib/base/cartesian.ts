@@ -312,7 +312,7 @@ export class Axis3D extends ThreeDMObjectGroup {
     } else {
       axis = new TwoHeadedArrow3D([0, 0, cmin], [0, 0, cmax]);
     }
-    axis.set_arrow_size(0.2);
+    axis.set_arrow_size(this.axis_options.arrow_size);
     axis.set_stroke_width(this.axis_options.stroke_width);
     this.add_mobj("axis", axis);
   }

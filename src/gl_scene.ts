@@ -1,5 +1,6 @@
 import {
   Axis3D,
+  CoordinateAxes3d,
   FillLikeMObject,
   FillOptions,
   prepare_canvas,
@@ -17,7 +18,7 @@ import {
   LineSequence3D,
   ThreeDFillLikeMObject,
 } from "./lib/three_d";
-import { Torus } from "./lib/three_d/surfaces";
+import { Torus, Surface } from "./lib/three_d/surfaces";
 import { get_column, vec3_dot, vec3_normalize } from "./lib/three_d/matvec";
 import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 
@@ -25,7 +26,7 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
     // Initiate the Bezier solver for smooth curve approximation
-    let num_pts = 50;
+    let num_pts = 20;
     let solver = await createSmoothOpenPathBezier(num_pts);
 
     await (async function make_torus(width: number, height: number) {
@@ -70,6 +71,69 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
         let depth_dir = get_column(frame, 2);
         // console.log("depth dir:", depth_dir);
         torus._update_panel_brightness(light_source, depth_dir);
+      });
+      arcball.add();
+
+      scene.set_view_mode("perspective");
+      scene.draw();
+
+      // // Switch the context
+      // const gl = canvas.getContext("webgl");
+    })(300, 300);
+
+    await (async function make_surface(width: number, height: number) {
+      let canvas = prepare_canvas(width, height, "surface");
+
+      // Initialize three-dimensional scene, zoomed in
+      let zoom_ratio = 3.5;
+      let scene = new ThreeDScene(canvas);
+      scene.set_frame_lims([-5, 5], [-5, 5]);
+      scene.set_zoom(zoom_ratio);
+
+      // Rotate the camera angle and set the camera position
+      scene.camera.move_to([0, 0, -12]);
+      scene.camera.rot_pos_and_view_z(Math.PI / 4);
+      scene.camera.rot_pos_and_view(
+        [1 / Math.sqrt(2), 1 / Math.sqrt(2), 0],
+        Math.PI / 4,
+      );
+
+      scene.add(
+        "axes",
+        new CoordinateAxes3d([-7, 7], [-7, 7], [-7, 7]).set_axis_options({
+          arrow_size: 0.1,
+        }),
+      );
+
+      // Vector direction from which light source is coming
+      const light_source: Vec3D = [0, 0, 1];
+
+      // z = 0.2 * (x^2 + y^2)
+      // Gradient is (0.4x, 0.4y, -1)
+      let surface = new Surface(
+        (x, y) => 0.2 * (Math.pow(x, 2) + Math.pow(y, 2)),
+        [-3, 3],
+        [-3, 3],
+        num_pts,
+        num_pts,
+        solver,
+        solver,
+      ).set_fill_alpha(1.0);
+      surface.set_do_stroke(true);
+      surface.set_grad_f((x, y) => [-0.2 * x, -0.2 * y, 0.5]);
+      surface.do_stroke = false;
+      surface._update_panel_brightness(
+        light_source,
+        get_column(scene.camera.get_camera_frame(), 2),
+      );
+      scene.add("surface", surface);
+
+      let arcball = new Arcball(scene);
+      arcball.set_mode("Rotate");
+      arcball.add_callback(() => {
+        let frame = scene.camera.get_camera_frame();
+        let depth_dir = get_column(frame, 2);
+        surface._update_panel_brightness(light_source, depth_dir);
       });
       arcball.add();
 
