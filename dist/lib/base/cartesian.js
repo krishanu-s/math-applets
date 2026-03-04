@@ -1,0 +1,495 @@
+// MObjects associated with Cartesian coordinates
+import { MObjectGroup, LineLikeMObjectGroup, } from "./base";
+import { TwoHeadedArrow, Line, Polygon } from "./geometry";
+import { ThreeDMObjectGroup, ThreeDLineLikeMObjectGroup, Line3D, TwoHeadedArrow3D, } from "../three_d/mobjects";
+class AxisOptions {
+    constructor() {
+        this.stroke_width = 0.1;
+        this.alpha = 1.0;
+        this.arrow_size = 0.3;
+    }
+    update(options) {
+        Object.assign(this, options);
+    }
+}
+class TickOptions {
+    constructor() {
+        this.distance = 1;
+        this.size = 0.2;
+        this.alpha = 1.0;
+        this.stroke_width = 0.08;
+    }
+    update(options) {
+        Object.assign(this, options);
+    }
+}
+class GridOptions {
+    constructor() {
+        this.x_distance = 1;
+        this.y_distance = 1;
+        this.alpha = 0.2;
+        this.stroke_width = 0.05;
+    }
+    update(options) {
+        Object.assign(this, options);
+    }
+}
+// An axis with evenly-spaced ticks, in 2D space.
+// Consists of a double-headed arrow, and a group of ticks.
+export class Axis extends MObjectGroup {
+    constructor(lims, type) {
+        super();
+        this.axis_options = new AxisOptions();
+        this.tick_options = new TickOptions();
+        this.lims = lims;
+        this.type = type;
+        this._make_axis();
+        this._make_ticks();
+    }
+    _make_axis() {
+        let [cmin, cmax] = this.lims;
+        let axis;
+        if (this.type === "x") {
+            axis = new TwoHeadedArrow([cmin, 0], [cmax, 0]);
+        }
+        else {
+            axis = new TwoHeadedArrow([0, cmin], [0, cmax]);
+        }
+        axis.set_stroke_width(this.axis_options.stroke_width);
+        axis.set_arrow_size(this.axis_options.arrow_size);
+        axis.set_alpha(this.axis_options.alpha);
+        this.add_mobj("axis", axis);
+    }
+    _make_ticks() {
+        let [cmin, cmax] = this.lims;
+        let ticks = new LineLikeMObjectGroup()
+            .set_alpha(this.tick_options.alpha)
+            .set_stroke_width(this.tick_options.stroke_width);
+        for (let c = this.tick_options.distance *
+            Math.floor(cmin / this.tick_options.distance + 1); c <
+            this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance); c += this.tick_options.distance) {
+            if (this.type == "x") {
+                ticks.add_mobj(`tick-x-(${c})`, new Line([c, -this.tick_options.size / 2], [c, this.tick_options.size / 2]));
+            }
+            else {
+                ticks.add_mobj(`tick-y-(${c})`, new Line([-this.tick_options.size / 2, c], [this.tick_options.size / 2, c]));
+            }
+        }
+        this.add_mobj("ticks", ticks);
+    }
+    axis() {
+        return this.get_mobj("axis");
+    }
+    ticks() {
+        return this.get_mobj("ticks");
+    }
+    set_lims(lims) {
+        this.lims = lims;
+        this.remove_mobj("axis");
+        this.remove_mobj("ticks");
+        this._make_axis();
+        this._make_ticks();
+    }
+    set_axis_options(options) {
+        this.axis_options.update(options);
+        this.remove_mobj("axis");
+        this._make_axis();
+    }
+    set_tick_options(options) {
+        this.tick_options.update(options);
+        this.remove_mobj("ticks");
+        this._make_ticks();
+        return this;
+    }
+    set_tick_distance(distance) {
+        this.tick_options.distance = distance;
+        this.set_tick_options(this.tick_options);
+        return this;
+    }
+    set_tick_size(size) {
+        this.tick_options.size = size;
+        this.set_tick_options(this.tick_options);
+        return this;
+    }
+}
+// A pair of axes forming a 2D coordinate system, plus two groups of grid lines.
+export class CoordinateAxes2d extends MObjectGroup {
+    constructor(xlims, ylims) {
+        super();
+        this.axis_options = new AxisOptions();
+        this.tick_options = new TickOptions();
+        this.grid_options = new GridOptions();
+        this.xlims = xlims;
+        this.ylims = ylims;
+        this._make_axes();
+        this._make_x_grid_lines();
+        this._make_y_grid_lines();
+    }
+    _make_axes() {
+        let x_axis = new Axis(this.xlims, "x");
+        x_axis.set_axis_options(this.axis_options);
+        x_axis.set_tick_options(this.tick_options);
+        this.add_mobj("x-axis", x_axis);
+        let y_axis = new Axis(this.ylims, "y");
+        y_axis.set_axis_options(this.axis_options);
+        y_axis.set_tick_options(this.tick_options);
+        this.add_mobj("y-axis", y_axis);
+    }
+    _make_x_grid_lines() {
+        let [xmin, xmax] = this.xlims;
+        let [ymin, ymax] = this.ylims;
+        let x_grid = new LineLikeMObjectGroup()
+            .set_alpha(this.grid_options.alpha)
+            .set_stroke_width(this.grid_options.stroke_width);
+        for (let x = this.grid_options.x_distance *
+            Math.floor(xmin / this.grid_options.x_distance + 1); x <
+            this.grid_options.x_distance *
+                Math.ceil(xmax / this.grid_options.x_distance); x += this.grid_options.x_distance) {
+            x_grid.add_mobj(`line-(${x})`, new Line([x, ymin], [x, ymax]));
+        }
+        this.add_mobj("x-grid", x_grid);
+    }
+    _make_y_grid_lines() {
+        let [xmin, xmax] = this.xlims;
+        let [ymin, ymax] = this.ylims;
+        let y_grid = new LineLikeMObjectGroup()
+            .set_alpha(this.grid_options.alpha)
+            .set_stroke_width(this.grid_options.stroke_width);
+        for (let y = this.grid_options.y_distance *
+            Math.floor(ymin / this.grid_options.y_distance + 1); y <
+            this.grid_options.y_distance *
+                Math.ceil(ymax / this.grid_options.y_distance); y += this.grid_options.y_distance) {
+            y_grid.add_mobj(`line-(${y})`, new Line([xmin, y], [xmax, y]));
+        }
+        this.add_mobj("y-grid", y_grid);
+    }
+    x_axis() {
+        return this.get_mobj("x-axis");
+    }
+    y_axis() {
+        return this.get_mobj("y-axis");
+    }
+    x_grid() {
+        return this.get_mobj("x-grid");
+    }
+    y_grid() {
+        return this.get_mobj("y-grid");
+    }
+    set_axis_options(options) {
+        this.axis_options.update(options);
+        this.remove_mobj("x-axis");
+        this.remove_mobj("y-axis");
+        this._make_axes();
+        return this;
+    }
+    set_axis_stroke_width(width) {
+        this.axis_options.stroke_width = width;
+        this.set_axis_options(this.axis_options);
+        return this;
+    }
+    set_tick_options(options) {
+        this.tick_options.update(options);
+        this.remove_mobj("x-axis");
+        this.remove_mobj("y-axis");
+        this._make_axes();
+        return this;
+    }
+    set_tick_size(size) {
+        this.tick_options.size = size;
+        this.set_tick_options(this.tick_options);
+        return this;
+    }
+    set_tick_distance(distance) {
+        this.tick_options.distance = distance;
+        this.set_tick_options(this.tick_options);
+        return this;
+    }
+    set_grid_options(options) {
+        this.grid_options.update(options);
+        this.remove_mobj("x-grid");
+        this.remove_mobj("y-grid");
+        this._make_x_grid_lines();
+        this._make_y_grid_lines();
+        return this;
+    }
+    set_grid_distance(distance) {
+        this.grid_options.x_distance = distance;
+        this.grid_options.y_distance = distance;
+        this.set_grid_options(this.grid_options);
+        return this;
+    }
+    set_grid_alpha(alpha) {
+        this.grid_options.alpha = alpha;
+        this.set_grid_options(this.grid_options);
+        return this;
+    }
+    set_grid_stroke_width(width) {
+        this.grid_options.stroke_width = width;
+        this.set_grid_options(this.grid_options);
+        return this;
+    }
+    set_lims(xlims, ylims) {
+        this.xlims = xlims;
+        this.ylims = ylims;
+        this.x_axis().set_lims(xlims);
+        this.y_axis().set_lims(ylims);
+        this.remove_mobj("x-grid");
+        this.remove_mobj("y-grid");
+        this._make_x_grid_lines();
+        this._make_y_grid_lines();
+        return this;
+    }
+}
+// An axis with evenly-spaced ticks, in 3D space.
+export class Axis3D extends ThreeDMObjectGroup {
+    constructor(lims, type) {
+        super();
+        this.axis_options = new AxisOptions();
+        this.tick_options = new TickOptions();
+        this.lims = lims;
+        this.type = type;
+        this._make_axis();
+        this._make_ticks();
+    }
+    _make_axis() {
+        let [cmin, cmax] = this.lims;
+        let axis;
+        if (this.type === "x") {
+            axis = new TwoHeadedArrow3D([cmin, 0, 0], [cmax, 0, 0]);
+        }
+        else if (this.type === "y") {
+            axis = new TwoHeadedArrow3D([0, cmin, 0], [0, cmax, 0]);
+        }
+        else {
+            axis = new TwoHeadedArrow3D([0, 0, cmin], [0, 0, cmax]);
+        }
+        axis.set_arrow_size(0.2);
+        axis.set_stroke_width(this.axis_options.stroke_width);
+        this.add_mobj("axis", axis);
+    }
+    _make_ticks() {
+        let [cmin, cmax] = this.lims;
+        let ticks = new ThreeDLineLikeMObjectGroup().set_alpha(0.3);
+        for (let c = this.tick_options.distance *
+            Math.floor(cmin / this.tick_options.distance + 1); c <
+            this.tick_options.distance * Math.ceil(cmax / this.tick_options.distance); c += this.tick_options.distance) {
+            if (this.type == "x") {
+                ticks.add_mobj(`tick-x-(${c})`, new Line3D([c, -this.tick_options.size / 2, 0], [c, this.tick_options.size / 2, 0]));
+            }
+            else if (this.type == "y") {
+                ticks.add_mobj(`tick-y-(${c})`, new Line3D([0, c, -this.tick_options.size / 2], [0, c, this.tick_options.size / 2]));
+            }
+            else if (this.type == "z") {
+                ticks.add_mobj(`tick-z-(${c})`, new Line3D([-this.tick_options.size / 2, 0, c], [this.tick_options.size / 2, 0, c]));
+            }
+        }
+        this.add_mobj("ticks", ticks);
+    }
+    axis() {
+        return this.get_mobj("axis");
+    }
+    ticks() {
+        return this.get_mobj("ticks");
+    }
+    set_lims(lims) {
+        this.lims = lims;
+        this.remove_mobj("axis");
+        this.remove_mobj("ticks");
+        this._make_axis();
+        this._make_ticks();
+    }
+    set_axis_options(options) {
+        this.axis_options.update(options);
+        this.remove_mobj("axis");
+        this._make_axis();
+    }
+    set_tick_options(options) {
+        this.tick_options.update(options);
+        this.remove_mobj("ticks");
+        this._make_ticks();
+    }
+    set_tick_distance(distance) {
+        this.tick_options.distance = distance;
+        this.set_tick_options(this.tick_options);
+    }
+    set_tick_size(size) {
+        this.tick_options.size = size;
+        this.set_tick_options(this.tick_options);
+    }
+}
+// A triple of axes forming a 3D coordinate system.
+export class CoordinateAxes3d extends ThreeDMObjectGroup {
+    constructor(xlims, ylims, zlims) {
+        super();
+        this.axis_options = new AxisOptions();
+        this.tick_options = new TickOptions();
+        this.xlims = xlims;
+        this.ylims = ylims;
+        this.zlims = zlims;
+        this._make_axes();
+    }
+    _make_axes() {
+        let x_axis = new Axis3D(this.xlims, "x");
+        x_axis.set_axis_options(this.axis_options);
+        x_axis.set_tick_options(this.tick_options);
+        this.add_mobj("x-axis", x_axis);
+        let y_axis = new Axis3D(this.ylims, "y");
+        y_axis.set_axis_options(this.axis_options);
+        y_axis.set_tick_options(this.tick_options);
+        this.add_mobj("y-axis", y_axis);
+        let z_axis = new Axis3D(this.zlims, "z");
+        z_axis.set_axis_options(this.axis_options);
+        z_axis.set_tick_options(this.tick_options);
+        this.add_mobj("z-axis", z_axis);
+    }
+    x_axis() {
+        return this.get_mobj("x-axis");
+    }
+    y_axis() {
+        return this.get_mobj("y-axis");
+    }
+    z_axis() {
+        return this.get_mobj("z-axis");
+    }
+    set_axis_options(options) {
+        this.axis_options.update(options);
+        this.remove_mobj("x-axis");
+        this.remove_mobj("y-axis");
+        this._make_axes();
+        return this;
+    }
+    set_axis_stroke_width(width) {
+        this.axis_options.stroke_width = width;
+        this.set_axis_options(this.axis_options);
+    }
+    set_tick_options(options) {
+        this.tick_options.update(options);
+        this.remove_mobj("x-axis");
+        this.remove_mobj("y-axis");
+        this._make_axes();
+        return this;
+    }
+    set_tick_size(size) {
+        this.tick_options.size = size;
+        this.set_tick_options(this.tick_options);
+    }
+    set_tick_distance(distance) {
+        this.tick_options.distance = distance;
+        this.set_tick_options(this.tick_options);
+    }
+}
+// A polygon representing the integral of a function over an interval.
+export class Integral extends Polygon {
+    constructor(f, left_endpoint, right_endpoint, num_points) {
+        const points = [];
+        for (let i = 0; i <= num_points; i++) {
+            const t = left_endpoint + ((right_endpoint - left_endpoint) * i) / num_points;
+            points.push([t, f(t)]);
+        }
+        points.push([right_endpoint, 0]);
+        points.push([left_endpoint, 0]);
+        super(points);
+        this.f = f;
+        this.left_endpoint = left_endpoint;
+        this.right_endpoint = right_endpoint;
+        this.num_points = num_points;
+    }
+    _recompute_points() {
+        this.points = [];
+        for (let i = 0; i <= this.num_points; i++) {
+            const t = this.left_endpoint +
+                ((this.right_endpoint - this.left_endpoint) * i) / this.num_points;
+            this.points.push([t, this.f(t)]);
+        }
+        this.points.push([this.right_endpoint, 0]);
+        this.points.push([this.left_endpoint, 0]);
+    }
+    set_left_endpoint(left_endpoint) {
+        this.left_endpoint = left_endpoint;
+        this._recompute_points();
+    }
+    set_right_endpoint(right_endpoint) {
+        this.right_endpoint = right_endpoint;
+        this._recompute_points();
+    }
+    set_lims(left_endpoint, right_endpoint) {
+        this.left_endpoint = left_endpoint;
+        this.right_endpoint = right_endpoint;
+        this._recompute_points();
+        return this;
+    }
+    set_num_points(num_points) {
+        this.num_points = num_points;
+        this._recompute_points();
+    }
+    set_func(f) {
+        this.f = f;
+        this._recompute_points();
+    }
+}
+// A polygon representing the area between two functions over an interval.
+// TODO Deal with the case where f and g cross, using different colors.
+export class IntegralBetween extends Polygon {
+    constructor(f, g, left_endpoint, right_endpoint, num_points) {
+        const points = [];
+        for (let i = 0; i <= num_points; i++) {
+            const t = left_endpoint + ((right_endpoint - left_endpoint) * i) / num_points;
+            points.push([t, f(t)]);
+        }
+        for (let i = num_points; i >= 0; i--) {
+            const t = left_endpoint + ((right_endpoint - left_endpoint) * i) / num_points;
+            points.push([t, g(t)]);
+        }
+        super(points);
+        this.f = f;
+        this.g = g;
+        this.left_endpoint = left_endpoint;
+        this.right_endpoint = right_endpoint;
+        this.num_points = num_points;
+    }
+    _recompute_points() {
+        this.points = [];
+        for (let i = 0; i <= this.num_points; i++) {
+            const t = this.left_endpoint +
+                ((this.right_endpoint - this.left_endpoint) * i) / this.num_points;
+            this.points.push([t, this.f(t)]);
+        }
+        for (let i = this.num_points; i >= 0; i--) {
+            const t = this.left_endpoint +
+                ((this.right_endpoint - this.left_endpoint) * i) / this.num_points;
+            this.points.push([t, this.g(t)]);
+        }
+    }
+    set_left_endpoint(left_endpoint) {
+        this.left_endpoint = left_endpoint;
+        this._recompute_points();
+        return this;
+    }
+    set_right_endpoint(right_endpoint) {
+        this.right_endpoint = right_endpoint;
+        this._recompute_points();
+        return this;
+    }
+    set_lims(left_endpoint, right_endpoint) {
+        this.left_endpoint = left_endpoint;
+        this.right_endpoint = right_endpoint;
+        this._recompute_points();
+        return this;
+    }
+    set_num_points(num_points) {
+        this.num_points = num_points;
+        this._recompute_points();
+        return this;
+    }
+    set_f(f) {
+        this.f = f;
+        this._recompute_points();
+        return this;
+    }
+    set_g(g) {
+        this.g = g;
+        this._recompute_points();
+        return this;
+    }
+}
+//# sourceMappingURL=cartesian.js.map

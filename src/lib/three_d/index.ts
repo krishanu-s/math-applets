@@ -1,6 +1,7 @@
 export { Arcball } from "../interactive/arcball";
 export {
   vec3_dot,
+  vec3_cross,
   vec3_norm,
   vec3_scale,
   vec3_sub,
@@ -41,3 +42,4 @@ export {
   PolygonPanel3D,
 } from "./mobjects";
 export { SphereHeatMap } from "./surfaces";
+export { BezierSpline3D, ParametricFunction3D } from "./bezier";

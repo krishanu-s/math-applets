@@ -14,6 +14,14 @@ export function vec3_dot(v: Vec3D, w: Vec3D): number {
   return result;
 }
 
+export function vec3_cross(v: Vec3D, w: Vec3D): Vec3D {
+  return [
+    v[1] * w[2] - v[2] * w[1],
+    v[2] * w[0] - v[0] * w[2],
+    v[0] * w[1] - v[1] * w[0],
+  ];
+}
+
 export function vec3_scale(x: Vec3D, factor: number): Vec3D {
   return [x[0] * factor, x[1] * factor, x[2] * factor];
 }

@@ -21,6 +21,7 @@ import {
   Vec3D,
   vec3_scale,
   vec3_dot,
+  vec3_cross,
   vec3_norm,
   vec3_sum,
   vec3_sub,
@@ -1021,10 +1022,22 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
 // A polygon in 3D where the points are assumed to be coplanar.
 export class PolygonPanel3D extends ThreeDFillLikeMObject {
   points: Vec3D[];
+  normal_vec: Vec3D = [0, 0, 0]; // Normal vector, used for shading
   do_stroke: boolean = false;
   constructor(points: Vec3D[]) {
     super();
     this.points = points;
+  }
+  set_normal_vector(v: Vec3D) {
+    this.normal_vec = v;
+    return this;
+  }
+  // Default calculation of normal vector
+  _calculate_normal_vector(): Vec3D {
+    return vec3_cross(
+      vec3_sub(this.points[1] as Vec3D, this.points[0] as Vec3D),
+      vec3_sub(this.points[2] as Vec3D, this.points[1] as Vec3D),
+    );
   }
   // TODO Fix this and fix visibility condition
   depth(scene: ThreeDScene): number {
@@ -1038,19 +1051,28 @@ export class PolygonPanel3D extends ThreeDFillLikeMObject {
   }
   _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene) {
     let current_point = this.points[0] as Vec3D;
-    let current_point_camera_view = scene.camera_view(current_point) as Vec2D;
-    let [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+    let current_point_camera_view = scene.camera_view(current_point);
+    if (current_point_camera_view == null) {
+      return;
+    }
+    let [cp_x, cp_y] = scene.v2c(current_point_camera_view as Vec2D);
     ctx.moveTo(cp_x, cp_y);
     ctx.beginPath();
     for (let i = 1; i < this.points.length; i++) {
       current_point = this.points[i] as Vec3D;
-      current_point_camera_view = scene.camera_view(current_point) as Vec2D;
-      [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+      current_point_camera_view = scene.camera_view(current_point);
+      if (current_point_camera_view == null) {
+        return;
+      }
+      [cp_x, cp_y] = scene.v2c(current_point_camera_view as Vec2D);
       ctx.lineTo(cp_x, cp_y);
     }
     current_point = this.points[0] as Vec3D;
-    current_point_camera_view = scene.camera_view(current_point) as Vec2D;
-    [cp_x, cp_y] = scene.v2c(current_point_camera_view);
+    current_point_camera_view = scene.camera_view(current_point);
+    if (current_point_camera_view == null) {
+      return;
+    }
+    [cp_x, cp_y] = scene.v2c(current_point_camera_view as Vec2D);
     ctx.lineTo(cp_x, cp_y);
 
     ctx.closePath();

@@ -1,0 +1,26 @@
+export type Vec3D = [number, number, number];
+export declare function vec3_norm(x: Vec3D): number;
+export declare function vec3_dot(v: Vec3D, w: Vec3D): number;
+export declare function vec3_scale(x: Vec3D, factor: number): Vec3D;
+export declare function vec3_sum(x: Vec3D, y: Vec3D): Vec3D;
+export declare function vec3_sum_list(xs: Vec3D[]): Vec3D;
+export declare function vec3_sub(x: Vec3D, y: Vec3D): Vec3D;
+export type SphericalVec3D = [number, number];
+export type Mat3by3 = [Vec3D, Vec3D, Vec3D];
+export declare function transpose(m: Mat3by3): Mat3by3;
+export declare function mat_inv(m: Mat3by3): Mat3by3;
+export declare function get_column(m: Mat3by3, i: number): Vec3D;
+export declare function vec3_normalize(v: Vec3D): Vec3D;
+export declare function spherical_to_cartesian(radius: number, theta_rad: number, phi_rad: number): Vec3D;
+export declare function cartesian_to_spherical(x: number, y: number, z: number): Vec3D;
+export declare function matmul_vec(m: Mat3by3, v: Vec3D): Vec3D;
+export declare function matmul_mat(m1: Mat3by3, m2: Mat3by3): Mat3by3;
+export declare function rot_z_matrix(theta: number): Mat3by3;
+export declare function rot_z(v: Vec3D, theta: number): Vec3D;
+export declare function rot_y_matrix(theta: number): Mat3by3;
+export declare function rot_y(v: Vec3D, theta: number): Vec3D;
+export declare function rot_x_matrix(theta: number): Mat3by3;
+export declare function rot_x(v: Vec3D, theta: number): Vec3D;
+export declare function rot_matrix(axis: Vec3D, angle: number): Mat3by3;
+export declare function rot(v: Vec3D, axis: Vec3D, angle: number): Vec3D;
+//# sourceMappingURL=matvec.d.ts.map
