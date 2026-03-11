@@ -36,7 +36,7 @@
     </head>
     <body>
         <div style="text-align: center; margin: 10px auto">
-            <h2>Decimal expansions</h2>
+            <h2>Expansions of real numbers</h2>
             <p>
                 Any positive real number $x$ between $0$ and $1$ has a unique
                 <b>decimal expansions</b> $$x=0.a_1a_2a_3a_4a_5\ldots$$ where
@@ -48,9 +48,10 @@
                 $(0, 1)$, how often does each of the digits 0 through 9 appear
                 in the decimal expansion of $x$?
             </p>
-
             <p>
-                Next, consider the powers of 2. For each one, note its
+                Next, we consider decimal expansions in a different way.
+                Consider the powers of 2, written in base-10. For each one, note
+                its
                 <b>leading digit</b>, which is an integer between 1 and 9,
                 inclusive. $$\mathbf{1}, \mathbf{2}, \mathbf{4}, \mathbf{8},
                 \mathbf{1}6, \mathbf{3}2, \mathbf{6}4, \mathbf{1}28,
@@ -59,12 +60,16 @@
             </p>
             <p>
                 <b>Question 2:</b> How often does each possible leading digit
-                appear in this list?
+                appear in this list? More precisely: if we consider the first
+                one million powers of 2, roughly how many times (out of one
+                million) does each of the digits 1 through 9 appear as a leading
+                digit?
             </p>
-            <h2>Continued fractions and the Gauss map</h2>
             <p>
-                Any positive real number $x$ between $0$ and $1$ has a unique
-                <b>continued fraction expansion</b> $$x=
+                Now we consider <b>continued fraction expansions</b>, which are
+                a different representation of real numbers. Any positive real
+                number $x$ between $0$ and $1$ has a unique continued fraction
+                expansion $$x=
                 \frac{1}{a_1+\frac{1}{a_2+\frac{1}{a_3+\ldots}}}$$ where the
                 coefficients $a_1, a_2, a_3, a_4, \ldots$ are positive integers.
                 Unlike decimal expansions, the coefficients can be

@@ -13,8 +13,14 @@ function vec2_normalize(x) {
 function vec2_scale(x, factor) {
   return [x[0] * factor, x[1] * factor];
 }
+function vec2_sum(x, y) {
+  return [x[0] + y[0], x[1] + y[1]];
+}
 function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
+}
+function vec2_homothety(p1, p2, scale) {
+  return vec2_sum(p1, vec2_scale(vec2_sub(p2, p1), scale));
 }
 
 // src/lib/base/style_options.ts
@@ -26,8 +32,21 @@ var DEFAULT_STROKE_WIDTH = 0.08;
 var DEFAULT_FILL_COLOR = "black";
 
 // src/lib/base/base.ts
+function clamp(x, xmin, xmax) {
+  return Math.min(xmax, Math.max(xmin, x));
+}
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-x));
+}
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function smooth(t, inflection = 10) {
+  let error = sigmoid(-inflection / 2);
+  return Math.min(
+    Math.max((sigmoid(inflection * (t - 0.5)) - error) / (1 - 2 * error), 0),
+    1
+  );
 }
 var StrokeOptions = class {
   constructor() {
@@ -91,14 +110,19 @@ var MObject = class {
     return this;
   }
   move_by(p) {
+    return this;
+  }
+  homothety_around(p, scale) {
+    return this;
   }
   add(scene) {
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
+    ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
     this._draw(ctx, scene, args);
+    ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
   }
   _draw(ctx, scene, args) {
   }
@@ -110,17 +134,32 @@ var MObjectGroup = class extends MObject {
   }
   add_mobj(name, child) {
     this.children[name] = child;
+    return this;
   }
   remove_mobj(name) {
     delete this.children[name];
+    return this;
   }
   move_by(p) {
     Object.values(this.children).forEach((child) => child.move_by(p));
+    return this;
+  }
+  homothety_around(p, scale) {
+    Object.values(this.children).forEach(
+      (child) => child.homothety_around(p, scale)
+    );
+    return this;
   }
   clear() {
     Object.keys(this.children).forEach((key) => {
       delete this.children[key];
     });
+  }
+  has_mobj(name) {
+    if (!this.children[name]) {
+      return false;
+    }
+    return true;
   }
   get_mobj(name) {
     if (!this.children[name]) {
@@ -131,10 +170,11 @@ var MObjectGroup = class extends MObject {
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
+    ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
     Object.values(this.children).forEach(
       (child) => child.draw(canvas, scene, args)
     );
+    ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
   }
 };
 var FillLikeMObject = class extends MObject {
@@ -175,10 +215,11 @@ var FillLikeMObject = class extends MObject {
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
     this.stroke_options.apply_to(ctx, scene);
     this.fill_options.apply_to(ctx);
+    ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
     this._draw(ctx, scene, args);
+    ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
   }
 };
 var Scene = class {
@@ -323,6 +364,12 @@ var Scene = class {
     if (mobj == void 0) throw new Error(`${name} not found`);
     return mobj;
   }
+  // Moves a mobject to the front of the scene
+  move_to_front(name) {
+    let mobj = this.get_mobj(name);
+    this.remove(name);
+    this.add(name, mobj);
+  }
   // Draws the scene
   draw(args) {
     let ctx = this.canvas.getContext("2d");
@@ -333,9 +380,7 @@ var Scene = class {
     this.draw_border(ctx);
   }
   _draw() {
-    Object.keys(this.mobjects).forEach((name) => {
-      let mobj = this.mobjects[name];
-      if (mobj == void 0) throw new Error(`${name} not found`);
+    Object.entries(this.mobjects).forEach(([name, mobj]) => {
       this.draw_mobject(mobj);
     });
   }
@@ -352,6 +397,7 @@ var Scene = class {
   draw_border(ctx) {
     ctx.strokeStyle = this.border_color;
     ctx.lineWidth = this.border_width;
+    ctx.globalAlpha = 1;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
@@ -749,13 +795,24 @@ var Dot = class extends FillLikeMObject {
   get_center() {
     return this.center;
   }
+  get_radius() {
+    return this.radius;
+  }
   // Move the center of the dot to a desired location
   move_to(p) {
     this.center = p;
+    return this;
   }
   move_by(p) {
     this.center[0] += p[0];
     this.center[1] += p[1];
+    return this;
+  }
+  // Performs a homothety around the given point
+  homothety_around(p, scale) {
+    this.center = vec2_homothety(p, this.center, scale);
+    this.radius *= scale;
+    return this;
   }
   // Change the dot radius
   set_radius(radius) {
@@ -793,10 +850,19 @@ var Rectangle = class extends FillLikeMObject {
   }
   move_to(center) {
     this.center = center;
+    return this;
   }
   move_by(p) {
     this.center[0] += p[0];
     this.center[1] += p[1];
+    return this;
+  }
+  // Performs a homothety around the given point
+  homothety_around(p, scale) {
+    this.center = vec2_homothety(p, this.center, scale);
+    this.size_x *= scale;
+    this.size_y *= scale;
+    return this;
   }
   // Draws on the canvas
   _draw(ctx, scene) {
@@ -1707,7 +1773,8 @@ function Button(container, callback) {
 }
 
 // src/lib/animation.ts
-var FRAME_LENGTH = 10;
+var FRAME_LENGTH = 30;
+var DEFAULT_RATE_FUNC = smooth;
 var Animation = class {
   async play(scene) {
   }
@@ -1746,17 +1813,22 @@ var Zoom = class extends Animation {
   }
   async _play_frame(scene, i) {
     scene.zoom_in_on(
-      Math.pow(this.zoom_ratio, 1 / this.num_frames),
+      Math.pow(
+        this.zoom_ratio,
+        DEFAULT_RATE_FUNC(i / this.num_frames) - DEFAULT_RATE_FUNC((i - 1) / this.num_frames)
+      ),
       this.zoom_point
     );
   }
 };
 var FadeIn = class extends Animation {
-  constructor(mobj_name, mobj, num_frames) {
+  constructor(mobjects, num_frames) {
     super();
-    this.mobj_name = mobj_name;
-    this.mobj = mobj;
-    this.base_alpha = Number(this.mobj.alpha);
+    this.base_alphas = {};
+    this.mobjects = mobjects;
+    Object.entries(mobjects).forEach(([key, elem]) => {
+      this.base_alphas[key] = Number(elem.alpha);
+    });
     this.num_frames = num_frames;
   }
   async play(scene) {
@@ -1764,7 +1836,9 @@ var FadeIn = class extends Animation {
   }
   // Animates the fade in.
   async _play(scene) {
-    scene.add(this.mobj_name, this.mobj);
+    Object.entries(this.mobjects).forEach(([key, elem]) => {
+      scene.add(key, elem);
+    });
     for (let i = 1; i <= this.num_frames; i++) {
       await this._play_frame(scene, i);
       await delay(FRAME_LENGTH);
@@ -1772,14 +1846,16 @@ var FadeIn = class extends Animation {
     }
   }
   async _play_frame(scene, i) {
-    let alpha = i / this.num_frames * this.base_alpha;
-    this.mobj.set_alpha(alpha);
+    Object.entries(this.mobjects).forEach(([key, elem]) => {
+      let alpha = i / this.num_frames * this.base_alphas[key];
+      scene.get_mobj(key).set_alpha(alpha);
+    });
   }
 };
 var FadeOut = class extends Animation {
-  constructor(mobj_name, num_frames) {
+  constructor(mobj_names, num_frames) {
     super();
-    this.mobj_name = mobj_name;
+    this.mobj_names = mobj_names;
     this.num_frames = num_frames;
   }
   async play(scene) {
@@ -1787,17 +1863,27 @@ var FadeOut = class extends Animation {
   }
   // Animates the fade out.
   async _play(scene) {
-    let mobj = scene.get_mobj(this.mobj_name);
-    let base_alpha = Number(mobj.alpha);
+    let base_alphas = [];
+    let mobjects = [];
+    for (let j = 0; j < this.mobj_names.length; j++) {
+      let mobj = scene.get_mobj(this.mobj_names[j]);
+      mobjects.push(mobj);
+      base_alphas.push(Number(mobj.alpha));
+    }
     for (let i = 1; i <= this.num_frames; i++) {
-      await this._play_frame(scene, i, mobj, base_alpha);
+      this._play_frame(scene, i, mobjects, base_alphas);
       await delay(FRAME_LENGTH);
       scene.draw();
     }
+    for (let m of this.mobj_names) {
+      scene.remove(m);
+    }
   }
-  async _play_frame(scene, i, mobj, base_alpha) {
-    let alpha = (1 - i / this.num_frames) * base_alpha;
-    mobj.set_alpha(alpha);
+  async _play_frame(scene, i, mobjects, base_alphas) {
+    for (let j = 0; j < this.mobj_names.length; j++) {
+      let alpha = (1 - i / this.num_frames) * base_alphas[j];
+      mobjects[j].set_alpha(alpha);
+    }
   }
 };
 var isVec2D = (v) => v.length == 2;
@@ -1815,14 +1901,16 @@ var MoveBy = class extends Animation {
   // Animates the movement.
   async _play(scene) {
     let tv;
-    if (isVec2D(this.translate_vec)) {
-      tv = vec2_scale(this.translate_vec, 1 / this.num_frames);
-    } else if (isVec3D(this.translate_vec)) {
-      tv = vec3_scale(this.translate_vec, 1 / this.num_frames);
-    } else {
-      throw new Error("Invalid translation vector");
-    }
+    let s;
     for (let i = 1; i <= this.num_frames; i++) {
+      s = DEFAULT_RATE_FUNC(i / this.num_frames) - DEFAULT_RATE_FUNC((i - 1) / this.num_frames);
+      if (isVec2D(this.translate_vec)) {
+        tv = vec2_scale(this.translate_vec, s);
+      } else if (isVec3D(this.translate_vec)) {
+        tv = vec3_scale(this.translate_vec, s);
+      } else {
+        throw new Error("Invalid translation vector");
+      }
       await this._play_frame(scene, tv);
       await delay(FRAME_LENGTH);
       scene.draw();

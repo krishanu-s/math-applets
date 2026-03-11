@@ -1,4 +1,7 @@
 // src/lib/base/vec2.ts
+function vec2_polar_form(r, theta) {
+  return [r * Math.cos(theta), r * Math.sin(theta)];
+}
 function vec2_norm(x) {
   return Math.sqrt(x[0] ** 2 + x[1] ** 2);
 }
@@ -25,6 +28,9 @@ function vec2_rot(v, angle) {
   const sin = Math.sin(angle);
   return [x * cos - y * sin, x * sin + y * cos];
 }
+function vec2_homothety(p1, p2, scale) {
+  return vec2_sum(p1, vec2_scale(vec2_sub(p2, p1), scale));
+}
 
 // src/lib/base/style_options.ts
 var DEFAULT_BACKGROUND_COLOR = "white";
@@ -35,6 +41,9 @@ var DEFAULT_STROKE_WIDTH = 0.08;
 var DEFAULT_FILL_COLOR = "black";
 
 // src/lib/base/base.ts
+function clamp(x, xmin, xmax) {
+  return Math.min(xmax, Math.max(xmin, x));
+}
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
 }
@@ -103,14 +112,19 @@ var MObject = class {
     return this;
   }
   move_by(p) {
+    return this;
+  }
+  homothety_around(p, scale) {
+    return this;
   }
   add(scene) {
   }
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
+    ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
     this._draw(ctx, scene, args);
+    ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
   }
   _draw(ctx, scene, args) {
   }
@@ -122,17 +136,32 @@ var MObjectGroup = class extends MObject {
   }
   add_mobj(name, child) {
     this.children[name] = child;
+    return this;
   }
   remove_mobj(name) {
     delete this.children[name];
+    return this;
   }
   move_by(p) {
     Object.values(this.children).forEach((child) => child.move_by(p));
+    return this;
+  }
+  homothety_around(p, scale) {
+    Object.values(this.children).forEach(
+      (child) => child.homothety_around(p, scale)
+    );
+    return this;
   }
   clear() {
     Object.keys(this.children).forEach((key) => {
       delete this.children[key];
     });
+  }
+  has_mobj(name) {
+    if (!this.children[name]) {
+      return false;
+    }
+    return true;
   }
   get_mobj(name) {
     if (!this.children[name]) {
@@ -143,10 +172,11 @@ var MObjectGroup = class extends MObject {
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
+    ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
     Object.values(this.children).forEach(
       (child) => child.draw(canvas, scene, args)
     );
+    ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
   }
 };
 var LineLikeMObject = class extends MObject {
@@ -169,9 +199,10 @@ var LineLikeMObject = class extends MObject {
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
     this.stroke_options.apply_to(ctx, scene);
+    ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
     this._draw(ctx, scene, args);
+    ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
   }
 };
 var FillLikeMObject = class extends MObject {
@@ -212,10 +243,11 @@ var FillLikeMObject = class extends MObject {
   draw(canvas, scene, args) {
     let ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D context");
-    ctx.globalAlpha = this.alpha;
     this.stroke_options.apply_to(ctx, scene);
     this.fill_options.apply_to(ctx);
+    ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
     this._draw(ctx, scene, args);
+    ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
   }
 };
 var Scene = class {
@@ -360,6 +392,12 @@ var Scene = class {
     if (mobj == void 0) throw new Error(`${name} not found`);
     return mobj;
   }
+  // Moves a mobject to the front of the scene
+  move_to_front(name) {
+    let mobj = this.get_mobj(name);
+    this.remove(name);
+    this.add(name, mobj);
+  }
   // Draws the scene
   draw(args) {
     let ctx = this.canvas.getContext("2d");
@@ -370,9 +408,7 @@ var Scene = class {
     this.draw_border(ctx);
   }
   _draw() {
-    Object.keys(this.mobjects).forEach((name) => {
-      let mobj = this.mobjects[name];
-      if (mobj == void 0) throw new Error(`${name} not found`);
+    Object.entries(this.mobjects).forEach(([name, mobj]) => {
       this.draw_mobject(mobj);
     });
   }
@@ -389,6 +425,7 @@ var Scene = class {
   draw_border(ctx) {
     ctx.strokeStyle = this.border_color;
     ctx.lineWidth = this.border_width;
+    ctx.globalAlpha = 1;
     ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
@@ -796,13 +833,24 @@ var Dot = class extends FillLikeMObject {
   get_center() {
     return this.center;
   }
+  get_radius() {
+    return this.radius;
+  }
   // Move the center of the dot to a desired location
   move_to(p) {
     this.center = p;
+    return this;
   }
   move_by(p) {
     this.center[0] += p[0];
     this.center[1] += p[1];
+    return this;
+  }
+  // Performs a homothety around the given point
+  homothety_around(p, scale) {
+    this.center = vec2_homothety(p, this.center, scale);
+    this.radius *= scale;
+    return this;
   }
   // Change the dot radius
   set_radius(radius) {
@@ -840,10 +888,19 @@ var Rectangle = class extends FillLikeMObject {
   }
   move_to(center) {
     this.center = center;
+    return this;
   }
   move_by(p) {
     this.center[0] += p[0];
     this.center[1] += p[1];
+    return this;
+  }
+  // Performs a homothety around the given point
+  homothety_around(p, scale) {
+    this.center = vec2_homothety(p, this.center, scale);
+    this.size_x *= scale;
+    this.size_y *= scale;
+    return this;
   }
   // Draws on the canvas
   _draw(ctx, scene) {
@@ -894,13 +951,46 @@ var Line = class extends LineLikeMObject {
     this.end = p;
     return this;
   }
+  move_midpoint_to(p) {
+    this.move_by(vec2_sub(p, this.midpoint()));
+    return this;
+  }
   move_by(p) {
     this.start = vec2_sum(this.start, p);
     this.end = vec2_sum(this.end, p);
     return this;
   }
+  // Convenience functions
+  midpoint() {
+    return [
+      0.5 * (this.start[0] + this.end[0]),
+      0.5 * (this.start[1] + this.end[1])
+    ];
+  }
+  vec() {
+    return vec2_sub(this.end, this.start);
+  }
   length() {
-    return vec2_norm(vec2_sub(this.start, this.end));
+    return vec2_norm(this.vec());
+  }
+  // Rotates the line around its midpoint to a given angle
+  rotate_to(theta) {
+    let new_start = vec2_sum(
+      this.midpoint(),
+      vec2_polar_form(this.length() / 2, theta)
+    );
+    let new_end = vec2_sum(
+      this.midpoint(),
+      vec2_polar_form(-this.length() / 2, theta)
+    );
+    [this.start, this.end] = [new_start, new_end];
+    return this;
+  }
+  // Performs a homothety around the given point
+  homothety_around(p, scale) {
+    this.start = vec2_homothety(p, this.start, scale);
+    this.end = vec2_homothety(p, this.end, scale);
+    return this;
   }
   // Draws on the canvas
   _draw(ctx, scene) {
@@ -933,6 +1023,16 @@ var LineSequence = class extends LineLikeMObject {
     for (let i = 0; i < this.points.length; i++) {
       this.points[i] = vec2_sum(this.points[i], p);
     }
+    return this;
+  }
+  // Performs a homothety around the given point
+  homothety_around(p, scale) {
+    let new_points = [];
+    for (let point of this.points) {
+      new_points.push(vec2_homothety(p, point, scale));
+    }
+    this.points = new_points;
+    return this;
   }
   // Draws on the canvas
   _draw(ctx, scene) {

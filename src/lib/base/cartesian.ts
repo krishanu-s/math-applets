@@ -95,7 +95,7 @@ export class Axis extends MObjectGroup {
           new Line(
             [c, -this.tick_options.size / 2],
             [c, this.tick_options.size / 2],
-          ),
+          ).set_stroke_width(this.tick_options.stroke_width),
         );
       } else {
         ticks.add_mobj(
@@ -103,7 +103,7 @@ export class Axis extends MObjectGroup {
           new Line(
             [-this.tick_options.size / 2, c],
             [this.tick_options.size / 2, c],
-          ),
+          ).set_stroke_width(this.tick_options.stroke_width),
         );
       }
     }
@@ -159,6 +159,21 @@ export class CoordinateAxes2d extends MObjectGroup {
     this._make_axes();
     this._make_x_grid_lines();
     this._make_y_grid_lines();
+  }
+  remove_grid_lines() {
+    if (this.has_mobj("x-grid")) {
+      this.remove_mobj("x-grid");
+    }
+    if (this.has_mobj("y-grid")) {
+      this.remove_mobj("y-grid");
+    }
+    return this;
+  }
+  add_grid_lines() {
+    this.remove_grid_lines();
+    this._make_x_grid_lines();
+    this._make_y_grid_lines();
+    return this;
   }
   _make_axes() {
     let x_axis = new Axis(this.xlims, "x");
@@ -333,7 +348,7 @@ export class Axis3D extends ThreeDMObjectGroup {
           new Line3D(
             [c, -this.tick_options.size / 2, 0],
             [c, this.tick_options.size / 2, 0],
-          ),
+          ).set_stroke_width(this.tick_options.stroke_width),
         );
       } else if (this.type == "y") {
         ticks.add_mobj(
@@ -341,7 +356,7 @@ export class Axis3D extends ThreeDMObjectGroup {
           new Line3D(
             [0, c, -this.tick_options.size / 2],
             [0, c, this.tick_options.size / 2],
-          ),
+          ).set_stroke_width(this.tick_options.stroke_width),
         );
       } else if (this.type == "z") {
         ticks.add_mobj(
@@ -349,7 +364,7 @@ export class Axis3D extends ThreeDMObjectGroup {
           new Line3D(
             [-this.tick_options.size / 2, 0, c],
             [this.tick_options.size / 2, 0, c],
-          ),
+          ).set_stroke_width(this.tick_options.stroke_width),
         );
       }
     }

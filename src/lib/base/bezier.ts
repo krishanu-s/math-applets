@@ -1,4 +1,5 @@
-import { LineLikeMObject, Scene, Vec2D } from ".";
+import { LineLikeMObject, MObjectGroup, Scene, Vec2D } from ".";
+import { LineLikeMObjectGroup } from "./base";
 // TODO Make the curve function store calculated handles, and avoid re-calculating unless necessary.
 
 // A sequence of Bezier curves passing through a sequence of points P_0, P_1, ..., P_n.
@@ -135,4 +136,55 @@ export class ParametricFunction extends BezierSpline {
       super._draw(ctx, scene);
     }
   }
+}
+
+// A disconnected sequence of Bezier splines, each having the same number of points
+
+// A parametric function with multiple branches. Useful for drawing functions with discontinuities,
+// where the function may be changed over time and the number of discontinuities may change.
+export class MultipleBranchParametricFunction extends LineLikeMObjectGroup {
+  num_branches: number = 0;
+  mode: "smooth" | "jagged" = "smooth";
+  num_steps: number;
+  solver: any;
+  constructor(num_steps: number, solver: any) {
+    super();
+    this.num_steps = num_steps;
+    this.solver = solver;
+  }
+  add_branch(f: (t: number) => Vec2D, tlims: Vec2D) {
+    this.add_mobj(
+      `f_${this.num_branches}`,
+      new ParametricFunction(
+        f,
+        tlims[0],
+        tlims[1],
+        this.num_steps,
+        this.solver,
+      ),
+    );
+    this.num_branches += 1;
+  }
+  del_branch(i: number) {
+    this.remove_mobj(`f_${i}`);
+    for (let j = i; j < this.num_branches - 1; j++) {
+      let mobj = this.get_mobj(`f_${j + 1}`);
+      this.add_mobj(`f_${j}`, mobj);
+    }
+    this.remove_mobj(`f_${this.num_branches - 1}`);
+    this.num_branches -= 1;
+  }
+  set_mode(mode: "smooth" | "jagged", i: number) {
+    (this.get_mobj(`f_${i}`) as ParametricFunction).set_mode(mode);
+  }
+  set_function(new_f: (t: number) => Vec2D, i: number) {
+    (this.get_mobj(`f_${i}`) as ParametricFunction).set_function(new_f);
+  }
+  set_lims(tmin: number, tmax: number, i: number) {
+    (this.get_mobj(`f_${i}`) as ParametricFunction).set_lims(tmin, tmax);
+  }
+  // TODO
+  // - Search for discontinuities in the domain
+  // - Break the function piecewise
+  set_global_function(f: (t: number) => Vec2D, tlims: Vec2D) {}
 }

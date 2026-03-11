@@ -18,6 +18,8 @@ import {
   vec2_normalize,
   vec2_angle,
   vec2_sum_list,
+  vec2_homothety,
+  vec2_polar_form,
 } from "./vec2.js";
 import { DraggableMObject, makeDraggable } from "../interactive/draggable.js";
 
@@ -43,13 +45,24 @@ export class Dot extends FillLikeMObject implements DraggableMObject {
   get_center(): Vec2D {
     return this.center;
   }
+  get_radius(): number {
+    return this.radius;
+  }
   // Move the center of the dot to a desired location
   move_to(p: Vec2D) {
     this.center = p;
+    return this;
   }
   move_by(p: Vec2D) {
     this.center[0] += p[0];
     this.center[1] += p[1];
+    return this;
+  }
+  // Performs a homothety around the given point
+  homothety_around(p: Vec2D, scale: number) {
+    this.center = vec2_homothety(p, this.center, scale);
+    this.radius *= scale;
+    return this;
   }
   // Change the dot radius
   set_radius(radius: number) {
@@ -91,10 +104,18 @@ export class Sector extends FillLikeMObject {
   // Move the center of the dot to a desired location
   move_to(center: Vec2D) {
     this.center = center;
+    return this;
   }
   move_by(p: Vec2D) {
     this.center[0] += p[0];
     this.center[1] += p[1];
+    return this;
+  }
+  // Performs a homothety around the given point
+  homothety_around(p: Vec2D, scale: number) {
+    this.center = vec2_homothety(p, this.center, scale);
+    this.radius *= scale;
+    return this;
   }
   // Change the dot radius
   set_radius(radius: number) {
@@ -147,10 +168,19 @@ export class Rectangle extends FillLikeMObject implements DraggableMObject {
   }
   move_to(center: Vec2D) {
     this.center = center;
+    return this;
   }
   move_by(p: Vec2D) {
     this.center[0] += p[0];
     this.center[1] += p[1];
+    return this;
+  }
+  // Performs a homothety around the given point
+  homothety_around(p: Vec2D, scale: number) {
+    this.center = vec2_homothety(p, this.center, scale);
+    this.size_x *= scale;
+    this.size_y *= scale;
+    return this;
   }
   // Draws on the canvas
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
@@ -206,6 +236,16 @@ export class Polygon extends FillLikeMObject {
     for (let i = 0; i < this.points.length; i++) {
       this.points[i] = vec2_sum(this.points[i] as Vec2D, p);
     }
+    return this;
+  }
+  // Performs a homothety around the given point
+  homothety_around(p: Vec2D, scale: number) {
+    let new_points: Vec2D[] = [];
+    for (let point of this.points) {
+      new_points.push(vec2_homothety(p, point, scale));
+    }
+    this.points = new_points;
+    return this;
   }
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
     let [x, y] = scene.v2c(this.points[0] as Vec2D);
@@ -246,13 +286,46 @@ export class Line extends LineLikeMObject {
     this.end = p;
     return this;
   }
+  move_midpoint_to(p: Vec2D) {
+    this.move_by(vec2_sub(p, this.midpoint()));
+    return this;
+  }
   move_by(p: Vec2D) {
     this.start = vec2_sum(this.start, p);
     this.end = vec2_sum(this.end, p);
     return this;
   }
+  // Convenience functions
+  midpoint(): Vec2D {
+    return [
+      0.5 * (this.start[0] + this.end[0]),
+      0.5 * (this.start[1] + this.end[1]),
+    ];
+  }
+  vec(): Vec2D {
+    return vec2_sub(this.end, this.start);
+  }
   length(): number {
-    return vec2_norm(vec2_sub(this.start, this.end));
+    return vec2_norm(this.vec());
+  }
+  // Rotates the line around its midpoint to a given angle
+  rotate_to(theta: number) {
+    let new_start = vec2_sum(
+      this.midpoint(),
+      vec2_polar_form(this.length() / 2, theta),
+    );
+    let new_end = vec2_sum(
+      this.midpoint(),
+      vec2_polar_form(-this.length() / 2, theta),
+    );
+    [this.start, this.end] = [new_start, new_end];
+    return this;
+  }
+  // Performs a homothety around the given point
+  homothety_around(p: Vec2D, scale: number) {
+    this.start = vec2_homothety(p, this.start, scale);
+    this.end = vec2_homothety(p, this.end, scale);
+    return this;
   }
   // Draws on the canvas
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
@@ -288,6 +361,16 @@ export class LineSequence extends LineLikeMObject {
     for (let i = 0; i < this.points.length; i++) {
       this.points[i] = vec2_sum(this.points[i] as Vec2D, p);
     }
+    return this;
+  }
+  // Performs a homothety around the given point
+  homothety_around(p: Vec2D, scale: number) {
+    let new_points: Vec2D[] = [];
+    for (let point of this.points) {
+      new_points.push(vec2_homothety(p, point, scale));
+    }
+    this.points = new_points;
+    return this;
   }
   // Draws on the canvas
   _draw(ctx: CanvasRenderingContext2D, scene: Scene) {

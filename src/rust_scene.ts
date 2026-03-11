@@ -22,12 +22,14 @@ import {
   MObject,
   grayscale_colormap,
   gaussian_normal_pdf,
+  Scene,
+  gaussianRandom,
 } from "./lib/base";
 import { SceneFromSimulator } from "./lib/simulator/sim";
 import { HeatSimTwoDim } from "./lib/simulator/heatsim";
 import { Arcball } from "./lib/three_d";
 import { SphereHeatMapScene } from "./lib/three_d/surfaces";
-import { CoordinateAxes3d } from "./lib/base";
+import { CoordinateAxes3d, Vec2D, Dot } from "./lib/base";
 
 // Testing out performance of Rust bound in via WASM.
 (async function () {
@@ -813,6 +815,163 @@ import { CoordinateAxes3d } from "./lib/base";
 
       // Run the simulation
       handler.draw();
+      handler.play(undefined);
+    })(300, 300);
+
+    await (async function particles_in_box(width: number, height: number) {
+      const name = "particles-in-box";
+      let canvas = prepare_canvas(width, height, name);
+
+      class ParticlesInBoxSim extends Simulator {
+        width: number;
+        height: number;
+        num_particles: number;
+        particle_radius: number;
+        speed: number = 1.0;
+        // Array of shape (n, 4), where each row has the form (x0, x1, v0, v1)
+        _state: [number, number, number, number][] = [];
+        constructor(
+          width: number,
+          height: number,
+          num_particles: number,
+          particle_radius: number,
+          dt: number,
+        ) {
+          super(dt);
+          this.width = width;
+          this.height = height;
+          this.num_particles = num_particles;
+          this.particle_radius = particle_radius;
+          this._init_random();
+        }
+        set_speed(s: number) {
+          this.speed = s;
+          this._init_random();
+          return this;
+        }
+        // Initialize each particle at a random position, with velocity chosen at random.
+        _init_random() {
+          this._state = [];
+          for (let i = 0; i < this.num_particles; i++) {
+            this._state.push([
+              this.width * Math.random(),
+              this.height * Math.random(),
+              gaussianRandom(0, this.speed),
+              gaussianRandom(0, this.speed),
+            ]);
+          }
+        }
+        get_particle_state(i: number): [number, number, number, number] {
+          return this._state[i] as [number, number, number, number];
+        }
+        set_particle_state(i: number, s: [number, number, number, number]) {
+          this._state[i] = s;
+        }
+        // Returns drawable intername state
+        get_uValues() {
+          let result: number[] = [];
+          let x0, v0, x1, v1;
+          for (let i = 0; i < this.num_particles; i++) {
+            [x0, x1, v0, v1] = this.get_particle_state(i);
+            result.push(x0);
+            result.push(x1);
+          }
+          return result;
+        }
+        step() {
+          // For each particle, do collision detection.
+          // TODO Do particle-particle collision detection. This could also be approximated with
+          // a differential equation, where particle-particle pairs and particle-box pairs
+          // repel each other.
+          let x0: number, x1: number, v0: number, v1: number;
+          for (let i = 0; i < this.num_particles; i++) {
+            [x0, x1, v0, v1] = this.get_particle_state(i);
+
+            // Advance forward by dt
+            x0 += v0 * this.dt;
+            x1 += v1 * this.dt;
+
+            // If we overstepped the boundaries of the box, reflect.
+            if (x0 > this.width) {
+              x0 = 2 * this.width - x0;
+              v0 = -v0;
+            } else if (x0 < 0) {
+              x0 = -x0;
+              v0 = -v0;
+            }
+            if (x1 > this.height) {
+              x1 = 2 * this.height - x1;
+              v1 = -v1;
+            } else if (x1 < 0) {
+              x1 = -x1;
+              v1 = -v1;
+            }
+            this.set_particle_state(i, [x0, x1, v0, v1]);
+          }
+          this.time += this.dt;
+        }
+      }
+
+      class ParticlesInBoxScene extends SceneFromSimulator {
+        width: number;
+        height: number;
+        num_particles: number;
+        particle_radius: number;
+        constructor(
+          canvas: HTMLCanvasElement,
+          width: number,
+          height: number,
+          num_particles: number,
+          particle_radius: number,
+        ) {
+          super(canvas);
+          this.width = width;
+          this.height = height;
+          this.num_particles = num_particles;
+          this.particle_radius = particle_radius;
+          for (let i = 0; i < num_particles; i++) {
+            this.add(`p_${i}`, new Dot([0, 0], particle_radius));
+          }
+        }
+        update_mobjects_from_simulator(simulator: Simulator) {
+          let results = simulator.get_drawable();
+          for (let i = 0; i < num_particles; i++) {
+            (this.get_mobj(`p_${i}`) as Dot).move_to([
+              results[2 * i],
+              results[2 * i + 1],
+            ] as Vec2D);
+          }
+        }
+      }
+
+      let num_particles = 20;
+      let particle_radius = 0.1;
+      let w = 5;
+      let h = 5;
+      let dt = 0.01;
+      let sim = new ParticlesInBoxSim(
+        w,
+        h,
+        num_particles,
+        particle_radius,
+        dt,
+      ).set_speed(2.0);
+      let handler = new InteractiveHandler(sim);
+
+      let scene = new ParticlesInBoxScene(
+        canvas,
+        w,
+        h,
+        num_particles,
+        particle_radius,
+      );
+      scene.set_frame_lims([0, 5], [0, 5]);
+      handler.add_scene(scene);
+
+      let pauseButton = handler.add_pause_button(
+        document.getElementById(name + "-button-1") as HTMLElement,
+      );
+
       handler.play(undefined);
     })(300, 300);
   });

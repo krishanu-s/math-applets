@@ -25,7 +25,7 @@ declare global {
 // TODO Find some way to move the LaTeX cache into the background.
 export class LaTeXMObject extends MObject {
   latex: string; // The LaTeX code to be rendered.
-  pos: Vec2D; // The position of the LaTeX object.
+  pos: Vec2D; // The position of the center of the LaTeX object.
   rotation: number = 0;
   color: string = "black";
   fontSize: number = 16;
@@ -68,6 +68,10 @@ export class LaTeXMObject extends MObject {
     this.pos = pos;
     return this;
   }
+  move_by(vec: Vec2D) {
+    this.pos = vec2_sum(this.pos, vec);
+    return this;
+  }
   // Draw a rendered LaTeX image
   _drawRendered(
     ctx: CanvasRenderingContext2D,
@@ -75,6 +79,7 @@ export class LaTeXMObject extends MObject {
     renderedImage: HTMLImageElement,
   ) {
     let [cx, cy] = scene.v2c(this.pos);
+    ctx.translate(-renderedImage.width / 2, -renderedImage.height / 2);
 
     // Apply rotation if specified
     if (this.rotation !== 0) {
@@ -85,6 +90,7 @@ export class LaTeXMObject extends MObject {
     } else {
       ctx.drawImage(renderedImage, cx, cy);
     }
+    ctx.translate(renderedImage.width / 2, renderedImage.height / 2);
   }
   // Renders a LaTeX expression and outputs an image.
   async _render(): Promise<[HTMLDivElement, HTMLImageElement]> {
@@ -126,13 +132,13 @@ export class LaTeXMObject extends MObject {
     });
 
     // Convert to canvas using html2canvas
-    let tempCanvas = await window.html2canvas(container, {
+    let tempCanvas = (await window.html2canvas(container, {
       backgroundColor: null,
       scale: 1,
       logging: false,
       useCORS: true,
       allowTaint: true,
-    });
+    })) as HTMLImageElement;
 
     return [container, tempCanvas];
   }

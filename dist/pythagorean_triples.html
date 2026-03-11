@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+        />
+        <link rel="stylesheet" type="text/css" href="./styles.css" />
+        <title>pythagorean triples</title>
+        <base href="." />
+        <!-- MathJax -->
+        <script>
+            MathJax = {
+                tex: {
+                    inlineMath: { "[+]": [["$", "$"]] },
+                },
+            };
+        </script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"
+        ></script>
+        <!-- KaTeX JS -->
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+        ></script>
+        <!-- html2canvas -->
+        <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+        <!--Script for this scene-->
+        <script src="pythagorean_triples_scene.js"></script>
+    </head>
+    <body>
+        <div style="text-align: center; margin: 10px auto">
+            <p>The page below will eventually be narrated into a video.</p>
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="scene-1"
+                ></div>
+
+                <div style="width: 50%" class="col">
+                    <p style=""height: 50%">Insert Scene 1 text here.</p>
+                    <br />
+                    <p style=""height: 50%">Insert Scene 1 text here.</p>
+                </div>
+            </div>
+
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="scene-1-play-button"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="scene-1-reset-button"
+                ></div>
+            </div>
+
+            <!-- Scene 2. TODO Add emphasizers and indicators to accentuate script. Roughly 3-5 minutes for this scene.-->
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="scene-2"
+                ></div>
+
+                <div style="width: 50%" class="col">
+                    <p>
+                        Diophantus' solution to this problem comes from looking
+                        at the unit circle. Expressed in modern language, this
+                        is the set of coordinate pairs $(x, y)$ whose distance
+                        from the origin is equal to 1. This circle is described
+                        by the equation $x^2 + y^2 = 1$, which is another form
+                        of the Pythagorean theorem.
+                    </p>
+                    <p>
+                        One special point we'll mark on the circle is the point
+                        $(1, 0)$. Now notice that if we draw any non-vertical
+                        line through $(1, 0)$, it intersects the circle at
+                        exactly one other point. Can we find the coordinates of
+                        that point in terms of the slope of the line?
+                    </p>
+                    <p>
+                        Let's say the line has slope $m$, meaning that it has
+                        equation $y=m(x-1)$ and intersects the point $(0, -m)$.
+                        Substituting this into the equation for the circle, we
+                        get $$x^2 + (m(x-1))^2 = 1$$ $$(m^2+1)x^2 - 2m^2x +
+                        (m^2-1)=0$$ Using the quadratic equation yields
+                        $$x=\frac{2m^2 \pm \sqrt{(2m^2)^2 -
+                        4(m^2+1)(m^2-1)}}{2(m^2+1)}$$ which simplifies to $x =
+                        \frac{m^2\pm 1}{m^2+1}$. When $x = \frac{m^2+1}{m^2+1}$,
+                        which just equals 1, we get $y=0$ which gives us the
+                        point $(1, 0)$, which we already knew. When $x =
+                        \frac{m^2-1}{m^2+1}$, we get $y=-\frac{2m}{m^2+1}$,
+                        which is the other point marked on the circle.
+                    </p>
+                    <p>
+                        This correspondence between points on the circle and
+                        slope values $m$ (based on projection through a fixed
+                        point, namely $(1, 0)$ in this case) is called
+                        <b>stereographic projection</b> and is a commonly-used
+                        map in mathematics. What we did here is to calculate a
+                        formula for this correspondence, namely $$ m \mapsto
+                        \left(\frac{m^2-1}{m^2+1}, -\frac{2m}{m^2+1}\right)$$
+                        For example, the lines with slope $m=-2, m=-\frac{3}{2},
+                        m=-\frac{4}{3}$, and $m=-\frac{5}{3}$ map to $$-2
+                        \mapsto \left(\frac{3}{5}, \frac{4}{5}\right) \hskip
+                        0.2in -\frac{3}{2} \mapsto \left(\frac{5}{13},
+                        \frac{12}{13}\right)$$ $$-\frac{4}{3} \mapsto
+                        \left(\frac{7}{25}, \frac{24}{25}\right) \hskip 0.2in
+                        -\frac{5}{3} \mapsto \left(\frac{8}{17},
+                        \frac{15}{17}\right)$$
+                    </p>
+                </div>
+            </div>
+
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="scene-2-play-button"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="scene-2-reset-button"
+                ></div>
+            </div>
+            <!-- Scene 3-->
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="scene-3"
+                ></div>
+
+                <div style="width: 50%" class="col">
+                    <p>
+                        These numbers should look quite familiar. Remember that $(3, 4, 5)$, $(5, 12, 13)$, $(7, 24, 25)$,
+                        and $(8, 15, 17)$ were all Pythagorean triple. We can shrink each of those Pythagorean
+                        triples down until its hypotenuse has length 1, and they fit neatly into this unit circle,
+                        with one end of the hypotenuse sitting at the origin and the other end sitting at a <b>rational</b>
+                        point on the unit circle -- meaning that the two coordinates $x$ and $y$ are each a ratio of
+                        two whole numbers. The opposite holds true: if $(x, y)$ is a rational point on the unit circle, then
+                        it can be scaled up by any multiple of the least common denominator to produce a Pythagorean triple.
+                        So finding all the Pythagorean triples is more or less equivalent to searching for rational points
+                        on the unit circle.
+                    </p>
+                    <p> The key insight Diophantus made is this: the slope $m$ of this line is a rational number <b>if and only if</b>
+                        the point $(x, y)$ is a rational point. You can see this by looking at the formulas relating these values.
+                        What these means is that rational points on the unit circle are <b>parametrized</b> by rational
+                        numbers. This answers our original question in the affirmative. There are an infinite number of
+                        Pythagorean triples, and moreover, there's a simple formula for generating all of them.</p>
+                </div>
+            </div>
+
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="scene-3-play-button"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="scene-3-reset-button"
+                ></div>
+            </div>
+
+            <!-- Scene 4 -->
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="scene-4"
+                ></div>
+
+                <div style="width: 50%" class="col">
+                    <p>
+                        Let's take a moment to step back
+                    </p>
+                </div>
+            </div>
+
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="scene-4-play-button"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="scene-4-reset-button"
+                ></div>
+            </div>
+
+            <!-- Scene 5 -->
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="scene-5"
+                ></div>
+
+                <div style="width: 50%" class="col">
+                    <p>
+                        Let's make this more precise by going back to our unit circle, which has the equation $x^2 + y^2 = 1$.
+                        What would happen if we replaced this with some other quadratic equation, such as $x^2 + xy + y^2 = 1$?
+                    </p>
+                    <p>
+                        This equation describes an ellipse, and the pair $(x, y) = (1, 0)$ is again a point on the curve.
+                        Draw a line through the basepoint of some slope $m$, and look for where it intersects the curve.
+                    </p>
+                </div>
+            </div>
+
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="scene-5-play-button"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="scene-5-reset-button"
+                ></div>
+            </div>
+
+            <!-- Scene 6 -->
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="applet-container"
+                    id="scene-6"
+                ></div>
+
+                <div style="width: 50%" class="col">
+                    <p>
+                        TODO
+                    </p>
+                </div>
+            </div>
+
+            <div style="width: 100%" class="row">
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="scene-6-play-button"
+                ></div>
+                <div
+                    style="width: 50%"
+                    class="button"
+                    id="scene-6-reset-button"
+                ></div>
+            </div>
+        </div>
+
+        <a href="./index.html">back to main page</a>
+    </body>
+</html>

@@ -79,6 +79,12 @@ body {
 .row {
     display: flex;
     align-items: center; /* Centers vertically */
+    flex-direction: row;
+}
+.col {
+    display: flex;
+    justify-content: center; /* Centers horizontally */
+    flex-direction: column;
 }
 .applet-container {
     display: flex;

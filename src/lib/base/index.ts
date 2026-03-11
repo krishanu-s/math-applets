@@ -1,4 +1,6 @@
 export {
+  vec2_cis,
+  vec2_polar_form,
   vec2_norm,
   vec2_angle,
   vec2_normalize,
@@ -7,6 +9,7 @@ export {
   vec2_sum_list,
   vec2_sub,
   vec2_rot,
+  vec2_homothety,
 } from "./vec2";
 export { Vec2D } from "./vec2";
 export {
@@ -25,6 +28,8 @@ export {
   gaussianRandom,
   gaussian_normal_pdf,
   delay,
+  linear,
+  quadratic_bump,
   smooth,
   StrokeOptions,
   FillOptions,
@@ -68,4 +73,8 @@ export {
   Arrow,
   TwoHeadedArrow,
 } from "./geometry";
-export { ParametricFunction, BezierSpline } from "./bezier";
+export {
+  ParametricFunction,
+  BezierSpline,
+  MultipleBranchParametricFunction,
+} from "./bezier";
