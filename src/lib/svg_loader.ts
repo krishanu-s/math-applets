@@ -1,4 +1,4 @@
-// math-applets/src/lib/simple_svg_loader.ts
+import { Vec2D } from "./base";
 
 /**
  * Simple interface for a 2D point
@@ -6,6 +6,72 @@
 export interface Point2D {
   x: number;
   y: number;
+}
+
+/**
+ * Extended path information including style and transformation
+ */
+export interface PathInfo {
+  /** SVG path data (d attribute) */
+  data: string;
+  /** Fill color or style */
+  fill: string;
+  /** Stroke color or style */
+  stroke: string;
+  /** Stroke width */
+  strokeWidth: string;
+  /** Transformation matrix as string */
+  transform: string;
+  /** Parsed transformation matrix (if available) */
+  transformMatrix?: DOMMatrix;
+  /** Translation vector extracted from transform */
+  translation?: Point2D;
+  /** Bounding box of the path */
+  bbox?: DOMRect;
+}
+
+/* The same, after parsing */
+export interface ParsedPathInfo {
+  /** SVG path commands (d attribute) */
+  commands: Array<{ type: string; values: number[] }>;
+  /** Fill color or style */
+  fill: string;
+  /** Stroke color or style */
+  stroke: string;
+  /** Stroke width */
+  strokeWidth: string;
+  /** Transformation matrix as string */
+  transform: string;
+  /** Parsed transformation matrix (if available) */
+  transformMatrix?: DOMMatrix;
+  /** Translation vector extracted from transform */
+  translation?: Point2D;
+  /** Bounding box of the path */
+  bbox?: DOMRect;
+}
+
+/* Applies path options to the context before drawing that path.
+TODO Move this up into the interface above*/
+export function applyPathInfo(
+  ctx: CanvasRenderingContext2D,
+  pathInfo: ParsedPathInfo,
+) {
+  ctx.fillStyle = pathInfo.fill;
+  ctx.strokeStyle = pathInfo.stroke;
+  ctx.lineWidth = Number(pathInfo.strokeWidth);
+  // TODO Transformation matrix
+  if (pathInfo.translation) {
+    ctx.translate(pathInfo.translation.x, pathInfo.translation.y);
+  }
+}
+export function unapplyPathInfo(
+  ctx: CanvasRenderingContext2D,
+  pathInfo: ParsedPathInfo,
+) {
+  // TODO Inverse transformation matrix
+  if (pathInfo.translation) {
+    ctx.translate(-pathInfo.translation.x, -pathInfo.translation.y);
+  }
 }
 
 /**
@@ -54,14 +120,115 @@ export class SimpleSVGLoader {
   /**
    * Extract all path data from SVG
    */
-  static extractPaths(svgElement: SVGElement): string[] {
-    const paths: string[] = [];
-    const pathElements = svgElement.querySelectorAll("path");
+  static extractPaths(svgElement: SVGElement): PathInfo[] {
+    const paths: PathInfo[] = [];
 
-    pathElements.forEach((path) => {
-      const d = path.getAttribute("d");
-      if (d) paths.push(d);
-    });
+    // Helper function to get computed style
+    const getStyle = (element: Element, property: string): string => {
+      const style = window.getComputedStyle(element);
+      return style.getPropertyValue(property);
+    };
+
+    // Helper function to parse transformation
+    const parseTransform = (
+      transform: string,
+    ): { matrix?: DOMMatrix; translation?: Point2D } => {
+      if (!transform) return {};
+
+      try {
+        // Create a temporary SVG element to parse transform
+        const svgNS = "http://www.w3.org/2000/svg";
+        const tempSvg = document.createElementNS(svgNS, "svg");
+        const tempPath = document.createElementNS(svgNS, "path");
+        tempSvg.appendChild(tempPath);
+        document.body.appendChild(tempSvg);
+
+        // Apply transform
+        tempPath.setAttribute("transform", transform);
+
+        // Get transformation matrix
+        const matrix = tempPath.getCTM();
+
+        // Remove temporary elements
+        document.body.removeChild(tempSvg);
+
+        if (matrix) {
+          return {
+            matrix,
+            translation: { x: matrix.e, y: matrix.f },
+          };
+        }
+      } catch (error) {
+        console.warn("Failed to parse transform:", transform, error);
+      }
+
+      return {};
+    };
+
+    // Extract paths from SVG element
+    const extractPathsFromElement = (
+      element: Element,
+      parentTransform: string = "",
+    ) => {
+      // Get current element's transform
+      const elementTransform = element.getAttribute("transform") || "";
+      const combinedTransform = parentTransform
+        ? elementTransform
+          ? `${parentTransform} ${elementTransform}`
+          : parentTransform
+        : elementTransform;
+
+      // Check if this element is a path
+      if (element.tagName === "path") {
+        const pathData = element.getAttribute("d");
+        if (pathData) {
+          // Get styles
+          const fill =
+            element.getAttribute("fill") || getStyle(element, "fill") || "none";
+          const stroke =
+            element.getAttribute("stroke") ||
+            getStyle(element, "stroke") ||
+            "none";
+          const strokeWidth =
+            element.getAttribute("stroke-width") ||
+            getStyle(element, "stroke-width") ||
+            "1";
+
+          // Parse transformation
+          const transformInfo = parseTransform(combinedTransform);
+
+          // Get bounding box if possible
+          let bbox: DOMRect | undefined;
+          try {
+            if (element instanceof SVGPathElement) {
+              bbox = element.getBBox();
+            }
+          } catch (error) {
+            // Some paths might not have a valid bounding box
+          }
+
+          paths.push({
+            data: pathData,
+            fill,
+            stroke,
+            strokeWidth,
+            transform: combinedTransform,
+            transformMatrix: transformInfo.matrix,
+            translation: transformInfo.translation,
+            bbox,
+          });
+        }
+      }
+
+      // Recursively process child elements (including groups)
+      const children = element.children;
+      for (let i = 0; i < children.length; i++) {
+        extractPathsFromElement(children[i], combinedTransform);
+      }
+    };
+
+    // Start extraction from root
+    extractPathsFromElement(svgElement);
 
     return paths;
   }
@@ -82,7 +249,7 @@ export class SimpleSVGLoader {
   // Z = Close (connect to initial point with straight line)
   static drawPartial(
     ctx: CanvasRenderingContext2D,
-    commands: Array<{ type: string; values: number[] }>,
+    parsedPathInfoAll: Array<ParsedPathInfo>,
     numCommands: number,
   ) {
     // Keep track of current ctx position and previous handles
@@ -95,48 +262,62 @@ export class SimpleSVGLoader {
     ctx.beginPath();
 
     // Current command
-    let cmd;
-    for (let i = 0; i < numCommands; i++) {
-      cmd = commands[i];
-      if (cmd.type == "M") {
-        [x, y] = cmd.values;
-        ctx.moveTo(x, y);
-      } else if (cmd.type == "L") {
-        [x, y] = cmd.values;
-        ctx.lineTo(x, y);
-      } else if (cmd.type == "H") {
-        y = cmd.values[0];
-        ctx.lineTo(x, y);
-      } else if (cmd.type == "V") {
-        x = cmd.values[0];
-        ctx.lineTo(x, y);
-      } else if (cmd.type == "C") {
-        [h1_x, h1_y] = [cmd.values[0], cmd.values[1]];
-        [h2_x, h2_y] = [cmd.values[2], cmd.values[3]];
-        [x, y] = [cmd.values[4], cmd.values[5]];
-        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
-      } else if (cmd.type == "S") {
-        [h1_x, h1_y] = [2 * x - h2_x, 2 * y - h2_y];
-        [h2_x, h2_y] = [cmd.values[0], cmd.values[1]];
-        [x, y] = [cmd.values[2], cmd.values[3]];
-        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
-      } else if (cmd.type == "Q") {
-        [h2_x, h2_y] = [cmd.values[0], cmd.values[1]];
-        [x, y] = [cmd.values[2], cmd.values[3]];
-        ctx.quadraticCurveTo(h2_x, h2_y, x, y);
-      } else if (cmd.type == "T") {
-        [h2_x, h2_y] = [2 * x - h2_x, 2 * y - h2_y];
-        [x, y] = [cmd.values[0], cmd.values[1]];
-        ctx.quadraticCurveTo(h2_x, h2_y, x, y);
-      } else if (cmd.type == "A") {
-        // TODO
-        console.log("Type A", cmd.values);
-      } else if (cmd.type == "Z") {
-        ctx.closePath();
-        ctx.fill();
+    let path_info = parsedPathInfoAll[0];
+    let i = 0;
+    let j = 0;
+    while (i < parsedPathInfoAll.length) {
+      path_info = parsedPathInfoAll[i];
+      i++;
+      applyPathInfo(ctx, path_info);
+      for (let cmd of path_info.commands) {
+        if (j >= numCommands) {
+          if (cmd.type != "Z") {
+            ctx.stroke();
+          }
+          unapplyPathInfo(ctx, path_info);
+          return;
+        }
+        if (cmd.type == "M") {
+          [x, y] = cmd.values;
+          ctx.moveTo(x, y);
+        } else if (cmd.type == "L") {
+          [x, y] = cmd.values;
+          ctx.lineTo(x, y);
+        } else if (cmd.type == "H") {
+          y = cmd.values[0];
+          ctx.lineTo(x, y);
+        } else if (cmd.type == "V") {
+          x = cmd.values[0];
+          ctx.lineTo(x, y);
+        } else if (cmd.type == "C") {
+          [h1_x, h1_y] = [cmd.values[0], cmd.values[1]];
+          [h2_x, h2_y] = [cmd.values[2], cmd.values[3]];
+          [x, y] = [cmd.values[4], cmd.values[5]];
+          ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
+        } else if (cmd.type == "S") {
+          [h1_x, h1_y] = [2 * x - h2_x, 2 * y - h2_y];
+          [h2_x, h2_y] = [cmd.values[0], cmd.values[1]];
+          [x, y] = [cmd.values[2], cmd.values[3]];
+          ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
+        } else if (cmd.type == "Q") {
+          [h2_x, h2_y] = [cmd.values[0], cmd.values[1]];
+          [x, y] = [cmd.values[2], cmd.values[3]];
+          ctx.quadraticCurveTo(h2_x, h2_y, x, y);
+        } else if (cmd.type == "T") {
+          [h2_x, h2_y] = [2 * x - h2_x, 2 * y - h2_y];
+          [x, y] = [cmd.values[0], cmd.values[1]];
+          ctx.quadraticCurveTo(h2_x, h2_y, x, y);
+        } else if (cmd.type == "A") {
+          // TODO
+          console.log("Type A", cmd.values);
+        } else if (cmd.type == "Z") {
+          ctx.closePath();
+          ctx.fill();
+        }
+        j++;
       }
+      unapplyPathInfo(ctx, path_info);
     }
-    ctx.stroke();
   }
 
   /**
@@ -145,7 +326,6 @@ export class SimpleSVGLoader {
   static pathToPoints(pathData: string): Point2D[] {
     const points: Point2D[] = [];
     const commands = this.parsePathCommands(pathData);
-    console.log("Commands", commands);
 
     let x = 0;
     let y = 0;
@@ -215,6 +395,18 @@ export class SimpleSVGLoader {
     }
 
     return commands;
+  }
+  private static parsePathInfo(pathInfo: PathInfo): ParsedPathInfo {
+    return {
+      commands: this.parsePathCommands(pathInfo.data),
+      fill: pathInfo.fill,
+      stroke: pathInfo.stroke,
+      strokeWidth: pathInfo.strokeWidth,
+      transform: pathInfo.transform,
+      transformMatrix: pathInfo.transformMatrix,
+      translation: pathInfo.translation,
+      bbox: pathInfo.bbox,
+    };
   }
 
   /**

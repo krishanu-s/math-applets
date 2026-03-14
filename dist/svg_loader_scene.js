@@ -1016,6 +1016,19 @@ var Line3D = class extends ThreeDLineLikeMObject {
 };
 
 // src/lib/svg_loader.ts
+function applyPathInfo(ctx, pathInfo) {
+  ctx.fillStyle = pathInfo.fill;
+  ctx.strokeStyle = pathInfo.stroke;
+  ctx.lineWidth = Number(pathInfo.strokeWidth);
+  if (pathInfo.translation) {
+    ctx.translate(pathInfo.translation.x, pathInfo.translation.y);
+  }
+}
+function unapplyPathInfo(ctx, pathInfo) {
+  if (pathInfo.translation) {
+    ctx.translate(-pathInfo.translation.x, -pathInfo.translation.y);
+  }
+}
 var SimpleSVGLoader = class {
   /**
    * Load SVG from a URL
@@ -1055,11 +1068,67 @@ var SimpleSVGLoader = class {
    */
   static extractPaths(svgElement) {
     const paths = [];
-    const pathElements = svgElement.querySelectorAll("path");
-    pathElements.forEach((path) => {
-      const d = path.getAttribute("d");
-      if (d) paths.push(d);
-    });
+    const getStyle = (element, property) => {
+      const style = window.getComputedStyle(element);
+      return style.getPropertyValue(property);
+    };
+    const parseTransform = (transform) => {
+      if (!transform) return {};
+      try {
+        const svgNS = "http://www.w3.org/2000/svg";
+        const tempSvg = document.createElementNS(svgNS, "svg");
+        const tempPath = document.createElementNS(svgNS, "path");
+        tempSvg.appendChild(tempPath);
+        document.body.appendChild(tempSvg);
+        tempPath.setAttribute("transform", transform);
+        const matrix = tempPath.getCTM();
+        document.body.removeChild(tempSvg);
+        if (matrix) {
+          return {
+            matrix,
+            translation: { x: matrix.e, y: matrix.f }
+          };
+        }
+      } catch (error) {
+        console.warn("Failed to parse transform:", transform, error);
+      }
+      return {};
+    };
+    const extractPathsFromElement = (element, parentTransform = "") => {
+      const elementTransform = element.getAttribute("transform") || "";
+      const combinedTransform = parentTransform ? elementTransform ? `${parentTransform} ${elementTransform}` : parentTransform : elementTransform;
+      if (element.tagName === "path") {
+        const pathData = element.getAttribute("d");
+        if (pathData) {
+          const fill = element.getAttribute("fill") || getStyle(element, "fill") || "none";
+          const stroke = element.getAttribute("stroke") || getStyle(element, "stroke") || "none";
+          const strokeWidth = element.getAttribute("stroke-width") || getStyle(element, "stroke-width") || "1";
+          const transformInfo = parseTransform(combinedTransform);
+          let bbox;
+          try {
+            if (element instanceof SVGPathElement) {
+              bbox = element.getBBox();
+            }
+          } catch (error) {
+          }
+          paths.push({
+            data: pathData,
+            fill,
+            stroke,
+            strokeWidth,
+            transform: combinedTransform,
+            transformMatrix: transformInfo.matrix,
+            translation: transformInfo.translation,
+            bbox
+          });
+        }
+      }
+      const children = element.children;
+      for (let i = 0; i < children.length; i++) {
+        extractPathsFromElement(children[i], combinedTransform);
+      }
+    };
+    extractPathsFromElement(svgElement);
     return paths;
   }
   // Draw the first N commands in a path
@@ -1076,7 +1145,7 @@ var SimpleSVGLoader = class {
   // T = Smooth quadratic Bezier curve to, specified as A
   // A = Arc curve (rx, ry, angle)
   // Z = Close (connect to initial point with straight line)
-  static drawPartial(ctx, commands, numCommands) {
+  static drawPartial(ctx, parsedPathInfoAll, numCommands) {
     let x = 0;
     let y = 0;
     let h1_x = 0;
@@ -1084,47 +1153,61 @@ var SimpleSVGLoader = class {
     let h2_x = 0;
     let h2_y = 0;
     ctx.beginPath();
-    let cmd;
-    for (let i = 0; i < numCommands; i++) {
-      cmd = commands[i];
-      if (cmd.type == "M") {
-        [x, y] = cmd.values;
-        ctx.moveTo(x, y);
-      } else if (cmd.type == "L") {
-        [x, y] = cmd.values;
-        ctx.lineTo(x, y);
-      } else if (cmd.type == "H") {
-        y = cmd.values[0];
-        ctx.lineTo(x, y);
-      } else if (cmd.type == "V") {
-        x = cmd.values[0];
-        ctx.lineTo(x, y);
-      } else if (cmd.type == "C") {
-        [h1_x, h1_y] = [cmd.values[0], cmd.values[1]];
-        [h2_x, h2_y] = [cmd.values[2], cmd.values[3]];
-        [x, y] = [cmd.values[4], cmd.values[5]];
-        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
-      } else if (cmd.type == "S") {
-        [h1_x, h1_y] = [2 * x - h2_x, 2 * y - h2_y];
-        [h2_x, h2_y] = [cmd.values[0], cmd.values[1]];
-        [x, y] = [cmd.values[2], cmd.values[3]];
-        ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
-      } else if (cmd.type == "Q") {
-        [h2_x, h2_y] = [cmd.values[0], cmd.values[1]];
-        [x, y] = [cmd.values[2], cmd.values[3]];
-        ctx.quadraticCurveTo(h2_x, h2_y, x, y);
-      } else if (cmd.type == "T") {
-        [h2_x, h2_y] = [2 * x - h2_x, 2 * y - h2_y];
-        [x, y] = [cmd.values[0], cmd.values[1]];
-        ctx.quadraticCurveTo(h2_x, h2_y, x, y);
-      } else if (cmd.type == "A") {
-        console.log("Type A", cmd.values);
-      } else if (cmd.type == "Z") {
-        ctx.closePath();
-        ctx.fill();
+    let path_info = parsedPathInfoAll[0];
+    let i = 0;
+    let j = 0;
+    while (i < parsedPathInfoAll.length) {
+      path_info = parsedPathInfoAll[i];
+      i++;
+      applyPathInfo(ctx, path_info);
+      for (let cmd of path_info.commands) {
+        if (j >= numCommands) {
+          if (cmd.type != "Z") {
+            ctx.stroke();
+          }
+          unapplyPathInfo(ctx, path_info);
+          return;
+        }
+        if (cmd.type == "M") {
+          [x, y] = cmd.values;
+          ctx.moveTo(x, y);
+        } else if (cmd.type == "L") {
+          [x, y] = cmd.values;
+          ctx.lineTo(x, y);
+        } else if (cmd.type == "H") {
+          y = cmd.values[0];
+          ctx.lineTo(x, y);
+        } else if (cmd.type == "V") {
+          x = cmd.values[0];
+          ctx.lineTo(x, y);
+        } else if (cmd.type == "C") {
+          [h1_x, h1_y] = [cmd.values[0], cmd.values[1]];
+          [h2_x, h2_y] = [cmd.values[2], cmd.values[3]];
+          [x, y] = [cmd.values[4], cmd.values[5]];
+          ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
+        } else if (cmd.type == "S") {
+          [h1_x, h1_y] = [2 * x - h2_x, 2 * y - h2_y];
+          [h2_x, h2_y] = [cmd.values[0], cmd.values[1]];
+          [x, y] = [cmd.values[2], cmd.values[3]];
+          ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
+        } else if (cmd.type == "Q") {
+          [h2_x, h2_y] = [cmd.values[0], cmd.values[1]];
+          [x, y] = [cmd.values[2], cmd.values[3]];
+          ctx.quadraticCurveTo(h2_x, h2_y, x, y);
+        } else if (cmd.type == "T") {
+          [h2_x, h2_y] = [2 * x - h2_x, 2 * y - h2_y];
+          [x, y] = [cmd.values[0], cmd.values[1]];
+          ctx.quadraticCurveTo(h2_x, h2_y, x, y);
+        } else if (cmd.type == "A") {
+          console.log("Type A", cmd.values);
+        } else if (cmd.type == "Z") {
+          ctx.closePath();
+          ctx.fill();
+        }
+        j++;
       }
+      unapplyPathInfo(ctx, path_info);
     }
-    ctx.stroke();
   }
   /**
    * Convert SVG path to points (simplified - only handles M, L, H, V, Z commands)
@@ -1132,7 +1215,6 @@ var SimpleSVGLoader = class {
   static pathToPoints(pathData) {
     const points = [];
     const commands = this.parsePathCommands(pathData);
-    console.log("Commands", commands);
     let x = 0;
     let y = 0;
     for (const cmd of commands) {
@@ -1185,6 +1267,18 @@ var SimpleSVGLoader = class {
       commands.push({ type, values });
     }
     return commands;
+  }
+  static parsePathInfo(pathInfo) {
+    return {
+      commands: this.parsePathCommands(pathInfo.data),
+      fill: pathInfo.fill,
+      stroke: pathInfo.stroke,
+      strokeWidth: pathInfo.strokeWidth,
+      transform: pathInfo.transform,
+      transformMatrix: pathInfo.transformMatrix,
+      translation: pathInfo.translation,
+      bbox: pathInfo.bbox
+    };
   }
   /**
    * Draw SVG to canvas
@@ -1250,25 +1344,31 @@ function createSVGFileInput(onLoad) {
       async function partialDraw() {
         try {
           const svgString = await SimpleSVGLoader.loadFromURL(
-            "./svg_samples/ex_3.svg"
+            "./svg_samples/ex_4.svg"
           );
+          console.log(svgString);
           const svgElement = SimpleSVGLoader.parseSVG(svgString);
-          const paths = SimpleSVGLoader.extractPaths(svgElement);
-          let allCommands = [];
-          for (const path of paths) {
-            let commands = SimpleSVGLoader.parsePathCommands(path);
-            console.log("commands:", commands);
-            allCommands = allCommands.concat(commands);
+          const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
+          let parsedPathInfoAll = [];
+          let total_length = 0;
+          let p;
+          for (const pathInfo of pathInfoAll) {
+            p = SimpleSVGLoader.parsePathInfo(pathInfo);
+            parsedPathInfoAll.push(p);
+            total_length += p.commands.length;
           }
-          console.log("All commands:", allCommands);
           ctx.fillStyle = "#000000";
           ctx.strokeStyle = "#000000";
-          for (let numCommands = 0; numCommands <= allCommands.length; numCommands += 1) {
+          for (let numCommands = 1; numCommands <= total_length; numCommands += 1) {
             console.log("Drawing partially with ", numCommands, "commands");
             ctx.fillStyle = "#ffffff";
             ctx.clearRect(0, 0, width, height);
             ctx.fillStyle = "#000000";
-            await SimpleSVGLoader.drawPartial(ctx, allCommands, numCommands);
+            await SimpleSVGLoader.drawPartial(
+              ctx,
+              parsedPathInfoAll,
+              numCommands
+            );
             await delay(10);
           }
         } catch (error) {
