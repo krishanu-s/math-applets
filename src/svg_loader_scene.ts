@@ -27,30 +27,47 @@ import { SimpleSVGLoader, Point2D, createSVGFileInput } from "./lib/svg_loader";
         try {
           // Load an example SVG from the dist directory
           const svgString = await SimpleSVGLoader.loadFromURL(
-            "./svg_samples/ex_3.svg",
+            "./svg_samples/ex_4.svg",
           );
+          console.log(svgString);
 
           // Parse and extract paths
           const svgElement = SimpleSVGLoader.parseSVG(svgString);
-          const paths = SimpleSVGLoader.extractPaths(svgElement);
+          const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
 
-          // Turn into a flat array of commands
-          let allCommands: Array<{ type: string; values: number[] }> = [];
-          for (const path of paths) {
-            let commands = SimpleSVGLoader.parsePathCommands(path);
-            console.log("commands:", commands);
-            allCommands = allCommands.concat(commands);
+          let parsedPathInfoAll = [];
+          let total_length = 0;
+          let p;
+
+          // // Parse each path info object into a
+          // let allCommands: Array<{ type: string; values: number[] }> = [];
+          for (const pathInfo of pathInfoAll) {
+            p = SimpleSVGLoader.parsePathInfo(pathInfo);
+            parsedPathInfoAll.push(p);
+            total_length += p.commands.length;
           }
 
-          console.log("All commands:", allCommands);
+          // console.log("All commands:", allCommands);
 
           // Set style
           ctx.fillStyle = "#000000";
           ctx.strokeStyle = "#000000";
 
+          // // Clear canvas
+          // ctx.fillStyle = "#ffffff";
+          // ctx.clearRect(0, 0, width, height);
+          // ctx.fillStyle = "#000000";
+
+          // // Partially draw
+          // await SimpleSVGLoader.drawPartial(
+          //   ctx,
+          //   allCommands,
+          //   allCommands.length,
+          // );
+
           for (
-            let numCommands = 0;
-            numCommands <= allCommands.length;
+            let numCommands = 1;
+            numCommands <= total_length;
             numCommands += 1
           ) {
             console.log("Drawing partially with ", numCommands, "commands");
@@ -60,7 +77,11 @@ import { SimpleSVGLoader, Point2D, createSVGFileInput } from "./lib/svg_loader";
             ctx.fillStyle = "#000000";
 
             // Partially draw
-            await SimpleSVGLoader.drawPartial(ctx, allCommands, numCommands);
+            await SimpleSVGLoader.drawPartial(
+              ctx,
+              parsedPathInfoAll,
+              numCommands,
+            );
             // Insert delay
             await delay(10);
           }
