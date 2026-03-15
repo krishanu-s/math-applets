@@ -164,13 +164,16 @@ export class SVGPathMObject extends FillLikeMObject {
     this.set_fill_color(pathElement.fill);
 
     // Get necessary transformations to segments
-    let translate: Vec2D = pathElement.translation
-      ? [pathElement.translation.x, pathElement.translation.y]
-      : [0, 0];
     let transformMatrix: Mat2by2 = [
       [1 / scene_scale, 0],
       [0, -1 / scene_scale],
     ];
+    let translate: Vec2D = pathElement.translation
+      ? matmul_vec2(transformMatrix, [
+          pathElement.translation.x,
+          pathElement.translation.y,
+        ])
+      : [0, 0];
 
     // Make the subpaths
     this.subpaths = [];
