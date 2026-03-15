@@ -23,14 +23,31 @@ import {
 } from "./vec2.js";
 import { DraggableMObject, makeDraggable } from "../interactive/draggable.js";
 
-// A filled circle.
-export class Dot extends FillLikeMObject implements DraggableMObject {
+export interface HasCenterAndRadius extends MObject {
+  get_center(): Vec2D;
+  get_radius(): number;
+}
+
+// A sector of a circle
+export class Sector
+  extends FillLikeMObject
+  implements DraggableMObject, HasCenterAndRadius
+{
   center: Vec2D;
-  radius: number = 0.1;
-  constructor(center: Vec2D, radius: number) {
+  radius: number;
+  start_angle: number;
+  end_angle: number;
+  constructor(
+    center: Vec2D,
+    radius: number,
+    start_angle: number,
+    end_angle: number,
+  ) {
     super();
     this.center = center;
     this.radius = radius;
+    this.start_angle = start_angle;
+    this.end_angle = end_angle;
   }
   // Tests whether a chosen vector lies inside the shape. Used for click-detection.
   is_inside(p: Vec2D) {
@@ -74,58 +91,6 @@ export class Dot extends FillLikeMObject implements DraggableMObject {
     let [x, y] = scene.v2c(this.center);
     let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
-    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
-    ctx.fill();
-  }
-}
-
-// A filled circular sector
-export class Sector extends FillLikeMObject {
-  center: Vec2D;
-  radius: number;
-  start_angle: number;
-  end_angle: number;
-  constructor(
-    center: Vec2D,
-    radius: number,
-    start_angle: number,
-    end_angle: number,
-  ) {
-    super();
-    this.center = center;
-    this.radius = radius;
-    this.start_angle = start_angle;
-    this.end_angle = end_angle;
-  }
-  // Get the center coordinates
-  get_center(): Vec2D {
-    return this.center;
-  }
-  // Move the center of the dot to a desired location
-  move_to(center: Vec2D) {
-    this.center = center;
-    return this;
-  }
-  move_by(p: Vec2D) {
-    this.center[0] += p[0];
-    this.center[1] += p[1];
-    return this;
-  }
-  // Performs a homothety around the given point
-  homothety_around(p: Vec2D, scale: number) {
-    this.center = vec2_homothety(p, this.center, scale);
-    this.radius *= scale;
-    return this;
-  }
-  // Change the dot radius
-  set_radius(radius: number) {
-    this.radius = radius;
-  }
-  // Draws on the canvas
-  _draw(ctx: CanvasRenderingContext2D, scene: Scene) {
-    let [x, y] = scene.v2c(this.center);
-    let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
-    ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), this.start_angle, this.end_angle);
     if (this.fill_options.fill) {
       ctx.globalAlpha *= this.fill_options.fill_alpha;
@@ -134,11 +99,27 @@ export class Sector extends FillLikeMObject {
     }
   }
 }
+
+// A filled circular sector
+export class Dot extends Sector {
+  constructor(
+    center: Vec2D,
+    radius: number,
+    start_angle: number,
+    end_angle: number,
+  ) {
+    super(center, radius, 0, 2 * Math.PI);
+  }
+}
+
 // A filled circle which can be clicked-and-dragged
 export const DraggableDot = makeDraggable(Dot);
 
 // A filled rectangle specified by its center, width, and height
-export class Rectangle extends FillLikeMObject implements DraggableMObject {
+export class Rectangle
+  extends FillLikeMObject
+  implements DraggableMObject, HasCenterAndRadius
+{
   center: Vec2D;
   size_x: number;
   size_y: number;
@@ -165,6 +146,9 @@ export class Rectangle extends FillLikeMObject implements DraggableMObject {
   }
   get_center(): Vec2D {
     return this.center;
+  }
+  get_radius(): number {
+    return Math.max(this.size_x, this.size_y) / 2;
   }
   move_to(center: Vec2D) {
     this.center = center;

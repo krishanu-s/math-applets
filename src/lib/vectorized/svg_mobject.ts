@@ -1,8 +1,12 @@
 // Vectorized mobjects -- e.g., for drawing from SVG
 
-import { ParsedPathInfo } from "../svg_loader";
+import {
+  extractMathJaxPaths,
+  ParsedPathInfo,
+  SimpleSVGLoader,
+} from "./svg_loader";
 import { Vec3D } from "../three_d";
-import { Scene, FillLikeMObject, clamp } from "./base";
+import { Scene, FillLikeMObject, clamp, MObjectGroup } from "../base/base";
 import {
   Vec2D,
   Mat2by2,
@@ -11,7 +15,7 @@ import {
   vec2_sub,
   matmul_vec2,
   matmul_mat2,
-} from "./vec2";
+} from "../base/vec2";
 
 // Ratio of time used for stroke animation before fill animation begins
 const FILL_DELAY = 0.9;
@@ -316,6 +320,7 @@ export class SVGPathMObject extends SVGMObject {
       //   console.log("Type A", cmd.values);
       // }
     }
+    return this;
   }
   // Translates the path by a given vector.
   move_by(p: Vec2D | Vec3D) {
@@ -339,6 +344,7 @@ export class SVGPathMObject extends SVGMObject {
         clamp(t * total_num_paths - i, 0, 1),
       );
     }
+    return this;
   }
   // // Partially draws the MObject where t is a parameter between 0 and 1 controlling the progress.
   // _drawPartial(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
@@ -383,9 +389,122 @@ export class TextMObject extends SVGPathMObject {
   }
 }
 
+// MathJax type declarations
+declare global {
+  interface Window {
+    MathJax: any;
+  }
+}
+
+// Helper to ensure SVG has namespace
+function ensureSVGNamespace(svgString: string): string {
+  if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
+    return svgString.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+  }
+  return svgString;
+}
+
+// Wait for MathJax to load (it's loaded in the HTML)
+function waitForMathJax(): Promise<void> {
+  return new Promise((resolve) => {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      resolve();
+      return;
+    }
+
+    // Check every 100ms
+    const checkInterval = setInterval(() => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        clearInterval(checkInterval);
+        resolve();
+      }
+    }, 100);
+
+    // Timeout after 5 seconds
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      resolve(); // Continue anyway
+    }, 5000);
+  });
+}
+
+// Simple render function using MathJax v4 API
+async function renderLatexToSVG(
+  latex: string,
+  displayMode: boolean = true,
+): Promise<string> {
+  await waitForMathJax();
+
+  if (!window.MathJax || !window.MathJax.typesetPromise) {
+    throw new Error(
+      "MathJax not loaded. Make sure MathJax script is included in HTML.",
+    );
+  }
+
+  const div = document.createElement("div");
+  div.style.visibility = "hidden";
+  div.style.position = "absolute";
+  div.style.top = "-9999px";
+
+  // Use proper delimiters
+  if (displayMode) {
+    div.innerHTML = `\\[${latex}\\]`;
+  } else {
+    div.innerHTML = `\\(${latex}\\)`;
+  }
+
+  document.body.appendChild(div);
+
+  try {
+    // Use typesetPromise - this should work with MathJax v4
+    await window.MathJax.typesetPromise([div]);
+
+    // Find SVG element
+    const svgElement = div.querySelector("svg");
+    if (!svgElement) {
+      // Try to find any SVG in the element
+      const svgs = div.getElementsByTagName("svg");
+      if (svgs.length > 0) {
+        return ensureSVGNamespace(svgs[0].outerHTML);
+      }
+      throw new Error("No SVG element found");
+    }
+
+    return ensureSVGNamespace(svgElement.outerHTML);
+  } finally {
+    document.body.removeChild(div);
+  }
+}
+
 // TODO LaTeX rendering, using MathJax or similar.
-export class TexMObject extends SVGPathMObject {
-  constructor(latex: string) {
+export class TexMObject extends MObjectGroup {
+  constructor() {
     super();
+  }
+  async from_latex(latex: string, scale: number) {
+    // Render
+    const svgString = await renderLatexToSVG(latex, true);
+
+    // Parse string to SVG element
+    const svgElement = SimpleSVGLoader.parseSVG(svgString);
+
+    // Extract paths
+    const paths = extractMathJaxPaths(svgElement);
+
+    // Parse
+    let parsedPathInfoAll = paths.map((pathInfo) =>
+      SimpleSVGLoader.parsePathInfo(pathInfo),
+    );
+
+    for (let i = 0; i < parsedPathInfoAll.length; i++) {
+      let mobj = new SVGPathMObject();
+      mobj.from_path(parsedPathInfoAll[i] as ParsedPathInfo, scale);
+      this.add_mobj(`char_${i}`, mobj);
+    }
+  }
+  set_progress(t: number) {
+    Object.values(this.children).forEach((child) =>
+      (child as SVGPathMObject).set_progress(t),
+    );
   }
 }
