@@ -1257,121 +1257,16 @@ var Line3D = class extends ThreeDLineLikeMObject {
   }
 };
 
-// src/lib/base/vectorized.ts
-var SVGPathMObject = class extends FillLikeMObject {
+// src/lib/base/svg_mobject.ts
+var PathSegments = class {
   constructor() {
-    super(...arguments);
-    // The Path is stored (and then later drawn) as a sequence of cubic Bezier curves, in scene coordinates.
+    // Bezier segments that make up the path.
     this.segments = [];
+    // Number between 0 and 1 indicating how far along the path to draw.
+    this.progress = 1;
   }
-  // Sets the segments based on a parsed path. The parsed path is in ctx coordinates, while
-  // this object's segments are in scene coordinates, so a scaling factor must be supplied
-  from_path(pathElement, scene_scale) {
-    this.set_stroke_color(pathElement.stroke);
-    this.set_stroke_width(pathElement.strokeWidth / scene_scale);
-    this.set_fill_color(pathElement.fill);
-    let translate = pathElement.translation ? [pathElement.translation.x, pathElement.translation.y] : [0, 0];
-    let transformMatrix = [
-      [1 / scene_scale, 0],
-      [0, -1 / scene_scale]
-    ];
-    this.segments = [];
-    let [curr_x, curr_y] = [0, 0];
-    let path_start = [0, 0];
-    let [x, y] = [0, 0];
-    let h1 = [0, 0];
-    let h2 = [0, 0];
-    let [hx, hy] = [0, 0];
-    for (let cmd of pathElement.commands) {
-      console.log(cmd);
-      if (cmd.type == "M") {
-        [curr_x, curr_y] = cmd.values;
-        path_start = cmd.values;
-      } else if (cmd.type == "L") {
-        [x, y] = cmd.values;
-        h1 = [curr_x * 2 / 3 + x / 3, curr_y * 2 / 3 + y / 3];
-        h2 = [curr_x / 3 + x * 2 / 3, curr_y / 3 + y * 2 / 3];
-        this.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, y]],
-          transformMatrix,
-          translate
-        );
-        [curr_x, curr_y] = [x, y];
-      } else if (cmd.type == "V") {
-        y = cmd.values[1];
-        h1 = [curr_x, curr_y / 3 + x * 2 / 3];
-        h2 = [curr_x, curr_y * 2 / 3 + x / 3];
-        this.add_segment(
-          [[curr_x, curr_y], h1, h2, [curr_x, y]],
-          transformMatrix,
-          translate
-        );
-        curr_y = y;
-      } else if (cmd.type == "H") {
-        x = cmd.values[0];
-        h1 = [curr_x * 2 / 3 + x / 3, curr_y];
-        h2 = [curr_x / 3 + x * 2 / 3, curr_y];
-        this.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, curr_y]],
-          transformMatrix,
-          translate
-        );
-        curr_x = x;
-      } else if (cmd.type == "C") {
-        h1 = [cmd.values[0], cmd.values[1]];
-        h2 = [cmd.values[2], cmd.values[3]];
-        [x, y] = [cmd.values[4], cmd.values[5]];
-        this.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, y]],
-          transformMatrix,
-          translate
-        );
-        [curr_x, curr_y] = [x, y];
-      } else if (cmd.type == "S") {
-        h1 = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
-        h2 = [cmd.values[0], cmd.values[1]];
-        [x, y] = [cmd.values[2], cmd.values[3]];
-        this.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, y]],
-          transformMatrix,
-          translate
-        );
-        [curr_x, curr_y] = [x, y];
-      } else if (cmd.type == "Q") {
-        [hx, hy] = [cmd.values[0], cmd.values[1]];
-        [x, y] = [cmd.values[2], cmd.values[3]];
-        h1 = [curr_x / 3 + hx * 2 / 3, curr_y / 3 + hy * 2 / 3];
-        h2 = [x / 3 + hx * 2 / 3, y / 3 + hy * 2 / 3];
-        this.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, y]],
-          transformMatrix,
-          translate
-        );
-        [curr_x, curr_y] = [x, y];
-      } else if (cmd.type == "T") {
-        [hx, hy] = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
-        [x, y] = [cmd.values[0], cmd.values[1]];
-        h1 = [curr_x / 3 + hx * 2 / 3, curr_y / 3 + hy * 2 / 3];
-        h2 = [x / 3 + hx * 2 / 3, y / 3 + hy * 2 / 3];
-        this.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, y]],
-          transformMatrix,
-          translate
-        );
-        [curr_x, curr_y] = [x, y];
-      } else if (cmd.type == "Z") {
-        [x, y] = path_start;
-        h1 = [curr_x * 2 / 3 + x / 3, curr_y / 3 + x * 2 / 3];
-        h2 = [curr_x / 3 + x * 2 / 3, curr_y * 2 / 3 + x / 3];
-        this.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, y]],
-          transformMatrix,
-          translate
-        );
-      } else {
-        throw new Error(`Unknown command type: ${cmd.type}`);
-      }
-    }
+  set_progress(p) {
+    this.progress = p;
   }
   // Adds a new single cubic Bezier segment to the path. Typically the segment
   // will be given in ctx coordinates, and will be transformed to scene coordinates
@@ -1383,8 +1278,6 @@ var SVGPathMObject = class extends FillLikeMObject {
       )
     );
   }
-  // Returns the partial path up to a given alpha in [0, 1]. Used for animations.
-  // TODO
   // Translates the path by a given vector.
   move_by(p) {
     this.segments = this.segments.map((segment) => {
@@ -1402,7 +1295,15 @@ var SVGPathMObject = class extends FillLikeMObject {
     });
     return this;
   }
-  _draw(ctx, scene, args) {
+  // Partially draws the path with the given stroke and fill settings, where t is a parameter
+  // between 0 and 1 controlling the progress.
+  // - When 0 < t < 0.5, a partial outline is drawn.
+  // - When 0.5 < t < 1, the full outline is drawn with partial opacity.
+  _drawPartial(ctx, scene, t, stroke, fill) {
+    let num_segments = Math.min(
+      Math.floor(this.segments.length * 2 * t),
+      this.segments.length
+    );
     ctx.beginPath();
     ctx.strokeStyle = "black";
     let [curr_x, curr_y] = scene.v2c(this.segments[0][0]);
@@ -1410,8 +1311,10 @@ var SVGPathMObject = class extends FillLikeMObject {
     let [h1_x, h1_y] = [0, 0];
     let [h2_x, h2_y] = [0, 0];
     let [x, y] = [0, 0];
+    let segment;
     ctx.moveTo(curr_x, curr_y);
-    for (let segment of this.segments) {
+    for (let i = 0; i < num_segments; i++) {
+      segment = this.segments[i];
       [cx, cy] = scene.v2c(segment[0]);
       if (cx != curr_x || cy != curr_y) {
         ctx.moveTo(cx, cy);
@@ -1422,13 +1325,221 @@ var SVGPathMObject = class extends FillLikeMObject {
       ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
       [curr_x, curr_y] = [x, y];
     }
-    ctx.closePath();
-    if (this.stroke_options.stroke_color != "none") {
+    if (t <= 0.5) {
       ctx.stroke();
+    } else {
+      ctx.closePath();
+      if (stroke) {
+        ctx.stroke();
+      }
+      if (fill) {
+        ctx.globalAlpha = clamp(ctx.globalAlpha * 2 * (t - 0.5), 0, 1);
+        ctx.fill();
+        ctx.globalAlpha = clamp(ctx.globalAlpha / (2 * (t - 0.5)), 0, 1);
+      }
     }
-    if (this.fill_options.fill) {
-      ctx.fill();
+  }
+  // Draws the path with the given stroke and fill settings.
+  _draw(ctx, scene, stroke, fill) {
+    this._drawPartial(ctx, scene, this.progress, stroke, fill);
+  }
+};
+var SVGPathMObject = class extends FillLikeMObject {
+  constructor() {
+    super(...arguments);
+    // Each
+    this.subpaths = [];
+  }
+  // Sets the segments based on a parsed path. The parsed path is in ctx coordinates, while
+  // this object's segments are in scene coordinates, so a scaling factor must be supplied
+  from_path(pathElement, scene_scale) {
+    this.set_stroke_color(pathElement.stroke);
+    this.set_stroke_width(pathElement.strokeWidth / scene_scale);
+    this.set_fill_color(pathElement.fill);
+    let translate = pathElement.translation ? [pathElement.translation.x, pathElement.translation.y] : [0, 0];
+    let transformMatrix = [
+      [1 / scene_scale, 0],
+      [0, -1 / scene_scale]
+    ];
+    this.subpaths = [];
+    let current_path = new PathSegments();
+    let [curr_x, curr_y] = [0, 0];
+    let [x, y] = [0, 0];
+    let h1 = [0, 0];
+    let h2 = [0, 0];
+    let [hx, hy] = [0, 0];
+    for (let cmd of pathElement.commands) {
+      if (cmd.type == "M") {
+        [curr_x, curr_y] = cmd.values;
+      } else if (cmd.type == "L") {
+        [x, y] = cmd.values;
+        h1 = [curr_x * 2 / 3 + x / 3, curr_y * 2 / 3 + y / 3];
+        h2 = [curr_x / 3 + x * 2 / 3, curr_y / 3 + y * 2 / 3];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "V") {
+        y = cmd.values[0];
+        h1 = [curr_x, curr_y / 3 + x * 2 / 3];
+        h2 = [curr_x, curr_y * 2 / 3 + x / 3];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [curr_x, y]],
+          transformMatrix,
+          translate
+        );
+        curr_y = y;
+      } else if (cmd.type == "H") {
+        x = cmd.values[0];
+        h1 = [curr_x * 2 / 3 + x / 3, curr_y];
+        h2 = [curr_x / 3 + x * 2 / 3, curr_y];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, curr_y]],
+          transformMatrix,
+          translate
+        );
+        curr_x = x;
+      } else if (cmd.type == "C") {
+        h1 = [cmd.values[0], cmd.values[1]];
+        h2 = [cmd.values[2], cmd.values[3]];
+        [x, y] = [cmd.values[4], cmd.values[5]];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "S") {
+        h1 = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
+        h2 = [cmd.values[0], cmd.values[1]];
+        [x, y] = [cmd.values[2], cmd.values[3]];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "Q") {
+        [hx, hy] = [cmd.values[0], cmd.values[1]];
+        [x, y] = [cmd.values[2], cmd.values[3]];
+        h1 = [curr_x / 3 + hx * 2 / 3, curr_y / 3 + hy * 2 / 3];
+        h2 = [x / 3 + hx * 2 / 3, y / 3 + hy * 2 / 3];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "T") {
+        [hx, hy] = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
+        [x, y] = [cmd.values[0], cmd.values[1]];
+        h1 = [curr_x / 3 + hx * 2 / 3, curr_y / 3 + hy * 2 / 3];
+        h2 = [x / 3 + hx * 2 / 3, y / 3 + hy * 2 / 3];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "Z") {
+        this.subpaths.push(current_path);
+        current_path = new PathSegments();
+      } else {
+        throw new Error(`Unknown command type: ${cmd.type}`);
+      }
     }
+  }
+  // Translates the path by a given vector.
+  move_by(p) {
+    for (let path of this.subpaths) {
+      path.move_by(p);
+    }
+    return this;
+  }
+  // Scales the path around a given point by a given scale factor.
+  homothety_around(p, scale) {
+    for (let path of this.subpaths) {
+      path.homothety_around(p, scale);
+    }
+    return this;
+  }
+  // Sets the progress of drawing the entire MObject
+  set_progress(t) {
+    let total_num_paths = this.subpaths.length;
+    for (let i = 0; i < total_num_paths; i++) {
+      this.subpaths[i].set_progress(
+        clamp(t * total_num_paths - i, 0, 1)
+      );
+    }
+  }
+  // // Partially draws the MObject where t is a parameter between 0 and 1 controlling the progress.
+  // _drawPartial(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
+  //   // TODO Give each subpath an equal amount of time.
+  //   let total_num_paths = this.subpaths.length;
+  //   let path_t = t * total_num_paths;
+  //   let path_index = Math.floor(path_t);
+  //   let sub_t = path_t - path_index;
+  //   for (let i = 0; i < path_index - 1; i++) {
+  //     (this.subpaths[i] as PathSegments)._draw(
+  //       ctx,
+  //       scene,
+  //       this.stroke_options.stroke_color != "none",
+  //       this.fill_options.fill,
+  //     );
+  //   }
+  //   (this.subpaths[path_index] as PathSegments)._drawPartial(
+  //     ctx,
+  //     scene,
+  //     sub_t,
+  //     this.stroke_options.stroke_color != "none",
+  //     this.fill_options.fill,
+  //   );
+  // }
+  // Draw all subpaths.
+  _draw(ctx, scene, args) {
+    for (let path of this.subpaths) {
+      path._draw(
+        ctx,
+        scene,
+        this.stroke_options.stroke_color != "none",
+        this.fill_options.fill
+      );
+    }
+  }
+};
+
+// src/lib/animation.ts
+var FRAME_LENGTH = 30;
+var Animation = class {
+  async play(scene) {
+  }
+};
+var WriteIn = class extends Animation {
+  constructor(mobjects, num_frames) {
+    super();
+    this.mobjects = mobjects;
+    this.num_frames = num_frames;
+  }
+  async play(scene) {
+    await this._play(scene);
+  }
+  // Animates the fade in.
+  async _play(scene) {
+    Object.entries(this.mobjects).forEach(([key, elem]) => {
+      scene.add(key, elem);
+    });
+    for (let i = 1; i <= this.num_frames; i++) {
+      await this._play_frame(scene, i);
+      await delay(FRAME_LENGTH);
+      scene.draw();
+    }
+  }
+  async _play_frame(scene, i) {
+    Object.entries(this.mobjects).forEach(([key, elem]) => {
+      elem.set_progress(i / this.num_frames);
+    });
   }
 };
 
@@ -1775,19 +1886,18 @@ function createSVGFileInput(onLoad) {
           parsedPathInfoAll.push(p);
           total_length += p.commands.length;
         }
-        let svg_group = new MObjectGroup();
+        let svg_group = {};
         for (let i = 0; i < parsedPathInfoAll.length; i++) {
-          console.log(i);
           let svg_mobject = new SVGPathMObject();
           svg_mobject.from_path(
             parsedPathInfoAll[i],
             scene.scale()
           );
-          svg_group.add_mobj(`char_${i}`, svg_mobject);
+          svg_mobject.homothety_around([0, 0], 0.5);
+          svg_mobject.move_by([-4.5, 4.5]);
+          svg_group[`char_${i}`] = svg_mobject;
         }
-        svg_group.homothety_around([0, 0], 0.5);
-        svg_group.move_by([-4.5, 4.5]);
-        scene.add("svg_group", svg_group);
+        await new WriteIn(svg_group, 30).play(scene);
         scene.draw();
       }
       async function partialDraw() {
