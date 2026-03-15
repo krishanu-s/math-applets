@@ -206,7 +206,7 @@ export class FadeOut extends Animation {
 }
 
 // Progressively draw an SVGPathMObject, character-by-character
-export class WriteIn extends Animation {
+export class Write extends Animation {
   svg_mobject_name: string;
   svg_mobject: SVGPathMObject;
   num_frames: number;
@@ -237,8 +237,8 @@ export class WriteIn extends Animation {
   }
 }
 
-// Write a collection of SVGMObjects simultaneously
-export class WriteInGroup extends Animation {
+// Write a collection of SVGPathMObjects simultaneously
+export class WriteGroup extends Animation {
   svg_mobjects: Record<string, SVGPathMObject>;
   num_frames: number;
   constructor(
@@ -268,6 +268,13 @@ export class WriteInGroup extends Animation {
     });
   }
 }
+
+// Unwrite an SVGPathMObject, character-by-character
+// TODO
+export class Unwrite extends Animation {}
+
+// Unwrite a group of SVGPathMObjects simultaneously.
+export class UnwriteGroup extends Animation {}
 
 const isVec2D = (v: any): v is Vec2D => v.length == 2;
 const isVec3D = (v: Vec2D | Vec3D): v is Vec3D => v.length == 3;

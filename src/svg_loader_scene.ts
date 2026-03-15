@@ -4,7 +4,7 @@
  * Simple scene demonstrating SVG loading
  */
 
-import { WriteIn, WriteInGroup } from "./lib/animation";
+import { MoveBy, Write, WriteGroup } from "./lib/animation";
 import { delay, prepare_canvas, Scene, SVGPathMObject } from "./lib/base";
 import {
   SimpleSVGLoader,
@@ -136,89 +136,23 @@ async function renderLatexToSVG(
           // Render
           const svgString = await renderLatexToSVG(latex, true);
 
-          // async function foo() {
-          //   return new Promise((resolve, reject) => {
-          //     // 2. Create a data URL
-          //     const svgBlob = new Blob([svgString], {
-          //       type: "image/svg+xml;charset=utf-8",
-          //     });
-          //     const url = URL.createObjectURL(svgBlob);
-
-          //     // 3. Create an image and load the SVG
-          //     const img = new Image();
-
-          //     img.onload = () => {
-          //       const ctx = canvas.getContext("2d");
-          //       if (!ctx) {
-          //         reject(new Error("Failed to get canvas context"));
-          //         return;
-          //       }
-
-          //       // Draw the image
-          //       if (width && height) {
-          //         ctx.drawImage(img, 0, 0, width, height);
-          //       } else {
-          //         ctx.drawImage(img, 0, 0);
-          //       }
-
-          //       // Clean up
-          //       URL.revokeObjectURL(url);
-          //       resolve();
-          //     };
-
-          //     img.onerror = () => {
-          //       URL.revokeObjectURL(url);
-          //       reject(new Error("Failed to load SVG image"));
-          //     };
-
-          //     img.src = url;
-          //   });
-          // }
-          // await foo();
-
-          // console.log("SVG generated:", svgString);
-
-          // // Draw to canvas
-          // await SimpleSVGLoader.drawToCanvas(canvas, svgString, 50, 150);
-
           // Parse string to SVG element
           const svgElement = SimpleSVGLoader.parseSVG(svgString);
 
           const paths = extractMathJaxPaths(svgElement);
-          const grouped = groupMathJaxPaths(paths);
-          const fractions = extractFractionComponents(paths);
-
-          // console.log(`Found ${paths.length} total elements`);
-          // console.log(paths);
-          // console.log(`- Variables: ${grouped.variables.length}`);
-          // console.log(`- Fraction bars: ${grouped.fractionBars.length}`);
-          // console.log(`- Operators: ${grouped.operators.length}`);
-          // console.log(`- Numbers: ${grouped.numbers.length}`);
-          // console.log(`- Fractions: ${fractions.length}`);
-
-          // // Retrieve paths
-          // console.log(svgElement);
-          // const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
-
-          // // TODO Retrieve rectangles and other elements.
-
-          // console.log("Paths:", pathInfoAll);
 
           let parsedPathInfoAll = [];
           let total_length = 0;
           let p;
 
           // // Parse each path info object into a
-          // let allCommands: Array<{ type: string; values: number[] }> = [];
           for (const pathInfo of paths) {
             p = SimpleSVGLoader.parsePathInfo(pathInfo);
             parsedPathInfoAll.push(p);
             total_length += p.commands.length;
           }
 
-          // console.log("Paths, parsed:", parsedPathInfoAll);
-
-          // TODO Write in simultaneously
+          // Write in simultaneously
           let svg_group: Record<string, SVGPathMObject> = {};
           for (let i = 0; i < parsedPathInfoAll.length; i++) {
             let svg_mobject = new SVGPathMObject();
@@ -229,9 +163,13 @@ async function renderLatexToSVG(
             svg_mobject.homothety_around([0, 0], 0.02);
             svg_mobject.move_by([-4, 4]);
             svg_group[`obj_${i}`] = svg_mobject;
-            // await new WriteIn(`obj_${i}`, svg_mobject, 10).play(scene);
           }
-          await new WriteInGroup(svg_group, 30).play(scene);
+          await new WriteGroup(svg_group, 30).play(scene);
+          // Group them
+          scene.group(Object.keys(svg_group), "svg_group");
+
+          // Move
+          await new MoveBy("svg_group", [2, -4], 20).play(scene);
         } catch (error) {
           console.error("Basic test failed:", error);
 

@@ -50,8 +50,18 @@ var DEFAULT_FILL_COLOR = "black";
 function clamp(x, xmin, xmax) {
   return Math.min(xmax, Math.max(xmin, x));
 }
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-x));
+}
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function smooth(t, inflection = 10) {
+  let error = sigmoid(-inflection / 2);
+  return Math.min(
+    Math.max((sigmoid(inflection * (t - 0.5)) - error) / (1 - 2 * error), 0),
+    1
+  );
 }
 var StrokeOptions = class {
   constructor() {
@@ -1551,34 +1561,12 @@ var SVGPathMObject = class extends SVGMObject {
 
 // src/lib/animation.ts
 var FRAME_LENGTH = 30;
+var DEFAULT_RATE_FUNC = smooth;
 var Animation = class {
   async play(scene) {
   }
 };
-var WriteIn = class extends Animation {
-  constructor(svg_mobject_name, svg_mobject, num_frames) {
-    super();
-    this.svg_mobject_name = svg_mobject_name;
-    this.svg_mobject = svg_mobject;
-    this.num_frames = num_frames;
-  }
-  async play(scene) {
-    await this._play(scene);
-  }
-  // Animates the fade in.
-  async _play(scene) {
-    scene.add(this.svg_mobject_name, this.svg_mobject);
-    for (let i = 1; i <= this.num_frames; i++) {
-      await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
-      scene.draw();
-    }
-  }
-  async _play_frame(scene, i) {
-    this.svg_mobject.set_progress(i / this.num_frames);
-  }
-};
-var WriteInGroup = class extends Animation {
+var WriteGroup = class extends Animation {
   constructor(svg_mobjects, num_frames) {
     super();
     this.svg_mobjects = svg_mobjects;
@@ -1601,6 +1589,40 @@ var WriteInGroup = class extends Animation {
     Object.entries(this.svg_mobjects).forEach(([key, elem]) => {
       elem.set_progress(i / this.num_frames);
     });
+  }
+};
+var isVec2D = (v) => v.length == 2;
+var isVec3D = (v) => v.length == 3;
+var MoveBy = class extends Animation {
+  constructor(mobj_name, translate_vec, num_frames) {
+    super();
+    this.mobj_name = mobj_name;
+    this.translate_vec = translate_vec;
+    this.num_frames = num_frames;
+  }
+  async play(scene) {
+    await this._play(scene);
+  }
+  // Animates the movement.
+  async _play(scene) {
+    let tv;
+    let s;
+    for (let i = 1; i <= this.num_frames; i++) {
+      s = DEFAULT_RATE_FUNC(i / this.num_frames) - DEFAULT_RATE_FUNC((i - 1) / this.num_frames);
+      if (isVec2D(this.translate_vec)) {
+        tv = vec2_scale(this.translate_vec, s);
+      } else if (isVec3D(this.translate_vec)) {
+        tv = vec3_scale(this.translate_vec, s);
+      } else {
+        throw new Error("Invalid translation vector");
+      }
+      await this._play_frame(scene, tv);
+      await delay(FRAME_LENGTH);
+      scene.draw();
+    }
+  }
+  async _play_frame(scene, tv) {
+    scene.get_mobj(this.mobj_name).move_by(tv);
   }
 };
 
@@ -2014,70 +2036,6 @@ function extractMathJaxPaths(svgElement) {
   extractElements(mainGroup);
   return paths;
 }
-function groupMathJaxPaths(paths) {
-  const result = {
-    variables: [],
-    fractionBars: [],
-    operators: [],
-    numbers: [],
-    other: []
-  };
-  for (const path of paths) {
-    if (path.elementType === "rect" && path.semanticType === "fraction" || path.rectHeight && path.rectHeight < 10) {
-      result.fractionBars.push(path);
-    } else if (path.semanticRole === "latinletter") {
-      result.variables.push(path);
-    } else if (path.semanticRole === "integer" || path.semanticRole === "number") {
-      result.numbers.push(path);
-    } else if (path.semanticRole === "addition" || path.semanticRole === "subtraction" || path.semanticRole === "multiplication" || path.semanticRole === "division" || path.semanticRole === "equality") {
-      result.operators.push(path);
-    } else {
-      result.other.push(path);
-    }
-  }
-  return result;
-}
-function extractFractionComponents(paths) {
-  const fractions = [];
-  const bars = paths.filter(
-    (p) => p.elementType === "rect" && (p.semanticType === "fraction" || p.rectHeight && p.rectHeight < 10)
-  );
-  for (const bar of bars) {
-    if (!bar.bbox) continue;
-    const barCenterY = bar.bbox.y + bar.bbox.height / 2;
-    const barLeft = bar.bbox.x;
-    const barRight = bar.bbox.x + bar.bbox.width;
-    const numerator = paths.filter((p) => {
-      if (p === bar || !p.bbox) return false;
-      return p.bbox.y + p.bbox.height < barCenterY && p.bbox.x + p.bbox.width > barLeft && p.bbox.x < barRight;
-    });
-    const denominator = paths.filter((p) => {
-      if (p === bar || !p.bbox) return false;
-      return p.bbox.y > barCenterY && p.bbox.x + p.bbox.width > barLeft && p.bbox.x < barRight;
-    });
-    const allElements = [...numerator, bar, ...denominator].filter(
-      (p) => p.bbox
-    );
-    if (allElements.length > 0) {
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      for (const elem of allElements) {
-        if (elem.bbox) {
-          minX = Math.min(minX, elem.bbox.x);
-          minY = Math.min(minY, elem.bbox.y);
-          maxX = Math.max(maxX, elem.bbox.x + elem.bbox.width);
-          maxY = Math.max(maxY, elem.bbox.y + elem.bbox.height);
-        }
-      }
-      fractions.push({
-        numerator,
-        denominator,
-        bar,
-        bbox: new DOMRect(minX, minY, maxX - minX, maxY - minY)
-      });
-    }
-  }
-  return fractions;
-}
 
 // src/svg_loader_scene.ts
 function ensureSVGNamespace(svgString) {
@@ -2158,8 +2116,6 @@ async function renderLatexToSVG(latex, displayMode = true) {
           const svgString = await renderLatexToSVG(latex, true);
           const svgElement = SimpleSVGLoader.parseSVG(svgString);
           const paths = extractMathJaxPaths(svgElement);
-          const grouped = groupMathJaxPaths(paths);
-          const fractions = extractFractionComponents(paths);
           let parsedPathInfoAll = [];
           let total_length = 0;
           let p;
@@ -2179,7 +2135,9 @@ async function renderLatexToSVG(latex, displayMode = true) {
             svg_mobject.move_by([-4, 4]);
             svg_group[`obj_${i}`] = svg_mobject;
           }
-          await new WriteInGroup(svg_group, 30).play(scene);
+          await new WriteGroup(svg_group, 30).play(scene);
+          scene.group(Object.keys(svg_group), "svg_group");
+          await new MoveBy("svg_group", [2, -4], 20).play(scene);
         } catch (error) {
           console.error("Basic test failed:", error);
           ctx.fillStyle = "#ff0000";
