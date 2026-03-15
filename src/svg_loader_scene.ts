@@ -4,6 +4,7 @@
  * Simple scene demonstrating SVG loading
  */
 
+import { WriteIn } from "./lib/animation";
 import {
   delay,
   MObjectGroup,
@@ -59,20 +60,21 @@ import {
           total_length += p.commands.length;
         }
 
-        let svg_group = new MObjectGroup();
+        let svg_group: Record<string, SVGPathMObject> = {};
         for (let i = 0; i < parsedPathInfoAll.length; i++) {
-          console.log(i);
           let svg_mobject = new SVGPathMObject();
           svg_mobject.from_path(
             parsedPathInfoAll[i] as ParsedPathInfo,
             scene.scale(),
           );
-          svg_group.add_mobj(`char_${i}`, svg_mobject);
+          svg_mobject.homothety_around([0, 0], 0.5);
+          svg_mobject.move_by([-4.5, 4.5]);
+          svg_group[`char_${i}`] = svg_mobject;
         }
 
-        svg_group.homothety_around([0, 0], 0.5);
-        svg_group.move_by([-4.5, 4.5]);
-        scene.add("svg_group", svg_group);
+        await new WriteIn(svg_group, 30).play(scene);
+
+        // Animate drawing-in.
 
         // let svg_mobject = new SVGPathMObject();
         // svg_mobject.from_path(

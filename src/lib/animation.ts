@@ -15,6 +15,7 @@ import {
   Dot,
   quadratic_bump,
   vec2_polar_form,
+  SVGPathMObject,
 } from "./base";
 import { Parameter } from "./interactive";
 import { Vec3D, vec3_scale } from "./three_d";
@@ -201,6 +202,36 @@ export class FadeOut extends Animation {
       let alpha = (1 - i / this.num_frames) * (base_alphas[j] as number);
       (mobjects[j] as MObject).set_alpha(alpha);
     }
+  }
+}
+
+// Progressively draw an SVGPathMObject, character-by-character
+export class WriteIn extends Animation {
+  mobjects: Record<string, SVGPathMObject>;
+  num_frames: number;
+  constructor(mobjects: Record<string, SVGPathMObject>, num_frames: number) {
+    super();
+    this.mobjects = mobjects;
+    this.num_frames = num_frames;
+  }
+  async play(scene: Scene): Promise<void> {
+    await this._play(scene);
+  }
+  // Animates the fade in.
+  async _play(scene: Scene): Promise<void> {
+    Object.entries(this.mobjects).forEach(([key, elem]) => {
+      scene.add(key, elem);
+    });
+    for (let i = 1; i <= this.num_frames; i++) {
+      await this._play_frame(scene, i);
+      await delay(FRAME_LENGTH);
+      scene.draw();
+    }
+  }
+  async _play_frame(scene: Scene, i: number) {
+    Object.entries(this.mobjects).forEach(([key, elem]) => {
+      elem.set_progress(i / this.num_frames);
+    });
   }
 }
 

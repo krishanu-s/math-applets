@@ -81,4 +81,4 @@ export {
   BezierSpline,
   MultipleBranchParametricFunction,
 } from "./bezier";
-export { SVGPathMObject } from "./vectorized";
+export { SVGPathMObject } from "./svg_mobject";
