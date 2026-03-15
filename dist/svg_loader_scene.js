@@ -11,11 +11,24 @@ function vec2_sum(x, y) {
 function vec2_sub(x, y) {
   return [x[0] - y[0], x[1] - y[1]];
 }
+function vec2_dot(x, y) {
+  return x[0] * y[0] + x[1] * y[1];
+}
 function vec2_homothety(p1, p2, scale) {
   return vec2_sum(p1, vec2_scale(vec2_sub(p2, p1), scale));
 }
+function matmul_vec2(m, v) {
+  let result = [0, 0];
+  for (let i = 0; i < 2; i++) {
+    result[i] = vec2_dot(m[i], v);
+  }
+  return result;
+}
 
 // src/lib/base/style_options.ts
+var DEFAULT_BACKGROUND_COLOR = "white";
+var DEFAULT_BORDER_COLOR = "black";
+var DEFAULT_BORDER_WIDTH = 4;
 var DEFAULT_STROKE_COLOR = "black";
 var DEFAULT_STROKE_WIDTH = 0.08;
 var DEFAULT_FILL_COLOR = "black";
@@ -106,6 +119,56 @@ var MObject = class {
   _draw(ctx, scene, args) {
   }
 };
+var MObjectGroup = class extends MObject {
+  constructor() {
+    super(...arguments);
+    this.children = {};
+  }
+  add_mobj(name, child) {
+    this.children[name] = child;
+    return this;
+  }
+  remove_mobj(name) {
+    delete this.children[name];
+    return this;
+  }
+  move_by(p) {
+    Object.values(this.children).forEach((child) => child.move_by(p));
+    return this;
+  }
+  homothety_around(p, scale) {
+    Object.values(this.children).forEach(
+      (child) => child.homothety_around(p, scale)
+    );
+    return this;
+  }
+  clear() {
+    Object.keys(this.children).forEach((key) => {
+      delete this.children[key];
+    });
+  }
+  has_mobj(name) {
+    if (!this.children[name]) {
+      return false;
+    }
+    return true;
+  }
+  get_mobj(name) {
+    if (!this.children[name]) {
+      throw new Error(`Child with name ${name} not found`);
+    }
+    return this.children[name];
+  }
+  draw(canvas, scene, args) {
+    let ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
+    Object.values(this.children).forEach(
+      (child) => child.draw(canvas, scene, args)
+    );
+    ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
+  }
+};
 var FillLikeMObject = class extends MObject {
   constructor() {
     super(...arguments);
@@ -149,6 +212,185 @@ var FillLikeMObject = class extends MObject {
     ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
     this._draw(ctx, scene, args);
     ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
+  }
+};
+var Scene = class {
+  constructor(canvas) {
+    this.background_color = DEFAULT_BACKGROUND_COLOR;
+    this.border_width = DEFAULT_BORDER_WIDTH;
+    this.border_color = DEFAULT_BORDER_COLOR;
+    // Zoom ratio
+    this.zoom_ratio = 1;
+    // Determines whether any draggable object in the scene is clicked
+    this.is_dragging = false;
+    this.canvas = canvas;
+    this.mobjects = {};
+    this.xlims = [0, canvas.width];
+    this.ylims = [0, canvas.height];
+    this.view_xlims = [0, canvas.width];
+    this.view_ylims = [0, canvas.height];
+  }
+  click() {
+    this.is_dragging = true;
+  }
+  unclick() {
+    this.is_dragging = false;
+  }
+  // Sets the coordinates for the borders of the scene. This also resets
+  // the current viewing window to match the scene size.
+  set_frame_lims(xlims, ylims) {
+    this.xlims = xlims;
+    this.ylims = ylims;
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
+  }
+  // Sets the current viewing window
+  set_view_lims(xlims, ylims) {
+    this.zoom_ratio = (this.xlims[1] - this.xlims[0]) / (xlims[1] - xlims[0]);
+    this.view_xlims = xlims;
+    this.view_ylims = ylims;
+  }
+  // Returns the center of the viewing window
+  get_view_center() {
+    return [
+      (this.view_xlims[0] + this.view_xlims[1]) / 2,
+      (this.view_ylims[0] + this.view_ylims[1]) / 2
+    ];
+  }
+  // Sets the current zoom level
+  set_zoom(value) {
+    this.zoom_ratio = value;
+    this.view_xlims = [this.xlims[0] / value, this.xlims[1] / value];
+    this.view_ylims = [this.ylims[0] / value, this.ylims[1] / value];
+  }
+  // Performs a homothety around the specified center point of the viewing window, with the given factor
+  zoom_in_on(ratio, center) {
+    this.zoom_ratio *= ratio;
+    this.view_xlims = [
+      center[0] + (this.view_xlims[0] - center[0]) / ratio,
+      center[0] + (this.view_xlims[1] - center[0]) / ratio
+    ];
+    this.view_ylims = [
+      center[1] + (this.view_ylims[0] - center[1]) / ratio,
+      center[1] + (this.view_ylims[1] - center[1]) / ratio
+    ];
+  }
+  // Moves the viewing window by the specified vector
+  move_view(v) {
+    this.view_xlims = [this.view_xlims[0] + v[0], this.view_xlims[1] + v[0]];
+    this.view_ylims = [this.view_ylims[0] + v[1], this.view_ylims[1] + v[1]];
+  }
+  // Number of canvas pixels occupied by a horizontal shift of 1 in scene coordinates
+  scale() {
+    let [xmin, xmax] = this.view_xlims;
+    return this.canvas.width / (xmax - xmin);
+  }
+  // Converts scene coordinates to canvas coordinates
+  s2c(x, y) {
+    return [
+      this.canvas.width * (x - this.xlims[0]) / (this.xlims[1] - this.xlims[0]),
+      this.canvas.height * (this.ylims[1] - y) / (this.ylims[1] - this.ylims[0])
+    ];
+  }
+  // Converts viewing coordinates to canvas coordinates
+  v2c(v) {
+    return [
+      this.canvas.width * (v[0] - this.view_xlims[0]) / (this.view_xlims[1] - this.view_xlims[0]),
+      this.canvas.height * (this.view_ylims[1] - v[1]) / (this.view_ylims[1] - this.view_ylims[0])
+    ];
+  }
+  // Converts canvas coordinates to scene coordinates
+  c2s(x, y) {
+    return [
+      this.xlims[0] + x * (this.xlims[1] - this.xlims[0]) / this.canvas.width,
+      this.ylims[1] - y * (this.ylims[1] - this.ylims[0]) / this.canvas.height
+    ];
+  }
+  // Converts canvas coordinates to viewing coordinates
+  c2v(x, y) {
+    return [
+      this.view_xlims[0] + x * (this.view_xlims[1] - this.view_xlims[0]) / this.canvas.width,
+      this.view_ylims[1] - y * (this.view_ylims[1] - this.view_ylims[0]) / this.canvas.height
+    ];
+  }
+  // Adds a mobject to the scene
+  add(name, mobj) {
+    this.mobjects[name] = mobj;
+    let self = this;
+    mobj.add(self);
+  }
+  // Removes the mobject from the scene
+  remove(name) {
+    delete this.mobjects[name];
+  }
+  // Groups a collection of mobjects as a MObjectGroup
+  group(names, group_name) {
+    let group = new MObjectGroup();
+    names.forEach((name) => {
+      let mobj = this.get_mobj(name);
+      group.add_mobj(name, mobj);
+      delete this.mobjects[name];
+    });
+    this.add(group_name, group);
+  }
+  // Ungroups a MObjectGroup
+  ungroup(group_name) {
+    let group = this.mobjects[group_name];
+    if (group == void 0) throw new Error(`${group_name} not found`);
+    Object.entries(group.children).forEach(([mobj_name, mobj]) => {
+      this.add(mobj_name, mobj);
+    });
+    delete this.mobjects[group_name];
+  }
+  // Removes all mobjects from the scene
+  clear() {
+    this.mobjects = {};
+  }
+  // Checks if a mobject exists in the scene
+  has_mobj(name) {
+    return this.mobjects.hasOwnProperty(name);
+  }
+  // Gets the mobject by name
+  get_mobj(name) {
+    let mobj = this.mobjects[name];
+    if (mobj == void 0) throw new Error(`${name} not found`);
+    return mobj;
+  }
+  // Moves a mobject to the front of the scene
+  move_to_front(name) {
+    let mobj = this.get_mobj(name);
+    this.remove(name);
+    this.add(name, mobj);
+  }
+  // Draws the scene
+  draw(args) {
+    let ctx = this.canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D context");
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.draw_background(ctx);
+    this._draw();
+    this.draw_border(ctx);
+  }
+  _draw() {
+    Object.entries(this.mobjects).forEach(([name, mobj]) => {
+      this.draw_mobject(mobj);
+    });
+  }
+  draw_mobject(mobj) {
+    mobj.draw(this.canvas, this);
+  }
+  // Draw a background
+  draw_background(ctx) {
+    ctx.fillStyle = this.background_color;
+    ctx.globalAlpha = 1;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+  // Draw a border around the canvas
+  draw_border(ctx) {
+    ctx.strokeStyle = this.border_color;
+    ctx.lineWidth = this.border_width;
+    ctx.globalAlpha = 1;
+    ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
   }
 };
 function prepare_canvas(width, height, name) {
@@ -1015,6 +1257,181 @@ var Line3D = class extends ThreeDLineLikeMObject {
   }
 };
 
+// src/lib/base/vectorized.ts
+var SVGPathMObject = class extends FillLikeMObject {
+  constructor() {
+    super(...arguments);
+    // The Path is stored (and then later drawn) as a sequence of cubic Bezier curves, in scene coordinates.
+    this.segments = [];
+  }
+  // Sets the segments based on a parsed path. The parsed path is in ctx coordinates, while
+  // this object's segments are in scene coordinates, so a scaling factor must be supplied
+  from_path(pathElement, scene_scale) {
+    this.set_stroke_color(pathElement.stroke);
+    this.set_stroke_width(pathElement.strokeWidth / scene_scale);
+    this.set_fill_color(pathElement.fill);
+    let translate = pathElement.translation ? [pathElement.translation.x, pathElement.translation.y] : [0, 0];
+    let transformMatrix = [
+      [1 / scene_scale, 0],
+      [0, -1 / scene_scale]
+    ];
+    this.segments = [];
+    let [curr_x, curr_y] = [0, 0];
+    let path_start = [0, 0];
+    let [x, y] = [0, 0];
+    let h1 = [0, 0];
+    let h2 = [0, 0];
+    let [hx, hy] = [0, 0];
+    for (let cmd of pathElement.commands) {
+      console.log(cmd);
+      if (cmd.type == "M") {
+        [curr_x, curr_y] = cmd.values;
+        path_start = cmd.values;
+      } else if (cmd.type == "L") {
+        [x, y] = cmd.values;
+        h1 = [curr_x * 2 / 3 + x / 3, curr_y * 2 / 3 + y / 3];
+        h2 = [curr_x / 3 + x * 2 / 3, curr_y / 3 + y * 2 / 3];
+        this.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "V") {
+        y = cmd.values[1];
+        h1 = [curr_x, curr_y / 3 + x * 2 / 3];
+        h2 = [curr_x, curr_y * 2 / 3 + x / 3];
+        this.add_segment(
+          [[curr_x, curr_y], h1, h2, [curr_x, y]],
+          transformMatrix,
+          translate
+        );
+        curr_y = y;
+      } else if (cmd.type == "H") {
+        x = cmd.values[0];
+        h1 = [curr_x * 2 / 3 + x / 3, curr_y];
+        h2 = [curr_x / 3 + x * 2 / 3, curr_y];
+        this.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, curr_y]],
+          transformMatrix,
+          translate
+        );
+        curr_x = x;
+      } else if (cmd.type == "C") {
+        h1 = [cmd.values[0], cmd.values[1]];
+        h2 = [cmd.values[2], cmd.values[3]];
+        [x, y] = [cmd.values[4], cmd.values[5]];
+        this.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "S") {
+        h1 = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
+        h2 = [cmd.values[0], cmd.values[1]];
+        [x, y] = [cmd.values[2], cmd.values[3]];
+        this.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "Q") {
+        [hx, hy] = [cmd.values[0], cmd.values[1]];
+        [x, y] = [cmd.values[2], cmd.values[3]];
+        h1 = [curr_x / 3 + hx * 2 / 3, curr_y / 3 + hy * 2 / 3];
+        h2 = [x / 3 + hx * 2 / 3, y / 3 + hy * 2 / 3];
+        this.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "T") {
+        [hx, hy] = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
+        [x, y] = [cmd.values[0], cmd.values[1]];
+        h1 = [curr_x / 3 + hx * 2 / 3, curr_y / 3 + hy * 2 / 3];
+        h2 = [x / 3 + hx * 2 / 3, y / 3 + hy * 2 / 3];
+        this.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "Z") {
+        [x, y] = path_start;
+        h1 = [curr_x * 2 / 3 + x / 3, curr_y / 3 + x * 2 / 3];
+        h2 = [curr_x / 3 + x * 2 / 3, curr_y * 2 / 3 + x / 3];
+        this.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+      } else {
+        throw new Error(`Unknown command type: ${cmd.type}`);
+      }
+    }
+  }
+  // Adds a new single cubic Bezier segment to the path. Typically the segment
+  // will be given in ctx coordinates, and will be transformed to scene coordinates
+  // here by x -> Ax + b
+  add_segment(segment, transformMatrix, translate = [0, 0]) {
+    this.segments.push(
+      segment.map(
+        (p) => vec2_sum(matmul_vec2(transformMatrix, p), translate)
+      )
+    );
+  }
+  // Returns the partial path up to a given alpha in [0, 1]. Used for animations.
+  // TODO
+  // Translates the path by a given vector.
+  move_by(p) {
+    this.segments = this.segments.map((segment) => {
+      return segment.map((v) => vec2_sum(v, p));
+    });
+    return this;
+  }
+  // Scales the path around a given point by a given scale factor.
+  homothety_around(p, scale) {
+    this.segments = this.segments.map((segment) => {
+      return segment.map((v) => {
+        const [x, y] = vec2_sub(v, p);
+        return vec2_sum([x * scale, y * scale], p);
+      });
+    });
+    return this;
+  }
+  _draw(ctx, scene, args) {
+    ctx.beginPath();
+    ctx.strokeStyle = "black";
+    let [curr_x, curr_y] = scene.v2c(this.segments[0][0]);
+    let cx, cy;
+    let [h1_x, h1_y] = [0, 0];
+    let [h2_x, h2_y] = [0, 0];
+    let [x, y] = [0, 0];
+    ctx.moveTo(curr_x, curr_y);
+    for (let segment of this.segments) {
+      [cx, cy] = scene.v2c(segment[0]);
+      if (cx != curr_x || cy != curr_y) {
+        ctx.moveTo(cx, cy);
+      }
+      [h1_x, h1_y] = scene.v2c(segment[1]);
+      [h2_x, h2_y] = scene.v2c(segment[2]);
+      [x, y] = scene.v2c(segment[3]);
+      ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
+      [curr_x, curr_y] = [x, y];
+    }
+    ctx.closePath();
+    if (this.stroke_options.stroke_color != "none") {
+      ctx.stroke();
+    }
+    if (this.fill_options.fill) {
+      ctx.fill();
+    }
+  }
+};
+
 // src/lib/svg_loader.ts
 function applyPathInfo(ctx, pathInfo) {
   ctx.fillStyle = pathInfo.fill;
@@ -1100,9 +1517,10 @@ var SimpleSVGLoader = class {
       if (element.tagName === "path") {
         const pathData = element.getAttribute("d");
         if (pathData) {
-          const fill = element.getAttribute("fill") || getStyle(element, "fill") || "none";
-          const stroke = element.getAttribute("stroke") || getStyle(element, "stroke") || "none";
-          const strokeWidth = element.getAttribute("stroke-width") || getStyle(element, "stroke-width") || "1";
+          const fill = element.getAttribute("fill") || getStyle(element, "fill") || "black";
+          const stroke = element.getAttribute("stroke") || getStyle(element, "stroke") || "black";
+          let strokeWidth = element.getAttribute("stroke-width") || getStyle(element, "stroke-width") || "1";
+          strokeWidth = strokeWidth.replace("px", "");
           const transformInfo = parseTransform(combinedTransform);
           let bbox;
           try {
@@ -1115,7 +1533,7 @@ var SimpleSVGLoader = class {
             data: pathData,
             fill,
             stroke,
-            strokeWidth,
+            strokeWidth: Number(strokeWidth),
             transform: combinedTransform,
             transformMatrix: transformInfo.matrix,
             translation: transformInfo.translation,
@@ -1341,6 +1759,37 @@ function createSVGFileInput(onLoad) {
       }
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, width, height);
+      async function svgMobjectDemo() {
+        let scene = new Scene(canvas);
+        scene.set_frame_lims([-5, 5], [-5, 5]);
+        const svgString = await SimpleSVGLoader.loadFromURL(
+          "./svg_samples/ex_3.svg"
+        );
+        const svgElement = SimpleSVGLoader.parseSVG(svgString);
+        const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
+        let parsedPathInfoAll = [];
+        let total_length = 0;
+        let p;
+        for (const pathInfo of pathInfoAll) {
+          p = SimpleSVGLoader.parsePathInfo(pathInfo);
+          parsedPathInfoAll.push(p);
+          total_length += p.commands.length;
+        }
+        let svg_group = new MObjectGroup();
+        for (let i = 0; i < parsedPathInfoAll.length; i++) {
+          console.log(i);
+          let svg_mobject = new SVGPathMObject();
+          svg_mobject.from_path(
+            parsedPathInfoAll[i],
+            scene.scale()
+          );
+          svg_group.add_mobj(`char_${i}`, svg_mobject);
+        }
+        svg_group.homothety_around([0, 0], 0.5);
+        svg_group.move_by([-4.5, 4.5]);
+        scene.add("svg_group", svg_group);
+        scene.draw();
+      }
       async function partialDraw() {
         try {
           const svgString = await SimpleSVGLoader.loadFromURL(
@@ -1454,10 +1903,10 @@ function createSVGFileInput(onLoad) {
         ctx.fillStyle = "#000000";
         ctx.font = "bold 16px Arial";
         ctx.font = "12px Arial";
-        await partialDraw();
+        await svgMobjectDemo();
         console.log("SVG loader examples completed!");
       }
       runExamples().catch(console.error);
-    })(800, 600);
+    })(500, 500);
   });
 })();

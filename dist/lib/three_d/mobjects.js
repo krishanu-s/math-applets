@@ -1,6 +1,6 @@
 // Three-dimensional Mobjects
 import { MObject, StrokeOptions, FillOptions, vec2_norm, vec2_sum, vec2_sub, vec2_scale, vec2_rot, } from "../base";
-import { vec3_scale, vec3_sum, vec3_sub, vec3_sum_list, get_column, } from "./matvec";
+import { vec3_scale, vec3_cross, vec3_sum, vec3_sub, vec3_sum_list, get_column, } from "./matvec";
 import { makeDraggable3D } from "../interactive/draggable";
 // TODO Turn these into class-extenders similar to what's done for makeDraggable.
 // Base class for three-dimensional Mobjects
@@ -908,8 +908,17 @@ export class ParametrizedCurve3D extends ThreeDLineLikeMObject {
 export class PolygonPanel3D extends ThreeDFillLikeMObject {
     constructor(points) {
         super();
+        this.normal_vec = [0, 0, 0]; // Normal vector, used for shading
         this.do_stroke = false;
         this.points = points;
+    }
+    set_normal_vector(v) {
+        this.normal_vec = v;
+        return this;
+    }
+    // Default calculation of normal vector
+    _calculate_normal_vector() {
+        return vec3_cross(vec3_sub(this.points[1], this.points[0]), vec3_sub(this.points[2], this.points[1]));
     }
     // TODO Fix this and fix visibility condition
     depth(scene) {
@@ -922,17 +931,26 @@ export class PolygonPanel3D extends ThreeDFillLikeMObject {
     _draw(ctx, scene) {
         let current_point = this.points[0];
         let current_point_camera_view = scene.camera_view(current_point);
+        if (current_point_camera_view == null) {
+            return;
+        }
         let [cp_x, cp_y] = scene.v2c(current_point_camera_view);
         ctx.moveTo(cp_x, cp_y);
         ctx.beginPath();
         for (let i = 1; i < this.points.length; i++) {
             current_point = this.points[i];
             current_point_camera_view = scene.camera_view(current_point);
+            if (current_point_camera_view == null) {
+                return;
+            }
             [cp_x, cp_y] = scene.v2c(current_point_camera_view);
             ctx.lineTo(cp_x, cp_y);
         }
         current_point = this.points[0];
         current_point_camera_view = scene.camera_view(current_point);
+        if (current_point_camera_view == null) {
+            return;
+        }
         [cp_x, cp_y] = scene.v2c(current_point_camera_view);
         ctx.lineTo(cp_x, cp_y);
         ctx.closePath();

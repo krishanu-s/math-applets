@@ -162,8 +162,11 @@ export declare class ParametrizedCurve3D extends ThreeDLineLikeMObject {
 }
 export declare class PolygonPanel3D extends ThreeDFillLikeMObject {
     points: Vec3D[];
+    normal_vec: Vec3D;
     do_stroke: boolean;
     constructor(points: Vec3D[]);
+    set_normal_vector(v: Vec3D): this;
+    _calculate_normal_vector(): Vec3D;
     depth(scene: ThreeDScene): number;
     set_stroke(x: boolean): this;
     _draw(ctx: CanvasRenderingContext2D, scene: ThreeDScene): void;

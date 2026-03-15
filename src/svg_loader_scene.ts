@@ -4,8 +4,19 @@
  * Simple scene demonstrating SVG loading
  */
 
-import { delay, prepare_canvas } from "./lib/base";
-import { SimpleSVGLoader, Point2D, createSVGFileInput } from "./lib/svg_loader";
+import {
+  delay,
+  MObjectGroup,
+  prepare_canvas,
+  Scene,
+  SVGPathMObject,
+} from "./lib/base";
+import {
+  SimpleSVGLoader,
+  Point2D,
+  createSVGFileInput,
+  ParsedPathInfo,
+} from "./lib/svg_loader";
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
@@ -22,6 +33,59 @@ import { SimpleSVGLoader, Point2D, createSVGFileInput } from "./lib/svg_loader";
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, width, height);
 
+      // Example 4: Render an SVG MObject
+      async function svgMobjectDemo() {
+        let scene = new Scene(canvas);
+        scene.set_frame_lims([-5, 5], [-5, 5]);
+
+        // Load an example SVG from the dist directory
+        const svgString = await SimpleSVGLoader.loadFromURL(
+          "./svg_samples/ex_3.svg",
+        );
+
+        // Parse and extract paths
+        const svgElement = SimpleSVGLoader.parseSVG(svgString);
+        const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
+
+        let parsedPathInfoAll = [];
+        let total_length = 0;
+        let p;
+
+        // // Parse each path info object into a
+        // let allCommands: Array<{ type: string; values: number[] }> = [];
+        for (const pathInfo of pathInfoAll) {
+          p = SimpleSVGLoader.parsePathInfo(pathInfo);
+          parsedPathInfoAll.push(p);
+          total_length += p.commands.length;
+        }
+
+        let svg_group = new MObjectGroup();
+        for (let i = 0; i < parsedPathInfoAll.length; i++) {
+          console.log(i);
+          let svg_mobject = new SVGPathMObject();
+          svg_mobject.from_path(
+            parsedPathInfoAll[i] as ParsedPathInfo,
+            scene.scale(),
+          );
+          svg_group.add_mobj(`char_${i}`, svg_mobject);
+        }
+
+        svg_group.homothety_around([0, 0], 0.5);
+        svg_group.move_by([-4.5, 4.5]);
+        scene.add("svg_group", svg_group);
+
+        // let svg_mobject = new SVGPathMObject();
+        // svg_mobject.from_path(
+        //   parsedPathInfoAll[0] as ParsedPathInfo,
+        //   scene.scale(),
+        // );
+        // svg_mobject.move_by([-1, 1]);
+        // svg_mobject.homothety_around([0, 0], 2);
+        // console.log(svg_mobject.segments);
+        // scene.add("svg_mobject", svg_mobject);
+        // console.log(svg_mobject);
+        scene.draw();
+      }
       // Example 0: Animate drawing of a path step-by-step
       async function partialDraw() {
         try {
@@ -208,15 +272,16 @@ import { SimpleSVGLoader, Point2D, createSVGFileInput } from "./lib/svg_loader";
         // ctx.fillText("SVG Loader Demo", 50, 30);
         ctx.font = "12px Arial";
         // ctx.fillText("Red dots show extracted points", 50, 280);
-        await partialDraw();
+        // await partialDraw();
         // await loadExampleSVG();
         // setupFileInput();
         // await loadMultipleSVGs();
+        await svgMobjectDemo();
 
         console.log("SVG loader examples completed!");
       }
 
       runExamples().catch(console.error);
-    })(800, 600);
+    })(500, 500);
   });
 })();

@@ -10,8 +10,11 @@ export {
   vec2_sub,
   vec2_rot,
   vec2_homothety,
+  vec2_dot,
+  matmul_vec2,
+  matmul_mat2,
 } from "./vec2";
-export { Vec2D } from "./vec2";
+export { Vec2D, Mat2by2 } from "./vec2";
 export {
   DEFAULT_BACKGROUND_COLOR,
   DEFAULT_BORDER_COLOR,
@@ -78,3 +81,4 @@ export {
   BezierSpline,
   MultipleBranchParametricFunction,
 } from "./bezier";
+export { SVGPathMObject } from "./vectorized";

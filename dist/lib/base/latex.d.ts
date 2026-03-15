@@ -22,6 +22,7 @@ export declare class LaTeXMObject extends MObject {
     set_rotation(rotation: number): this;
     set_color(color: string): this;
     move_to(pos: Vec2D): this;
+    move_by(vec: Vec2D): this;
     _drawRendered(ctx: CanvasRenderingContext2D, scene: Scene, renderedImage: HTMLImageElement): void;
     _render(): Promise<[HTMLDivElement, HTMLImageElement]>;
     _draw(ctx: CanvasRenderingContext2D, scene: Scene): Promise<void>;

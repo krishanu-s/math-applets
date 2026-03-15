@@ -49,7 +49,44 @@ export function vec2_rot(v: Vec2D, angle: number): Vec2D {
   return [x * cos - y * sin, x * sin + y * cos];
 }
 
+export function vec2_dot(x: Vec2D, y: Vec2D): number {
+  return x[0] * y[0] + x[1] * y[1];
+}
+
 // Performs a homothety centered around the first point, acting on the second point
 export function vec2_homothety(p1: Vec2D, p2: Vec2D, scale: number): Vec2D {
   return vec2_sum(p1, vec2_scale(vec2_sub(p2, p1), scale));
+}
+
+export type Mat2by2 = [Vec2D, Vec2D];
+
+// Transposes a 2x2 matrix
+export function transpose(m: Mat2by2): Mat2by2 {
+  return [
+    [m[0][0], m[1][0]],
+    [m[0][1], m[1][1]],
+  ];
+}
+
+// Retrieves the given column of a 2x2 matrix
+export function get_column(m: Mat2by2, i: number): Vec2D {
+  return [m[0][i], m[1][i]] as Vec2D;
+}
+
+// Multiplies a 2x2 matrix by a vector to produce another vector
+export function matmul_vec2(m: Mat2by2, v: Vec2D): Vec2D {
+  let result: Vec2D = [0, 0];
+  for (let i = 0; i < 2; i++) {
+    result[i] = vec2_dot(m[i] as Vec2D, v);
+  }
+  return result;
+}
+
+// Multiplies a 2x2 matrix by another 2x2 matrix
+export function matmul_mat2(m1: Mat2by2, m2: Mat2by2): Mat2by2 {
+  let result: Vec2D[] = [];
+  for (let i = 0; i < 2; i++) {
+    result.push(matmul_vec2(m1, [m2[0][i], m2[1][i]] as Vec2D));
+  }
+  return transpose(result as Mat2by2);
 }

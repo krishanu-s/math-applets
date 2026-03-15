@@ -1,6 +1,7 @@
 export type Vec3D = [number, number, number];
 export declare function vec3_norm(x: Vec3D): number;
 export declare function vec3_dot(v: Vec3D, w: Vec3D): number;
+export declare function vec3_cross(v: Vec3D, w: Vec3D): Vec3D;
 export declare function vec3_scale(x: Vec3D, factor: number): Vec3D;
 export declare function vec3_sum(x: Vec3D, y: Vec3D): Vec3D;
 export declare function vec3_sum_list(xs: Vec3D[]): Vec3D;
