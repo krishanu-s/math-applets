@@ -5,7 +5,8 @@
  */
 
 import { MoveBy, Write, WriteGroup } from "./lib/animation";
-import { delay, prepare_canvas, Scene, SVGPathMObject } from "./lib/base";
+import { delay, prepare_canvas, Scene } from "./lib/base";
+import { SVGPathMObject, TexMObject } from "./lib/vectorized/svg_mobject";
 import {
   SimpleSVGLoader,
   createSVGFileInput,
@@ -14,7 +15,7 @@ import {
   extractMathJaxPaths,
   groupMathJaxPaths,
   extractFractionComponents,
-} from "./lib/svg_loader";
+} from "./lib/vectorized/svg_loader";
 
 // MathJax type declarations
 declare global {
@@ -133,43 +134,48 @@ async function renderLatexToSVG(
           ctx.font = "16px Arial";
           ctx.fillText(`LaTeX: ${latex}`, 50, 125);
 
-          // Render
-          const svgString = await renderLatexToSVG(latex, true);
+          let latex_mobj = new TexMObject();
+          await latex_mobj.from_latex(latex, scene.scale());
+          latex_mobj.homothety_around([0, 0], 0.02);
+          latex_mobj.move_by([-4, 4]);
 
-          // Parse string to SVG element
-          const svgElement = SimpleSVGLoader.parseSVG(svgString);
+          // // Render
+          // const svgString = await renderLatexToSVG(latex, true);
 
-          const paths = extractMathJaxPaths(svgElement);
+          // // Parse string to SVG element
+          // const svgElement = SimpleSVGLoader.parseSVG(svgString);
 
-          let parsedPathInfoAll = [];
-          let total_length = 0;
-          let p;
+          // const paths = extractMathJaxPaths(svgElement);
 
-          // // Parse each path info object into a
-          for (const pathInfo of paths) {
-            p = SimpleSVGLoader.parsePathInfo(pathInfo);
-            parsedPathInfoAll.push(p);
-            total_length += p.commands.length;
-          }
+          // let parsedPathInfoAll = [];
+          // let total_length = 0;
+          // let p;
 
-          // Write in simultaneously
-          let svg_group: Record<string, SVGPathMObject> = {};
-          for (let i = 0; i < parsedPathInfoAll.length; i++) {
-            let svg_mobject = new SVGPathMObject();
-            svg_mobject.from_path(
-              parsedPathInfoAll[i] as ParsedPathInfo,
-              scene.scale(),
-            );
-            svg_mobject.homothety_around([0, 0], 0.02);
-            svg_mobject.move_by([-4, 4]);
-            svg_group[`obj_${i}`] = svg_mobject;
-          }
-          await new WriteGroup(svg_group, 30).play(scene);
-          // Group them
-          scene.group(Object.keys(svg_group), "svg_group");
+          // // // Parse each path info object into a
+          // for (const pathInfo of paths) {
+          //   p = SimpleSVGLoader.parsePathInfo(pathInfo);
+          //   parsedPathInfoAll.push(p);
+          //   total_length += p.commands.length;
+          // }
 
-          // Move
-          await new MoveBy("svg_group", [2, -4], 20).play(scene);
+          // // Write in simultaneously
+          // let svg_group: Record<string, SVGPathMObject> = {};
+          // for (let i = 0; i < parsedPathInfoAll.length; i++) {
+          //   let svg_mobject = new SVGPathMObject();
+          //   svg_mobject.from_path(
+          //     parsedPathInfoAll[i] as ParsedPathInfo,
+          //     scene.scale(),
+          //   );
+          //   svg_mobject.homothety_around([0, 0], 0.02);
+          //   svg_mobject.move_by([-4, 4]);
+          //   svg_group[`obj_${i}`] = svg_mobject;
+          // }
+          await new Write("latex_mobj", latex_mobj, 30).play(scene);
+          // // Group them
+          // scene.group(Object.keys(svg_group), "svg_group");
+
+          // // Move
+          await new MoveBy("latex_mobj", [2, -4], 20).play(scene);
         } catch (error) {
           console.error("Basic test failed:", error);
 
@@ -226,7 +232,7 @@ async function renderLatexToSVG(
           );
           svg_mobject.homothety_around([0, 0], 0.5);
           svg_mobject.move_by([-4.5, 4.5]);
-          await new WriteIn(`obj_${i}`, svg_mobject, 30).play(scene);
+          await new Write(`obj_${i}`, svg_mobject, 30).play(scene);
         }
 
         // Animate drawing-in.
@@ -243,73 +249,73 @@ async function renderLatexToSVG(
         // console.log(svg_mobject);
         scene.draw();
       }
-      // Example 0: Animate drawing of a path step-by-step
-      async function partialDraw() {
-        try {
-          // Load an example SVG from the dist directory
-          const svgString = await SimpleSVGLoader.loadFromURL(
-            "./svg_samples/ex_4.svg",
-          );
-          console.log(svgString);
+      // // Example 0: Animate drawing of a path step-by-step
+      // async function partialDraw() {
+      //   try {
+      //     // Load an example SVG from the dist directory
+      //     const svgString = await SimpleSVGLoader.loadFromURL(
+      //       "./svg_samples/ex_4.svg",
+      //     );
+      //     console.log(svgString);
 
-          // Parse and extract paths
-          const svgElement = SimpleSVGLoader.parseSVG(svgString);
-          const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
+      //     // Parse and extract paths
+      //     const svgElement = SimpleSVGLoader.parseSVG(svgString);
+      //     const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
 
-          let parsedPathInfoAll = [];
-          let total_length = 0;
-          let p;
+      //     let parsedPathInfoAll = [];
+      //     let total_length = 0;
+      //     let p;
 
-          // // Parse each path info object into a
-          // let allCommands: Array<{ type: string; values: number[] }> = [];
-          for (const pathInfo of pathInfoAll) {
-            p = SimpleSVGLoader.parsePathInfo(pathInfo);
-            parsedPathInfoAll.push(p);
-            total_length += p.commands.length;
-          }
+      //     // // Parse each path info object into a
+      //     // let allCommands: Array<{ type: string; values: number[] }> = [];
+      //     for (const pathInfo of pathInfoAll) {
+      //       p = SimpleSVGLoader.parsePathInfo(pathInfo);
+      //       parsedPathInfoAll.push(p);
+      //       total_length += p.commands.length;
+      //     }
 
-          // console.log("All commands:", allCommands);
+      //     // console.log("All commands:", allCommands);
 
-          // Set style
-          ctx.fillStyle = "#000000";
-          ctx.strokeStyle = "#000000";
+      //     // Set style
+      //     ctx.fillStyle = "#000000";
+      //     ctx.strokeStyle = "#000000";
 
-          // // Clear canvas
-          // ctx.fillStyle = "#ffffff";
-          // ctx.clearRect(0, 0, width, height);
-          // ctx.fillStyle = "#000000";
+      //     // // Clear canvas
+      //     // ctx.fillStyle = "#ffffff";
+      //     // ctx.clearRect(0, 0, width, height);
+      //     // ctx.fillStyle = "#000000";
 
-          // // Partially draw
-          // await SimpleSVGLoader.drawPartial(
-          //   ctx,
-          //   allCommands,
-          //   allCommands.length,
-          // );
+      //     // // Partially draw
+      //     // await SimpleSVGLoader.drawPartial(
+      //     //   ctx,
+      //     //   allCommands,
+      //     //   allCommands.length,
+      //     // );
 
-          for (
-            let numCommands = 1;
-            numCommands <= total_length;
-            numCommands += 1
-          ) {
-            console.log("Drawing partially with ", numCommands, "commands");
-            // Clear canvas
-            ctx.fillStyle = "#ffffff";
-            ctx.clearRect(0, 0, width, height);
-            ctx.fillStyle = "#000000";
+      //     for (
+      //       let numCommands = 1;
+      //       numCommands <= total_length;
+      //       numCommands += 1
+      //     ) {
+      //       console.log("Drawing partially with ", numCommands, "commands");
+      //       // Clear canvas
+      //       ctx.fillStyle = "#ffffff";
+      //       ctx.clearRect(0, 0, width, height);
+      //       ctx.fillStyle = "#000000";
 
-            // Partially draw
-            await SimpleSVGLoader.drawPartial(
-              ctx,
-              parsedPathInfoAll,
-              numCommands,
-            );
-            // Insert delay
-            await delay(10);
-          }
-        } catch (error) {
-          console.error("Error loading example SVG:", error);
-        }
-      }
+      //       // Partially draw
+      //       await SimpleSVGLoader.drawPartial(
+      //         ctx,
+      //         parsedPathInfoAll,
+      //         numCommands,
+      //       );
+      //       // Insert delay
+      //       await delay(10);
+      //     }
+      //   } catch (error) {
+      //     console.error("Error loading example SVG:", error);
+      //   }
+      // }
 
       // Example 1: Load SVG from dist directory
       async function loadExampleSVG() {

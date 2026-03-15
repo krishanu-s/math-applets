@@ -16,18 +16,21 @@ import {
   quadratic_bump,
   vec2_polar_form,
   SVGPathMObject,
+  HasCenterAndRadius,
 } from "./base";
 import { Parameter } from "./interactive";
 import { Vec3D, vec3_scale } from "./three_d";
 
+// Checks for a vector object to determine its dimensionality
+export const isVec2D = (v: Vec2D | Vec3D): v is Vec2D => v.length == 2;
+export const isVec3D = (v: Vec2D | Vec3D): v is Vec3D => v.length == 3;
+
 // Length of one frame in milliseconds
 export const FRAME_LENGTH = 30;
 
-// Default rate function for animations
-export const DEFAULT_RATE_FUNC = smooth;
-
 // A rate function maps [0, 1] to [0, 1]
 export type RateFunc = (t: number) => number;
+export const DEFAULT_RATE_FUNC = smooth;
 
 // Base class for animations
 abstract class Animation {
@@ -274,12 +277,10 @@ export class WriteGroup extends Animation {
 export class Unwrite extends Animation {}
 
 // Unwrite a group of SVGPathMObjects simultaneously.
+// TODO
 export class UnwriteGroup extends Animation {}
 
-const isVec2D = (v: any): v is Vec2D => v.length == 2;
-const isVec3D = (v: Vec2D | Vec3D): v is Vec3D => v.length == 3;
-
-// Move the mobject or MObjectGroup by a certain amount
+// Translate the mobject or MObjectGroup
 export class MoveBy extends Animation {
   mobj_name: string;
   translate_vec: Vec2D | Vec3D;
@@ -322,7 +323,7 @@ export class MoveBy extends Animation {
   }
 }
 
-// Performs a homothety of the mobject or MObjectGroup to a
+// Performs a homothety of the mobject or MObjectGroup with respect to a center point.
 export class Homothety extends Animation {
   mobj_name: string;
   mobj: MObject;
@@ -406,11 +407,6 @@ export class ChangeParameterSmoothly extends Animation {
   }
 }
 
-// Emphasize a MObject by sending out little sparkles
-interface HasCenterAndRadius extends MObject {
-  get_center(): Vec2D;
-  get_radius(): number;
-}
 export class Emphasize extends Animation {
   mobj_name: string;
   mobj: HasCenterAndRadius;

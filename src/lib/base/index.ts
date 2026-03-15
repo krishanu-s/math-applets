@@ -76,9 +76,9 @@ export {
   Arrow,
   TwoHeadedArrow,
 } from "./geometry";
+export { HasCenterAndRadius } from "./geometry";
 export {
   ParametricFunction,
   BezierSpline,
   MultipleBranchParametricFunction,
 } from "./bezier";
-export { SVGPathMObject } from "./svg_mobject";
