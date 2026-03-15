@@ -4,20 +4,104 @@
  * Simple scene demonstrating SVG loading
  */
 
-import { WriteIn } from "./lib/animation";
-import {
-  delay,
-  MObjectGroup,
-  prepare_canvas,
-  Scene,
-  SVGPathMObject,
-} from "./lib/base";
+import { WriteIn, WriteInGroup } from "./lib/animation";
+import { delay, prepare_canvas, Scene, SVGPathMObject } from "./lib/base";
 import {
   SimpleSVGLoader,
-  Point2D,
   createSVGFileInput,
   ParsedPathInfo,
+  PathInfo,
+  extractMathJaxPaths,
+  groupMathJaxPaths,
+  extractFractionComponents,
 } from "./lib/svg_loader";
+
+// MathJax type declarations
+declare global {
+  interface Window {
+    MathJax: any;
+  }
+}
+
+// Helper to ensure SVG has namespace
+function ensureSVGNamespace(svgString: string): string {
+  if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
+    return svgString.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+  }
+  return svgString;
+}
+
+// Wait for MathJax to load (it's loaded in the HTML)
+function waitForMathJax(): Promise<void> {
+  return new Promise((resolve) => {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      resolve();
+      return;
+    }
+
+    // Check every 100ms
+    const checkInterval = setInterval(() => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        clearInterval(checkInterval);
+        resolve();
+      }
+    }, 100);
+
+    // Timeout after 5 seconds
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      resolve(); // Continue anyway
+    }, 5000);
+  });
+}
+
+// Simple render function using MathJax v4 API
+async function renderLatexToSVG(
+  latex: string,
+  displayMode: boolean = true,
+): Promise<string> {
+  await waitForMathJax();
+
+  if (!window.MathJax || !window.MathJax.typesetPromise) {
+    throw new Error(
+      "MathJax not loaded. Make sure MathJax script is included in HTML.",
+    );
+  }
+
+  const div = document.createElement("div");
+  div.style.visibility = "hidden";
+  div.style.position = "absolute";
+  div.style.top = "-9999px";
+
+  // Use proper delimiters
+  if (displayMode) {
+    div.innerHTML = `\\[${latex}\\]`;
+  } else {
+    div.innerHTML = `\\(${latex}\\)`;
+  }
+
+  document.body.appendChild(div);
+
+  try {
+    // Use typesetPromise - this should work with MathJax v4
+    await window.MathJax.typesetPromise([div]);
+
+    // Find SVG element
+    const svgElement = div.querySelector("svg");
+    if (!svgElement) {
+      // Try to find any SVG in the element
+      const svgs = div.getElementsByTagName("svg");
+      if (svgs.length > 0) {
+        return ensureSVGNamespace(svgs[0].outerHTML);
+      }
+      throw new Error("No SVG element found");
+    }
+
+    return ensureSVGNamespace(svgElement.outerHTML);
+  } finally {
+    document.body.removeChild(div);
+  }
+}
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
@@ -33,6 +117,139 @@ import {
       // Clear canvas
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, width, height);
+
+      // Example 5: Render MathJax
+      async function mathJaxDemo() {
+        let scene = new Scene(canvas);
+        scene.set_frame_lims([-5, 5], [-5, 5]);
+
+        // Convert LaTeX to SVG string
+        try {
+          const latex =
+            "(x, y) = \\left( \\frac{m^2-1}{m^2+1}, -\\frac{2m}{m^2+1} \\right)";
+
+          // Draw label
+          ctx.fillStyle = "#000000";
+          ctx.font = "16px Arial";
+          ctx.fillText(`LaTeX: ${latex}`, 50, 125);
+
+          // Render
+          const svgString = await renderLatexToSVG(latex, true);
+
+          // async function foo() {
+          //   return new Promise((resolve, reject) => {
+          //     // 2. Create a data URL
+          //     const svgBlob = new Blob([svgString], {
+          //       type: "image/svg+xml;charset=utf-8",
+          //     });
+          //     const url = URL.createObjectURL(svgBlob);
+
+          //     // 3. Create an image and load the SVG
+          //     const img = new Image();
+
+          //     img.onload = () => {
+          //       const ctx = canvas.getContext("2d");
+          //       if (!ctx) {
+          //         reject(new Error("Failed to get canvas context"));
+          //         return;
+          //       }
+
+          //       // Draw the image
+          //       if (width && height) {
+          //         ctx.drawImage(img, 0, 0, width, height);
+          //       } else {
+          //         ctx.drawImage(img, 0, 0);
+          //       }
+
+          //       // Clean up
+          //       URL.revokeObjectURL(url);
+          //       resolve();
+          //     };
+
+          //     img.onerror = () => {
+          //       URL.revokeObjectURL(url);
+          //       reject(new Error("Failed to load SVG image"));
+          //     };
+
+          //     img.src = url;
+          //   });
+          // }
+          // await foo();
+
+          // console.log("SVG generated:", svgString);
+
+          // // Draw to canvas
+          // await SimpleSVGLoader.drawToCanvas(canvas, svgString, 50, 150);
+
+          // Parse string to SVG element
+          const svgElement = SimpleSVGLoader.parseSVG(svgString);
+
+          const paths = extractMathJaxPaths(svgElement);
+          const grouped = groupMathJaxPaths(paths);
+          const fractions = extractFractionComponents(paths);
+
+          // console.log(`Found ${paths.length} total elements`);
+          // console.log(paths);
+          // console.log(`- Variables: ${grouped.variables.length}`);
+          // console.log(`- Fraction bars: ${grouped.fractionBars.length}`);
+          // console.log(`- Operators: ${grouped.operators.length}`);
+          // console.log(`- Numbers: ${grouped.numbers.length}`);
+          // console.log(`- Fractions: ${fractions.length}`);
+
+          // // Retrieve paths
+          // console.log(svgElement);
+          // const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
+
+          // // TODO Retrieve rectangles and other elements.
+
+          // console.log("Paths:", pathInfoAll);
+
+          let parsedPathInfoAll = [];
+          let total_length = 0;
+          let p;
+
+          // // Parse each path info object into a
+          // let allCommands: Array<{ type: string; values: number[] }> = [];
+          for (const pathInfo of paths) {
+            p = SimpleSVGLoader.parsePathInfo(pathInfo);
+            parsedPathInfoAll.push(p);
+            total_length += p.commands.length;
+          }
+
+          // console.log("Paths, parsed:", parsedPathInfoAll);
+
+          // TODO Write in simultaneously
+          let svg_group: Record<string, SVGPathMObject> = {};
+          for (let i = 0; i < parsedPathInfoAll.length; i++) {
+            let svg_mobject = new SVGPathMObject();
+            svg_mobject.from_path(
+              parsedPathInfoAll[i] as ParsedPathInfo,
+              scene.scale(),
+            );
+            svg_mobject.homothety_around([0, 0], 0.02);
+            svg_mobject.move_by([-4, 4]);
+            svg_group[`obj_${i}`] = svg_mobject;
+            // await new WriteIn(`obj_${i}`, svg_mobject, 10).play(scene);
+          }
+          await new WriteInGroup(svg_group, 30).play(scene);
+        } catch (error) {
+          console.error("Basic test failed:", error);
+
+          ctx.fillStyle = "#ff0000";
+          ctx.font = "14px Arial";
+          ctx.fillText(`✗ Error: ${error.message}`, 50, 280);
+
+          // Fallback: Draw error details
+          ctx.fillStyle = "#666";
+          ctx.font = "12px Arial";
+          ctx.fillText("Make sure MathJax is loaded in HTML:", 50, 310);
+          ctx.fillText(
+            '<script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-svg.js"></script>',
+            50,
+            330,
+          );
+        }
+      }
 
       // Example 4: Render an SVG MObject
       async function svgMobjectDemo() {
@@ -61,7 +278,9 @@ import {
         }
 
         let svg_group: Record<string, SVGPathMObject> = {};
+        console.log("num", parsedPathInfoAll.length);
         for (let i = 0; i < parsedPathInfoAll.length; i++) {
+          console.log(i);
           let svg_mobject = new SVGPathMObject();
           svg_mobject.from_path(
             parsedPathInfoAll[i] as ParsedPathInfo,
@@ -276,7 +495,8 @@ import {
         // await loadExampleSVG();
         // setupFileInput();
         // await loadMultipleSVGs();
-        await svgMobjectDemo();
+        // await svgMobjectDemo();
+        await mathJaxDemo();
 
         console.log("SVG loader examples completed!");
       }
