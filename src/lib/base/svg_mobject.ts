@@ -10,7 +10,13 @@ import {
   vec2_sum,
   vec2_sub,
   matmul_vec2,
+  matmul_mat2,
 } from "./vec2";
+
+// Ratio of time used for stroke animation before fill animation begins
+const FILL_DELAY = 0.9;
+
+export class SVGMObject extends FillLikeMObject {}
 
 // A 4-tuples of points representing a cubic Bezier curve
 type CubicBezierTuple = [Vec2D, Vec2D, Vec2D, Vec2D];
@@ -52,6 +58,12 @@ class PathSegments {
   set_progress(p: number) {
     this.progress = p;
   }
+  clone(): PathSegments {
+    let clone = new PathSegments();
+    clone.segments = this.segments.slice();
+    clone.progress = this.progress;
+    return clone;
+  }
   // Adds a new single cubic Bezier segment to the path. Typically the segment
   // will be given in ctx coordinates, and will be transformed to scene coordinates
   // here by x -> Ax + b
@@ -85,8 +97,8 @@ class PathSegments {
   }
   // Partially draws the path with the given stroke and fill settings, where t is a parameter
   // between 0 and 1 controlling the progress.
-  // - When 0 < t < 0.5, a partial outline is drawn.
-  // - When 0.5 < t < 1, the full outline is drawn with partial opacity.
+  // - When 0 < t < FILL_DELAY, a partial outline is drawn.
+  // - When FILL_DELAY < t < 1, the full outline is drawn with partial opacity.
   _drawPartial(
     ctx: CanvasRenderingContext2D,
     scene: Scene,
@@ -121,7 +133,7 @@ class PathSegments {
       ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
       [curr_x, curr_y] = [x, y];
     }
-    if (t <= 0.5) {
+    if (t <= FILL_DELAY) {
       ctx.stroke();
     } else {
       ctx.closePath();
@@ -129,9 +141,17 @@ class PathSegments {
         ctx.stroke();
       }
       if (fill) {
-        ctx.globalAlpha = clamp(ctx.globalAlpha * 2 * (t - 0.5), 0, 1);
+        ctx.globalAlpha = clamp(
+          (ctx.globalAlpha * (t - FILL_DELAY)) / (1 - FILL_DELAY),
+          0,
+          1,
+        );
         ctx.fill();
-        ctx.globalAlpha = clamp(ctx.globalAlpha / (2 * (t - 0.5)), 0, 1);
+        ctx.globalAlpha = clamp(
+          ctx.globalAlpha / ((t - FILL_DELAY) / (1 - FILL_DELAY)),
+          0,
+          1,
+        );
       }
     }
   }
@@ -146,10 +166,8 @@ class PathSegments {
   }
 }
 
-// A MObject corresponding to a single continuously drawn <path> object.
-// TODO For now, it's assumed to be a single continuous path, i.e. only one M command and one Z command.
-// Generalize this, by
-export class SVGPathMObject extends FillLikeMObject {
+// A MObject consisting of a collection of SVG Path objects.
+export class SVGPathMObject extends SVGMObject {
   // Each
   subpaths: Array<PathSegments> = [];
 
@@ -163,6 +181,12 @@ export class SVGPathMObject extends FillLikeMObject {
     this.set_stroke_width(pathElement.strokeWidth / scene_scale);
     this.set_fill_color(pathElement.fill);
 
+    let t = [
+      [pathElement.transformMatrix?.a, pathElement.transformMatrix?.b],
+      [pathElement.transformMatrix?.c, pathElement.transformMatrix?.d],
+    ];
+    // console.log(t);
+
     // Get necessary transformations to segments
     let transformMatrix: Mat2by2 = [
       [1 / scene_scale, 0],
@@ -174,7 +198,7 @@ export class SVGPathMObject extends FillLikeMObject {
           pathElement.translation.y,
         ])
       : [0, 0];
-
+    transformMatrix = matmul_mat2(t, transformMatrix);
     // Make the subpaths
     this.subpaths = [];
 
@@ -186,8 +210,8 @@ export class SVGPathMObject extends FillLikeMObject {
     let [hx, hy] = [0, 0];
 
     // Converts each possible path element into a cubic Bezier curve
-    for (let cmd of pathElement.commands) {
-      // console.log(cmd);
+    for (let i = 0; i < pathElement.commands.length; i++) {
+      let cmd = pathElement.commands[i] as { type: string; values: number[] };
       // Move to a new point
       if (cmd.type == "M") {
         [curr_x, curr_y] = cmd.values as Vec2D;
@@ -280,10 +304,11 @@ export class SVGPathMObject extends FillLikeMObject {
       }
       // Close path
       else if (cmd.type == "Z") {
-        this.subpaths.push(current_path);
+        this.subpaths.push(current_path.clone());
         current_path = new PathSegments();
       } else {
-        throw new Error(`Unknown command type: ${cmd.type}`);
+        console.log("Unknown command type:", cmd.type);
+        // throw new Error(`Unknown command type: ${cmd.type}`);
       }
       // // Arc
       // else if (cmd.type == "A") {
@@ -348,5 +373,19 @@ export class SVGPathMObject extends FillLikeMObject {
         this.fill_options.fill,
       );
     }
+  }
+}
+
+// TODO Text rendering.
+export class TextMObject extends SVGPathMObject {
+  constructor(text: string) {
+    super();
+  }
+}
+
+// TODO LaTeX rendering, using MathJax or similar.
+export class TexMObject extends SVGPathMObject {
+  constructor(latex: string) {
+    super();
   }
 }

@@ -17,12 +17,25 @@ function vec2_dot(x, y) {
 function vec2_homothety(p1, p2, scale) {
   return vec2_sum(p1, vec2_scale(vec2_sub(p2, p1), scale));
 }
+function transpose(m) {
+  return [
+    [m[0][0], m[1][0]],
+    [m[0][1], m[1][1]]
+  ];
+}
 function matmul_vec2(m, v) {
   let result = [0, 0];
   for (let i = 0; i < 2; i++) {
     result[i] = vec2_dot(m[i], v);
   }
   return result;
+}
+function matmul_mat2(m1, m2) {
+  let result = [];
+  for (let i = 0; i < 2; i++) {
+    result.push(matmul_vec2(m1, [m2[0][i], m2[1][i]]));
+  }
+  return transpose(result);
 }
 
 // src/lib/base/style_options.ts
@@ -1258,7 +1271,10 @@ var Line3D = class extends ThreeDLineLikeMObject {
 };
 
 // src/lib/base/svg_mobject.ts
-var PathSegments = class {
+var FILL_DELAY = 0.9;
+var SVGMObject = class extends FillLikeMObject {
+};
+var PathSegments = class _PathSegments {
   constructor() {
     // Bezier segments that make up the path.
     this.segments = [];
@@ -1267,6 +1283,12 @@ var PathSegments = class {
   }
   set_progress(p) {
     this.progress = p;
+  }
+  clone() {
+    let clone = new _PathSegments();
+    clone.segments = this.segments.slice();
+    clone.progress = this.progress;
+    return clone;
   }
   // Adds a new single cubic Bezier segment to the path. Typically the segment
   // will be given in ctx coordinates, and will be transformed to scene coordinates
@@ -1297,8 +1319,8 @@ var PathSegments = class {
   }
   // Partially draws the path with the given stroke and fill settings, where t is a parameter
   // between 0 and 1 controlling the progress.
-  // - When 0 < t < 0.5, a partial outline is drawn.
-  // - When 0.5 < t < 1, the full outline is drawn with partial opacity.
+  // - When 0 < t < FILL_DELAY, a partial outline is drawn.
+  // - When FILL_DELAY < t < 1, the full outline is drawn with partial opacity.
   _drawPartial(ctx, scene, t, stroke, fill) {
     let num_segments = Math.min(
       Math.floor(this.segments.length * 2 * t),
@@ -1325,7 +1347,7 @@ var PathSegments = class {
       ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
       [curr_x, curr_y] = [x, y];
     }
-    if (t <= 0.5) {
+    if (t <= FILL_DELAY) {
       ctx.stroke();
     } else {
       ctx.closePath();
@@ -1333,9 +1355,17 @@ var PathSegments = class {
         ctx.stroke();
       }
       if (fill) {
-        ctx.globalAlpha = clamp(ctx.globalAlpha * 2 * (t - 0.5), 0, 1);
+        ctx.globalAlpha = clamp(
+          ctx.globalAlpha * (t - FILL_DELAY) / (1 - FILL_DELAY),
+          0,
+          1
+        );
         ctx.fill();
-        ctx.globalAlpha = clamp(ctx.globalAlpha / (2 * (t - 0.5)), 0, 1);
+        ctx.globalAlpha = clamp(
+          ctx.globalAlpha / ((t - FILL_DELAY) / (1 - FILL_DELAY)),
+          0,
+          1
+        );
       }
     }
   }
@@ -1344,7 +1374,7 @@ var PathSegments = class {
     this._drawPartial(ctx, scene, this.progress, stroke, fill);
   }
 };
-var SVGPathMObject = class extends FillLikeMObject {
+var SVGPathMObject = class extends SVGMObject {
   constructor() {
     super(...arguments);
     // Each
@@ -1356,6 +1386,10 @@ var SVGPathMObject = class extends FillLikeMObject {
     this.set_stroke_color(pathElement.stroke);
     this.set_stroke_width(pathElement.strokeWidth / scene_scale);
     this.set_fill_color(pathElement.fill);
+    let t = [
+      [pathElement.transformMatrix?.a, pathElement.transformMatrix?.b],
+      [pathElement.transformMatrix?.c, pathElement.transformMatrix?.d]
+    ];
     let transformMatrix = [
       [1 / scene_scale, 0],
       [0, -1 / scene_scale]
@@ -1364,6 +1398,7 @@ var SVGPathMObject = class extends FillLikeMObject {
       pathElement.translation.x,
       pathElement.translation.y
     ]) : [0, 0];
+    transformMatrix = matmul_mat2(t, transformMatrix);
     this.subpaths = [];
     let current_path = new PathSegments();
     let [curr_x, curr_y] = [0, 0];
@@ -1371,7 +1406,8 @@ var SVGPathMObject = class extends FillLikeMObject {
     let h1 = [0, 0];
     let h2 = [0, 0];
     let [hx, hy] = [0, 0];
-    for (let cmd of pathElement.commands) {
+    for (let i = 0; i < pathElement.commands.length; i++) {
+      let cmd = pathElement.commands[i];
       if (cmd.type == "M") {
         [curr_x, curr_y] = cmd.values;
       } else if (cmd.type == "L") {
@@ -1447,10 +1483,10 @@ var SVGPathMObject = class extends FillLikeMObject {
         );
         [curr_x, curr_y] = [x, y];
       } else if (cmd.type == "Z") {
-        this.subpaths.push(current_path);
+        this.subpaths.push(current_path.clone());
         current_path = new PathSegments();
       } else {
-        throw new Error(`Unknown command type: ${cmd.type}`);
+        console.log("Unknown command type:", cmd.type);
       }
     }
   }
@@ -1542,21 +1578,33 @@ var WriteIn = class extends Animation {
     this.svg_mobject.set_progress(i / this.num_frames);
   }
 };
+var WriteInGroup = class extends Animation {
+  constructor(svg_mobjects, num_frames) {
+    super();
+    this.svg_mobjects = svg_mobjects;
+    this.num_frames = num_frames;
+  }
+  async play(scene) {
+    await this._play(scene);
+  }
+  async _play(scene) {
+    Object.entries(this.svg_mobjects).forEach(([key, elem]) => {
+      scene.add(key, elem);
+    });
+    for (let i = 1; i <= this.num_frames; i++) {
+      await this._play_frame(scene, i);
+      await delay(FRAME_LENGTH);
+      scene.draw();
+    }
+  }
+  async _play_frame(scene, i) {
+    Object.entries(this.svg_mobjects).forEach(([key, elem]) => {
+      elem.set_progress(i / this.num_frames);
+    });
+  }
+};
 
 // src/lib/svg_loader.ts
-function applyPathInfo(ctx, pathInfo) {
-  ctx.fillStyle = pathInfo.fill;
-  ctx.strokeStyle = pathInfo.stroke;
-  ctx.lineWidth = Number(pathInfo.strokeWidth);
-  if (pathInfo.translation) {
-    ctx.translate(pathInfo.translation.x, pathInfo.translation.y);
-  }
-}
-function unapplyPathInfo(ctx, pathInfo) {
-  if (pathInfo.translation) {
-    ctx.translate(-pathInfo.translation.x, -pathInfo.translation.y);
-  }
-}
 var SimpleSVGLoader = class {
   /**
    * Load SVG from a URL
@@ -1660,84 +1708,6 @@ var SimpleSVGLoader = class {
     extractPathsFromElement(svgElement);
     return paths;
   }
-  // Draw the first N commands in a path
-  // Types (lowercase versions are relative coordinates): MLHVCSQTAZmlhvcsqtaz
-  // M = Move To
-  // L = Line To
-  // H = Horizontal line to
-  // V = Vertical line to
-  // C = Cubic Bezier curve, specified as H1, H2, A
-  // S = Smooth cubic Bezier curve to, specified as H2, A (if the last move was a C,
-  // first handle is the reflection of the last handle over the current point,
-  // and otherwise it's the current point)
-  // Q = Quadratic Bezier curve to, specified as H, A
-  // T = Smooth quadratic Bezier curve to, specified as A
-  // A = Arc curve (rx, ry, angle)
-  // Z = Close (connect to initial point with straight line)
-  static drawPartial(ctx, parsedPathInfoAll, numCommands) {
-    let x = 0;
-    let y = 0;
-    let h1_x = 0;
-    let h1_y = 0;
-    let h2_x = 0;
-    let h2_y = 0;
-    ctx.beginPath();
-    let path_info = parsedPathInfoAll[0];
-    let i = 0;
-    let j = 0;
-    while (i < parsedPathInfoAll.length) {
-      path_info = parsedPathInfoAll[i];
-      i++;
-      applyPathInfo(ctx, path_info);
-      for (let cmd of path_info.commands) {
-        if (j >= numCommands) {
-          if (cmd.type != "Z") {
-            ctx.stroke();
-          }
-          unapplyPathInfo(ctx, path_info);
-          return;
-        }
-        if (cmd.type == "M") {
-          [x, y] = cmd.values;
-          ctx.moveTo(x, y);
-        } else if (cmd.type == "L") {
-          [x, y] = cmd.values;
-          ctx.lineTo(x, y);
-        } else if (cmd.type == "H") {
-          y = cmd.values[0];
-          ctx.lineTo(x, y);
-        } else if (cmd.type == "V") {
-          x = cmd.values[0];
-          ctx.lineTo(x, y);
-        } else if (cmd.type == "C") {
-          [h1_x, h1_y] = [cmd.values[0], cmd.values[1]];
-          [h2_x, h2_y] = [cmd.values[2], cmd.values[3]];
-          [x, y] = [cmd.values[4], cmd.values[5]];
-          ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
-        } else if (cmd.type == "S") {
-          [h1_x, h1_y] = [2 * x - h2_x, 2 * y - h2_y];
-          [h2_x, h2_y] = [cmd.values[0], cmd.values[1]];
-          [x, y] = [cmd.values[2], cmd.values[3]];
-          ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
-        } else if (cmd.type == "Q") {
-          [h2_x, h2_y] = [cmd.values[0], cmd.values[1]];
-          [x, y] = [cmd.values[2], cmd.values[3]];
-          ctx.quadraticCurveTo(h2_x, h2_y, x, y);
-        } else if (cmd.type == "T") {
-          [h2_x, h2_y] = [2 * x - h2_x, 2 * y - h2_y];
-          [x, y] = [cmd.values[0], cmd.values[1]];
-          ctx.quadraticCurveTo(h2_x, h2_y, x, y);
-        } else if (cmd.type == "A") {
-          console.log("Type A", cmd.values);
-        } else if (cmd.type == "Z") {
-          ctx.closePath();
-          ctx.fill();
-        }
-        j++;
-      }
-      unapplyPathInfo(ctx, path_info);
-    }
-  }
   /**
    * Convert SVG path to points (simplified - only handles M, L, H, V, Z commands)
    */
@@ -1792,7 +1762,9 @@ var SimpleSVGLoader = class {
     let match;
     while ((match = regex.exec(pathData)) !== null) {
       const type = match[1];
-      const values = match[2].trim().split(/[\s,]+/).filter((v) => v).map(parseFloat);
+      const values = (match[2].trim().match(/-?\d+(?:\.\d+)?/g) || []).map(
+        Number
+      );
       commands.push({ type, values });
     }
     return commands;
@@ -1857,8 +1829,313 @@ function createSVGFileInput(onLoad) {
   });
   return input;
 }
+function extractMathJaxPaths(svgElement) {
+  const paths = [];
+  const defsMap = /* @__PURE__ */ new Map();
+  const defs = svgElement.querySelector("defs");
+  if (defs) {
+    const defPaths = defs.querySelectorAll("path");
+    defPaths.forEach((defPath) => {
+      const id = defPath.getAttribute("id");
+      const d = defPath.getAttribute("d");
+      if (id && d) {
+        defsMap.set(id, d);
+      }
+    });
+  }
+  const getStyle = (element, property) => {
+    const style = window.getComputedStyle(element);
+    return style.getPropertyValue(property);
+  };
+  const parseTransform = (transform) => {
+    if (!transform) return {};
+    try {
+      const svgNS = "http://www.w3.org/2000/svg";
+      const tempSvg = document.createElementNS(svgNS, "svg");
+      const tempElement = document.createElementNS(svgNS, "g");
+      tempSvg.appendChild(tempElement);
+      document.body.appendChild(tempSvg);
+      tempElement.setAttribute("transform", transform);
+      const matrix = tempElement.getCTM();
+      document.body.removeChild(tempSvg);
+      if (matrix) {
+        return {
+          matrix,
+          translation: { x: matrix.e, y: matrix.f }
+        };
+      }
+    } catch (error) {
+      console.warn("Failed to parse transform:", transform, error);
+    }
+    return {};
+  };
+  const extractElements = (element, parentTransform = "", depth = 0) => {
+    const elementTransform = element.getAttribute("transform") || "";
+    const combinedTransform = parentTransform ? elementTransform ? `${parentTransform} ${elementTransform}` : parentTransform : elementTransform;
+    const semanticType = element.getAttribute("data-semantic-type");
+    const semanticRole = element.getAttribute("data-semantic-role");
+    const latex = element.getAttribute("data-latex");
+    const tagName = element.tagName.toLowerCase();
+    if (tagName === "use") {
+      const href = element.getAttribute("xlink:href") || element.getAttribute("href");
+      if (href && href.startsWith("#")) {
+        const defId = href.substring(1);
+        const pathData = defsMap.get(defId);
+        if (pathData) {
+          const parent = element.parentElement;
+          const fill = element.getAttribute("fill") || (parent ? parent.getAttribute("fill") : "") || getStyle(element, "fill") || "black";
+          const stroke = element.getAttribute("stroke") || (parent ? parent.getAttribute("stroke") : "") || getStyle(element, "stroke") || "black";
+          let strokeWidth = element.getAttribute("stroke-width") || (parent ? parent.getAttribute("stroke-width") : "") || getStyle(element, "stroke-width") || "0";
+          strokeWidth = strokeWidth.replace("px", "");
+          const transformInfo = parseTransform(combinedTransform);
+          paths.push({
+            data: pathData,
+            fill,
+            stroke,
+            strokeWidth: Number(strokeWidth),
+            transform: combinedTransform,
+            transformMatrix: transformInfo.matrix,
+            translation: transformInfo.translation,
+            elementType: "path",
+            semanticType,
+            semanticRole,
+            latex
+          });
+        }
+      }
+    } else if (tagName === "path") {
+      const pathData = element.getAttribute("d");
+      if (pathData) {
+        const fill = element.getAttribute("fill") || getStyle(element, "fill") || "black";
+        const stroke = element.getAttribute("stroke") || getStyle(element, "stroke") || "black";
+        let strokeWidth = element.getAttribute("stroke-width") || getStyle(element, "stroke-width") || "0";
+        strokeWidth = strokeWidth.replace("px", "");
+        const transformInfo = parseTransform(combinedTransform);
+        let bbox;
+        try {
+          if (element instanceof SVGPathElement) {
+            bbox = element.getBBox();
+          }
+        } catch (error) {
+        }
+        paths.push({
+          data: pathData,
+          fill,
+          stroke,
+          strokeWidth: Number(strokeWidth),
+          transform: combinedTransform,
+          transformMatrix: transformInfo.matrix,
+          translation: transformInfo.translation,
+          bbox,
+          elementType: "path",
+          semanticType,
+          semanticRole,
+          latex
+        });
+      }
+    } else if (tagName === "rect") {
+      const x = parseFloat(element.getAttribute("x") || "0");
+      const y = parseFloat(element.getAttribute("y") || "0");
+      const width = parseFloat(element.getAttribute("width") || "0");
+      const height = parseFloat(element.getAttribute("height") || "0");
+      if (width > 0 && height > 0) {
+        const pathData = `M${x},${y} L${x + width},${y} L${x + width},${y + height} L${x},${y + height} Z`;
+        const fill = element.getAttribute("fill") || getStyle(element, "fill") || "black";
+        const stroke = element.getAttribute("stroke") || getStyle(element, "stroke") || "black";
+        let strokeWidth = element.getAttribute("stroke-width") || getStyle(element, "stroke-width") || "0";
+        strokeWidth = strokeWidth.replace("px", "");
+        const transformInfo = parseTransform(combinedTransform);
+        let bbox;
+        try {
+          if (element instanceof SVGRectElement) {
+            bbox = element.getBBox();
+          }
+        } catch (error) {
+          bbox = new DOMRect(x, y, width, height);
+        }
+        paths.push({
+          data: pathData,
+          fill,
+          stroke,
+          strokeWidth: Number(strokeWidth),
+          transform: combinedTransform,
+          transformMatrix: transformInfo.matrix,
+          translation: transformInfo.translation,
+          bbox,
+          elementType: "rect",
+          rectWidth: width,
+          rectHeight: height,
+          semanticType,
+          semanticRole,
+          latex
+        });
+      }
+    } else if (tagName === "circle") {
+      const cx = parseFloat(element.getAttribute("cx") || "0");
+      const cy = parseFloat(element.getAttribute("cy") || "0");
+      const r = parseFloat(element.getAttribute("r") || "0");
+      if (r > 0) {
+        const segments = 8;
+        let pathData = `M${cx + r},${cy}`;
+        for (let i = 1; i <= segments; i++) {
+          const angle = i * 2 * Math.PI / segments;
+          const x = cx + r * Math.cos(angle);
+          const y = cy + r * Math.sin(angle);
+          pathData += ` L${x},${y}`;
+        }
+        pathData += " Z";
+        const fill = element.getAttribute("fill") || getStyle(element, "fill") || "black";
+        const stroke = element.getAttribute("stroke") || getStyle(element, "stroke") || "black";
+        let strokeWidth = element.getAttribute("stroke-width") || getStyle(element, "stroke-width") || "0";
+        strokeWidth = strokeWidth.replace("px", "");
+        const transformInfo = parseTransform(combinedTransform);
+        paths.push({
+          data: pathData,
+          fill,
+          stroke,
+          strokeWidth: Number(strokeWidth),
+          transform: combinedTransform,
+          transformMatrix: transformInfo.matrix,
+          translation: transformInfo.translation,
+          elementType: "circle",
+          radius: r,
+          semanticType,
+          semanticRole,
+          latex
+        });
+      }
+    }
+    const children = element.children;
+    for (let i = 0; i < children.length; i++) {
+      extractElements(children[i], combinedTransform, depth + 1);
+    }
+  };
+  const mainGroup = svgElement.querySelector("g[stroke][fill]") || svgElement;
+  extractElements(mainGroup);
+  return paths;
+}
+function groupMathJaxPaths(paths) {
+  const result = {
+    variables: [],
+    fractionBars: [],
+    operators: [],
+    numbers: [],
+    other: []
+  };
+  for (const path of paths) {
+    if (path.elementType === "rect" && path.semanticType === "fraction" || path.rectHeight && path.rectHeight < 10) {
+      result.fractionBars.push(path);
+    } else if (path.semanticRole === "latinletter") {
+      result.variables.push(path);
+    } else if (path.semanticRole === "integer" || path.semanticRole === "number") {
+      result.numbers.push(path);
+    } else if (path.semanticRole === "addition" || path.semanticRole === "subtraction" || path.semanticRole === "multiplication" || path.semanticRole === "division" || path.semanticRole === "equality") {
+      result.operators.push(path);
+    } else {
+      result.other.push(path);
+    }
+  }
+  return result;
+}
+function extractFractionComponents(paths) {
+  const fractions = [];
+  const bars = paths.filter(
+    (p) => p.elementType === "rect" && (p.semanticType === "fraction" || p.rectHeight && p.rectHeight < 10)
+  );
+  for (const bar of bars) {
+    if (!bar.bbox) continue;
+    const barCenterY = bar.bbox.y + bar.bbox.height / 2;
+    const barLeft = bar.bbox.x;
+    const barRight = bar.bbox.x + bar.bbox.width;
+    const numerator = paths.filter((p) => {
+      if (p === bar || !p.bbox) return false;
+      return p.bbox.y + p.bbox.height < barCenterY && p.bbox.x + p.bbox.width > barLeft && p.bbox.x < barRight;
+    });
+    const denominator = paths.filter((p) => {
+      if (p === bar || !p.bbox) return false;
+      return p.bbox.y > barCenterY && p.bbox.x + p.bbox.width > barLeft && p.bbox.x < barRight;
+    });
+    const allElements = [...numerator, bar, ...denominator].filter(
+      (p) => p.bbox
+    );
+    if (allElements.length > 0) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const elem of allElements) {
+        if (elem.bbox) {
+          minX = Math.min(minX, elem.bbox.x);
+          minY = Math.min(minY, elem.bbox.y);
+          maxX = Math.max(maxX, elem.bbox.x + elem.bbox.width);
+          maxY = Math.max(maxY, elem.bbox.y + elem.bbox.height);
+        }
+      }
+      fractions.push({
+        numerator,
+        denominator,
+        bar,
+        bbox: new DOMRect(minX, minY, maxX - minX, maxY - minY)
+      });
+    }
+  }
+  return fractions;
+}
 
 // src/svg_loader_scene.ts
+function ensureSVGNamespace(svgString) {
+  if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
+    return svgString.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+  }
+  return svgString;
+}
+function waitForMathJax() {
+  return new Promise((resolve) => {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      resolve();
+      return;
+    }
+    const checkInterval = setInterval(() => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        clearInterval(checkInterval);
+        resolve();
+      }
+    }, 100);
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      resolve();
+    }, 5e3);
+  });
+}
+async function renderLatexToSVG(latex, displayMode = true) {
+  await waitForMathJax();
+  if (!window.MathJax || !window.MathJax.typesetPromise) {
+    throw new Error(
+      "MathJax not loaded. Make sure MathJax script is included in HTML."
+    );
+  }
+  const div = document.createElement("div");
+  div.style.visibility = "hidden";
+  div.style.position = "absolute";
+  div.style.top = "-9999px";
+  if (displayMode) {
+    div.innerHTML = `\\[${latex}\\]`;
+  } else {
+    div.innerHTML = `\\(${latex}\\)`;
+  }
+  document.body.appendChild(div);
+  try {
+    await window.MathJax.typesetPromise([div]);
+    const svgElement = div.querySelector("svg");
+    if (!svgElement) {
+      const svgs = div.getElementsByTagName("svg");
+      if (svgs.length > 0) {
+        return ensureSVGNamespace(svgs[0].outerHTML);
+      }
+      throw new Error("No SVG element found");
+    }
+    return ensureSVGNamespace(svgElement.outerHTML);
+  } finally {
+    document.body.removeChild(div);
+  }
+}
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
     (function svgLoaderDemo(width, height) {
@@ -1870,6 +2147,54 @@ function createSVGFileInput(onLoad) {
       }
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, width, height);
+      async function mathJaxDemo() {
+        let scene = new Scene(canvas);
+        scene.set_frame_lims([-5, 5], [-5, 5]);
+        try {
+          const latex = "(x, y) = \\left( \\frac{m^2-1}{m^2+1}, -\\frac{2m}{m^2+1} \\right)";
+          ctx.fillStyle = "#000000";
+          ctx.font = "16px Arial";
+          ctx.fillText(`LaTeX: ${latex}`, 50, 125);
+          const svgString = await renderLatexToSVG(latex, true);
+          const svgElement = SimpleSVGLoader.parseSVG(svgString);
+          const paths = extractMathJaxPaths(svgElement);
+          const grouped = groupMathJaxPaths(paths);
+          const fractions = extractFractionComponents(paths);
+          let parsedPathInfoAll = [];
+          let total_length = 0;
+          let p;
+          for (const pathInfo of paths) {
+            p = SimpleSVGLoader.parsePathInfo(pathInfo);
+            parsedPathInfoAll.push(p);
+            total_length += p.commands.length;
+          }
+          let svg_group = {};
+          for (let i = 0; i < parsedPathInfoAll.length; i++) {
+            let svg_mobject = new SVGPathMObject();
+            svg_mobject.from_path(
+              parsedPathInfoAll[i],
+              scene.scale()
+            );
+            svg_mobject.homothety_around([0, 0], 0.02);
+            svg_mobject.move_by([-4, 4]);
+            svg_group[`obj_${i}`] = svg_mobject;
+          }
+          await new WriteInGroup(svg_group, 30).play(scene);
+        } catch (error) {
+          console.error("Basic test failed:", error);
+          ctx.fillStyle = "#ff0000";
+          ctx.font = "14px Arial";
+          ctx.fillText(`\u2717 Error: ${error.message}`, 50, 280);
+          ctx.fillStyle = "#666";
+          ctx.font = "12px Arial";
+          ctx.fillText("Make sure MathJax is loaded in HTML:", 50, 310);
+          ctx.fillText(
+            '<script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-svg.js"><\/script>',
+            50,
+            330
+          );
+        }
+      }
       async function svgMobjectDemo() {
         let scene = new Scene(canvas);
         scene.set_frame_lims([-5, 5], [-5, 5]);
@@ -1887,7 +2212,9 @@ function createSVGFileInput(onLoad) {
           total_length += p.commands.length;
         }
         let svg_group = {};
+        console.log("num", parsedPathInfoAll.length);
         for (let i = 0; i < parsedPathInfoAll.length; i++) {
+          console.log(i);
           let svg_mobject = new SVGPathMObject();
           svg_mobject.from_path(
             parsedPathInfoAll[i],
@@ -2012,7 +2339,7 @@ function createSVGFileInput(onLoad) {
         ctx.fillStyle = "#000000";
         ctx.font = "bold 16px Arial";
         ctx.font = "12px Arial";
-        await svgMobjectDemo();
+        await mathJaxDemo();
         console.log("SVG loader examples completed!");
       }
       runExamples().catch(console.error);

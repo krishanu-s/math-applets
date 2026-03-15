@@ -237,6 +237,38 @@ export class WriteIn extends Animation {
   }
 }
 
+// Write a collection of SVGMObjects simultaneously
+export class WriteInGroup extends Animation {
+  svg_mobjects: Record<string, SVGPathMObject>;
+  num_frames: number;
+  constructor(
+    svg_mobjects: Record<string, SVGPathMObject>,
+    num_frames: number,
+  ) {
+    super();
+    this.svg_mobjects = svg_mobjects;
+    this.num_frames = num_frames;
+  }
+  async play(scene: Scene): Promise<void> {
+    await this._play(scene);
+  }
+  async _play(scene: Scene): Promise<void> {
+    Object.entries(this.svg_mobjects).forEach(([key, elem]) => {
+      scene.add(key, elem);
+    });
+    for (let i = 1; i <= this.num_frames; i++) {
+      await this._play_frame(scene, i);
+      await delay(FRAME_LENGTH);
+      scene.draw();
+    }
+  }
+  async _play_frame(scene: Scene, i: number) {
+    Object.entries(this.svg_mobjects).forEach(([key, elem]) => {
+      elem.set_progress(i / this.num_frames);
+    });
+  }
+}
+
 const isVec2D = (v: any): v is Vec2D => v.length == 2;
 const isVec3D = (v: Vec2D | Vec3D): v is Vec3D => v.length == 3;
 

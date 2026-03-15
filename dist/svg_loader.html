@@ -6,6 +6,17 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>SVG Loader Demo</title>
         <base href="." />
+        <script>
+            MathJax = {
+                tex: {
+                    inlineMath: { "[+]": [["$", "$"]] },
+                },
+            };
+        </script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-svg.js"
+        ></script>
         <style>
             body {
                 font-family: Arial, sans-serif;
@@ -27,5 +38,11 @@
         </div>
 
         <script type="module" src="svg_loader_scene.js"></script>
+
+        <div id="mathjax-svg-parser" class="canvas-container">
+            <!-- Canvas will be inserted here -->
+        </div>
+
+        <!--<script type="module" src="mathjax_svg_parser_scene.js"></script>-->
     </body>
 </html>

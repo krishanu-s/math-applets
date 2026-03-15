@@ -50,29 +50,6 @@ export interface ParsedPathInfo {
   bbox?: DOMRect;
 }
 
-/* Applies path options to the context before drawing that path.*/
-export function applyPathInfo(
-  ctx: CanvasRenderingContext2D,
-  pathInfo: ParsedPathInfo,
-) {
-  ctx.fillStyle = pathInfo.fill;
-  ctx.strokeStyle = pathInfo.stroke;
-  ctx.lineWidth = Number(pathInfo.strokeWidth);
-  // TODO Transformation matrix
-  if (pathInfo.translation) {
-    ctx.translate(pathInfo.translation.x, pathInfo.translation.y);
-  }
-}
-export function unapplyPathInfo(
-  ctx: CanvasRenderingContext2D,
-  pathInfo: ParsedPathInfo,
-) {
-  // TODO Inverse transformation matrix
-  if (pathInfo.translation) {
-    ctx.translate(-pathInfo.translation.x, -pathInfo.translation.y);
-  }
-}
-
 /**
  * Simple SVG loader utility
  */
@@ -237,93 +214,6 @@ export class SimpleSVGLoader {
     return paths;
   }
 
-  // Draw the first N commands in a path
-  // Types (lowercase versions are relative coordinates): MLHVCSQTAZmlhvcsqtaz
-  // M = Move To
-  // L = Line To
-  // H = Horizontal line to
-  // V = Vertical line to
-  // C = Cubic Bezier curve, specified as H1, H2, A
-  // S = Smooth cubic Bezier curve to, specified as H2, A (if the last move was a C,
-  // first handle is the reflection of the last handle over the current point,
-  // and otherwise it's the current point)
-  // Q = Quadratic Bezier curve to, specified as H, A
-  // T = Smooth quadratic Bezier curve to, specified as A
-  // A = Arc curve (rx, ry, angle)
-  // Z = Close (connect to initial point with straight line)
-  static drawPartial(
-    ctx: CanvasRenderingContext2D,
-    parsedPathInfoAll: Array<ParsedPathInfo>,
-    numCommands: number,
-  ) {
-    // Keep track of current ctx position and previous handles
-    let x = 0;
-    let y = 0;
-    let h1_x = 0;
-    let h1_y = 0;
-    let h2_x = 0;
-    let h2_y = 0;
-    ctx.beginPath();
-
-    // Current command
-    let path_info = parsedPathInfoAll[0];
-    let i = 0;
-    let j = 0;
-    while (i < parsedPathInfoAll.length) {
-      path_info = parsedPathInfoAll[i];
-      i++;
-      applyPathInfo(ctx, path_info);
-      for (let cmd of path_info.commands) {
-        if (j >= numCommands) {
-          if (cmd.type != "Z") {
-            ctx.stroke();
-          }
-          unapplyPathInfo(ctx, path_info);
-          return;
-        }
-        if (cmd.type == "M") {
-          [x, y] = cmd.values;
-          ctx.moveTo(x, y);
-        } else if (cmd.type == "L") {
-          [x, y] = cmd.values;
-          ctx.lineTo(x, y);
-        } else if (cmd.type == "H") {
-          y = cmd.values[0];
-          ctx.lineTo(x, y);
-        } else if (cmd.type == "V") {
-          x = cmd.values[0];
-          ctx.lineTo(x, y);
-        } else if (cmd.type == "C") {
-          [h1_x, h1_y] = [cmd.values[0], cmd.values[1]];
-          [h2_x, h2_y] = [cmd.values[2], cmd.values[3]];
-          [x, y] = [cmd.values[4], cmd.values[5]];
-          ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
-        } else if (cmd.type == "S") {
-          [h1_x, h1_y] = [2 * x - h2_x, 2 * y - h2_y];
-          [h2_x, h2_y] = [cmd.values[0], cmd.values[1]];
-          [x, y] = [cmd.values[2], cmd.values[3]];
-          ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
-        } else if (cmd.type == "Q") {
-          [h2_x, h2_y] = [cmd.values[0], cmd.values[1]];
-          [x, y] = [cmd.values[2], cmd.values[3]];
-          ctx.quadraticCurveTo(h2_x, h2_y, x, y);
-        } else if (cmd.type == "T") {
-          [h2_x, h2_y] = [2 * x - h2_x, 2 * y - h2_y];
-          [x, y] = [cmd.values[0], cmd.values[1]];
-          ctx.quadraticCurveTo(h2_x, h2_y, x, y);
-        } else if (cmd.type == "A") {
-          // TODO
-          console.log("Type A", cmd.values);
-        } else if (cmd.type == "Z") {
-          ctx.closePath();
-          ctx.fill();
-        }
-        j++;
-      }
-      unapplyPathInfo(ctx, path_info);
-    }
-  }
-
   /**
    * Convert SVG path to points (simplified - only handles M, L, H, V, Z commands)
    */
@@ -389,11 +279,9 @@ export class SimpleSVGLoader {
 
     while ((match = regex.exec(pathData)) !== null) {
       const type = match[1];
-      const values = match[2]
-        .trim()
-        .split(/[\s,]+/)
-        .filter((v) => v)
-        .map(parseFloat);
+      const values = (match[2].trim().match(/-?\d+(?:\.\d+)?/g) || []).map(
+        Number,
+      );
 
       commands.push({ type, values });
     }
@@ -504,4 +392,459 @@ export function createSVGFileInput(
   });
 
   return input;
+}
+
+/**
+ * Extended path information for MathJax SVG
+ */
+export interface MathJaxPathInfo {
+  /** SVG path data (d attribute) */
+  data: string;
+  /** Fill color or style */
+  fill: string;
+  /** Stroke color or style */
+  stroke: string;
+  /** Stroke width */
+  strokeWidth: number;
+  /** Transformation matrix as string */
+  transform: string;
+  /** Parsed transformation matrix (if available) */
+  transformMatrix?: DOMMatrix;
+  /** Translation vector extracted from transform */
+  translation?: Point2D;
+  /** Bounding box of the path */
+  bbox?: DOMRect;
+  /** Element type: 'path', 'rect', 'circle', etc. */
+  elementType: string;
+  /** For rectangles: width and height */
+  rectWidth?: number;
+  rectHeight?: number;
+  /** For circles: radius */
+  radius?: number;
+  /** Semantic information from MathJax */
+  semanticType?: string;
+  semanticRole?: string;
+  latex?: string;
+}
+
+/**
+ * Extract all graphical elements from MathJax SVG with proper handling
+ */
+export function extractMathJaxPaths(svgElement: SVGElement): MathJaxPathInfo[] {
+  const paths: MathJaxPathInfo[] = [];
+
+  // First, collect all path definitions from <defs>
+  const defsMap = new Map<string, string>();
+  const defs = svgElement.querySelector("defs");
+  if (defs) {
+    const defPaths = defs.querySelectorAll("path");
+    defPaths.forEach((defPath) => {
+      const id = defPath.getAttribute("id");
+      const d = defPath.getAttribute("d");
+      if (id && d) {
+        defsMap.set(id, d);
+      }
+    });
+  }
+
+  // Helper to get computed style
+  const getStyle = (element: Element, property: string): string => {
+    const style = window.getComputedStyle(element);
+    return style.getPropertyValue(property);
+  };
+
+  // Helper to parse transformation
+  const parseTransform = (
+    transform: string,
+  ): { matrix?: DOMMatrix; translation?: Point2D } => {
+    if (!transform) return {};
+
+    try {
+      const svgNS = "http://www.w3.org/2000/svg";
+      const tempSvg = document.createElementNS(svgNS, "svg");
+      const tempElement = document.createElementNS(svgNS, "g");
+      tempSvg.appendChild(tempElement);
+      document.body.appendChild(tempSvg);
+
+      tempElement.setAttribute("transform", transform);
+      const matrix = tempElement.getCTM();
+
+      document.body.removeChild(tempSvg);
+
+      if (matrix) {
+        return {
+          matrix,
+          translation: { x: matrix.e, y: matrix.f },
+        };
+      }
+    } catch (error) {
+      console.warn("Failed to parse transform:", transform, error);
+    }
+
+    return {};
+  };
+
+  // Extract elements recursively
+  const extractElements = (
+    element: Element,
+    parentTransform: string = "",
+    depth: number = 0,
+  ) => {
+    // Get current element's transform
+    const elementTransform = element.getAttribute("transform") || "";
+    const combinedTransform = parentTransform
+      ? elementTransform
+        ? `${parentTransform} ${elementTransform}`
+        : parentTransform
+      : elementTransform;
+
+    // Get semantic information
+    const semanticType = element.getAttribute("data-semantic-type");
+    const semanticRole = element.getAttribute("data-semantic-role");
+    const latex = element.getAttribute("data-latex");
+
+    // Handle different element types
+    const tagName = element.tagName.toLowerCase();
+
+    if (tagName === "use") {
+      // Handle <use> elements that reference path definitions
+      const href =
+        element.getAttribute("xlink:href") || element.getAttribute("href");
+      if (href && href.startsWith("#")) {
+        const defId = href.substring(1);
+        const pathData = defsMap.get(defId);
+
+        if (pathData) {
+          // Get styles from parent or element itself
+          const parent = element.parentElement;
+          const fill =
+            element.getAttribute("fill") ||
+            (parent ? parent.getAttribute("fill") : "") ||
+            getStyle(element, "fill") ||
+            "black";
+          const stroke =
+            element.getAttribute("stroke") ||
+            (parent ? parent.getAttribute("stroke") : "") ||
+            getStyle(element, "stroke") ||
+            "black";
+
+          let strokeWidth =
+            element.getAttribute("stroke-width") ||
+            (parent ? parent.getAttribute("stroke-width") : "") ||
+            getStyle(element, "stroke-width") ||
+            "0";
+          strokeWidth = strokeWidth.replace("px", "");
+
+          const transformInfo = parseTransform(combinedTransform);
+
+          paths.push({
+            data: pathData,
+            fill,
+            stroke,
+            strokeWidth: Number(strokeWidth),
+            transform: combinedTransform,
+            transformMatrix: transformInfo.matrix,
+            translation: transformInfo.translation,
+            elementType: "path",
+            semanticType,
+            semanticRole,
+            latex,
+          });
+        }
+      }
+    } else if (tagName === "path") {
+      // Handle direct <path> elements
+      const pathData = element.getAttribute("d");
+      if (pathData) {
+        const fill =
+          element.getAttribute("fill") || getStyle(element, "fill") || "black";
+        const stroke =
+          element.getAttribute("stroke") ||
+          getStyle(element, "stroke") ||
+          "black";
+
+        let strokeWidth =
+          element.getAttribute("stroke-width") ||
+          getStyle(element, "stroke-width") ||
+          "0";
+        strokeWidth = strokeWidth.replace("px", "");
+
+        const transformInfo = parseTransform(combinedTransform);
+
+        // Try to get bounding box
+        let bbox: DOMRect | undefined;
+        try {
+          if (element instanceof SVGPathElement) {
+            bbox = element.getBBox();
+          }
+        } catch (error) {
+          // Some paths might not have a valid bounding box
+        }
+
+        paths.push({
+          data: pathData,
+          fill,
+          stroke,
+          strokeWidth: Number(strokeWidth),
+          transform: combinedTransform,
+          transformMatrix: transformInfo.matrix,
+          translation: transformInfo.translation,
+          bbox,
+          elementType: "path",
+          semanticType,
+          semanticRole,
+          latex,
+        });
+      }
+    } else if (tagName === "rect") {
+      // Handle <rect> elements (like fraction bars)
+      const x = parseFloat(element.getAttribute("x") || "0");
+      const y = parseFloat(element.getAttribute("y") || "0");
+      const width = parseFloat(element.getAttribute("width") || "0");
+      const height = parseFloat(element.getAttribute("height") || "0");
+
+      if (width > 0 && height > 0) {
+        // Convert rectangle to path data
+        const pathData = `M${x},${y} L${x + width},${y} L${x + width},${y + height} L${x},${y + height} Z`;
+
+        const fill =
+          element.getAttribute("fill") || getStyle(element, "fill") || "black";
+        const stroke =
+          element.getAttribute("stroke") ||
+          getStyle(element, "stroke") ||
+          "black";
+
+        let strokeWidth =
+          element.getAttribute("stroke-width") ||
+          getStyle(element, "stroke-width") ||
+          "0";
+        strokeWidth = strokeWidth.replace("px", "");
+
+        const transformInfo = parseTransform(combinedTransform);
+
+        // Get bounding box
+        let bbox: DOMRect | undefined;
+        try {
+          if (element instanceof SVGRectElement) {
+            bbox = element.getBBox();
+          }
+        } catch (error) {
+          // Fallback to calculated bbox
+          bbox = new DOMRect(x, y, width, height);
+        }
+
+        paths.push({
+          data: pathData,
+          fill,
+          stroke,
+          strokeWidth: Number(strokeWidth),
+          transform: combinedTransform,
+          transformMatrix: transformInfo.matrix,
+          translation: transformInfo.translation,
+          bbox,
+          elementType: "rect",
+          rectWidth: width,
+          rectHeight: height,
+          semanticType,
+          semanticRole,
+          latex,
+        });
+      }
+    } else if (tagName === "circle") {
+      // Handle <circle> elements
+      const cx = parseFloat(element.getAttribute("cx") || "0");
+      const cy = parseFloat(element.getAttribute("cy") || "0");
+      const r = parseFloat(element.getAttribute("r") || "0");
+
+      if (r > 0) {
+        // Convert circle to path data (approximation with 8 segments)
+        const segments = 8;
+        let pathData = `M${cx + r},${cy}`;
+        for (let i = 1; i <= segments; i++) {
+          const angle = (i * 2 * Math.PI) / segments;
+          const x = cx + r * Math.cos(angle);
+          const y = cy + r * Math.sin(angle);
+          pathData += ` L${x},${y}`;
+        }
+        pathData += " Z";
+
+        const fill =
+          element.getAttribute("fill") || getStyle(element, "fill") || "black";
+        const stroke =
+          element.getAttribute("stroke") ||
+          getStyle(element, "stroke") ||
+          "black";
+
+        let strokeWidth =
+          element.getAttribute("stroke-width") ||
+          getStyle(element, "stroke-width") ||
+          "0";
+        strokeWidth = strokeWidth.replace("px", "");
+
+        const transformInfo = parseTransform(combinedTransform);
+
+        paths.push({
+          data: pathData,
+          fill,
+          stroke,
+          strokeWidth: Number(strokeWidth),
+          transform: combinedTransform,
+          transformMatrix: transformInfo.matrix,
+          translation: transformInfo.translation,
+          elementType: "circle",
+          radius: r,
+          semanticType,
+          semanticRole,
+          latex,
+        });
+      }
+    }
+
+    // Recursively process child elements
+    const children = element.children;
+    for (let i = 0; i < children.length; i++) {
+      extractElements(children[i], combinedTransform, depth + 1);
+    }
+  };
+
+  // Start extraction from the main <g> element (usually the one with stroke/fill attributes)
+  const mainGroup = svgElement.querySelector("g[stroke][fill]") || svgElement;
+  extractElements(mainGroup);
+
+  return paths;
+}
+
+/**
+ * Group paths by semantic meaning (for fractions, variables, etc.)
+ */
+export function groupMathJaxPaths(paths: MathJaxPathInfo[]): {
+  variables: MathJaxPathInfo[];
+  fractionBars: MathJaxPathInfo[];
+  operators: MathJaxPathInfo[];
+  numbers: MathJaxPathInfo[];
+  other: MathJaxPathInfo[];
+} {
+  const result = {
+    variables: [] as MathJaxPathInfo[],
+    fractionBars: [] as MathJaxPathInfo[],
+    operators: [] as MathJaxPathInfo[],
+    numbers: [] as MathJaxPathInfo[],
+    other: [] as MathJaxPathInfo[],
+  };
+
+  for (const path of paths) {
+    // Check if it's a fraction bar (rect element in a fraction)
+    if (
+      (path.elementType === "rect" && path.semanticType === "fraction") ||
+      (path.rectHeight && path.rectHeight < 10)
+    ) {
+      // Thin rectangle
+      result.fractionBars.push(path);
+    }
+    // Check if it's a variable (latinletter semantic role)
+    else if (path.semanticRole === "latinletter") {
+      result.variables.push(path);
+    }
+    // Check if it's a number
+    else if (
+      path.semanticRole === "integer" ||
+      path.semanticRole === "number"
+    ) {
+      result.numbers.push(path);
+    }
+    // Check if it's an operator
+    else if (
+      path.semanticRole === "addition" ||
+      path.semanticRole === "subtraction" ||
+      path.semanticRole === "multiplication" ||
+      path.semanticRole === "division" ||
+      path.semanticRole === "equality"
+    ) {
+      result.operators.push(path);
+    } else {
+      result.other.push(path);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Extract fraction components (numerator, denominator, bar)
+ */
+export function extractFractionComponents(paths: MathJaxPathInfo[]): Array<{
+  numerator: MathJaxPathInfo[];
+  denominator: MathJaxPathInfo[];
+  bar: MathJaxPathInfo | null;
+  bbox: DOMRect | null;
+}> {
+  const fractions: Array<{
+    numerator: MathJaxPathInfo[];
+    denominator: MathJaxPathInfo[];
+    bar: MathJaxPathInfo | null;
+    bbox: DOMRect | null;
+  }> = [];
+
+  // Find all fraction bars
+  const bars = paths.filter(
+    (p) =>
+      p.elementType === "rect" &&
+      (p.semanticType === "fraction" || (p.rectHeight && p.rectHeight < 10)),
+  );
+
+  for (const bar of bars) {
+    if (!bar.bbox) continue;
+
+    const barCenterY = bar.bbox.y + bar.bbox.height / 2;
+    const barLeft = bar.bbox.x;
+    const barRight = bar.bbox.x + bar.bbox.width;
+
+    // Find elements above the bar (numerator)
+    const numerator = paths.filter((p) => {
+      if (p === bar || !p.bbox) return false;
+      return (
+        p.bbox.y + p.bbox.height < barCenterY &&
+        p.bbox.x + p.bbox.width > barLeft &&
+        p.bbox.x < barRight
+      );
+    });
+
+    // Find elements below the bar (denominator)
+    const denominator = paths.filter((p) => {
+      if (p === bar || !p.bbox) return false;
+      return (
+        p.bbox.y > barCenterY &&
+        p.bbox.x + p.bbox.width > barLeft &&
+        p.bbox.x < barRight
+      );
+    });
+
+    // Calculate overall bounding box
+    const allElements = [...numerator, bar, ...denominator].filter(
+      (p) => p.bbox,
+    );
+    if (allElements.length > 0) {
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      for (const elem of allElements) {
+        if (elem.bbox) {
+          minX = Math.min(minX, elem.bbox.x);
+          minY = Math.min(minY, elem.bbox.y);
+          maxX = Math.max(maxX, elem.bbox.x + elem.bbox.width);
+          maxY = Math.max(maxY, elem.bbox.y + elem.bbox.height);
+        }
+      }
+
+      fractions.push({
+        numerator,
+        denominator,
+        bar,
+        bbox: new DOMRect(minX, minY, maxX - minX, maxY - minY),
+      });
+    }
+  }
+
+  return fractions;
 }
