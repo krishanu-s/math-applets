@@ -1356,11 +1356,14 @@ var SVGPathMObject = class extends FillLikeMObject {
     this.set_stroke_color(pathElement.stroke);
     this.set_stroke_width(pathElement.strokeWidth / scene_scale);
     this.set_fill_color(pathElement.fill);
-    let translate = pathElement.translation ? [pathElement.translation.x, pathElement.translation.y] : [0, 0];
     let transformMatrix = [
       [1 / scene_scale, 0],
       [0, -1 / scene_scale]
     ];
+    let translate = pathElement.translation ? matmul_vec2(transformMatrix, [
+      pathElement.translation.x,
+      pathElement.translation.y
+    ]) : [0, 0];
     this.subpaths = [];
     let current_path = new PathSegments();
     let [curr_x, curr_y] = [0, 0];
@@ -1517,9 +1520,10 @@ var Animation = class {
   }
 };
 var WriteIn = class extends Animation {
-  constructor(mobjects, num_frames) {
+  constructor(svg_mobject_name, svg_mobject, num_frames) {
     super();
-    this.mobjects = mobjects;
+    this.svg_mobject_name = svg_mobject_name;
+    this.svg_mobject = svg_mobject;
     this.num_frames = num_frames;
   }
   async play(scene) {
@@ -1527,9 +1531,7 @@ var WriteIn = class extends Animation {
   }
   // Animates the fade in.
   async _play(scene) {
-    Object.entries(this.mobjects).forEach(([key, elem]) => {
-      scene.add(key, elem);
-    });
+    scene.add(this.svg_mobject_name, this.svg_mobject);
     for (let i = 1; i <= this.num_frames; i++) {
       await this._play_frame(scene, i);
       await delay(FRAME_LENGTH);
@@ -1537,9 +1539,7 @@ var WriteIn = class extends Animation {
     }
   }
   async _play_frame(scene, i) {
-    Object.entries(this.mobjects).forEach(([key, elem]) => {
-      elem.set_progress(i / this.num_frames);
-    });
+    this.svg_mobject.set_progress(i / this.num_frames);
   }
 };
 
@@ -1874,7 +1874,7 @@ function createSVGFileInput(onLoad) {
         let scene = new Scene(canvas);
         scene.set_frame_lims([-5, 5], [-5, 5]);
         const svgString = await SimpleSVGLoader.loadFromURL(
-          "./svg_samples/ex_3.svg"
+          "./svg_samples/ex_5.svg"
         );
         const svgElement = SimpleSVGLoader.parseSVG(svgString);
         const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
@@ -1895,9 +1895,8 @@ function createSVGFileInput(onLoad) {
           );
           svg_mobject.homothety_around([0, 0], 0.5);
           svg_mobject.move_by([-4.5, 4.5]);
-          svg_group[`char_${i}`] = svg_mobject;
+          await new WriteIn(`obj_${i}`, svg_mobject, 30).play(scene);
         }
-        await new WriteIn(svg_group, 30).play(scene);
         scene.draw();
       }
       async function partialDraw() {

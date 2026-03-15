@@ -41,7 +41,7 @@ import {
 
         // Load an example SVG from the dist directory
         const svgString = await SimpleSVGLoader.loadFromURL(
-          "./svg_samples/ex_3.svg",
+          "./svg_samples/ex_5.svg",
         );
 
         // Parse and extract paths
@@ -69,10 +69,8 @@ import {
           );
           svg_mobject.homothety_around([0, 0], 0.5);
           svg_mobject.move_by([-4.5, 4.5]);
-          svg_group[`char_${i}`] = svg_mobject;
+          await new WriteIn(`obj_${i}`, svg_mobject, 30).play(scene);
         }
-
-        await new WriteIn(svg_group, 30).play(scene);
 
         // Animate drawing-in.
 
