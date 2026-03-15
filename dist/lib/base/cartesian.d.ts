@@ -45,6 +45,8 @@ export declare class CoordinateAxes2d extends MObjectGroup {
     tick_options: TickOptions;
     grid_options: GridOptions;
     constructor(xlims: Vec2D, ylims: Vec2D);
+    remove_grid_lines(): this;
+    add_grid_lines(): this;
     _make_axes(): void;
     _make_x_grid_lines(): void;
     _make_y_grid_lines(): void;

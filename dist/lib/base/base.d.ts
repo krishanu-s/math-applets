@@ -7,6 +7,8 @@ export declare function funspace(func: (x: number) => number, start: number, sto
 export declare function gaussianRandom(mean: number, stdev: number): number;
 export declare function gaussian_normal_pdf(mean: number, stdev: number, x: number): number;
 export declare function delay(ms: number): Promise<unknown>;
+export declare function linear(t: number): number;
+export declare function quadratic_bump(t: number): number;
 export declare function smooth(t: number, inflection?: number): number;
 export declare class StrokeOptions {
     stroke_width: number;
@@ -30,17 +32,20 @@ export declare class MObject {
     alpha: number;
     constructor();
     set_alpha(alpha: number): this;
-    move_by(p: Vec2D | Vec3D): void;
+    move_by(p: Vec2D | Vec3D): this;
+    homothety_around(p: Vec2D | Vec3D, scale: number): this;
     add(scene: Scene): void;
     draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void;
     _draw(ctx: CanvasRenderingContext2D, scene: Scene, args?: any): void;
 }
 export declare class MObjectGroup extends MObject {
     children: Record<string, MObject>;
-    add_mobj(name: string, child: MObject): void;
-    remove_mobj(name: string): void;
-    move_by(p: Vec2D | Vec3D): void;
+    add_mobj(name: string, child: MObject): this;
+    remove_mobj(name: string): this;
+    move_by(p: Vec2D | Vec3D): this;
+    homothety_around(p: Vec2D | Vec3D, scale: number): this;
     clear(): void;
+    has_mobj(name: string): boolean;
     get_mobj(name: string): MObject;
     draw(canvas: HTMLCanvasElement, scene: Scene, args?: any): void;
 }
@@ -115,6 +120,7 @@ export declare class Scene {
     clear(): void;
     has_mobj(name: string): boolean;
     get_mobj(name: string): MObject;
+    move_to_front(name: string): void;
     draw(args?: any): void;
     _draw(): void;
     draw_mobject(mobj: MObject): void;

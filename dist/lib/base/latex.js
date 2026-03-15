@@ -1,4 +1,5 @@
 import { MObject } from "./base.js";
+import { vec2_sum, } from "../base/vec2.js";
 // A LaTeX object, defined by a string of latex code and a position.
 // TODO Find some way to move the LaTeX cache into the background.
 export class LaTeXMObject extends MObject {
@@ -32,9 +33,14 @@ export class LaTeXMObject extends MObject {
         this.pos = pos;
         return this;
     }
+    move_by(vec) {
+        this.pos = vec2_sum(this.pos, vec);
+        return this;
+    }
     // Draw a rendered LaTeX image
     _drawRendered(ctx, scene, renderedImage) {
         let [cx, cy] = scene.v2c(this.pos);
+        ctx.translate(-renderedImage.width / 2, -renderedImage.height / 2);
         // Apply rotation if specified
         if (this.rotation !== 0) {
             ctx.translate(cx, cy);
@@ -45,6 +51,7 @@ export class LaTeXMObject extends MObject {
         else {
             ctx.drawImage(renderedImage, cx, cy);
         }
+        ctx.translate(renderedImage.width / 2, renderedImage.height / 2);
     }
     // Renders a LaTeX expression and outputs an image.
     async _render() {
@@ -76,13 +83,13 @@ export class LaTeXMObject extends MObject {
         // Render KaTeX
         window.katex.render(this.latex, container, Object.assign(Object.assign({}, this.katexOptions), { fontSize: this.fontSize + "px" }));
         // Convert to canvas using html2canvas
-        let tempCanvas = await window.html2canvas(container, {
+        let tempCanvas = (await window.html2canvas(container, {
             backgroundColor: null,
             scale: 1,
             logging: false,
             useCORS: true,
             allowTaint: true,
-        });
+        }));
         return [container, tempCanvas];
     }
     // Draw the LaTeX object, either by using the cache (if it has been rendered before)

@@ -35,7 +35,16 @@ export function gaussian_normal_pdf(mean, stdev, x) {
 export function delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
-// Smooth function [0, 1] -> [0, 1], for animation
+// Linear rate function f: [0, 1] -> [0, 1], for animation
+export function linear(t) {
+    return t;
+}
+// Quadratic function f: [0, 1] -> [0, 1] which sends both endpoints to 0, and hits 1 in the middle.
+// Used for emphasis.
+export function quadratic_bump(t) {
+    return 4 * t * (1 - t);
+}
+// Smooth rate function f: [0, 1] -> [0, 1], for animation
 export function smooth(t, inflection = 10.0) {
     let error = sigmoid(-inflection / 2);
     return Math.min(Math.max((sigmoid(inflection * (t - 0.5)) - error) / (1 - 2 * error), 0), 1);
@@ -107,14 +116,20 @@ export class MObject {
         this.alpha = alpha;
         return this;
     }
-    move_by(p) { }
+    move_by(p) {
+        return this;
+    }
+    homothety_around(p, scale) {
+        return this;
+    }
     add(scene) { }
     draw(canvas, scene, args) {
         let ctx = canvas.getContext("2d");
         if (!ctx)
             throw new Error("Failed to get 2D context");
-        ctx.globalAlpha = this.alpha;
+        ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
         this._draw(ctx, scene, args);
+        ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
     }
     _draw(ctx, scene, args) { }
 }
@@ -128,17 +143,30 @@ export class MObjectGroup extends MObject {
     }
     add_mobj(name, child) {
         this.children[name] = child;
+        return this;
     }
     remove_mobj(name) {
         delete this.children[name];
+        return this;
     }
     move_by(p) {
         Object.values(this.children).forEach((child) => child.move_by(p));
+        return this;
+    }
+    homothety_around(p, scale) {
+        Object.values(this.children).forEach((child) => child.homothety_around(p, scale));
+        return this;
     }
     clear() {
         Object.keys(this.children).forEach((key) => {
             delete this.children[key];
         });
+    }
+    has_mobj(name) {
+        if (!this.children[name]) {
+            return false;
+        }
+        return true;
     }
     get_mobj(name) {
         if (!this.children[name]) {
@@ -150,8 +178,9 @@ export class MObjectGroup extends MObject {
         let ctx = canvas.getContext("2d");
         if (!ctx)
             throw new Error("Failed to get 2D context");
-        ctx.globalAlpha = this.alpha;
+        ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
         Object.values(this.children).forEach((child) => child.draw(canvas, scene, args));
+        ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
     }
 }
 // A MObject that is drawn using the ctx.stroke() command.
@@ -176,9 +205,10 @@ export class LineLikeMObject extends MObject {
         let ctx = canvas.getContext("2d");
         if (!ctx)
             throw new Error("Failed to get 2D context");
-        ctx.globalAlpha = this.alpha;
         this.stroke_options.apply_to(ctx, scene);
+        ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
         this._draw(ctx, scene, args);
+        ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
     }
 }
 // Line-like mobjects all using the same stroke options.
@@ -203,11 +233,14 @@ export class LineLikeMObjectGroup extends MObjectGroup {
         let ctx = canvas.getContext("2d");
         if (!ctx)
             throw new Error("Failed to get 2D context");
-        ctx.globalAlpha = this.alpha;
         this.stroke_options.apply_to(ctx, scene);
+        ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
         Object.values(this.children).forEach((child) => {
+            ctx.globalAlpha = clamp(ctx.globalAlpha * child.alpha, 0, 1);
             child._draw(ctx, scene, args);
+            ctx.globalAlpha = clamp(ctx.globalAlpha / child.alpha, 0, 1);
         });
+        ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
     }
 }
 // A MObject that is drawn using the ctx.stroke() and ctx.fill() commands.
@@ -250,10 +283,11 @@ export class FillLikeMObject extends MObject {
         let ctx = canvas.getContext("2d");
         if (!ctx)
             throw new Error("Failed to get 2D context");
-        ctx.globalAlpha = this.alpha;
         this.stroke_options.apply_to(ctx, scene);
         this.fill_options.apply_to(ctx);
+        ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
         this._draw(ctx, scene, args);
+        ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
     }
 }
 // Fill-like mobjects all using the same fill options.
@@ -296,10 +330,15 @@ export class FillLikeMObjectGroup extends MObjectGroup {
         let ctx = canvas.getContext("2d");
         if (!ctx)
             throw new Error("Failed to get 2D context");
-        ctx.globalAlpha = this.alpha;
         this.stroke_options.apply_to(ctx, scene);
         this.fill_options.apply_to(ctx);
-        Object.values(this.children).forEach((child) => child._draw(ctx, scene, args));
+        ctx.globalAlpha = clamp(ctx.globalAlpha * this.alpha, 0, 1);
+        Object.values(this.children).forEach((child) => {
+            ctx.globalAlpha = clamp(ctx.globalAlpha * child.alpha, 0, 1);
+            child._draw(ctx, scene, args);
+            ctx.globalAlpha = clamp(ctx.globalAlpha / child.alpha, 0, 1);
+        });
+        ctx.globalAlpha = clamp(ctx.globalAlpha / this.alpha, 0, 1);
     }
 }
 // *** SCENES ***
@@ -464,6 +503,12 @@ export class Scene {
             throw new Error(`${name} not found`);
         return mobj;
     }
+    // Moves a mobject to the front of the scene
+    move_to_front(name) {
+        let mobj = this.get_mobj(name);
+        this.remove(name);
+        this.add(name, mobj);
+    }
     // Draws the scene
     draw(args) {
         let ctx = this.canvas.getContext("2d");
@@ -476,10 +521,7 @@ export class Scene {
     }
     _draw() {
         // Draw the mobjects
-        Object.keys(this.mobjects).forEach((name) => {
-            let mobj = this.mobjects[name];
-            if (mobj == undefined)
-                throw new Error(`${name} not found`);
+        Object.entries(this.mobjects).forEach(([name, mobj]) => {
             this.draw_mobject(mobj);
         });
     }
@@ -496,6 +538,7 @@ export class Scene {
     draw_border(ctx) {
         ctx.strokeStyle = this.border_color;
         ctx.lineWidth = this.border_width;
+        ctx.globalAlpha = 1;
         ctx.strokeRect(0, 0, this.canvas.width, this.canvas.height);
     }
 }

@@ -19,7 +19,7 @@ export interface PathInfo {
   /** Stroke color or style */
   stroke: string;
   /** Stroke width */
-  strokeWidth: string;
+  strokeWidth: number;
   /** Transformation matrix as string */
   transform: string;
   /** Parsed transformation matrix (if available) */
@@ -39,7 +39,7 @@ export interface ParsedPathInfo {
   /** Stroke color or style */
   stroke: string;
   /** Stroke width */
-  strokeWidth: string;
+  strokeWidth: number;
   /** Transformation matrix as string */
   transform: string;
   /** Parsed transformation matrix (if available) */
@@ -50,8 +50,7 @@ export interface ParsedPathInfo {
   bbox?: DOMRect;
 }
 
-/* Applies path options to the context before drawing that path.
-TODO Move this up into the interface above*/
+/* Applies path options to the context before drawing that path.*/
 export function applyPathInfo(
   ctx: CanvasRenderingContext2D,
   pathInfo: ParsedPathInfo,
@@ -184,15 +183,20 @@ export class SimpleSVGLoader {
         if (pathData) {
           // Get styles
           const fill =
-            element.getAttribute("fill") || getStyle(element, "fill") || "none";
+            element.getAttribute("fill") ||
+            getStyle(element, "fill") ||
+            "black";
           const stroke =
             element.getAttribute("stroke") ||
             getStyle(element, "stroke") ||
-            "none";
-          const strokeWidth =
+            "black";
+
+          // Remove units (px, em, etc.) from stroke width
+          let strokeWidth =
             element.getAttribute("stroke-width") ||
             getStyle(element, "stroke-width") ||
             "1";
+          strokeWidth = strokeWidth.replace("px", "");
 
           // Parse transformation
           const transformInfo = parseTransform(combinedTransform);
@@ -209,9 +213,9 @@ export class SimpleSVGLoader {
 
           paths.push({
             data: pathData,
-            fill,
-            stroke,
-            strokeWidth,
+            fill: fill,
+            stroke: stroke,
+            strokeWidth: Number(strokeWidth),
             transform: combinedTransform,
             transformMatrix: transformInfo.matrix,
             translation: transformInfo.translation,
@@ -396,16 +400,16 @@ export class SimpleSVGLoader {
 
     return commands;
   }
-  private static parsePathInfo(pathInfo: PathInfo): ParsedPathInfo {
+  static parsePathInfo(pathInfo: PathInfo): ParsedPathInfo {
     return {
       commands: this.parsePathCommands(pathInfo.data),
       fill: pathInfo.fill,
       stroke: pathInfo.stroke,
       strokeWidth: pathInfo.strokeWidth,
       transform: pathInfo.transform,
-      transformMatrix: pathInfo.transformMatrix,
-      translation: pathInfo.translation,
-      bbox: pathInfo.bbox,
+      transformMatrix: pathInfo.transformMatrix as DOMMatrix | undefined,
+      translation: pathInfo.translation as Point2D | undefined,
+      bbox: pathInfo.bbox as DOMRect | undefined,
     };
   }
 

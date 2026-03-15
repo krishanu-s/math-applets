@@ -8,8 +8,10 @@ export declare class Dot extends FillLikeMObject implements DraggableMObject {
     is_inside(p: Vec2D): boolean;
     is_almost_inside(p: Vec2D, tolerance: number): boolean;
     get_center(): Vec2D;
-    move_to(p: Vec2D): void;
-    move_by(p: Vec2D): void;
+    get_radius(): number;
+    move_to(p: Vec2D): this;
+    move_by(p: Vec2D): this;
+    homothety_around(p: Vec2D, scale: number): this;
     set_radius(radius: number): this;
     _draw(ctx: CanvasRenderingContext2D, scene: Scene): void;
 }
@@ -20,8 +22,9 @@ export declare class Sector extends FillLikeMObject {
     end_angle: number;
     constructor(center: Vec2D, radius: number, start_angle: number, end_angle: number);
     get_center(): Vec2D;
-    move_to(center: Vec2D): void;
-    move_by(p: Vec2D): void;
+    move_to(center: Vec2D): this;
+    move_by(p: Vec2D): this;
+    homothety_around(p: Vec2D, scale: number): this;
     set_radius(radius: number): void;
     _draw(ctx: CanvasRenderingContext2D, scene: Scene): void;
 }
@@ -58,8 +61,9 @@ export declare class Rectangle extends FillLikeMObject implements DraggableMObje
     is_inside(p: Vec2D): boolean;
     is_almost_inside(p: Vec2D, tolerance: number): boolean;
     get_center(): Vec2D;
-    move_to(center: Vec2D): void;
-    move_by(p: Vec2D): void;
+    move_to(center: Vec2D): this;
+    move_by(p: Vec2D): this;
+    homothety_around(p: Vec2D, scale: number): this;
     _draw(ctx: CanvasRenderingContext2D, scene: Scene): void;
 }
 export declare class Polygon extends FillLikeMObject {
@@ -68,7 +72,8 @@ export declare class Polygon extends FillLikeMObject {
     add_point(point: Vec2D): void;
     remove_point(index: number): void;
     move_point(i: number, new_point: Vec2D): void;
-    move_by(p: Vec2D): void;
+    move_by(p: Vec2D): this;
+    homothety_around(p: Vec2D, scale: number): this;
     _draw(ctx: CanvasRenderingContext2D, scene: Scene): void;
 }
 export declare const DraggableRectangle: {
@@ -102,8 +107,13 @@ export declare class Line extends LineLikeMObject {
     constructor(start: Vec2D, end: Vec2D);
     move_start(p: Vec2D): this;
     move_end(p: Vec2D): this;
+    move_midpoint_to(p: Vec2D): this;
     move_by(p: Vec2D): this;
+    midpoint(): Vec2D;
+    vec(): Vec2D;
     length(): number;
+    rotate_to(theta: number): this;
+    homothety_around(p: Vec2D, scale: number): this;
     _draw(ctx: CanvasRenderingContext2D, scene: Scene): void;
 }
 export declare class LineSequence extends LineLikeMObject {
@@ -113,7 +123,8 @@ export declare class LineSequence extends LineLikeMObject {
     remove_point(index: number): void;
     move_point(i: number, new_point: Vec2D): void;
     get_point(i: number): Vec2D;
-    move_by(p: Vec2D): void;
+    move_by(p: Vec2D): this;
+    homothety_around(p: Vec2D, scale: number): this;
     _draw(ctx: CanvasRenderingContext2D, scene: Scene): void;
 }
 export declare class Arrow extends Line {

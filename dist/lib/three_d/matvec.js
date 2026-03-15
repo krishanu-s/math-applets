@@ -9,6 +9,13 @@ export function vec3_dot(v, w) {
     }
     return result;
 }
+export function vec3_cross(v, w) {
+    return [
+        v[1] * w[2] - v[2] * w[1],
+        v[2] * w[0] - v[0] * w[2],
+        v[0] * w[1] - v[1] * w[0],
+    ];
+}
 export function vec3_scale(x, factor) {
     return [x[0] * factor, x[1] * factor, x[2] * factor];
 }
