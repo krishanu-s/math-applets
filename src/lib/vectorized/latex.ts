@@ -77,7 +77,6 @@ async function renderLatexToSVG(
 
     // Find SVG element
     const svgElement = div.querySelector("svg");
-    console.log(div, svgElement);
     if (!svgElement) {
       // Try to find any SVG in the element
       const svgs = div.getElementsByTagName("svg");
