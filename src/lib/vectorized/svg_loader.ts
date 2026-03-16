@@ -1,5 +1,7 @@
 import { Vec2D } from "../base";
 
+// TODO Clean this file up and extract key components.
+
 /**
  * Simple interface for a 2D point
  */
@@ -53,7 +55,7 @@ export interface ParsedPathInfo {
 /**
  * Simple SVG loader utility
  */
-export class SimpleSVGLoader {
+export class SVGLoader {
   /**
    * Load SVG from a URL
    */
@@ -341,18 +343,18 @@ export class SimpleSVGLoader {
  */
 export async function loadSVGAndGetPoints(url: string): Promise<Point2D[]> {
   // 1. Load SVG
-  const svgString = await SimpleSVGLoader.loadFromURL(url);
+  const svgString = await SVGLoader.loadFromURL(url);
 
   // 2. Parse to DOM
-  const svgElement = SimpleSVGLoader.parseSVG(svgString);
+  const svgElement = SVGLoader.parseSVG(svgString);
 
   // 3. Extract paths
-  const paths = SimpleSVGLoader.extractPaths(svgElement);
+  const paths = SVGLoader.extractPaths(svgElement);
 
   // 4. Convert to points
   const allPoints: Point2D[] = [];
   for (const path of paths) {
-    const points = SimpleSVGLoader.pathToPoints(path);
+    const points = SVGLoader.pathToPoints(path);
     allPoints.push(...points);
   }
 
@@ -375,14 +377,14 @@ export function createSVGFileInput(
 
     try {
       // Load SVG
-      const svgString = await SimpleSVGLoader.loadFromFile(file);
+      const svgString = await SVGLoader.loadFromFile(file);
 
       // Get points
-      const svgElement = SimpleSVGLoader.parseSVG(svgString);
-      const paths = SimpleSVGLoader.extractPaths(svgElement);
+      const svgElement = SVGLoader.parseSVG(svgString);
+      const paths = SVGLoader.extractPaths(svgElement);
       const points: Point2D[] = [];
       for (const path of paths) {
-        points.push(...SimpleSVGLoader.pathToPoints(path));
+        points.push(...SVGLoader.pathToPoints(path));
       }
 
       onLoad(svgString, points);

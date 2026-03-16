@@ -6,15 +6,11 @@
 
 import { MoveBy, Write, WriteGroup } from "./lib/animation";
 import { delay, prepare_canvas, Scene } from "./lib/base";
-import { SVGPathMObject, TexMObject } from "./lib/vectorized/svg_mobject";
+import { SVGPathMObject, TexMObject } from "./lib/vectorized";
 import {
-  SimpleSVGLoader,
+  SVGLoader,
   createSVGFileInput,
   ParsedPathInfo,
-  PathInfo,
-  extractMathJaxPaths,
-  groupMathJaxPaths,
-  extractFractionComponents,
 } from "./lib/vectorized/svg_loader";
 
 // MathJax type declarations
@@ -136,14 +132,14 @@ async function renderLatexToSVG(
 
           let latex_mobj = new TexMObject();
           await latex_mobj.from_latex(latex, scene.scale());
-          latex_mobj.homothety_around([0, 0], 0.02);
-          latex_mobj.move_by([-4, 4]);
+          latex_mobj.set_center([-2, 4]);
+          latex_mobj.set_width(4.0);
 
           // // Render
           // const svgString = await renderLatexToSVG(latex, true);
 
           // // Parse string to SVG element
-          // const svgElement = SimpleSVGLoader.parseSVG(svgString);
+          // const svgElement = SVGLoader.parseSVG(svgString);
 
           // const paths = extractMathJaxPaths(svgElement);
 
@@ -153,7 +149,7 @@ async function renderLatexToSVG(
 
           // // // Parse each path info object into a
           // for (const pathInfo of paths) {
-          //   p = SimpleSVGLoader.parsePathInfo(pathInfo);
+          //   p = SVGLoader.parsePathInfo(pathInfo);
           //   parsedPathInfoAll.push(p);
           //   total_length += p.commands.length;
           // }
@@ -201,13 +197,11 @@ async function renderLatexToSVG(
         scene.set_frame_lims([-5, 5], [-5, 5]);
 
         // Load an example SVG from the dist directory
-        const svgString = await SimpleSVGLoader.loadFromURL(
-          "./svg_samples/ex_5.svg",
-        );
+        const svgString = await SVGLoader.loadFromURL("./svg_samples/ex_5.svg");
 
         // Parse and extract paths
-        const svgElement = SimpleSVGLoader.parseSVG(svgString);
-        const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
+        const svgElement = SVGLoader.parseSVG(svgString);
+        const pathInfoAll = SVGLoader.extractPaths(svgElement);
 
         let parsedPathInfoAll = [];
         let total_length = 0;
@@ -216,7 +210,7 @@ async function renderLatexToSVG(
         // // Parse each path info object into a
         // let allCommands: Array<{ type: string; values: number[] }> = [];
         for (const pathInfo of pathInfoAll) {
-          p = SimpleSVGLoader.parsePathInfo(pathInfo);
+          p = SVGLoader.parsePathInfo(pathInfo);
           parsedPathInfoAll.push(p);
           total_length += p.commands.length;
         }
@@ -253,14 +247,14 @@ async function renderLatexToSVG(
       // async function partialDraw() {
       //   try {
       //     // Load an example SVG from the dist directory
-      //     const svgString = await SimpleSVGLoader.loadFromURL(
+      //     const svgString = await SVGLoader.loadFromURL(
       //       "./svg_samples/ex_4.svg",
       //     );
       //     console.log(svgString);
 
       //     // Parse and extract paths
-      //     const svgElement = SimpleSVGLoader.parseSVG(svgString);
-      //     const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
+      //     const svgElement = SVGLoader.parseSVG(svgString);
+      //     const pathInfoAll = SVGLoader.extractPaths(svgElement);
 
       //     let parsedPathInfoAll = [];
       //     let total_length = 0;
@@ -269,7 +263,7 @@ async function renderLatexToSVG(
       //     // // Parse each path info object into a
       //     // let allCommands: Array<{ type: string; values: number[] }> = [];
       //     for (const pathInfo of pathInfoAll) {
-      //       p = SimpleSVGLoader.parsePathInfo(pathInfo);
+      //       p = SVGLoader.parsePathInfo(pathInfo);
       //       parsedPathInfoAll.push(p);
       //       total_length += p.commands.length;
       //     }
@@ -286,7 +280,7 @@ async function renderLatexToSVG(
       //     // ctx.fillStyle = "#000000";
 
       //     // // Partially draw
-      //     // await SimpleSVGLoader.drawPartial(
+      //     // await SVGLoader.drawPartial(
       //     //   ctx,
       //     //   allCommands,
       //     //   allCommands.length,
@@ -304,7 +298,7 @@ async function renderLatexToSVG(
       //       ctx.fillStyle = "#000000";
 
       //       // Partially draw
-      //       await SimpleSVGLoader.drawPartial(
+      //       await SVGLoader.drawPartial(
       //         ctx,
       //         parsedPathInfoAll,
       //         numCommands,
@@ -321,18 +315,18 @@ async function renderLatexToSVG(
       async function loadExampleSVG() {
         try {
           // Load an example SVG from the dist directory
-          const svgString = await SimpleSVGLoader.loadFromURL(
+          const svgString = await SVGLoader.loadFromURL(
             "./svg_samples/ex_3.svg",
           );
 
           console.log("SVG string:", svgString);
 
           // Draw it to canvas
-          await SimpleSVGLoader.drawToCanvas(canvas, svgString, 50, 50);
+          await SVGLoader.drawToCanvas(canvas, svgString, 50, 50);
 
           // Parse and extract points
-          const svgElement = SimpleSVGLoader.parseSVG(svgString);
-          const paths = SimpleSVGLoader.extractPaths(svgElement);
+          const svgElement = SVGLoader.parseSVG(svgString);
+          const paths = SVGLoader.extractPaths(svgElement);
           console.log("Paths:", paths);
 
           for (const path of paths) {
@@ -340,11 +334,11 @@ async function renderLatexToSVG(
             // // Draw the first N commands in the path
             // ctx.fillStyle = "#000000";
 
-            // let commands = SimpleSVGLoader.parsePathCommands(path);
-            // await SimpleSVGLoader.drawPartial(ctx, commands, numCommands);
+            // let commands = SVGLoader.parsePathCommands(path);
+            // await SVGLoader.drawPartial(ctx, commands, numCommands);
 
             console.log("Path:", path);
-            const points = SimpleSVGLoader.pathToPoints(path);
+            const points = SVGLoader.pathToPoints(path);
             console.log("Points in path:", points);
             // Draw a red dot at each point in the path
             ctx.fillStyle = "#ff0000";
@@ -381,7 +375,7 @@ async function renderLatexToSVG(
           ctx.fillRect(300, 50, 400, 400);
 
           // Draw SVG
-          SimpleSVGLoader.drawToCanvas(canvas, svgString, 320, 70)
+          SVGLoader.drawToCanvas(canvas, svgString, 320, 70)
             .then(() => {
               // Draw points
               ctx.fillStyle = "#ff0000";
@@ -415,9 +409,9 @@ async function renderLatexToSVG(
         for (const file of svgFiles) {
           try {
             console.log("Filename:", file);
-            const svgString = await SimpleSVGLoader.loadFromURL(file);
+            const svgString = await SVGLoader.loadFromURL(file);
             console.log("Contents:", svgString);
-            await SimpleSVGLoader.drawToCanvas(canvas, svgString, 50, yOffset);
+            await SVGLoader.drawToCanvas(canvas, svgString, 50, yOffset);
             yOffset += 120;
           } catch (error) {
             console.error(`Error loading ${file}:`, error);
