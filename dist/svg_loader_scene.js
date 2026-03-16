@@ -2193,7 +2193,6 @@ async function renderLatexToSVG(latex, displayMode = true) {
   try {
     await window.MathJax.typesetPromise([div]);
     const svgElement = div.querySelector("svg");
-    console.log(div, svgElement);
     if (!svgElement) {
       const svgs = div.getElementsByTagName("svg");
       if (svgs.length > 0) {
