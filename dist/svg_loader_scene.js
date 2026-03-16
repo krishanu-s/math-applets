@@ -790,12 +790,13 @@ var makeDraggable3D = (Base) => {
 };
 
 // src/lib/base/geometry.ts
-var Dot = class extends FillLikeMObject {
-  constructor(center, radius) {
+var Sector = class extends FillLikeMObject {
+  constructor(center, radius, start_angle, end_angle) {
     super();
-    this.radius = 0.1;
     this.center = center;
     this.radius = radius;
+    this.start_angle = start_angle;
+    this.end_angle = end_angle;
   }
   // Tests whether a chosen vector lies inside the shape. Used for click-detection.
   is_inside(p) {
@@ -839,8 +840,17 @@ var Dot = class extends FillLikeMObject {
     let [x, y] = scene.v2c(this.center);
     let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
-    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
-    ctx.fill();
+    ctx.arc(x, y, Math.abs(xr - x), this.start_angle, this.end_angle);
+    if (this.fill_options.fill) {
+      ctx.globalAlpha *= this.fill_options.fill_alpha;
+      ctx.fill();
+      ctx.globalAlpha /= this.fill_options.fill_alpha;
+    }
+  }
+};
+var Dot = class extends Sector {
+  constructor(center, radius) {
+    super(center, radius, 0, 2 * Math.PI);
   }
 };
 var DraggableDot = makeDraggable(Dot);
@@ -862,6 +872,9 @@ var Rectangle = class extends FillLikeMObject {
   }
   get_center() {
     return this.center;
+  }
+  get_radius() {
+    return Math.max(this.size_x, this.size_y) / 2;
   }
   move_to(center) {
     this.center = center;
@@ -1280,354 +1293,77 @@ var Line3D = class extends ThreeDLineLikeMObject {
   }
 };
 
-// src/lib/base/svg_mobject.ts
-var FILL_DELAY = 0.9;
-var SVGMObject = class extends FillLikeMObject {
-};
-var PathSegments = class _PathSegments {
-  constructor() {
-    // Bezier segments that make up the path.
-    this.segments = [];
-    // Number between 0 and 1 indicating how far along the path to draw.
-    this.progress = 1;
-  }
-  set_progress(p) {
-    this.progress = p;
-  }
-  clone() {
-    let clone = new _PathSegments();
-    clone.segments = this.segments.slice();
-    clone.progress = this.progress;
-    return clone;
-  }
-  // Adds a new single cubic Bezier segment to the path. Typically the segment
-  // will be given in ctx coordinates, and will be transformed to scene coordinates
-  // here by x -> Ax + b
-  add_segment(segment, transformMatrix, translate = [0, 0]) {
-    this.segments.push(
-      segment.map(
-        (p) => vec2_sum(matmul_vec2(transformMatrix, p), translate)
-      )
-    );
-  }
-  // Translates the path by a given vector.
-  move_by(p) {
-    this.segments = this.segments.map((segment) => {
-      return segment.map((v) => vec2_sum(v, p));
-    });
-    return this;
-  }
-  // Scales the path around a given point by a given scale factor.
-  homothety_around(p, scale) {
-    this.segments = this.segments.map((segment) => {
-      return segment.map((v) => {
-        const [x, y] = vec2_sub(v, p);
-        return vec2_sum([x * scale, y * scale], p);
-      });
-    });
-    return this;
-  }
-  // Partially draws the path with the given stroke and fill settings, where t is a parameter
-  // between 0 and 1 controlling the progress.
-  // - When 0 < t < FILL_DELAY, a partial outline is drawn.
-  // - When FILL_DELAY < t < 1, the full outline is drawn with partial opacity.
-  _drawPartial(ctx, scene, t, stroke, fill) {
-    let num_segments = Math.min(
-      Math.floor(this.segments.length * 2 * t),
-      this.segments.length
-    );
-    ctx.beginPath();
-    ctx.strokeStyle = "black";
-    let [curr_x, curr_y] = scene.v2c(this.segments[0][0]);
-    let cx, cy;
-    let [h1_x, h1_y] = [0, 0];
-    let [h2_x, h2_y] = [0, 0];
-    let [x, y] = [0, 0];
-    let segment;
-    ctx.moveTo(curr_x, curr_y);
-    for (let i = 0; i < num_segments; i++) {
-      segment = this.segments[i];
-      [cx, cy] = scene.v2c(segment[0]);
-      if (cx != curr_x || cy != curr_y) {
-        ctx.moveTo(cx, cy);
-      }
-      [h1_x, h1_y] = scene.v2c(segment[1]);
-      [h2_x, h2_y] = scene.v2c(segment[2]);
-      [x, y] = scene.v2c(segment[3]);
-      ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
-      [curr_x, curr_y] = [x, y];
-    }
-    if (t <= FILL_DELAY) {
-      ctx.stroke();
-    } else {
-      ctx.closePath();
-      if (stroke) {
-        ctx.stroke();
-      }
-      if (fill) {
-        ctx.globalAlpha = clamp(
-          ctx.globalAlpha * (t - FILL_DELAY) / (1 - FILL_DELAY),
-          0,
-          1
-        );
-        ctx.fill();
-        ctx.globalAlpha = clamp(
-          ctx.globalAlpha / ((t - FILL_DELAY) / (1 - FILL_DELAY)),
-          0,
-          1
-        );
-      }
-    }
-  }
-  // Draws the path with the given stroke and fill settings.
-  _draw(ctx, scene, stroke, fill) {
-    this._drawPartial(ctx, scene, this.progress, stroke, fill);
-  }
-};
-var SVGPathMObject = class extends SVGMObject {
-  constructor() {
-    super(...arguments);
-    // Each
-    this.subpaths = [];
-  }
-  // Sets the segments based on a parsed path. The parsed path is in ctx coordinates, while
-  // this object's segments are in scene coordinates, so a scaling factor must be supplied
-  from_path(pathElement, scene_scale) {
-    this.set_stroke_color(pathElement.stroke);
-    this.set_stroke_width(pathElement.strokeWidth / scene_scale);
-    this.set_fill_color(pathElement.fill);
-    let t = [
-      [pathElement.transformMatrix?.a, pathElement.transformMatrix?.b],
-      [pathElement.transformMatrix?.c, pathElement.transformMatrix?.d]
-    ];
-    let transformMatrix = [
-      [1 / scene_scale, 0],
-      [0, -1 / scene_scale]
-    ];
-    let translate = pathElement.translation ? matmul_vec2(transformMatrix, [
-      pathElement.translation.x,
-      pathElement.translation.y
-    ]) : [0, 0];
-    transformMatrix = matmul_mat2(t, transformMatrix);
-    this.subpaths = [];
-    let current_path = new PathSegments();
-    let [curr_x, curr_y] = [0, 0];
-    let [x, y] = [0, 0];
-    let h1 = [0, 0];
-    let h2 = [0, 0];
-    let [hx, hy] = [0, 0];
-    for (let i = 0; i < pathElement.commands.length; i++) {
-      let cmd = pathElement.commands[i];
-      if (cmd.type == "M") {
-        [curr_x, curr_y] = cmd.values;
-      } else if (cmd.type == "L") {
-        [x, y] = cmd.values;
-        h1 = [curr_x * 2 / 3 + x / 3, curr_y * 2 / 3 + y / 3];
-        h2 = [curr_x / 3 + x * 2 / 3, curr_y / 3 + y * 2 / 3];
-        current_path.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, y]],
-          transformMatrix,
-          translate
-        );
-        [curr_x, curr_y] = [x, y];
-      } else if (cmd.type == "V") {
-        y = cmd.values[0];
-        h1 = [curr_x, curr_y / 3 + x * 2 / 3];
-        h2 = [curr_x, curr_y * 2 / 3 + x / 3];
-        current_path.add_segment(
-          [[curr_x, curr_y], h1, h2, [curr_x, y]],
-          transformMatrix,
-          translate
-        );
-        curr_y = y;
-      } else if (cmd.type == "H") {
-        x = cmd.values[0];
-        h1 = [curr_x * 2 / 3 + x / 3, curr_y];
-        h2 = [curr_x / 3 + x * 2 / 3, curr_y];
-        current_path.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, curr_y]],
-          transformMatrix,
-          translate
-        );
-        curr_x = x;
-      } else if (cmd.type == "C") {
-        h1 = [cmd.values[0], cmd.values[1]];
-        h2 = [cmd.values[2], cmd.values[3]];
-        [x, y] = [cmd.values[4], cmd.values[5]];
-        current_path.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, y]],
-          transformMatrix,
-          translate
-        );
-        [curr_x, curr_y] = [x, y];
-      } else if (cmd.type == "S") {
-        h1 = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
-        h2 = [cmd.values[0], cmd.values[1]];
-        [x, y] = [cmd.values[2], cmd.values[3]];
-        current_path.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, y]],
-          transformMatrix,
-          translate
-        );
-        [curr_x, curr_y] = [x, y];
-      } else if (cmd.type == "Q") {
-        [hx, hy] = [cmd.values[0], cmd.values[1]];
-        [x, y] = [cmd.values[2], cmd.values[3]];
-        h1 = [curr_x / 3 + hx * 2 / 3, curr_y / 3 + hy * 2 / 3];
-        h2 = [x / 3 + hx * 2 / 3, y / 3 + hy * 2 / 3];
-        current_path.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, y]],
-          transformMatrix,
-          translate
-        );
-        [curr_x, curr_y] = [x, y];
-      } else if (cmd.type == "T") {
-        [hx, hy] = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
-        [x, y] = [cmd.values[0], cmd.values[1]];
-        h1 = [curr_x / 3 + hx * 2 / 3, curr_y / 3 + hy * 2 / 3];
-        h2 = [x / 3 + hx * 2 / 3, y / 3 + hy * 2 / 3];
-        current_path.add_segment(
-          [[curr_x, curr_y], h1, h2, [x, y]],
-          transformMatrix,
-          translate
-        );
-        [curr_x, curr_y] = [x, y];
-      } else if (cmd.type == "Z") {
-        this.subpaths.push(current_path.clone());
-        current_path = new PathSegments();
-      } else {
-        console.log("Unknown command type:", cmd.type);
-      }
-    }
-  }
-  // Translates the path by a given vector.
-  move_by(p) {
-    for (let path of this.subpaths) {
-      path.move_by(p);
-    }
-    return this;
-  }
-  // Scales the path around a given point by a given scale factor.
-  homothety_around(p, scale) {
-    for (let path of this.subpaths) {
-      path.homothety_around(p, scale);
-    }
-    return this;
-  }
-  // Sets the progress of drawing the entire MObject
-  set_progress(t) {
-    let total_num_paths = this.subpaths.length;
-    for (let i = 0; i < total_num_paths; i++) {
-      this.subpaths[i].set_progress(
-        clamp(t * total_num_paths - i, 0, 1)
-      );
-    }
-  }
-  // // Partially draws the MObject where t is a parameter between 0 and 1 controlling the progress.
-  // _drawPartial(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
-  //   // TODO Give each subpath an equal amount of time.
-  //   let total_num_paths = this.subpaths.length;
-  //   let path_t = t * total_num_paths;
-  //   let path_index = Math.floor(path_t);
-  //   let sub_t = path_t - path_index;
-  //   for (let i = 0; i < path_index - 1; i++) {
-  //     (this.subpaths[i] as PathSegments)._draw(
-  //       ctx,
-  //       scene,
-  //       this.stroke_options.stroke_color != "none",
-  //       this.fill_options.fill,
-  //     );
-  //   }
-  //   (this.subpaths[path_index] as PathSegments)._drawPartial(
-  //     ctx,
-  //     scene,
-  //     sub_t,
-  //     this.stroke_options.stroke_color != "none",
-  //     this.fill_options.fill,
-  //   );
-  // }
-  // Draw all subpaths.
-  _draw(ctx, scene, args) {
-    for (let path of this.subpaths) {
-      path._draw(
-        ctx,
-        scene,
-        this.stroke_options.stroke_color != "none",
-        this.fill_options.fill
-      );
-    }
-  }
-};
-
 // src/lib/animation.ts
-var FRAME_LENGTH = 30;
+var isVec2D = (v) => v.length == 2;
+var isVec3D = (v) => v.length == 3;
+var DEFAULT_FRAME_LENGTH = 30;
 var DEFAULT_RATE_FUNC = smooth;
 var Animation = class {
-  async play(scene) {
+  constructor() {
+    this.frame_length = DEFAULT_FRAME_LENGTH;
   }
-};
-var WriteGroup = class extends Animation {
-  constructor(svg_mobjects, num_frames) {
-    super();
-    this.svg_mobjects = svg_mobjects;
-    this.num_frames = num_frames;
+  set_frame_length(frame_length) {
+    this.frame_length = frame_length;
+    return this;
   }
   async play(scene) {
     await this._play(scene);
   }
   async _play(scene) {
-    Object.entries(this.svg_mobjects).forEach(([key, elem]) => {
-      scene.add(key, elem);
-    });
+  }
+};
+var FixedLengthAnimation = class extends Animation {
+  constructor(num_frames) {
+    super();
+    this.num_frames = num_frames;
+  }
+  async _play(scene) {
     for (let i = 1; i <= this.num_frames; i++) {
       await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
+      await delay(this.frame_length);
       scene.draw();
     }
   }
   async _play_frame(scene, i) {
-    Object.entries(this.svg_mobjects).forEach(([key, elem]) => {
-      elem.set_progress(i / this.num_frames);
-    });
   }
 };
-var isVec2D = (v) => v.length == 2;
-var isVec3D = (v) => v.length == 3;
-var MoveBy = class extends Animation {
+var Write = class extends FixedLengthAnimation {
+  constructor(svg_mobject_name, svg_mobject, num_frames) {
+    super(num_frames);
+    this.svg_mobject_name = svg_mobject_name;
+    this.svg_mobject = svg_mobject;
+  }
+  // Animates the fade in.
+  async _play(scene) {
+    scene.add(this.svg_mobject_name, this.svg_mobject);
+    await super._play(scene);
+  }
+  async _play_frame(scene, i) {
+    this.svg_mobject.set_progress(i / this.num_frames);
+  }
+};
+var MoveBy = class extends FixedLengthAnimation {
   constructor(mobj_name, translate_vec, num_frames) {
-    super();
+    super(num_frames);
     this.mobj_name = mobj_name;
     this.translate_vec = translate_vec;
-    this.num_frames = num_frames;
   }
-  async play(scene) {
-    await this._play(scene);
-  }
-  // Animates the movement.
-  async _play(scene) {
+  async _play_frame(scene, i) {
     let tv;
-    let s;
-    for (let i = 1; i <= this.num_frames; i++) {
-      s = DEFAULT_RATE_FUNC(i / this.num_frames) - DEFAULT_RATE_FUNC((i - 1) / this.num_frames);
-      if (isVec2D(this.translate_vec)) {
-        tv = vec2_scale(this.translate_vec, s);
-      } else if (isVec3D(this.translate_vec)) {
-        tv = vec3_scale(this.translate_vec, s);
-      } else {
-        throw new Error("Invalid translation vector");
-      }
-      await this._play_frame(scene, tv);
-      await delay(FRAME_LENGTH);
-      scene.draw();
+    let s = DEFAULT_RATE_FUNC(i / this.num_frames) - DEFAULT_RATE_FUNC((i - 1) / this.num_frames);
+    if (isVec2D(this.translate_vec)) {
+      tv = vec2_scale(this.translate_vec, s);
+    } else if (isVec3D(this.translate_vec)) {
+      tv = vec3_scale(this.translate_vec, s);
+    } else {
+      throw new Error("Invalid translation vector");
     }
-  }
-  async _play_frame(scene, tv) {
     scene.get_mobj(this.mobj_name).move_by(tv);
   }
 };
 
-// src/lib/svg_loader.ts
-var SimpleSVGLoader = class {
+// src/lib/vectorized/svg_loader.ts
+var SVGLoader = class {
   /**
    * Load SVG from a URL
    */
@@ -1837,12 +1573,12 @@ function createSVGFileInput(onLoad) {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const svgString = await SimpleSVGLoader.loadFromFile(file);
-      const svgElement = SimpleSVGLoader.parseSVG(svgString);
-      const paths = SimpleSVGLoader.extractPaths(svgElement);
+      const svgString = await SVGLoader.loadFromFile(file);
+      const svgElement = SVGLoader.parseSVG(svgString);
+      const paths = SVGLoader.extractPaths(svgElement);
       const points = [];
       for (const path of paths) {
-        points.push(...SimpleSVGLoader.pathToPoints(path));
+        points.push(...SVGLoader.pathToPoints(path));
       }
       onLoad(svgString, points);
     } catch (error) {
@@ -2037,7 +1773,382 @@ function extractMathJaxPaths(svgElement) {
   return paths;
 }
 
-// src/svg_loader_scene.ts
+// src/lib/vectorized/svg_mobject.ts
+var FILL_DELAY = 0.9;
+var SVGMObject = class extends FillLikeMObject {
+};
+var SVGPath = class _SVGPath {
+  constructor() {
+    // Bezier segments that make up the path.
+    this.bezier_segments = [];
+    // Number between 0 and 1 indicating how far along the path to draw.
+    this.progress = 1;
+    // x limits and y limits of the path, used for setting a bounding box and sizing.
+    this.xmin = Infinity;
+    this.xmax = -Infinity;
+    this.ymin = Infinity;
+    this.ymax = -Infinity;
+  }
+  set_progress(p) {
+    this.progress = p;
+  }
+  clone() {
+    let clone = new _SVGPath();
+    clone.bezier_segments = this.bezier_segments.slice();
+    clone.progress = this.progress;
+    clone.xmin = this.xmin;
+    clone.xmax = this.xmax;
+    clone.ymin = this.ymin;
+    clone.ymax = this.ymax;
+    return clone;
+  }
+  // Adds a new single cubic Bezier segment to the path. Typically the segment
+  // will be given in ctx coordinates, and will be transformed to scene coordinates
+  // here by x -> Ax + b
+  add_segment(segment, transformMatrix, translate = [0, 0]) {
+    const scaled_segment = segment.map(
+      (p) => vec2_sum(matmul_vec2(transformMatrix, p), translate)
+    );
+    this.bezier_segments.push(scaled_segment);
+    this.xmin = Math.min(
+      this.xmin,
+      scaled_segment[0][0],
+      scaled_segment[1][0],
+      scaled_segment[2][0],
+      scaled_segment[3][0]
+    );
+    this.xmax = Math.max(
+      this.xmax,
+      scaled_segment[0][0],
+      scaled_segment[1][0],
+      scaled_segment[2][0],
+      scaled_segment[3][0]
+    );
+    this.ymin = Math.min(
+      this.ymin,
+      scaled_segment[0][1],
+      scaled_segment[1][1],
+      scaled_segment[2][1],
+      scaled_segment[3][1]
+    );
+    this.ymax = Math.max(
+      this.ymax,
+      scaled_segment[0][1],
+      scaled_segment[1][1],
+      scaled_segment[2][1],
+      scaled_segment[3][1]
+    );
+  }
+  // Translates the path by a given vector.
+  move_by(p) {
+    this.bezier_segments = this.bezier_segments.map((segment) => {
+      return segment.map((v) => vec2_sum(v, p));
+    });
+    this.xmin += p[0];
+    this.xmax += p[0];
+    this.ymin += p[1];
+    this.ymax += p[1];
+    return this;
+  }
+  // Scales the path around a given point by a given scale factor.
+  homothety_around(p, scale) {
+    this.bezier_segments = this.bezier_segments.map((segment) => {
+      return segment.map((v) => {
+        const [x, y] = vec2_sub(v, p);
+        return vec2_sum([x * scale, y * scale], p);
+      });
+    });
+    this.xmin = (this.xmin - p[0]) * scale + p[0];
+    this.xmax = (this.xmax - p[0]) * scale + p[0];
+    this.ymin = (this.ymin - p[1]) * scale + p[1];
+    this.ymax = (this.ymax - p[1]) * scale + p[1];
+    return this;
+  }
+  // Partially draws the path with the given stroke and fill settings, where t is a parameter
+  // between 0 and 1 controlling the progress.
+  // - When 0 < t < FILL_DELAY, a partial outline is drawn.
+  // - When FILL_DELAY < t < 1, the full outline is drawn with partial opacity.
+  _drawPartial(ctx, scene, t, stroke, fill) {
+    let num_segments = Math.min(
+      Math.floor(this.bezier_segments.length * 2 * t),
+      this.bezier_segments.length
+    );
+    ctx.beginPath();
+    ctx.strokeStyle = "black";
+    let [curr_x, curr_y] = scene.v2c(
+      this.bezier_segments[0][0]
+    );
+    let cx, cy;
+    let [h1_x, h1_y] = [0, 0];
+    let [h2_x, h2_y] = [0, 0];
+    let [x, y] = [0, 0];
+    let segment;
+    ctx.moveTo(curr_x, curr_y);
+    for (let i = 0; i < num_segments; i++) {
+      segment = this.bezier_segments[i];
+      [cx, cy] = scene.v2c(segment[0]);
+      if (cx != curr_x || cy != curr_y) {
+        ctx.moveTo(cx, cy);
+      }
+      [h1_x, h1_y] = scene.v2c(segment[1]);
+      [h2_x, h2_y] = scene.v2c(segment[2]);
+      [x, y] = scene.v2c(segment[3]);
+      ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
+      [curr_x, curr_y] = [x, y];
+    }
+    if (t <= FILL_DELAY) {
+      ctx.stroke();
+    } else {
+      ctx.closePath();
+      if (stroke) {
+        ctx.stroke();
+      }
+      const fill_progress = (t - FILL_DELAY) / (1 - FILL_DELAY);
+      if (fill) {
+        ctx.globalAlpha = clamp(ctx.globalAlpha * fill_progress, 0, 1);
+        ctx.fill();
+        ctx.globalAlpha = clamp(ctx.globalAlpha / fill_progress, 0, 1);
+      }
+    }
+  }
+  // Draws the path with the given stroke and fill settings.
+  _draw(ctx, scene, stroke, fill) {
+    this._drawPartial(ctx, scene, this.progress, stroke, fill);
+  }
+};
+var SVGPathMObject = class extends SVGMObject {
+  constructor() {
+    super(...arguments);
+    // An SVGPathMObject is composed of an ordered sequence of SVGPaths, each representing a single SVG path.
+    this.paths = [];
+    // x limits and y limits of the MObject, used for setting a bounding box and sizing.
+    this.xmin = Infinity;
+    this.xmax = -Infinity;
+    this.ymin = Infinity;
+    this.ymax = -Infinity;
+  }
+  _recalculate_limits() {
+    this.xmin = Math.min(...this.paths.map((path) => path.xmin));
+    this.xmax = Math.max(...this.paths.map((path) => path.xmax));
+    this.ymin = Math.min(...this.paths.map((path) => path.ymin));
+    this.ymax = Math.max(...this.paths.map((path) => path.ymax));
+  }
+  // Sets the segments based on a parsed path. The parsed path is in ctx coordinates, while
+  // this object's segments are in scene coordinates, so a scaling factor must be supplied.
+  from_path(pathElement, scene_scale) {
+    this.set_stroke_color(pathElement.stroke);
+    this.set_stroke_width(pathElement.strokeWidth / scene_scale);
+    this.set_fill_color(pathElement.fill);
+    let transformMatrix = [
+      [1 / scene_scale, 0],
+      [0, -1 / scene_scale]
+    ];
+    let translate = pathElement.translation ? matmul_vec2(transformMatrix, [
+      pathElement.translation.x,
+      pathElement.translation.y
+    ]) : [0, 0];
+    if (pathElement.transformMatrix) {
+      transformMatrix = matmul_mat2(
+        [
+          [pathElement.transformMatrix?.a, pathElement.transformMatrix?.b],
+          [pathElement.transformMatrix?.c, pathElement.transformMatrix?.d]
+        ],
+        transformMatrix
+      );
+    }
+    this.paths = [];
+    let current_path = new SVGPath();
+    let [curr_x, curr_y] = [0, 0];
+    let [x, y] = [0, 0];
+    let h1 = [0, 0];
+    let h2 = [0, 0];
+    let [hx, hy] = [0, 0];
+    for (let i = 0; i < pathElement.commands.length; i++) {
+      let cmd = pathElement.commands[i];
+      if (cmd.type == "M") {
+        [curr_x, curr_y] = cmd.values;
+      } else if (cmd.type == "L") {
+        [x, y] = cmd.values;
+        h1 = [curr_x * 2 / 3 + x / 3, curr_y * 2 / 3 + y / 3];
+        h2 = [curr_x / 3 + x * 2 / 3, curr_y / 3 + y * 2 / 3];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "V") {
+        y = cmd.values[0];
+        h1 = [curr_x, curr_y / 3 + x * 2 / 3];
+        h2 = [curr_x, curr_y * 2 / 3 + x / 3];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [curr_x, y]],
+          transformMatrix,
+          translate
+        );
+        curr_y = y;
+      } else if (cmd.type == "H") {
+        x = cmd.values[0];
+        h1 = [curr_x * 2 / 3 + x / 3, curr_y];
+        h2 = [curr_x / 3 + x * 2 / 3, curr_y];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, curr_y]],
+          transformMatrix,
+          translate
+        );
+        curr_x = x;
+      } else if (cmd.type == "C") {
+        h1 = [cmd.values[0], cmd.values[1]];
+        h2 = [cmd.values[2], cmd.values[3]];
+        [x, y] = [cmd.values[4], cmd.values[5]];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "S") {
+        h1 = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
+        h2 = [cmd.values[0], cmd.values[1]];
+        [x, y] = [cmd.values[2], cmd.values[3]];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "Q") {
+        [hx, hy] = [cmd.values[0], cmd.values[1]];
+        [x, y] = [cmd.values[2], cmd.values[3]];
+        h1 = [curr_x / 3 + hx * 2 / 3, curr_y / 3 + hy * 2 / 3];
+        h2 = [x / 3 + hx * 2 / 3, y / 3 + hy * 2 / 3];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "T") {
+        [hx, hy] = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
+        [x, y] = [cmd.values[0], cmd.values[1]];
+        h1 = [curr_x / 3 + hx * 2 / 3, curr_y / 3 + hy * 2 / 3];
+        h2 = [x / 3 + hx * 2 / 3, y / 3 + hy * 2 / 3];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "Z") {
+        this.paths.push(current_path.clone());
+        current_path = new SVGPath();
+      } else {
+        throw new Error(`Unknown command type: ${cmd.type}`);
+      }
+    }
+    this._recalculate_limits();
+    return this;
+  }
+  // Translates the path by a given vector.
+  move_by(p) {
+    for (let path of this.paths) {
+      path.move_by(p);
+    }
+    this._recalculate_limits();
+    return this;
+  }
+  // Scales the path around a given point by a given scale factor.
+  homothety_around(p, scale) {
+    for (let path of this.paths) {
+      path.homothety_around(p, scale);
+    }
+    this._recalculate_limits();
+    return this;
+  }
+  // Sets the progress of drawing the entire MObject
+  set_progress(t) {
+    let total_num_paths = this.paths.length;
+    for (let i = 0; i < total_num_paths; i++) {
+      this.paths[i].set_progress(
+        clamp(t * total_num_paths - i, 0, 1)
+      );
+    }
+    return this;
+  }
+  // Draw all paths.
+  _draw(ctx, scene, args) {
+    for (let path of this.paths) {
+      path._draw(
+        ctx,
+        scene,
+        this.stroke_options.stroke_color != "none",
+        this.fill_options.fill
+      );
+    }
+  }
+};
+var SVGPathMObjectGroup = class extends MObjectGroup {
+  constructor() {
+    super(...arguments);
+    this.center = [0, 0];
+    this.width = 0;
+    this.height = 0;
+  }
+  _recalculate_size() {
+    let xmin = Infinity;
+    let xmax = -Infinity;
+    let ymin = Infinity;
+    let ymax = -Infinity;
+    Object.values(this.children).forEach((child) => {
+      xmin = Math.min(xmin, child.xmin);
+      xmax = Math.max(xmax, child.xmax);
+      ymin = Math.min(ymin, child.ymin);
+      ymax = Math.max(ymax, child.ymax);
+    });
+    this.center = [(xmin + xmax) / 2, (ymin + ymax) / 2];
+    this.width = xmax - xmin;
+    this.height = ymax - ymin;
+  }
+  // Used for animation - sets the progress of drawing each character.
+  set_progress(t) {
+    Object.values(this.children).forEach(
+      (child) => child.set_progress(t)
+    );
+  }
+  get_center() {
+    return this.center;
+  }
+  // Sets the total width of the MObjectGroup
+  set_width(width) {
+    let scale = width / this.width;
+    Object.values(this.children).forEach((child) => {
+      child.homothety_around(this.center, scale);
+    });
+    this.width *= scale;
+    this.height *= scale;
+    return this;
+  }
+  // Sets the total height of the MObjectGroup
+  set_height(height) {
+    let scale = height / this.height;
+    Object.values(this.children).forEach((child) => {
+      child.homothety_around(this.center, scale);
+    });
+    this.width *= scale;
+    this.height *= scale;
+    return this;
+  }
+  // Sets the center
+  set_center(center) {
+    Object.values(this.children).forEach(
+      (child) => child.move_by(vec2_sub(center, this.center))
+    );
+    this.center = center;
+    return this;
+  }
+};
+
+// src/lib/vectorized/latex.ts
 function ensureSVGNamespace(svgString) {
   if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
     return svgString.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
@@ -2082,6 +2193,7 @@ async function renderLatexToSVG(latex, displayMode = true) {
   try {
     await window.MathJax.typesetPromise([div]);
     const svgElement = div.querySelector("svg");
+    console.log(div, svgElement);
     if (!svgElement) {
       const svgs = div.getElementsByTagName("svg");
       if (svgs.length > 0) {
@@ -2094,6 +2206,25 @@ async function renderLatexToSVG(latex, displayMode = true) {
     document.body.removeChild(div);
   }
 }
+var TexMObject = class extends SVGPathMObjectGroup {
+  async from_latex(latex, scale) {
+    this.clear();
+    const svgString = await renderLatexToSVG(latex, true);
+    const svgElement = SVGLoader.parseSVG(svgString);
+    const paths = extractMathJaxPaths(svgElement).map(
+      (pathInfo) => SVGLoader.parsePathInfo(pathInfo)
+    );
+    for (let i = 0; i < paths.length; i++) {
+      let mobj = new SVGPathMObject();
+      mobj.from_path(paths[i], scale);
+      this.add_mobj(`expr_${i}`, mobj);
+    }
+    this._recalculate_size();
+    return this;
+  }
+};
+
+// src/svg_loader_scene.ts
 (function() {
   document.addEventListener("DOMContentLoaded", async function() {
     (function svgLoaderDemo(width, height) {
@@ -2113,31 +2244,12 @@ async function renderLatexToSVG(latex, displayMode = true) {
           ctx.fillStyle = "#000000";
           ctx.font = "16px Arial";
           ctx.fillText(`LaTeX: ${latex}`, 50, 125);
-          const svgString = await renderLatexToSVG(latex, true);
-          const svgElement = SimpleSVGLoader.parseSVG(svgString);
-          const paths = extractMathJaxPaths(svgElement);
-          let parsedPathInfoAll = [];
-          let total_length = 0;
-          let p;
-          for (const pathInfo of paths) {
-            p = SimpleSVGLoader.parsePathInfo(pathInfo);
-            parsedPathInfoAll.push(p);
-            total_length += p.commands.length;
-          }
-          let svg_group = {};
-          for (let i = 0; i < parsedPathInfoAll.length; i++) {
-            let svg_mobject = new SVGPathMObject();
-            svg_mobject.from_path(
-              parsedPathInfoAll[i],
-              scene.scale()
-            );
-            svg_mobject.homothety_around([0, 0], 0.02);
-            svg_mobject.move_by([-4, 4]);
-            svg_group[`obj_${i}`] = svg_mobject;
-          }
-          await new WriteGroup(svg_group, 30).play(scene);
-          scene.group(Object.keys(svg_group), "svg_group");
-          await new MoveBy("svg_group", [2, -4], 20).play(scene);
+          let latex_mobj = new TexMObject();
+          await latex_mobj.from_latex(latex, scene.scale());
+          latex_mobj.set_center([-2, 4]);
+          latex_mobj.set_width(4);
+          await new Write("latex_mobj", latex_mobj, 30).play(scene);
+          await new MoveBy("latex_mobj", [2, -4], 20).play(scene);
         } catch (error) {
           console.error("Basic test failed:", error);
           ctx.fillStyle = "#ff0000";
@@ -2156,23 +2268,18 @@ async function renderLatexToSVG(latex, displayMode = true) {
       async function svgMobjectDemo() {
         let scene = new Scene(canvas);
         scene.set_frame_lims([-5, 5], [-5, 5]);
-        const svgString = await SimpleSVGLoader.loadFromURL(
-          "./svg_samples/ex_5.svg"
-        );
-        const svgElement = SimpleSVGLoader.parseSVG(svgString);
-        const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
+        const svgString = await SVGLoader.loadFromURL("./svg_samples/ex_5.svg");
+        const svgElement = SVGLoader.parseSVG(svgString);
+        const pathInfoAll = SVGLoader.extractPaths(svgElement);
         let parsedPathInfoAll = [];
         let total_length = 0;
         let p;
         for (const pathInfo of pathInfoAll) {
-          p = SimpleSVGLoader.parsePathInfo(pathInfo);
+          p = SVGLoader.parsePathInfo(pathInfo);
           parsedPathInfoAll.push(p);
           total_length += p.commands.length;
         }
-        let svg_group = {};
-        console.log("num", parsedPathInfoAll.length);
         for (let i = 0; i < parsedPathInfoAll.length; i++) {
-          console.log(i);
           let svg_mobject = new SVGPathMObject();
           svg_mobject.from_path(
             parsedPathInfoAll[i],
@@ -2180,66 +2287,20 @@ async function renderLatexToSVG(latex, displayMode = true) {
           );
           svg_mobject.homothety_around([0, 0], 0.5);
           svg_mobject.move_by([-4.5, 4.5]);
-          await new WriteIn(`obj_${i}`, svg_mobject, 30).play(scene);
+          await new Write(`obj_${i}`, svg_mobject, 30).play(scene);
         }
         scene.draw();
       }
-      async function partialDraw() {
-        try {
-          const svgString = await SimpleSVGLoader.loadFromURL(
-            "./svg_samples/ex_4.svg"
-          );
-          console.log(svgString);
-          const svgElement = SimpleSVGLoader.parseSVG(svgString);
-          const pathInfoAll = SimpleSVGLoader.extractPaths(svgElement);
-          let parsedPathInfoAll = [];
-          let total_length = 0;
-          let p;
-          for (const pathInfo of pathInfoAll) {
-            p = SimpleSVGLoader.parsePathInfo(pathInfo);
-            parsedPathInfoAll.push(p);
-            total_length += p.commands.length;
-          }
-          ctx.fillStyle = "#000000";
-          ctx.strokeStyle = "#000000";
-          for (let numCommands = 1; numCommands <= total_length; numCommands += 1) {
-            console.log("Drawing partially with ", numCommands, "commands");
-            ctx.fillStyle = "#ffffff";
-            ctx.clearRect(0, 0, width, height);
-            ctx.fillStyle = "#000000";
-            await SimpleSVGLoader.drawPartial(
-              ctx,
-              parsedPathInfoAll,
-              numCommands
-            );
-            await delay(10);
-          }
-        } catch (error) {
-          console.error("Error loading example SVG:", error);
-        }
-      }
       async function loadExampleSVG() {
         try {
-          const svgString = await SimpleSVGLoader.loadFromURL(
+          const svgString = await SVGLoader.loadFromURL(
             "./svg_samples/ex_3.svg"
           );
           console.log("SVG string:", svgString);
-          await SimpleSVGLoader.drawToCanvas(canvas, svgString, 50, 50);
-          const svgElement = SimpleSVGLoader.parseSVG(svgString);
-          const paths = SimpleSVGLoader.extractPaths(svgElement);
+          await SVGLoader.drawToCanvas(canvas, svgString, 50, 50);
+          const svgElement = SVGLoader.parseSVG(svgString);
+          const paths = SVGLoader.extractPaths(svgElement);
           console.log("Paths:", paths);
-          for (const path of paths) {
-            let numCommands = 50;
-            console.log("Path:", path);
-            const points = SimpleSVGLoader.pathToPoints(path);
-            console.log("Points in path:", points);
-            ctx.fillStyle = "#ff0000";
-            for (const point of points) {
-              ctx.beginPath();
-              ctx.arc(point.x + 50, point.y + 50, 2, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          }
           console.log(`Loaded SVG with ${paths.length} paths`);
         } catch (error) {
           console.error("Error loading example SVG:", error);
@@ -2258,7 +2319,7 @@ async function renderLatexToSVG(latex, displayMode = true) {
         const fileInput = createSVGFileInput((svgString, points) => {
           ctx.fillStyle = "#ffffff";
           ctx.fillRect(300, 50, 400, 400);
-          SimpleSVGLoader.drawToCanvas(canvas, svgString, 320, 70).then(() => {
+          SVGLoader.drawToCanvas(canvas, svgString, 320, 70).then(() => {
             ctx.fillStyle = "#ff0000";
             for (const point of points) {
               ctx.beginPath();
@@ -2283,9 +2344,9 @@ async function renderLatexToSVG(latex, displayMode = true) {
         for (const file of svgFiles) {
           try {
             console.log("Filename:", file);
-            const svgString = await SimpleSVGLoader.loadFromURL(file);
+            const svgString = await SVGLoader.loadFromURL(file);
             console.log("Contents:", svgString);
-            await SimpleSVGLoader.drawToCanvas(canvas, svgString, 50, yOffset);
+            await SVGLoader.drawToCanvas(canvas, svgString, 50, yOffset);
             yOffset += 120;
           } catch (error) {
             console.error(`Error loading ${file}:`, error);
@@ -2297,6 +2358,7 @@ async function renderLatexToSVG(latex, displayMode = true) {
         ctx.fillStyle = "#000000";
         ctx.font = "bold 16px Arial";
         ctx.font = "12px Arial";
+        await svgMobjectDemo();
         await mathJaxDemo();
         console.log("SVG loader examples completed!");
       }

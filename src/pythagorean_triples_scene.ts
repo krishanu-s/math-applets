@@ -4,7 +4,7 @@ import {
   Homothety,
   Wait,
   Zoom,
-  FRAME_LENGTH,
+  DEFAULT_FRAME_LENGTH,
   MoveBy,
   ChangeParameterSmoothly,
   GrowLineFromMidpoint,
@@ -31,9 +31,10 @@ import {
 } from "./lib/base";
 import { Button } from "./lib/interactive";
 import { createSmoothOpenPathBezier } from "./rust-calc-browser";
-import { LatexCache, LaTeXMObject } from "./lib/base/latex";
+import { LaTeXMObject } from "./lib/base/latex";
 import { Parameter } from "./lib/interactive";
 import { CartEq, ConicSection, PolarEq } from "./lib/math";
+import { TexMObject } from "./lib/vectorized";
 
 // Makes a triangle representing a Pythagorean triple.
 // The offset vector is where the bottom-left corner is placed.
@@ -115,31 +116,6 @@ function stereographic_projection(
     // Define the solver for Bezier curves in this scene
     let num_pts = 200;
     let solver = await createSmoothOpenPathBezier(num_pts);
-    let cache = new LatexCache();
-
-    // Pre-render LaTeX as needed
-    await new LaTeXMObject("x^2 + y^2 = 1", [0, -3], cache).add_to_cache();
-    await new LaTeXMObject("y = -m(x-1)", [0, -4], cache).add_to_cache();
-    await new LaTeXMObject(
-      "x^2 + (-m(x-1))^2 = 1",
-      [0, -5],
-      cache,
-    ).add_to_cache();
-    await new LaTeXMObject(
-      "(m^2+1)x^2 - 2m^2x + (m^2-1) = 0",
-      [0, -6],
-      cache,
-    ).add_to_cache();
-    await new LaTeXMObject(
-      "x = \\frac{2m^2 \\pm \\sqrt{(2m^2)^2 - 4(m^2+1)(m^2-1)}}{2(m^2+1)}",
-      [0, -7],
-      cache,
-    ).add_to_cache();
-    await new LaTeXMObject(
-      "(x, y) = (\\frac{m^2-1}{m^2+1}, \\frac{2m}{m^2+1})",
-      [0, -8],
-      cache,
-    ).add_to_cache();
 
     // SCENE 0:
     // - I want to describe a problem involving integers and triangles. The solution goes back to Diophantus
@@ -312,11 +288,11 @@ function stereographic_projection(
                 (t) => [Math.cos(t), Math.sin(t)],
                 0,
                 0,
-                100,
+                num_pts,
                 solver,
               ).set_stroke_width(0.04),
             },
-            10,
+            1,
           ).play(scene);
 
           // TODO Turn this into a basic ingredient in animation.ts
@@ -335,10 +311,20 @@ function stereographic_projection(
           });
           await new ChangeParameterSmoothly(t, 2 * Math.PI, 30).play(scene);
 
-          await new FadeOut(["segment"], 20).play(scene);
+          scene.remove("segment");
+          // await new FadeOut(["segment"], 20).play(scene);
 
           await new FadeIn(
-            { eq_circle: new LaTeXMObject("x^2 + y^2 = 1", [1.5, 1.5], cache) },
+            {
+              eq_circle: (
+                await new TexMObject().from_latex(
+                  "x^2 + y^2 = 1",
+                  scene.scale(),
+                )
+              )
+                .set_height(0.3)
+                .set_center([1.5, 1.5]),
+            },
             10,
           ).play(scene);
 
@@ -386,7 +372,7 @@ function stereographic_projection(
                 1 - progress * length * Math.cos(theta_slope),
                 -progress * length * Math.sin(theta_slope),
               ]);
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
 
@@ -424,9 +410,14 @@ function stereographic_projection(
           });
 
           // Fade in the equation of the line
-
           await new FadeIn(
-            { eq_line: new LaTeXMObject("y = -m(x-1)", [1.5, 0.5], cache) },
+            {
+              eq_line: (
+                await new TexMObject().from_latex("y = -m(x-1)", scene.scale())
+              )
+                .set_height(0.25)
+                .set_center([1.5, 1.0]),
+            },
             10,
           ).play(scene);
 
@@ -439,7 +430,7 @@ function stereographic_projection(
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -452,7 +443,7 @@ function stereographic_projection(
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -465,7 +456,7 @@ function stereographic_projection(
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -477,41 +468,53 @@ function stereographic_projection(
           await new Zoom([0, 2], 1 / 3, 30).play(scene);
           await new FadeIn(
             {
-              formula_1: new LaTeXMObject(
-                "x^2 + (-m(x-1))^2 = 1",
-                [-2, -3],
-                cache,
-              ),
+              formula_1: (
+                await new TexMObject().from_latex(
+                  "x^2 + (-m(x-1))^2 = 1",
+                  scene.scale(),
+                )
+              )
+                .set_height(0.8)
+                .set_center([-2, -3]),
             },
             10,
           ).play(scene);
           await new FadeIn(
             {
-              formula_2: new LaTeXMObject(
-                "(m^2+1)x^2 - 2m^2x + (m^2-1) = 0",
-                [-2, -4],
-                cache,
-              ),
+              formula_2: (
+                await new TexMObject().from_latex(
+                  "(m^2+1)x^2 - 2m^2x + (m^2-1) = 0",
+                  scene.scale(),
+                )
+              )
+                .set_height(0.8)
+                .set_center([-2, -4]),
             },
             10,
           ).play(scene);
           await new FadeIn(
             {
-              formula_3: new LaTeXMObject(
-                "x = \\frac{2m^2 \\pm \\sqrt{(2m^2)^2 - 4(m^2+1)(m^2-1)}}{2(m^2+1)}",
-                [-2, -5],
-                cache,
-              ),
+              formula_3: (
+                await new TexMObject().from_latex(
+                  "x = \\frac{2m^2 \\pm \\sqrt{(2m^2)^2 - 4(m^2+1)(m^2-1)}}{2(m^2+1)}",
+                  scene.scale(),
+                )
+              )
+                .set_height(0.8)
+                .set_center([-2, -5]),
             },
             10,
           ).play(scene);
           await new FadeIn(
             {
-              formula: new LaTeXMObject(
-                "(x, y) = (\\frac{m^2-1}{m^2+1}, \\frac{2m}{m^2+1})",
-                [-2, -6],
-                cache,
-              ),
+              formula: (
+                await new TexMObject().from_latex(
+                  "(x, y) = (\\frac{m^2-1}{m^2+1}, \\frac{2m}{m^2+1})",
+                  scene.scale(),
+                )
+              )
+                .set_height(0.8)
+                .set_center([-2, -6]),
             },
             10,
           ).play(scene);
@@ -532,7 +535,7 @@ function stereographic_projection(
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -561,7 +564,7 @@ function stereographic_projection(
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -590,7 +593,7 @@ function stereographic_projection(
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -619,7 +622,7 @@ function stereographic_projection(
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -785,7 +788,7 @@ function stereographic_projection(
         slope = m.get_value();
         for (let i = 1; i < num_frames; i++) {
           m.set_value(slope + smooth(i / num_frames) * (-2 - slope));
-          await delay(FRAME_LENGTH);
+          await delay(DEFAULT_FRAME_LENGTH);
           scene.draw();
         }
         await new Homothety(
@@ -802,7 +805,7 @@ function stereographic_projection(
         slope = m.get_value();
         for (let i = 1; i < num_frames; i++) {
           m.set_value(slope + smooth(i / num_frames) * (-3 / 2 - slope));
-          await delay(FRAME_LENGTH);
+          await delay(DEFAULT_FRAME_LENGTH);
           scene.draw();
         }
         await new Homothety(
@@ -819,7 +822,7 @@ function stereographic_projection(
         slope = m.get_value();
         for (let i = 1; i < num_frames; i++) {
           m.set_value(slope + smooth(i / num_frames) * (-4 / 3 - slope));
-          await delay(FRAME_LENGTH);
+          await delay(DEFAULT_FRAME_LENGTH);
           scene.draw();
         }
         await new Homothety(

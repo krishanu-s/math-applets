@@ -77,6 +77,7 @@ async function renderLatexToSVG(
 
     // Find SVG element
     const svgElement = div.querySelector("svg");
+    console.log(div, svgElement);
     if (!svgElement) {
       // Try to find any SVG in the element
       const svgs = div.getElementsByTagName("svg");
@@ -115,5 +116,7 @@ export class TexMObject extends SVGPathMObjectGroup {
     }
     // Calculate the width, height, and center of the LaTeX expression
     this._recalculate_size();
+
+    return this;
   }
 }

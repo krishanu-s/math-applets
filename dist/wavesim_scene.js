@@ -862,12 +862,13 @@ var makeDraggable3D = (Base) => {
 };
 
 // src/lib/base/geometry.ts
-var Dot = class extends FillLikeMObject {
-  constructor(center, radius) {
+var Sector = class extends FillLikeMObject {
+  constructor(center, radius, start_angle, end_angle) {
     super();
-    this.radius = 0.1;
     this.center = center;
     this.radius = radius;
+    this.start_angle = start_angle;
+    this.end_angle = end_angle;
   }
   // Tests whether a chosen vector lies inside the shape. Used for click-detection.
   is_inside(p) {
@@ -911,53 +912,17 @@ var Dot = class extends FillLikeMObject {
     let [x, y] = scene.v2c(this.center);
     let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
-    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
-    ctx.fill();
-  }
-};
-var Sector = class extends FillLikeMObject {
-  constructor(center, radius, start_angle, end_angle) {
-    super();
-    this.center = center;
-    this.radius = radius;
-    this.start_angle = start_angle;
-    this.end_angle = end_angle;
-  }
-  // Get the center coordinates
-  get_center() {
-    return this.center;
-  }
-  // Move the center of the dot to a desired location
-  move_to(center) {
-    this.center = center;
-    return this;
-  }
-  move_by(p) {
-    this.center[0] += p[0];
-    this.center[1] += p[1];
-    return this;
-  }
-  // Performs a homothety around the given point
-  homothety_around(p, scale) {
-    this.center = vec2_homothety(p, this.center, scale);
-    this.radius *= scale;
-    return this;
-  }
-  // Change the dot radius
-  set_radius(radius) {
-    this.radius = radius;
-  }
-  // Draws on the canvas
-  _draw(ctx, scene) {
-    let [x, y] = scene.v2c(this.center);
-    let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
-    ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), this.start_angle, this.end_angle);
     if (this.fill_options.fill) {
       ctx.globalAlpha *= this.fill_options.fill_alpha;
       ctx.fill();
       ctx.globalAlpha /= this.fill_options.fill_alpha;
     }
+  }
+};
+var Dot = class extends Sector {
+  constructor(center, radius) {
+    super(center, radius, 0, 2 * Math.PI);
   }
 };
 var DraggableDot = makeDraggable(Dot);
@@ -979,6 +944,9 @@ var Rectangle = class extends FillLikeMObject {
   }
   get_center() {
     return this.center;
+  }
+  get_radius() {
+    return Math.max(this.size_x, this.size_y) / 2;
   }
   move_to(center) {
     this.center = center;
