@@ -601,3 +601,30 @@ export class GrowLineFromMidpoint extends Animation {
 //     mobj.set_angle(angle);
 //   }
 // }
+
+// Transform one vectorized MObject to another
+export class Transform extends Animation {
+  mobj_name: string;
+  target: MObject;
+  num_frames: number;
+  constructor(mobj_name: string, target: MObject, num_frames: number) {
+    super();
+    this.mobj_name = mobj_name;
+    this.target = target;
+    this.num_frames = num_frames;
+  }
+  async play(scene: Scene): Promise<void> {
+    await this._play(scene);
+  }
+  async _play(scene: Scene): Promise<void> {
+    let mobj = scene.get_mobj(this.mobj_name) as MObject;
+    for (let i = 1; i <= this.num_frames; i++) {
+      await this._play_frame(scene, i, mobj);
+      await delay(FRAME_LENGTH);
+      scene.draw();
+    }
+  }
+  async _play_frame(scene: Scene, i: number, mobj: MObject) {
+    // TODO
+  }
+}

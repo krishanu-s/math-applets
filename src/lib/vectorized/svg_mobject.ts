@@ -1,10 +1,6 @@
 // Vectorized mobjects -- e.g., for drawing from SVG
 
-import {
-  extractMathJaxPaths,
-  ParsedPathInfo,
-  SimpleSVGLoader,
-} from "./svg_loader";
+import { ParsedPathInfo } from "./svg_loader";
 import { Vec3D } from "../three_d";
 import { Scene, FillLikeMObject, clamp, MObjectGroup } from "../base/base";
 import {
@@ -20,6 +16,7 @@ import {
 // Ratio of time used for stroke animation before fill animation begins
 const FILL_DELAY = 0.9;
 
+// Base class for SVG mobjects, e.g. containing more than just paths.
 export class SVGMObject extends FillLikeMObject {}
 
 // A 4-tuples of points representing a cubic Bezier curve
@@ -52,20 +49,29 @@ export function make_quadratic_segment(
   ];
 }
 
-// A sequence of CubicBezierTuple segments representing a single path, beginning
+// A sequence of CubicBezierTuple segments representing a single SVG path, beginning
 // with a move-to command (M) and ending with a close-path command (Z).
-class PathSegments {
+class SVGPath {
   // Bezier segments that make up the path.
-  segments: CubicBezierTuple[] = [];
+  bezier_segments: CubicBezierTuple[] = [];
   // Number between 0 and 1 indicating how far along the path to draw.
   progress: number = 1.0;
+  // x limits and y limits of the path, used for setting a bounding box and sizing.
+  xmin: number = Infinity;
+  xmax: number = -Infinity;
+  ymin: number = Infinity;
+  ymax: number = -Infinity;
   set_progress(p: number) {
     this.progress = p;
   }
-  clone(): PathSegments {
-    let clone = new PathSegments();
-    clone.segments = this.segments.slice();
+  clone(): SVGPath {
+    let clone = new SVGPath();
+    clone.bezier_segments = this.bezier_segments.slice();
     clone.progress = this.progress;
+    clone.xmin = this.xmin;
+    clone.xmax = this.xmax;
+    clone.ymin = this.ymin;
+    clone.ymax = this.ymax;
     return clone;
   }
   // Adds a new single cubic Bezier segment to the path. Typically the segment
@@ -76,27 +82,62 @@ class PathSegments {
     transformMatrix: Mat2by2,
     translate: Vec2D = [0, 0],
   ) {
-    this.segments.push(
-      segment.map((p) =>
-        vec2_sum(matmul_vec2(transformMatrix, p), translate),
-      ) as CubicBezierTuple,
+    const scaled_segment = segment.map((p) =>
+      vec2_sum(matmul_vec2(transformMatrix, p), translate),
+    ) as CubicBezierTuple;
+    this.bezier_segments.push(scaled_segment);
+    this.xmin = Math.min(
+      this.xmin,
+      scaled_segment[0][0],
+      scaled_segment[1][0],
+      scaled_segment[2][0],
+      scaled_segment[3][0],
+    );
+    this.xmax = Math.max(
+      this.xmax,
+      scaled_segment[0][0],
+      scaled_segment[1][0],
+      scaled_segment[2][0],
+      scaled_segment[3][0],
+    );
+    this.ymin = Math.min(
+      this.ymin,
+      scaled_segment[0][1],
+      scaled_segment[1][1],
+      scaled_segment[2][1],
+      scaled_segment[3][1],
+    );
+    this.ymax = Math.max(
+      this.ymax,
+      scaled_segment[0][1],
+      scaled_segment[1][1],
+      scaled_segment[2][1],
+      scaled_segment[3][1],
     );
   }
   // Translates the path by a given vector.
   move_by(p: Vec2D | Vec3D) {
-    this.segments = this.segments.map((segment) => {
+    this.bezier_segments = this.bezier_segments.map((segment) => {
       return segment.map((v) => vec2_sum(v, p as Vec2D)) as CubicBezierTuple;
     });
+    this.xmin += (p as Vec2D)[0];
+    this.xmax += (p as Vec2D)[0];
+    this.ymin += (p as Vec2D)[1];
+    this.ymax += (p as Vec2D)[1];
     return this;
   }
   // Scales the path around a given point by a given scale factor.
   homothety_around(p: Vec2D | Vec3D, scale: number) {
-    this.segments = this.segments.map((segment) => {
+    this.bezier_segments = this.bezier_segments.map((segment) => {
       return segment.map((v) => {
         const [x, y] = vec2_sub(v, p as Vec2D);
         return vec2_sum([x * scale, y * scale], p as Vec2D);
       }) as CubicBezierTuple;
     });
+    this.xmin = (this.xmin - p[0]) * scale + p[0];
+    this.xmax = (this.xmax - p[0]) * scale + p[0];
+    this.ymin = (this.ymin - p[1]) * scale + p[1];
+    this.ymax = (this.ymax - p[1]) * scale + p[1];
     return this;
   }
   // Partially draws the path with the given stroke and fill settings, where t is a parameter
@@ -111,12 +152,14 @@ class PathSegments {
     fill: boolean,
   ) {
     let num_segments = Math.min(
-      Math.floor(this.segments.length * 2 * t),
-      this.segments.length,
+      Math.floor(this.bezier_segments.length * 2 * t),
+      this.bezier_segments.length,
     );
     ctx.beginPath();
     ctx.strokeStyle = "black";
-    let [curr_x, curr_y] = scene.v2c((this.segments[0] as CubicBezierTuple)[0]);
+    let [curr_x, curr_y] = scene.v2c(
+      (this.bezier_segments[0] as CubicBezierTuple)[0],
+    );
     let cx: number, cy: number;
     let [h1_x, h1_y] = [0, 0];
     let [h2_x, h2_y] = [0, 0];
@@ -125,7 +168,7 @@ class PathSegments {
 
     ctx.moveTo(curr_x, curr_y);
     for (let i = 0; i < num_segments; i++) {
-      segment = this.segments[i] as CubicBezierTuple;
+      segment = this.bezier_segments[i] as CubicBezierTuple;
       // If the starting point of this curve is different from the previous one, move the pen
       [cx, cy] = scene.v2c(segment[0]);
       if (cx != curr_x || cy != curr_y) {
@@ -144,18 +187,11 @@ class PathSegments {
       if (stroke) {
         ctx.stroke();
       }
+      const fill_progress = (t - FILL_DELAY) / (1 - FILL_DELAY);
       if (fill) {
-        ctx.globalAlpha = clamp(
-          (ctx.globalAlpha * (t - FILL_DELAY)) / (1 - FILL_DELAY),
-          0,
-          1,
-        );
+        ctx.globalAlpha = clamp(ctx.globalAlpha * fill_progress, 0, 1);
         ctx.fill();
-        ctx.globalAlpha = clamp(
-          ctx.globalAlpha / ((t - FILL_DELAY) / (1 - FILL_DELAY)),
-          0,
-          1,
-        );
+        ctx.globalAlpha = clamp(ctx.globalAlpha / fill_progress, 0, 1);
       }
     }
   }
@@ -172,11 +208,23 @@ class PathSegments {
 
 // A MObject consisting of a collection of SVG Path objects.
 export class SVGPathMObject extends SVGMObject {
-  // Each
-  subpaths: Array<PathSegments> = [];
+  // An SVGPathMObject is composed of an ordered sequence of SVGPaths, each representing a single SVG path.
+  paths: Array<SVGPath> = [];
 
+  // x limits and y limits of the MObject, used for setting a bounding box and sizing.
+  xmin: number = Infinity;
+  xmax: number = -Infinity;
+  ymin: number = Infinity;
+  ymax: number = -Infinity;
+
+  _recalculate_limits() {
+    this.xmin = Math.min(...this.paths.map((path) => path.xmin));
+    this.xmax = Math.max(...this.paths.map((path) => path.xmax));
+    this.ymin = Math.min(...this.paths.map((path) => path.ymin));
+    this.ymax = Math.max(...this.paths.map((path) => path.ymax));
+  }
   // Sets the segments based on a parsed path. The parsed path is in ctx coordinates, while
-  // this object's segments are in scene coordinates, so a scaling factor must be supplied
+  // this object's segments are in scene coordinates, so a scaling factor must be supplied.
   from_path(pathElement: ParsedPathInfo, scene_scale: number) {
     // Set the stroke and fill options
     this.set_stroke_color(pathElement.stroke);
@@ -184,12 +232,6 @@ export class SVGPathMObject extends SVGMObject {
     // Remove the 'px' suffix and convert to number
     this.set_stroke_width(pathElement.strokeWidth / scene_scale);
     this.set_fill_color(pathElement.fill);
-
-    let t = [
-      [pathElement.transformMatrix?.a, pathElement.transformMatrix?.b],
-      [pathElement.transformMatrix?.c, pathElement.transformMatrix?.d],
-    ];
-    // console.log(t);
 
     // Get necessary transformations to segments
     let transformMatrix: Mat2by2 = [
@@ -202,11 +244,21 @@ export class SVGPathMObject extends SVGMObject {
           pathElement.translation.y,
         ])
       : [0, 0];
-    transformMatrix = matmul_mat2(t, transformMatrix);
-    // Make the subpaths
-    this.subpaths = [];
 
-    let current_path = new PathSegments();
+    if (pathElement.transformMatrix) {
+      transformMatrix = matmul_mat2(
+        [
+          [pathElement.transformMatrix?.a, pathElement.transformMatrix?.b],
+          [pathElement.transformMatrix?.c, pathElement.transformMatrix?.d],
+        ] as Mat2by2,
+        transformMatrix,
+      );
+    }
+
+    // Make the paths
+    this.paths = [];
+
+    let current_path = new SVGPath();
     let [curr_x, curr_y] = [0, 0];
     let [x, y] = [0, 0];
     let h1: Vec2D = [0, 0];
@@ -214,6 +266,7 @@ export class SVGPathMObject extends SVGMObject {
     let [hx, hy] = [0, 0];
 
     // Converts each possible path element into a cubic Bezier curve
+    // TODO Handle other path commands, such as relative commands.
     for (let i = 0; i < pathElement.commands.length; i++) {
       let cmd = pathElement.commands[i] as { type: string; values: number[] };
       // Move to a new point
@@ -308,11 +361,10 @@ export class SVGPathMObject extends SVGMObject {
       }
       // Close path
       else if (cmd.type == "Z") {
-        this.subpaths.push(current_path.clone());
-        current_path = new PathSegments();
+        this.paths.push(current_path.clone());
+        current_path = new SVGPath();
       } else {
-        console.log("Unknown command type:", cmd.type);
-        // throw new Error(`Unknown command type: ${cmd.type}`);
+        throw new Error(`Unknown command type: ${cmd.type}`);
       }
       // // Arc
       // else if (cmd.type == "A") {
@@ -320,58 +372,38 @@ export class SVGPathMObject extends SVGMObject {
       //   console.log("Type A", cmd.values);
       // }
     }
+    this._recalculate_limits();
     return this;
   }
   // Translates the path by a given vector.
   move_by(p: Vec2D | Vec3D) {
-    for (let path of this.subpaths) {
+    for (let path of this.paths) {
       path.move_by(p);
     }
+    this._recalculate_limits();
     return this;
   }
   // Scales the path around a given point by a given scale factor.
   homothety_around(p: Vec2D | Vec3D, scale: number) {
-    for (let path of this.subpaths) {
+    for (let path of this.paths) {
       path.homothety_around(p, scale);
     }
+    this._recalculate_limits();
     return this;
   }
   // Sets the progress of drawing the entire MObject
   set_progress(t: number) {
-    let total_num_paths = this.subpaths.length;
+    let total_num_paths = this.paths.length;
     for (let i = 0; i < total_num_paths; i++) {
-      (this.subpaths[i] as PathSegments).set_progress(
+      (this.paths[i] as SVGPath).set_progress(
         clamp(t * total_num_paths - i, 0, 1),
       );
     }
     return this;
   }
-  // // Partially draws the MObject where t is a parameter between 0 and 1 controlling the progress.
-  // _drawPartial(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
-  //   // TODO Give each subpath an equal amount of time.
-  //   let total_num_paths = this.subpaths.length;
-  //   let path_t = t * total_num_paths;
-  //   let path_index = Math.floor(path_t);
-  //   let sub_t = path_t - path_index;
-  //   for (let i = 0; i < path_index - 1; i++) {
-  //     (this.subpaths[i] as PathSegments)._draw(
-  //       ctx,
-  //       scene,
-  //       this.stroke_options.stroke_color != "none",
-  //       this.fill_options.fill,
-  //     );
-  //   }
-  //   (this.subpaths[path_index] as PathSegments)._drawPartial(
-  //     ctx,
-  //     scene,
-  //     sub_t,
-  //     this.stroke_options.stroke_color != "none",
-  //     this.fill_options.fill,
-  //   );
-  // }
-  // Draw all subpaths.
+  // Draw all paths.
   _draw(ctx: CanvasRenderingContext2D, scene: Scene, args?: any) {
-    for (let path of this.subpaths) {
+    for (let path of this.paths) {
       path._draw(
         ctx,
         scene,
@@ -382,129 +414,60 @@ export class SVGPathMObject extends SVGMObject {
   }
 }
 
-// TODO Text rendering.
-export class TextMObject extends SVGPathMObject {
-  constructor(text: string) {
-    super();
+export class SVGPathMObjectGroup extends MObjectGroup {
+  center: Vec2D = [0, 0];
+  width: number = 0;
+  height: number = 0;
+  _recalculate_size() {
+    let xmin: number = Infinity;
+    let xmax: number = -Infinity;
+    let ymin: number = Infinity;
+    let ymax: number = -Infinity;
+    Object.values(this.children).forEach((child) => {
+      xmin = Math.min(xmin, (child as SVGPathMObject).xmin);
+      xmax = Math.max(xmax, (child as SVGPathMObject).xmax);
+      ymin = Math.min(ymin, (child as SVGPathMObject).ymin);
+      ymax = Math.max(ymax, (child as SVGPathMObject).ymax);
+    });
+    this.center = [(xmin + xmax) / 2, (ymin + ymax) / 2];
+    this.width = xmax - xmin;
+    this.height = ymax - ymin;
   }
-}
-
-// MathJax type declarations
-declare global {
-  interface Window {
-    MathJax: any;
-  }
-}
-
-// Helper to ensure SVG has namespace
-function ensureSVGNamespace(svgString: string): string {
-  if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
-    return svgString.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
-  }
-  return svgString;
-}
-
-// Wait for MathJax to load (it's loaded in the HTML)
-function waitForMathJax(): Promise<void> {
-  return new Promise((resolve) => {
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      resolve();
-      return;
-    }
-
-    // Check every 100ms
-    const checkInterval = setInterval(() => {
-      if (window.MathJax && window.MathJax.typesetPromise) {
-        clearInterval(checkInterval);
-        resolve();
-      }
-    }, 100);
-
-    // Timeout after 5 seconds
-    setTimeout(() => {
-      clearInterval(checkInterval);
-      resolve(); // Continue anyway
-    }, 5000);
-  });
-}
-
-// Simple render function using MathJax v4 API
-async function renderLatexToSVG(
-  latex: string,
-  displayMode: boolean = true,
-): Promise<string> {
-  await waitForMathJax();
-
-  if (!window.MathJax || !window.MathJax.typesetPromise) {
-    throw new Error(
-      "MathJax not loaded. Make sure MathJax script is included in HTML.",
-    );
-  }
-
-  const div = document.createElement("div");
-  div.style.visibility = "hidden";
-  div.style.position = "absolute";
-  div.style.top = "-9999px";
-
-  // Use proper delimiters
-  if (displayMode) {
-    div.innerHTML = `\\[${latex}\\]`;
-  } else {
-    div.innerHTML = `\\(${latex}\\)`;
-  }
-
-  document.body.appendChild(div);
-
-  try {
-    // Use typesetPromise - this should work with MathJax v4
-    await window.MathJax.typesetPromise([div]);
-
-    // Find SVG element
-    const svgElement = div.querySelector("svg");
-    if (!svgElement) {
-      // Try to find any SVG in the element
-      const svgs = div.getElementsByTagName("svg");
-      if (svgs.length > 0) {
-        return ensureSVGNamespace(svgs[0].outerHTML);
-      }
-      throw new Error("No SVG element found");
-    }
-
-    return ensureSVGNamespace(svgElement.outerHTML);
-  } finally {
-    document.body.removeChild(div);
-  }
-}
-
-// TODO LaTeX rendering, using MathJax or similar.
-export class TexMObject extends MObjectGroup {
-  constructor() {
-    super();
-  }
-  async from_latex(latex: string, scale: number) {
-    // Render
-    const svgString = await renderLatexToSVG(latex, true);
-
-    // Parse string to SVG element
-    const svgElement = SimpleSVGLoader.parseSVG(svgString);
-
-    // Extract paths
-    const paths = extractMathJaxPaths(svgElement);
-
-    // Parse
-    let parsedPathInfoAll = paths.map((pathInfo) =>
-      SimpleSVGLoader.parsePathInfo(pathInfo),
-    );
-
-    for (let i = 0; i < parsedPathInfoAll.length; i++) {
-      let mobj = new SVGPathMObject();
-      mobj.from_path(parsedPathInfoAll[i] as ParsedPathInfo, scale);
-      this.add_mobj(`char_${i}`, mobj);
-    }
-  }
+  // Used for animation - sets the progress of drawing each character.
   set_progress(t: number) {
     Object.values(this.children).forEach((child) =>
       (child as SVGPathMObject).set_progress(t),
     );
+  }
+  get_center(): Vec2D {
+    return this.center;
+  }
+  // Sets the total width of the MObjectGroup
+  set_width(width: number) {
+    let scale = width / this.width;
+    Object.values(this.children).forEach((child) => {
+      child.homothety_around(this.center, scale);
+    });
+    this.width *= scale;
+    this.height *= scale;
+    return this;
+  }
+  // Sets the total height of the MObjectGroup
+  set_height(height: number) {
+    let scale = height / this.height;
+    Object.values(this.children).forEach((child) => {
+      child.homothety_around(this.center, scale);
+    });
+    this.width *= scale;
+    this.height *= scale;
+    return this;
+  }
+  // Sets the center
+  set_center(center: Vec2D) {
+    Object.values(this.children).forEach((child) =>
+      child.move_by(vec2_sub(center, this.center)),
+    );
+    this.center = center;
+    return this;
   }
 }
