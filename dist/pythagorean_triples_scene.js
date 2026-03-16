@@ -26,8 +26,31 @@ function vec2_rot(v, angle) {
   const sin = Math.sin(angle);
   return [x * cos - y * sin, x * sin + y * cos];
 }
+function vec2_dot(x, y) {
+  return x[0] * y[0] + x[1] * y[1];
+}
 function vec2_homothety(p1, p2, scale) {
   return vec2_sum(p1, vec2_scale(vec2_sub(p2, p1), scale));
+}
+function transpose(m) {
+  return [
+    [m[0][0], m[1][0]],
+    [m[0][1], m[1][1]]
+  ];
+}
+function matmul_vec2(m, v) {
+  let result = [0, 0];
+  for (let i = 0; i < 2; i++) {
+    result[i] = vec2_dot(m[i], v);
+  }
+  return result;
+}
+function matmul_mat2(m1, m2) {
+  let result = [];
+  for (let i = 0; i < 2; i++) {
+    result.push(matmul_vec2(m1, [m2[0][i], m2[1][i]]));
+  }
+  return transpose(result);
 }
 
 // src/lib/base/style_options.ts
@@ -842,12 +865,13 @@ var makeDraggable3D = (Base) => {
 };
 
 // src/lib/base/geometry.ts
-var Dot = class extends FillLikeMObject {
-  constructor(center, radius) {
+var Sector = class extends FillLikeMObject {
+  constructor(center, radius, start_angle, end_angle) {
     super();
-    this.radius = 0.1;
     this.center = center;
     this.radius = radius;
+    this.start_angle = start_angle;
+    this.end_angle = end_angle;
   }
   // Tests whether a chosen vector lies inside the shape. Used for click-detection.
   is_inside(p) {
@@ -891,8 +915,17 @@ var Dot = class extends FillLikeMObject {
     let [x, y] = scene.v2c(this.center);
     let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
-    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
-    ctx.fill();
+    ctx.arc(x, y, Math.abs(xr - x), this.start_angle, this.end_angle);
+    if (this.fill_options.fill) {
+      ctx.globalAlpha *= this.fill_options.fill_alpha;
+      ctx.fill();
+      ctx.globalAlpha /= this.fill_options.fill_alpha;
+    }
+  }
+};
+var Dot = class extends Sector {
+  constructor(center, radius) {
+    super(center, radius, 0, 2 * Math.PI);
   }
 };
 var DraggableDot = makeDraggable(Dot);
@@ -914,6 +947,9 @@ var Rectangle = class extends FillLikeMObject {
   }
   get_center() {
     return this.center;
+  }
+  get_radius() {
+    return Math.max(this.size_x, this.size_y) / 2;
   }
   move_to(center) {
     this.center = center;
@@ -1869,50 +1905,6 @@ var LaTeXMObject = class extends MObject {
     return this;
   }
 };
-var LatexCache = class {
-  constructor() {
-    this.cache = /* @__PURE__ */ new Map();
-    this.maxSize = 100;
-    this.ttl = 30 * 60 * 1e3;
-  }
-  // 30 minutes
-  // Returns a cache entry image if it exists and is not expired.
-  is_cached(latex, color, fontSize) {
-    if (this.cache.size >= this.maxSize) {
-      this.cleanup();
-    }
-    const key = this.generateKey(latex, color, fontSize);
-    const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.timestamp < this.ttl) {
-      cached.hits++;
-      return [true, cached.image];
-    } else {
-      return [false, void 0];
-    }
-  }
-  // Adds a new entry to the cache.
-  add(latex, color, fontSize, image) {
-    this.cache.set(this.generateKey(latex, color, fontSize), {
-      image,
-      timestamp: Date.now(),
-      hits: 1
-    });
-  }
-  generateKey(latex, color, fontSize) {
-    return `${latex}|${color}|${fontSize}`;
-  }
-  cleanup() {
-    const entries = Array.from(this.cache.entries());
-    entries.sort((a, b) => {
-      if (a[1].hits !== b[1].hits) return a[1].hits - b[1].hits;
-      return a[1].timestamp - b[1].timestamp;
-    });
-    const toRemove = Math.max(1, Math.floor(this.cache.size * 0.2));
-    for (let i = 0; i < toRemove; i++) {
-      this.cache.delete(entries[i][0]);
-    }
-  }
-};
 
 // src/lib/base/bezier.ts
 var BezierSpline = class extends LineLikeMObject {
@@ -2121,46 +2113,46 @@ var Parameter = class extends MObject {
 };
 
 // src/lib/animation.ts
-var FRAME_LENGTH = 30;
+var isVec2D = (v) => v.length == 2;
+var isVec3D = (v) => v.length == 3;
+var DEFAULT_FRAME_LENGTH = 30;
 var DEFAULT_RATE_FUNC = smooth;
 var Animation = class {
-  async play(scene) {
+  constructor() {
+    this.frame_length = DEFAULT_FRAME_LENGTH;
   }
-};
-var Wait = class extends Animation {
-  constructor(num_frames) {
-    super();
-    this.num_frames = num_frames;
+  set_frame_length(frame_length) {
+    this.frame_length = frame_length;
+    return this;
   }
   async play(scene) {
     await this._play(scene);
   }
   async _play(scene) {
+  }
+};
+var FixedLengthAnimation = class extends Animation {
+  constructor(num_frames) {
+    super();
+    this.num_frames = num_frames;
+  }
+  async _play(scene) {
     for (let i = 1; i <= this.num_frames; i++) {
       await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
+      await delay(this.frame_length);
       scene.draw();
     }
   }
   async _play_frame(scene, i) {
   }
 };
-var Zoom = class extends Animation {
+var Wait = class extends FixedLengthAnimation {
+};
+var Zoom = class extends FixedLengthAnimation {
   constructor(zoom_point, zoom_ratio, num_frames) {
-    super();
+    super(num_frames);
     this.zoom_point = zoom_point;
     this.zoom_ratio = zoom_ratio;
-    this.num_frames = num_frames;
-  }
-  async play(scene) {
-    await this._play(scene);
-  }
-  async _play(scene) {
-    for (let i = 1; i <= this.num_frames; i++) {
-      await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
-      scene.draw();
-    }
   }
   async _play_frame(scene, i) {
     scene.zoom_in_on(
@@ -2172,29 +2164,21 @@ var Zoom = class extends Animation {
     );
   }
 };
-var FadeIn = class extends Animation {
+var FadeIn = class extends FixedLengthAnimation {
   constructor(mobjects, num_frames) {
-    super();
+    super(num_frames);
     this.base_alphas = {};
     this.mobjects = mobjects;
     Object.entries(mobjects).forEach(([key, elem]) => {
       this.base_alphas[key] = Number(elem.alpha);
     });
-    this.num_frames = num_frames;
-  }
-  async play(scene) {
-    await this._play(scene);
   }
   // Animates the fade in.
   async _play(scene) {
     Object.entries(this.mobjects).forEach(([key, elem]) => {
       scene.add(key, elem);
     });
-    for (let i = 1; i <= this.num_frames; i++) {
-      await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
-      scene.draw();
-    }
+    await super._play(scene);
   }
   async _play_frame(scene, i) {
     Object.entries(this.mobjects).forEach(([key, elem]) => {
@@ -2223,7 +2207,7 @@ var FadeOut = class extends Animation {
     }
     for (let i = 1; i <= this.num_frames; i++) {
       this._play_frame(scene, i, mobjects, base_alphas);
-      await delay(FRAME_LENGTH);
+      await delay(this.frame_length);
       scene.draw();
     }
     for (let m of this.mobj_names) {
@@ -2237,47 +2221,31 @@ var FadeOut = class extends Animation {
     }
   }
 };
-var isVec2D = (v) => v.length == 2;
-var isVec3D = (v) => v.length == 3;
-var MoveBy = class extends Animation {
+var MoveBy = class extends FixedLengthAnimation {
   constructor(mobj_name, translate_vec, num_frames) {
-    super();
+    super(num_frames);
     this.mobj_name = mobj_name;
     this.translate_vec = translate_vec;
-    this.num_frames = num_frames;
   }
-  async play(scene) {
-    await this._play(scene);
-  }
-  // Animates the movement.
-  async _play(scene) {
+  async _play_frame(scene, i) {
     let tv;
-    let s;
-    for (let i = 1; i <= this.num_frames; i++) {
-      s = DEFAULT_RATE_FUNC(i / this.num_frames) - DEFAULT_RATE_FUNC((i - 1) / this.num_frames);
-      if (isVec2D(this.translate_vec)) {
-        tv = vec2_scale(this.translate_vec, s);
-      } else if (isVec3D(this.translate_vec)) {
-        tv = vec3_scale(this.translate_vec, s);
-      } else {
-        throw new Error("Invalid translation vector");
-      }
-      await this._play_frame(scene, tv);
-      await delay(FRAME_LENGTH);
-      scene.draw();
+    let s = DEFAULT_RATE_FUNC(i / this.num_frames) - DEFAULT_RATE_FUNC((i - 1) / this.num_frames);
+    if (isVec2D(this.translate_vec)) {
+      tv = vec2_scale(this.translate_vec, s);
+    } else if (isVec3D(this.translate_vec)) {
+      tv = vec3_scale(this.translate_vec, s);
+    } else {
+      throw new Error("Invalid translation vector");
     }
-  }
-  async _play_frame(scene, tv) {
     scene.get_mobj(this.mobj_name).move_by(tv);
   }
 };
-var Homothety = class extends Animation {
+var Homothety = class extends FixedLengthAnimation {
   constructor(mobj_name, mobj, center, scale, num_frames) {
-    super();
+    super(num_frames);
     this.mobj_name = mobj_name;
     this.mobj = mobj;
     this.center = center;
-    this.num_frames = num_frames;
     this.scales = funspace(
       (x) => Math.exp(Math.log(scale) * DEFAULT_RATE_FUNC(x)),
       0,
@@ -2285,17 +2253,10 @@ var Homothety = class extends Animation {
       this.num_frames + 1
     );
   }
-  async play(scene) {
-    await this._play(scene);
-  }
   // Animates the fade in.
   async _play(scene) {
     scene.add(this.mobj_name, this.mobj);
-    for (let i = 1; i <= this.num_frames; i++) {
-      await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
-      scene.draw();
-    }
+    await super._play(scene);
   }
   _get_scale_factor(i) {
     return this.scales[i] / this.scales[i - 1];
@@ -2304,35 +2265,22 @@ var Homothety = class extends Animation {
     scene.get_mobj(this.mobj_name).homothety_around(this.center, this._get_scale_factor(i));
   }
 };
-var ChangeParameterSmoothly = class extends Animation {
+var ChangeParameterSmoothly = class extends FixedLengthAnimation {
   constructor(parameter, to_val, num_frames) {
-    super();
+    super(num_frames);
     this.rate_func = DEFAULT_RATE_FUNC;
     this.parameter = parameter;
+    this.init_val = parameter.get_value();
     this.to_val = to_val;
-    this.num_frames = num_frames;
   }
   set_rate_func(rate_func) {
     this.rate_func = rate_func;
     return this;
   }
-  async play(scene) {
-    await this._play(scene);
-  }
-  // Animates the transformation.
-  async _play(scene) {
-    let init_val = this.parameter.get_value();
-    let intermediate_vals = funspace(
-      (x) => init_val + DEFAULT_RATE_FUNC(x) * (this.to_val - init_val),
-      0,
-      1,
-      this.num_frames + 1
+  async _play_frame(scene, i) {
+    this.parameter.set_value(
+      this.init_val + this.rate_func(i / this.num_frames) * (this.to_val - this.init_val)
     );
-    for (let i = 1; i <= this.num_frames; i++) {
-      this.parameter.set_value(intermediate_vals[i]);
-      await delay(FRAME_LENGTH);
-      scene.draw();
-    }
   }
 };
 var Emphasize = class extends Animation {
@@ -2348,9 +2296,6 @@ var Emphasize = class extends Animation {
   set_num_lines(n) {
     this.num_lines = n;
     return this;
-  }
-  async play(scene) {
-    await this._play(scene);
   }
   async _play(scene) {
     for (let theta = 0; theta < this.num_lines; theta++) {
@@ -2370,7 +2315,7 @@ var Emphasize = class extends Animation {
     }
     for (let i = 1; i <= this.num_frames; i++) {
       await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
+      await delay(this.frame_length);
       scene.draw();
     }
     for (let theta = 0; theta < this.num_lines; theta++) {
@@ -2408,14 +2353,11 @@ var GrowLineFromMidpoint = class extends Animation {
     this.end = mobj.end;
     this.num_frames = num_frames;
   }
-  async play(scene) {
-    await this._play(scene);
-  }
   async _play(scene) {
     scene.add(this.mobj_name, this.mobj);
     for (let i = 1; i <= this.num_frames; i++) {
       await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
+      await delay(this.frame_length);
       scene.draw();
     }
   }
@@ -3636,6 +3578,846 @@ var ConicSection = class extends MultipleBranchParametricFunction {
   }
 };
 
+// src/lib/vectorized/svg_loader.ts
+var SVGLoader = class {
+  /**
+   * Load SVG from a URL
+   */
+  static async loadFromURL(url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to load SVG: ${response.status}`);
+    }
+    return await response.text();
+  }
+  /**
+   * Load SVG from a File object (from file input)
+   */
+  static async loadFromFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result);
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsText(file);
+    });
+  }
+  /**
+   * Parse SVG string to DOM element
+   */
+  static parseSVG(svgString) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgString, "image/svg+xml");
+    const error = doc.querySelector("parsererror");
+    if (error) {
+      throw new Error("Failed to parse SVG");
+    }
+    return doc.documentElement;
+  }
+  /**
+   * Extract all path data from SVG
+   */
+  static extractPaths(svgElement) {
+    const paths = [];
+    const getStyle = (element, property) => {
+      const style = window.getComputedStyle(element);
+      return style.getPropertyValue(property);
+    };
+    const parseTransform = (transform) => {
+      if (!transform) return {};
+      try {
+        const svgNS = "http://www.w3.org/2000/svg";
+        const tempSvg = document.createElementNS(svgNS, "svg");
+        const tempPath = document.createElementNS(svgNS, "path");
+        tempSvg.appendChild(tempPath);
+        document.body.appendChild(tempSvg);
+        tempPath.setAttribute("transform", transform);
+        const matrix = tempPath.getCTM();
+        document.body.removeChild(tempSvg);
+        if (matrix) {
+          return {
+            matrix,
+            translation: { x: matrix.e, y: matrix.f }
+          };
+        }
+      } catch (error) {
+        console.warn("Failed to parse transform:", transform, error);
+      }
+      return {};
+    };
+    const extractPathsFromElement = (element, parentTransform = "") => {
+      const elementTransform = element.getAttribute("transform") || "";
+      const combinedTransform = parentTransform ? elementTransform ? `${parentTransform} ${elementTransform}` : parentTransform : elementTransform;
+      if (element.tagName === "path") {
+        const pathData = element.getAttribute("d");
+        if (pathData) {
+          const fill = element.getAttribute("fill") || getStyle(element, "fill") || "black";
+          const stroke = element.getAttribute("stroke") || getStyle(element, "stroke") || "black";
+          let strokeWidth = element.getAttribute("stroke-width") || getStyle(element, "stroke-width") || "1";
+          strokeWidth = strokeWidth.replace("px", "");
+          const transformInfo = parseTransform(combinedTransform);
+          let bbox;
+          try {
+            if (element instanceof SVGPathElement) {
+              bbox = element.getBBox();
+            }
+          } catch (error) {
+          }
+          paths.push({
+            data: pathData,
+            fill,
+            stroke,
+            strokeWidth: Number(strokeWidth),
+            transform: combinedTransform,
+            transformMatrix: transformInfo.matrix,
+            translation: transformInfo.translation,
+            bbox
+          });
+        }
+      }
+      const children = element.children;
+      for (let i = 0; i < children.length; i++) {
+        extractPathsFromElement(children[i], combinedTransform);
+      }
+    };
+    extractPathsFromElement(svgElement);
+    return paths;
+  }
+  /**
+   * Convert SVG path to points (simplified - only handles M, L, H, V, Z commands)
+   */
+  static pathToPoints(pathData) {
+    const points = [];
+    const commands = this.parsePathCommands(pathData);
+    let x = 0;
+    let y = 0;
+    for (const cmd of commands) {
+      switch (cmd.type.toUpperCase()) {
+        case "M":
+          if (cmd.values.length >= 2) {
+            x = cmd.type === "M" ? cmd.values[0] : x + cmd.values[0];
+            y = cmd.type === "M" ? cmd.values[1] : y + cmd.values[1];
+            points.push({ x, y });
+          }
+          break;
+        case "L":
+          if (cmd.values.length >= 2) {
+            x = cmd.type === "L" ? cmd.values[0] : x + cmd.values[0];
+            y = cmd.type === "L" ? cmd.values[1] : y + cmd.values[1];
+            points.push({ x, y });
+          }
+          break;
+        case "H":
+          if (cmd.values.length >= 1) {
+            x = cmd.type === "H" ? cmd.values[0] : x + cmd.values[0];
+            points.push({ x, y });
+          }
+          break;
+        case "V":
+          if (cmd.values.length >= 1) {
+            y = cmd.type === "V" ? cmd.values[0] : y + cmd.values[0];
+            points.push({ x, y });
+          }
+          break;
+        case "Z":
+          if (points.length > 0) {
+            points.push({ ...points[0] });
+          }
+          break;
+      }
+    }
+    return points;
+  }
+  /**
+   * Parse SVG path commands
+   */
+  static parsePathCommands(pathData) {
+    const commands = [];
+    const regex = /([MLHVCSQTAZmlhvcsqtaz])([^MLHVCSQTAZmlhvcsqtaz]*)/g;
+    let match;
+    while ((match = regex.exec(pathData)) !== null) {
+      const type = match[1];
+      const values = (match[2].trim().match(/-?\d+(?:\.\d+)?/g) || []).map(
+        Number
+      );
+      commands.push({ type, values });
+    }
+    return commands;
+  }
+  static parsePathInfo(pathInfo) {
+    return {
+      commands: this.parsePathCommands(pathInfo.data),
+      fill: pathInfo.fill,
+      stroke: pathInfo.stroke,
+      strokeWidth: pathInfo.strokeWidth,
+      transform: pathInfo.transform,
+      transformMatrix: pathInfo.transformMatrix,
+      translation: pathInfo.translation,
+      bbox: pathInfo.bbox
+    };
+  }
+  /**
+   * Draw SVG to canvas
+   */
+  static drawToCanvas(canvas, svgString, x = 0, y = 0) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const blob = new Blob([svgString], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("No canvas context"));
+          return;
+        }
+        ctx.drawImage(img, x, y);
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Failed to load SVG"));
+      };
+      img.src = url;
+    });
+  }
+};
+function extractMathJaxPaths(svgElement) {
+  const paths = [];
+  const defsMap = /* @__PURE__ */ new Map();
+  const defs = svgElement.querySelector("defs");
+  if (defs) {
+    const defPaths = defs.querySelectorAll("path");
+    defPaths.forEach((defPath) => {
+      const id = defPath.getAttribute("id");
+      const d = defPath.getAttribute("d");
+      if (id && d) {
+        defsMap.set(id, d);
+      }
+    });
+  }
+  const getStyle = (element, property) => {
+    const style = window.getComputedStyle(element);
+    return style.getPropertyValue(property);
+  };
+  const parseTransform = (transform) => {
+    if (!transform) return {};
+    try {
+      const svgNS = "http://www.w3.org/2000/svg";
+      const tempSvg = document.createElementNS(svgNS, "svg");
+      const tempElement = document.createElementNS(svgNS, "g");
+      tempSvg.appendChild(tempElement);
+      document.body.appendChild(tempSvg);
+      tempElement.setAttribute("transform", transform);
+      const matrix = tempElement.getCTM();
+      document.body.removeChild(tempSvg);
+      if (matrix) {
+        return {
+          matrix,
+          translation: { x: matrix.e, y: matrix.f }
+        };
+      }
+    } catch (error) {
+      console.warn("Failed to parse transform:", transform, error);
+    }
+    return {};
+  };
+  const extractElements = (element, parentTransform = "", depth = 0) => {
+    const elementTransform = element.getAttribute("transform") || "";
+    const combinedTransform = parentTransform ? elementTransform ? `${parentTransform} ${elementTransform}` : parentTransform : elementTransform;
+    const semanticType = element.getAttribute("data-semantic-type");
+    const semanticRole = element.getAttribute("data-semantic-role");
+    const latex = element.getAttribute("data-latex");
+    const tagName = element.tagName.toLowerCase();
+    if (tagName === "use") {
+      const href = element.getAttribute("xlink:href") || element.getAttribute("href");
+      if (href && href.startsWith("#")) {
+        const defId = href.substring(1);
+        const pathData = defsMap.get(defId);
+        if (pathData) {
+          const parent = element.parentElement;
+          const fill = element.getAttribute("fill") || (parent ? parent.getAttribute("fill") : "") || getStyle(element, "fill") || "black";
+          const stroke = element.getAttribute("stroke") || (parent ? parent.getAttribute("stroke") : "") || getStyle(element, "stroke") || "black";
+          let strokeWidth = element.getAttribute("stroke-width") || (parent ? parent.getAttribute("stroke-width") : "") || getStyle(element, "stroke-width") || "0";
+          strokeWidth = strokeWidth.replace("px", "");
+          const transformInfo = parseTransform(combinedTransform);
+          paths.push({
+            data: pathData,
+            fill,
+            stroke,
+            strokeWidth: Number(strokeWidth),
+            transform: combinedTransform,
+            transformMatrix: transformInfo.matrix,
+            translation: transformInfo.translation,
+            elementType: "path",
+            semanticType,
+            semanticRole,
+            latex
+          });
+        }
+      }
+    } else if (tagName === "path") {
+      const pathData = element.getAttribute("d");
+      if (pathData) {
+        const fill = element.getAttribute("fill") || getStyle(element, "fill") || "black";
+        const stroke = element.getAttribute("stroke") || getStyle(element, "stroke") || "black";
+        let strokeWidth = element.getAttribute("stroke-width") || getStyle(element, "stroke-width") || "0";
+        strokeWidth = strokeWidth.replace("px", "");
+        const transformInfo = parseTransform(combinedTransform);
+        let bbox;
+        try {
+          if (element instanceof SVGPathElement) {
+            bbox = element.getBBox();
+          }
+        } catch (error) {
+        }
+        paths.push({
+          data: pathData,
+          fill,
+          stroke,
+          strokeWidth: Number(strokeWidth),
+          transform: combinedTransform,
+          transformMatrix: transformInfo.matrix,
+          translation: transformInfo.translation,
+          bbox,
+          elementType: "path",
+          semanticType,
+          semanticRole,
+          latex
+        });
+      }
+    } else if (tagName === "rect") {
+      const x = parseFloat(element.getAttribute("x") || "0");
+      const y = parseFloat(element.getAttribute("y") || "0");
+      const width = parseFloat(element.getAttribute("width") || "0");
+      const height = parseFloat(element.getAttribute("height") || "0");
+      if (width > 0 && height > 0) {
+        const pathData = `M${x},${y} L${x + width},${y} L${x + width},${y + height} L${x},${y + height} Z`;
+        const fill = element.getAttribute("fill") || getStyle(element, "fill") || "black";
+        const stroke = element.getAttribute("stroke") || getStyle(element, "stroke") || "black";
+        let strokeWidth = element.getAttribute("stroke-width") || getStyle(element, "stroke-width") || "0";
+        strokeWidth = strokeWidth.replace("px", "");
+        const transformInfo = parseTransform(combinedTransform);
+        let bbox;
+        try {
+          if (element instanceof SVGRectElement) {
+            bbox = element.getBBox();
+          }
+        } catch (error) {
+          bbox = new DOMRect(x, y, width, height);
+        }
+        paths.push({
+          data: pathData,
+          fill,
+          stroke,
+          strokeWidth: Number(strokeWidth),
+          transform: combinedTransform,
+          transformMatrix: transformInfo.matrix,
+          translation: transformInfo.translation,
+          bbox,
+          elementType: "rect",
+          rectWidth: width,
+          rectHeight: height,
+          semanticType,
+          semanticRole,
+          latex
+        });
+      }
+    } else if (tagName === "circle") {
+      const cx = parseFloat(element.getAttribute("cx") || "0");
+      const cy = parseFloat(element.getAttribute("cy") || "0");
+      const r = parseFloat(element.getAttribute("r") || "0");
+      if (r > 0) {
+        const segments = 8;
+        let pathData = `M${cx + r},${cy}`;
+        for (let i = 1; i <= segments; i++) {
+          const angle = i * 2 * Math.PI / segments;
+          const x = cx + r * Math.cos(angle);
+          const y = cy + r * Math.sin(angle);
+          pathData += ` L${x},${y}`;
+        }
+        pathData += " Z";
+        const fill = element.getAttribute("fill") || getStyle(element, "fill") || "black";
+        const stroke = element.getAttribute("stroke") || getStyle(element, "stroke") || "black";
+        let strokeWidth = element.getAttribute("stroke-width") || getStyle(element, "stroke-width") || "0";
+        strokeWidth = strokeWidth.replace("px", "");
+        const transformInfo = parseTransform(combinedTransform);
+        paths.push({
+          data: pathData,
+          fill,
+          stroke,
+          strokeWidth: Number(strokeWidth),
+          transform: combinedTransform,
+          transformMatrix: transformInfo.matrix,
+          translation: transformInfo.translation,
+          elementType: "circle",
+          radius: r,
+          semanticType,
+          semanticRole,
+          latex
+        });
+      }
+    }
+    const children = element.children;
+    for (let i = 0; i < children.length; i++) {
+      extractElements(children[i], combinedTransform, depth + 1);
+    }
+  };
+  const mainGroup = svgElement.querySelector("g[stroke][fill]") || svgElement;
+  extractElements(mainGroup);
+  return paths;
+}
+
+// src/lib/vectorized/svg_mobject.ts
+var FILL_DELAY = 0.9;
+var SVGMObject = class extends FillLikeMObject {
+};
+var SVGPath = class _SVGPath {
+  constructor() {
+    // Bezier segments that make up the path.
+    this.bezier_segments = [];
+    // Number between 0 and 1 indicating how far along the path to draw.
+    this.progress = 1;
+    // x limits and y limits of the path, used for setting a bounding box and sizing.
+    this.xmin = Infinity;
+    this.xmax = -Infinity;
+    this.ymin = Infinity;
+    this.ymax = -Infinity;
+  }
+  set_progress(p) {
+    this.progress = p;
+  }
+  clone() {
+    let clone = new _SVGPath();
+    clone.bezier_segments = this.bezier_segments.slice();
+    clone.progress = this.progress;
+    clone.xmin = this.xmin;
+    clone.xmax = this.xmax;
+    clone.ymin = this.ymin;
+    clone.ymax = this.ymax;
+    return clone;
+  }
+  // Adds a new single cubic Bezier segment to the path. Typically the segment
+  // will be given in ctx coordinates, and will be transformed to scene coordinates
+  // here by x -> Ax + b
+  add_segment(segment, transformMatrix, translate = [0, 0]) {
+    const scaled_segment = segment.map(
+      (p) => vec2_sum(matmul_vec2(transformMatrix, p), translate)
+    );
+    this.bezier_segments.push(scaled_segment);
+    this.xmin = Math.min(
+      this.xmin,
+      scaled_segment[0][0],
+      scaled_segment[1][0],
+      scaled_segment[2][0],
+      scaled_segment[3][0]
+    );
+    this.xmax = Math.max(
+      this.xmax,
+      scaled_segment[0][0],
+      scaled_segment[1][0],
+      scaled_segment[2][0],
+      scaled_segment[3][0]
+    );
+    this.ymin = Math.min(
+      this.ymin,
+      scaled_segment[0][1],
+      scaled_segment[1][1],
+      scaled_segment[2][1],
+      scaled_segment[3][1]
+    );
+    this.ymax = Math.max(
+      this.ymax,
+      scaled_segment[0][1],
+      scaled_segment[1][1],
+      scaled_segment[2][1],
+      scaled_segment[3][1]
+    );
+  }
+  // Translates the path by a given vector.
+  move_by(p) {
+    this.bezier_segments = this.bezier_segments.map((segment) => {
+      return segment.map((v) => vec2_sum(v, p));
+    });
+    this.xmin += p[0];
+    this.xmax += p[0];
+    this.ymin += p[1];
+    this.ymax += p[1];
+    return this;
+  }
+  // Scales the path around a given point by a given scale factor.
+  homothety_around(p, scale) {
+    this.bezier_segments = this.bezier_segments.map((segment) => {
+      return segment.map((v) => {
+        const [x, y] = vec2_sub(v, p);
+        return vec2_sum([x * scale, y * scale], p);
+      });
+    });
+    this.xmin = (this.xmin - p[0]) * scale + p[0];
+    this.xmax = (this.xmax - p[0]) * scale + p[0];
+    this.ymin = (this.ymin - p[1]) * scale + p[1];
+    this.ymax = (this.ymax - p[1]) * scale + p[1];
+    return this;
+  }
+  // Partially draws the path with the given stroke and fill settings, where t is a parameter
+  // between 0 and 1 controlling the progress.
+  // - When 0 < t < FILL_DELAY, a partial outline is drawn.
+  // - When FILL_DELAY < t < 1, the full outline is drawn with partial opacity.
+  _drawPartial(ctx, scene, t, stroke, fill) {
+    let num_segments = Math.min(
+      Math.floor(this.bezier_segments.length * 2 * t),
+      this.bezier_segments.length
+    );
+    ctx.beginPath();
+    ctx.strokeStyle = "black";
+    let [curr_x, curr_y] = scene.v2c(
+      this.bezier_segments[0][0]
+    );
+    let cx, cy;
+    let [h1_x, h1_y] = [0, 0];
+    let [h2_x, h2_y] = [0, 0];
+    let [x, y] = [0, 0];
+    let segment;
+    ctx.moveTo(curr_x, curr_y);
+    for (let i = 0; i < num_segments; i++) {
+      segment = this.bezier_segments[i];
+      [cx, cy] = scene.v2c(segment[0]);
+      if (cx != curr_x || cy != curr_y) {
+        ctx.moveTo(cx, cy);
+      }
+      [h1_x, h1_y] = scene.v2c(segment[1]);
+      [h2_x, h2_y] = scene.v2c(segment[2]);
+      [x, y] = scene.v2c(segment[3]);
+      ctx.bezierCurveTo(h1_x, h1_y, h2_x, h2_y, x, y);
+      [curr_x, curr_y] = [x, y];
+    }
+    if (t <= FILL_DELAY) {
+      ctx.stroke();
+    } else {
+      ctx.closePath();
+      if (stroke) {
+        ctx.stroke();
+      }
+      const fill_progress = (t - FILL_DELAY) / (1 - FILL_DELAY);
+      if (fill) {
+        ctx.globalAlpha = clamp(ctx.globalAlpha * fill_progress, 0, 1);
+        ctx.fill();
+        ctx.globalAlpha = clamp(ctx.globalAlpha / fill_progress, 0, 1);
+      }
+    }
+  }
+  // Draws the path with the given stroke and fill settings.
+  _draw(ctx, scene, stroke, fill) {
+    this._drawPartial(ctx, scene, this.progress, stroke, fill);
+  }
+};
+var SVGPathMObject = class extends SVGMObject {
+  constructor() {
+    super(...arguments);
+    // An SVGPathMObject is composed of an ordered sequence of SVGPaths, each representing a single SVG path.
+    this.paths = [];
+    // x limits and y limits of the MObject, used for setting a bounding box and sizing.
+    this.xmin = Infinity;
+    this.xmax = -Infinity;
+    this.ymin = Infinity;
+    this.ymax = -Infinity;
+  }
+  _recalculate_limits() {
+    this.xmin = Math.min(...this.paths.map((path) => path.xmin));
+    this.xmax = Math.max(...this.paths.map((path) => path.xmax));
+    this.ymin = Math.min(...this.paths.map((path) => path.ymin));
+    this.ymax = Math.max(...this.paths.map((path) => path.ymax));
+  }
+  // Sets the segments based on a parsed path. The parsed path is in ctx coordinates, while
+  // this object's segments are in scene coordinates, so a scaling factor must be supplied.
+  from_path(pathElement, scene_scale) {
+    this.set_stroke_color(pathElement.stroke);
+    this.set_stroke_width(pathElement.strokeWidth / scene_scale);
+    this.set_fill_color(pathElement.fill);
+    let transformMatrix = [
+      [1 / scene_scale, 0],
+      [0, -1 / scene_scale]
+    ];
+    let translate = pathElement.translation ? matmul_vec2(transformMatrix, [
+      pathElement.translation.x,
+      pathElement.translation.y
+    ]) : [0, 0];
+    if (pathElement.transformMatrix) {
+      transformMatrix = matmul_mat2(
+        [
+          [pathElement.transformMatrix?.a, pathElement.transformMatrix?.b],
+          [pathElement.transformMatrix?.c, pathElement.transformMatrix?.d]
+        ],
+        transformMatrix
+      );
+    }
+    this.paths = [];
+    let current_path = new SVGPath();
+    let [curr_x, curr_y] = [0, 0];
+    let [x, y] = [0, 0];
+    let h1 = [0, 0];
+    let h2 = [0, 0];
+    let [hx, hy] = [0, 0];
+    for (let i = 0; i < pathElement.commands.length; i++) {
+      let cmd = pathElement.commands[i];
+      if (cmd.type == "M") {
+        [curr_x, curr_y] = cmd.values;
+      } else if (cmd.type == "L") {
+        [x, y] = cmd.values;
+        h1 = [curr_x * 2 / 3 + x / 3, curr_y * 2 / 3 + y / 3];
+        h2 = [curr_x / 3 + x * 2 / 3, curr_y / 3 + y * 2 / 3];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "V") {
+        y = cmd.values[0];
+        h1 = [curr_x, curr_y / 3 + x * 2 / 3];
+        h2 = [curr_x, curr_y * 2 / 3 + x / 3];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [curr_x, y]],
+          transformMatrix,
+          translate
+        );
+        curr_y = y;
+      } else if (cmd.type == "H") {
+        x = cmd.values[0];
+        h1 = [curr_x * 2 / 3 + x / 3, curr_y];
+        h2 = [curr_x / 3 + x * 2 / 3, curr_y];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, curr_y]],
+          transformMatrix,
+          translate
+        );
+        curr_x = x;
+      } else if (cmd.type == "C") {
+        h1 = [cmd.values[0], cmd.values[1]];
+        h2 = [cmd.values[2], cmd.values[3]];
+        [x, y] = [cmd.values[4], cmd.values[5]];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "S") {
+        h1 = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
+        h2 = [cmd.values[0], cmd.values[1]];
+        [x, y] = [cmd.values[2], cmd.values[3]];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "Q") {
+        [hx, hy] = [cmd.values[0], cmd.values[1]];
+        [x, y] = [cmd.values[2], cmd.values[3]];
+        h1 = [curr_x / 3 + hx * 2 / 3, curr_y / 3 + hy * 2 / 3];
+        h2 = [x / 3 + hx * 2 / 3, y / 3 + hy * 2 / 3];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "T") {
+        [hx, hy] = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
+        [x, y] = [cmd.values[0], cmd.values[1]];
+        h1 = [curr_x / 3 + hx * 2 / 3, curr_y / 3 + hy * 2 / 3];
+        h2 = [x / 3 + hx * 2 / 3, y / 3 + hy * 2 / 3];
+        current_path.add_segment(
+          [[curr_x, curr_y], h1, h2, [x, y]],
+          transformMatrix,
+          translate
+        );
+        [curr_x, curr_y] = [x, y];
+      } else if (cmd.type == "Z") {
+        this.paths.push(current_path.clone());
+        current_path = new SVGPath();
+      } else {
+        throw new Error(`Unknown command type: ${cmd.type}`);
+      }
+    }
+    this._recalculate_limits();
+    return this;
+  }
+  // Translates the path by a given vector.
+  move_by(p) {
+    for (let path of this.paths) {
+      path.move_by(p);
+    }
+    this._recalculate_limits();
+    return this;
+  }
+  // Scales the path around a given point by a given scale factor.
+  homothety_around(p, scale) {
+    for (let path of this.paths) {
+      path.homothety_around(p, scale);
+    }
+    this._recalculate_limits();
+    return this;
+  }
+  // Sets the progress of drawing the entire MObject
+  set_progress(t) {
+    let total_num_paths = this.paths.length;
+    for (let i = 0; i < total_num_paths; i++) {
+      this.paths[i].set_progress(
+        clamp(t * total_num_paths - i, 0, 1)
+      );
+    }
+    return this;
+  }
+  // Draw all paths.
+  _draw(ctx, scene, args) {
+    for (let path of this.paths) {
+      path._draw(
+        ctx,
+        scene,
+        this.stroke_options.stroke_color != "none",
+        this.fill_options.fill
+      );
+    }
+  }
+};
+var SVGPathMObjectGroup = class extends MObjectGroup {
+  constructor() {
+    super(...arguments);
+    this.center = [0, 0];
+    this.width = 0;
+    this.height = 0;
+  }
+  _recalculate_size() {
+    let xmin = Infinity;
+    let xmax = -Infinity;
+    let ymin = Infinity;
+    let ymax = -Infinity;
+    Object.values(this.children).forEach((child) => {
+      xmin = Math.min(xmin, child.xmin);
+      xmax = Math.max(xmax, child.xmax);
+      ymin = Math.min(ymin, child.ymin);
+      ymax = Math.max(ymax, child.ymax);
+    });
+    this.center = [(xmin + xmax) / 2, (ymin + ymax) / 2];
+    this.width = xmax - xmin;
+    this.height = ymax - ymin;
+  }
+  // Used for animation - sets the progress of drawing each character.
+  set_progress(t) {
+    Object.values(this.children).forEach(
+      (child) => child.set_progress(t)
+    );
+  }
+  get_center() {
+    return this.center;
+  }
+  // Sets the total width of the MObjectGroup
+  set_width(width) {
+    let scale = width / this.width;
+    Object.values(this.children).forEach((child) => {
+      child.homothety_around(this.center, scale);
+    });
+    this.width *= scale;
+    this.height *= scale;
+    return this;
+  }
+  // Sets the total height of the MObjectGroup
+  set_height(height) {
+    let scale = height / this.height;
+    Object.values(this.children).forEach((child) => {
+      child.homothety_around(this.center, scale);
+    });
+    this.width *= scale;
+    this.height *= scale;
+    return this;
+  }
+  // Sets the center
+  set_center(center) {
+    Object.values(this.children).forEach(
+      (child) => child.move_by(vec2_sub(center, this.center))
+    );
+    this.center = center;
+    return this;
+  }
+};
+
+// src/lib/vectorized/latex.ts
+function ensureSVGNamespace(svgString) {
+  if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
+    return svgString.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+  }
+  return svgString;
+}
+function waitForMathJax() {
+  return new Promise((resolve) => {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      resolve();
+      return;
+    }
+    const checkInterval = setInterval(() => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        clearInterval(checkInterval);
+        resolve();
+      }
+    }, 100);
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      resolve();
+    }, 5e3);
+  });
+}
+async function renderLatexToSVG(latex, displayMode = true) {
+  await waitForMathJax();
+  if (!window.MathJax || !window.MathJax.typesetPromise) {
+    throw new Error(
+      "MathJax not loaded. Make sure MathJax script is included in HTML."
+    );
+  }
+  const div = document.createElement("div");
+  div.style.visibility = "hidden";
+  div.style.position = "absolute";
+  div.style.top = "-9999px";
+  if (displayMode) {
+    div.innerHTML = `\\[${latex}\\]`;
+  } else {
+    div.innerHTML = `\\(${latex}\\)`;
+  }
+  document.body.appendChild(div);
+  try {
+    await window.MathJax.typesetPromise([div]);
+    const svgElement = div.querySelector("svg");
+    console.log(div, svgElement);
+    if (!svgElement) {
+      const svgs = div.getElementsByTagName("svg");
+      if (svgs.length > 0) {
+        return ensureSVGNamespace(svgs[0].outerHTML);
+      }
+      throw new Error("No SVG element found");
+    }
+    return ensureSVGNamespace(svgElement.outerHTML);
+  } finally {
+    document.body.removeChild(div);
+  }
+}
+var TexMObject = class extends SVGPathMObjectGroup {
+  async from_latex(latex, scale) {
+    this.clear();
+    const svgString = await renderLatexToSVG(latex, true);
+    const svgElement = SVGLoader.parseSVG(svgString);
+    const paths = extractMathJaxPaths(svgElement).map(
+      (pathInfo) => SVGLoader.parsePathInfo(pathInfo)
+    );
+    for (let i = 0; i < paths.length; i++) {
+      let mobj = new SVGPathMObject();
+      mobj.from_path(paths[i], scale);
+      this.add_mobj(`expr_${i}`, mobj);
+    }
+    this._recalculate_size();
+    return this;
+  }
+};
+
 // src/pythagorean_triples_scene.ts
 function make_triangle(height, width, offset = [0, 0], scale = 1, add_grid_lines = true) {
   let t = new MObjectGroup();
@@ -3681,29 +4463,6 @@ function stereographic_projection(cart_eq, basepoint, slope) {
   document.addEventListener("DOMContentLoaded", async function() {
     let num_pts = 200;
     let solver = await createSmoothOpenPathBezier(num_pts);
-    let cache = new LatexCache();
-    await new LaTeXMObject("x^2 + y^2 = 1", [0, -3], cache).add_to_cache();
-    await new LaTeXMObject("y = -m(x-1)", [0, -4], cache).add_to_cache();
-    await new LaTeXMObject(
-      "x^2 + (-m(x-1))^2 = 1",
-      [0, -5],
-      cache
-    ).add_to_cache();
-    await new LaTeXMObject(
-      "(m^2+1)x^2 - 2m^2x + (m^2-1) = 0",
-      [0, -6],
-      cache
-    ).add_to_cache();
-    await new LaTeXMObject(
-      "x = \\frac{2m^2 \\pm \\sqrt{(2m^2)^2 - 4(m^2+1)(m^2-1)}}{2(m^2+1)}",
-      [0, -7],
-      cache
-    ).add_to_cache();
-    await new LaTeXMObject(
-      "(x, y) = (\\frac{m^2-1}{m^2+1}, \\frac{2m}{m^2+1})",
-      [0, -8],
-      cache
-    ).add_to_cache();
     await (async function scene_0(width, height) {
     })(400, 400);
     await (async function scene_1(width, height) {
@@ -3790,11 +4549,11 @@ function stereographic_projection(cart_eq, basepoint, slope) {
                 (t2) => [Math.cos(t2), Math.sin(t2)],
                 0,
                 0,
-                100,
+                num_pts,
                 solver
               ).set_stroke_width(0.04)
             },
-            10
+            1
           ).play(scene);
           num_frames = 30;
           let t = new Parameter().set_value(0);
@@ -3810,9 +4569,14 @@ function stereographic_projection(cart_eq, basepoint, slope) {
             ]);
           });
           await new ChangeParameterSmoothly(t, 2 * Math.PI, 30).play(scene);
-          await new FadeOut(["segment"], 20).play(scene);
+          scene.remove("segment");
           await new FadeIn(
-            { eq_circle: new LaTeXMObject("x^2 + y^2 = 1", [1.5, 1.5], cache) },
+            {
+              eq_circle: (await new TexMObject().from_latex(
+                "x^2 + y^2 = 1",
+                scene.scale()
+              )).set_height(0.3).set_center([1.5, 1.5])
+            },
             10
           ).play(scene);
           slope = -2;
@@ -3848,7 +4612,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
               1 - progress * length2 * Math.cos(theta_slope),
               -progress * length2 * Math.sin(theta_slope)
             ]);
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           await new FadeIn({ axis_point: new Dot([0, -slope], 0.08) }, 10).play(
@@ -3875,7 +4639,9 @@ function stereographic_projection(cart_eq, basepoint, slope) {
             scene.get_mobj("axis_point").move_to([0, -x]);
           });
           await new FadeIn(
-            { eq_line: new LaTeXMObject("y = -m(x-1)", [1.5, 0.5], cache) },
+            {
+              eq_line: (await new TexMObject().from_latex("y = -m(x-1)", scene.scale())).set_height(0.25).set_center([1.5, 1])
+            },
             10
           ).play(scene);
           let new_slope = -2 / 3;
@@ -3884,7 +4650,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -3895,7 +4661,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -3906,7 +4672,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -3915,41 +4681,37 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           await new Zoom([0, 2], 1 / 3, 30).play(scene);
           await new FadeIn(
             {
-              formula_1: new LaTeXMObject(
+              formula_1: (await new TexMObject().from_latex(
                 "x^2 + (-m(x-1))^2 = 1",
-                [-2, -3],
-                cache
-              )
+                scene.scale()
+              )).set_height(0.8).set_center([-2, -3])
             },
             10
           ).play(scene);
           await new FadeIn(
             {
-              formula_2: new LaTeXMObject(
+              formula_2: (await new TexMObject().from_latex(
                 "(m^2+1)x^2 - 2m^2x + (m^2-1) = 0",
-                [-2, -4],
-                cache
-              )
+                scene.scale()
+              )).set_height(0.8).set_center([-2, -4])
             },
             10
           ).play(scene);
           await new FadeIn(
             {
-              formula_3: new LaTeXMObject(
+              formula_3: (await new TexMObject().from_latex(
                 "x = \\frac{2m^2 \\pm \\sqrt{(2m^2)^2 - 4(m^2+1)(m^2-1)}}{2(m^2+1)}",
-                [-2, -5],
-                cache
-              )
+                scene.scale()
+              )).set_height(0.8).set_center([-2, -5])
             },
             10
           ).play(scene);
           await new FadeIn(
             {
-              formula: new LaTeXMObject(
+              formula: (await new TexMObject().from_latex(
                 "(x, y) = (\\frac{m^2-1}{m^2+1}, \\frac{2m}{m^2+1})",
-                [-2, -6],
-                cache
-              )
+                scene.scale()
+              )).set_height(0.8).set_center([-2, -6])
             },
             10
           ).play(scene);
@@ -3963,7 +4725,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -3990,7 +4752,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -4017,7 +4779,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -4044,7 +4806,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           num_frames = 40;
           for (let i = 1; i < num_frames; i++) {
             v.set_value(slope + smooth(i / num_frames) * (new_slope - slope));
-            await delay(FRAME_LENGTH);
+            await delay(DEFAULT_FRAME_LENGTH);
             scene.draw();
           }
           slope = new_slope;
@@ -4156,7 +4918,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
         slope = m.get_value();
         for (let i = 1; i < num_frames; i++) {
           m.set_value(slope + smooth(i / num_frames) * (-2 - slope));
-          await delay(FRAME_LENGTH);
+          await delay(DEFAULT_FRAME_LENGTH);
           scene.draw();
         }
         await new Homothety(
@@ -4171,7 +4933,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
         slope = m.get_value();
         for (let i = 1; i < num_frames; i++) {
           m.set_value(slope + smooth(i / num_frames) * (-3 / 2 - slope));
-          await delay(FRAME_LENGTH);
+          await delay(DEFAULT_FRAME_LENGTH);
           scene.draw();
         }
         await new Homothety(
@@ -4186,7 +4948,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
         slope = m.get_value();
         for (let i = 1; i < num_frames; i++) {
           m.set_value(slope + smooth(i / num_frames) * (-4 / 3 - slope));
-          await delay(FRAME_LENGTH);
+          await delay(DEFAULT_FRAME_LENGTH);
           scene.draw();
         }
         await new Homothety(

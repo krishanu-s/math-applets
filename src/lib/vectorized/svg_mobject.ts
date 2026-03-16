@@ -12,42 +12,13 @@ import {
   matmul_vec2,
   matmul_mat2,
 } from "../base/vec2";
+import { CubicBezierTuple } from "../base/bezier";
 
 // Ratio of time used for stroke animation before fill animation begins
 const FILL_DELAY = 0.9;
 
 // Base class for SVG mobjects, e.g. containing more than just paths.
 export class SVGMObject extends FillLikeMObject {}
-
-// A 4-tuples of points representing a cubic Bezier curve
-type CubicBezierTuple = [Vec2D, Vec2D, Vec2D, Vec2D];
-
-// Converts a linear segment into a cubic Bezier segment
-export function make_linear_segment(
-  start: Vec2D,
-  end: Vec2D,
-): CubicBezierTuple {
-  return [
-    start,
-    vec2_scale(vec2_sum(start, vec2_scale(end, 2)), 1 / 3),
-    vec2_scale(vec2_sum(vec2_scale(start, 2), end), 1 / 3),
-    end,
-  ];
-}
-
-// Converts a quadratic Bezier segment into a cubic Bezier segment
-export function make_quadratic_segment(
-  start: Vec2D,
-  cp: Vec2D,
-  end: Vec2D,
-): CubicBezierTuple {
-  return [
-    start,
-    vec2_scale(vec2_sum(start, vec2_scale(cp, 2)), 1 / 3),
-    vec2_scale(vec2_sum(vec2_scale(cp, 2), end), 1 / 3),
-    end,
-  ];
-}
 
 // A sequence of CubicBezierTuple segments representing a single SVG path, beginning
 // with a move-to command (M) and ending with a close-path command (Z).
@@ -313,7 +284,7 @@ export class SVGPathMObject extends SVGMObject {
       else if (cmd.type == "C") {
         h1 = [cmd.values[0], cmd.values[1]] as Vec2D;
         h2 = [cmd.values[2], cmd.values[3]] as Vec2D;
-        [x, y] = [cmd.values[4], cmd.values[5]];
+        [x, y] = [cmd.values[4], cmd.values[5]] as Vec2D;
         current_path.add_segment(
           [[curr_x, curr_y], h1, h2, [x, y]],
           transformMatrix,
@@ -325,7 +296,7 @@ export class SVGPathMObject extends SVGMObject {
       else if (cmd.type == "S") {
         h1 = vec2_sub(vec2_scale([curr_x, curr_y], 2), h2);
         h2 = [cmd.values[0], cmd.values[1]] as Vec2D;
-        [x, y] = [cmd.values[2], cmd.values[3]];
+        [x, y] = [cmd.values[2], cmd.values[3]] as Vec2D;
         current_path.add_segment(
           [[curr_x, curr_y], h1, h2, [x, y]],
           transformMatrix,

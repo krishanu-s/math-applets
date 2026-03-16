@@ -1,5 +1,37 @@
 import { LineLikeMObject, MObjectGroup, Scene, Vec2D } from ".";
 import { LineLikeMObjectGroup } from "./base";
+import { vec2_scale, vec2_sum } from "./vec2";
+
+// A 4-tuples of points representing a cubic Bezier curve
+export type CubicBezierTuple = [Vec2D, Vec2D, Vec2D, Vec2D];
+
+// Converts a linear segment into a cubic Bezier segment
+export function make_linear_segment(
+  start: Vec2D,
+  end: Vec2D,
+): CubicBezierTuple {
+  return [
+    start,
+    vec2_scale(vec2_sum(start, vec2_scale(end, 2)), 1 / 3),
+    vec2_scale(vec2_sum(vec2_scale(start, 2), end), 1 / 3),
+    end,
+  ];
+}
+
+// Converts a quadratic Bezier segment into a cubic Bezier segment
+export function make_quadratic_segment(
+  start: Vec2D,
+  cp: Vec2D,
+  end: Vec2D,
+): CubicBezierTuple {
+  return [
+    start,
+    vec2_scale(vec2_sum(start, vec2_scale(cp, 2)), 1 / 3),
+    vec2_scale(vec2_sum(vec2_scale(cp, 2), end), 1 / 3),
+    end,
+  ];
+}
+
 // TODO Make the curve function store calculated handles, and avoid re-calculating unless necessary.
 
 // A sequence of Bezier curves passing through a sequence of points P_0, P_1, ..., P_n.

@@ -102,12 +102,7 @@ export class Sector
 
 // A filled circular sector
 export class Dot extends Sector {
-  constructor(
-    center: Vec2D,
-    radius: number,
-    start_angle: number,
-    end_angle: number,
-  ) {
+  constructor(center: Vec2D, radius: number) {
     super(center, radius, 0, 2 * Math.PI);
   }
 }

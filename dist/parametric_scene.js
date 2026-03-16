@@ -753,12 +753,13 @@ var makeDraggable3D = (Base) => {
 };
 
 // src/lib/base/geometry.ts
-var Dot = class extends FillLikeMObject {
-  constructor(center, radius) {
+var Sector = class extends FillLikeMObject {
+  constructor(center, radius, start_angle, end_angle) {
     super();
-    this.radius = 0.1;
     this.center = center;
     this.radius = radius;
+    this.start_angle = start_angle;
+    this.end_angle = end_angle;
   }
   // Tests whether a chosen vector lies inside the shape. Used for click-detection.
   is_inside(p) {
@@ -802,8 +803,17 @@ var Dot = class extends FillLikeMObject {
     let [x, y] = scene.v2c(this.center);
     let xr = scene.v2c([this.center[0] + this.radius, this.center[1]])[0];
     ctx.beginPath();
-    ctx.arc(x, y, Math.abs(xr - x), 0, 2 * Math.PI);
-    ctx.fill();
+    ctx.arc(x, y, Math.abs(xr - x), this.start_angle, this.end_angle);
+    if (this.fill_options.fill) {
+      ctx.globalAlpha *= this.fill_options.fill_alpha;
+      ctx.fill();
+      ctx.globalAlpha /= this.fill_options.fill_alpha;
+    }
+  }
+};
+var Dot = class extends Sector {
+  constructor(center, radius) {
+    super(center, radius, 0, 2 * Math.PI);
   }
 };
 var DraggableDot = makeDraggable(Dot);
@@ -825,6 +835,9 @@ var Rectangle = class extends FillLikeMObject {
   }
   get_center() {
     return this.center;
+  }
+  get_radius() {
+    return Math.max(this.size_x, this.size_y) / 2;
   }
   move_to(center) {
     this.center = center;
