@@ -15,9 +15,9 @@ import {
   Dot,
   quadratic_bump,
   vec2_polar_form,
-  SVGPathMObject,
   HasCenterAndRadius,
 } from "./base";
+import { SVGPathMObject } from "./vectorized";
 import { Parameter } from "./interactive";
 import { Vec3D, vec3_scale } from "./three_d";
 
@@ -26,15 +26,23 @@ export const isVec2D = (v: Vec2D | Vec3D): v is Vec2D => v.length == 2;
 export const isVec3D = (v: Vec2D | Vec3D): v is Vec3D => v.length == 3;
 
 // Length of one frame in milliseconds
-export const FRAME_LENGTH = 30;
+export const DEFAULT_FRAME_LENGTH = 30;
 
 // A rate function maps [0, 1] to [0, 1]
 export type RateFunc = (t: number) => number;
 export const DEFAULT_RATE_FUNC = smooth;
 
-// Base class for animations
+// Base class for animations.
 abstract class Animation {
-  async play(scene: Scene) {}
+  frame_length: number = DEFAULT_FRAME_LENGTH;
+  set_frame_length(frame_length: number) {
+    this.frame_length = frame_length;
+    return this;
+  }
+  async play(scene: Scene): Promise<void> {
+    await this._play(scene);
+  }
+  async _play(scene: Scene): Promise<void> {}
 }
 
 // A sequence of animations, played serially with each one starting after
@@ -77,46 +85,34 @@ export class AnimationCollection extends Animation {
   }
 }
 
-// Does nothing for a number of frames.
-export class Wait extends Animation {
+// Animations where the number of frames is known at initialization.
+class FixedLengthAnimation extends Animation {
   num_frames: number;
   constructor(num_frames: number) {
     super();
     this.num_frames = num_frames;
   }
-  async play(scene: Scene): Promise<void> {
-    await this._play(scene);
-  }
   async _play(scene: Scene): Promise<void> {
     for (let i = 1; i <= this.num_frames; i++) {
       await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
+      await delay(this.frame_length);
       scene.draw();
     }
   }
   async _play_frame(scene: Scene, i: number) {}
 }
 
+// Does nothing for a number of frames. Equal to the trivial animation.
+export class Wait extends FixedLengthAnimation {}
+
 // Zooms in or out of a point of the scene.
-export class Zoom extends Animation {
+export class Zoom extends FixedLengthAnimation {
   zoom_point: Vec2D;
   zoom_ratio: number;
-  num_frames: number;
   constructor(zoom_point: Vec2D, zoom_ratio: number, num_frames: number) {
-    super();
+    super(num_frames);
     this.zoom_point = zoom_point;
     this.zoom_ratio = zoom_ratio;
-    this.num_frames = num_frames;
-  }
-  async play(scene: Scene): Promise<void> {
-    await this._play(scene);
-  }
-  async _play(scene: Scene): Promise<void> {
-    for (let i = 1; i <= this.num_frames; i++) {
-      await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
-      scene.draw();
-    }
   }
   async _play_frame(scene: Scene, i: number) {
     scene.zoom_in_on(
@@ -131,31 +127,22 @@ export class Zoom extends Animation {
 }
 
 // Fades in a collection of mobjects simultaneously.
-export class FadeIn extends Animation {
+export class FadeIn extends FixedLengthAnimation {
   mobjects: Record<string, MObject>;
   base_alphas: Record<string, number> = {};
-  num_frames: number;
   constructor(mobjects: Record<string, MObject>, num_frames: number) {
-    super();
+    super(num_frames);
     this.mobjects = mobjects;
     Object.entries(mobjects).forEach(([key, elem]) => {
       this.base_alphas[key] = Number(elem.alpha);
     });
-    this.num_frames = num_frames;
-  }
-  async play(scene: Scene): Promise<void> {
-    await this._play(scene);
   }
   // Animates the fade in.
   async _play(scene: Scene): Promise<void> {
     Object.entries(this.mobjects).forEach(([key, elem]) => {
       scene.add(key, elem);
     });
-    for (let i = 1; i <= this.num_frames; i++) {
-      await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
-      scene.draw();
-    }
+    await super._play(scene);
   }
   async _play_frame(scene: Scene, i: number) {
     Object.entries(this.mobjects).forEach(([key, elem]) => {
@@ -188,7 +175,7 @@ export class FadeOut extends Animation {
     }
     for (let i = 1; i <= this.num_frames; i++) {
       this._play_frame(scene, i, mobjects, base_alphas);
-      await delay(FRAME_LENGTH);
+      await delay(this.frame_length);
       scene.draw();
     }
     for (let m of this.mobj_names) {
@@ -209,31 +196,22 @@ export class FadeOut extends Animation {
 }
 
 // Progressively draw an SVGPathMObject, character-by-character
-export class Write extends Animation {
+export class Write extends FixedLengthAnimation {
   svg_mobject_name: string;
   svg_mobject: SVGPathMObject;
-  num_frames: number;
   constructor(
     svg_mobject_name: string,
     svg_mobject: SVGPathMObject,
     num_frames: number,
   ) {
-    super();
+    super(num_frames);
     this.svg_mobject_name = svg_mobject_name;
     this.svg_mobject = svg_mobject;
-    this.num_frames = num_frames;
-  }
-  async play(scene: Scene): Promise<void> {
-    await this._play(scene);
   }
   // Animates the fade in.
   async _play(scene: Scene): Promise<void> {
     scene.add(this.svg_mobject_name, this.svg_mobject);
-    for (let i = 1; i <= this.num_frames; i++) {
-      await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
-      scene.draw();
-    }
+    await super._play(scene);
   }
   async _play_frame(scene: Scene, i: number) {
     this.svg_mobject.set_progress(i / this.num_frames);
@@ -241,29 +219,20 @@ export class Write extends Animation {
 }
 
 // Write a collection of SVGPathMObjects simultaneously
-export class WriteGroup extends Animation {
+export class WriteGroup extends FixedLengthAnimation {
   svg_mobjects: Record<string, SVGPathMObject>;
-  num_frames: number;
   constructor(
     svg_mobjects: Record<string, SVGPathMObject>,
     num_frames: number,
   ) {
-    super();
+    super(num_frames);
     this.svg_mobjects = svg_mobjects;
-    this.num_frames = num_frames;
-  }
-  async play(scene: Scene): Promise<void> {
-    await this._play(scene);
   }
   async _play(scene: Scene): Promise<void> {
     Object.entries(this.svg_mobjects).forEach(([key, elem]) => {
       scene.add(key, elem);
     });
-    for (let i = 1; i <= this.num_frames; i++) {
-      await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
-      scene.draw();
-    }
+    await super._play(scene);
   }
   async _play_frame(scene: Scene, i: number) {
     Object.entries(this.svg_mobjects).forEach(([key, elem]) => {
@@ -281,55 +250,40 @@ export class Unwrite extends Animation {}
 export class UnwriteGroup extends Animation {}
 
 // Translate the mobject or MObjectGroup
-export class MoveBy extends Animation {
+export class MoveBy extends FixedLengthAnimation {
   mobj_name: string;
   translate_vec: Vec2D | Vec3D;
-  num_frames: number;
   constructor(
     mobj_name: string,
     translate_vec: Vec2D | Vec3D,
     num_frames: number,
   ) {
-    super();
+    super(num_frames);
     this.mobj_name = mobj_name;
     this.translate_vec = translate_vec;
-    this.num_frames = num_frames;
   }
-  async play(scene: Scene): Promise<void> {
-    await this._play(scene);
-  }
-  // Animates the movement.
-  async _play(scene: Scene): Promise<void> {
+  async _play_frame(scene: Scene, i: number) {
     let tv: Vec2D | Vec3D;
-    let s;
-    for (let i = 1; i <= this.num_frames; i++) {
-      s =
-        DEFAULT_RATE_FUNC(i / this.num_frames) -
-        DEFAULT_RATE_FUNC((i - 1) / this.num_frames);
-      if (isVec2D(this.translate_vec)) {
-        tv = vec2_scale(this.translate_vec, s);
-      } else if (isVec3D(this.translate_vec)) {
-        tv = vec3_scale(this.translate_vec, s);
-      } else {
-        throw new Error("Invalid translation vector");
-      }
-      await this._play_frame(scene, tv);
-      await delay(FRAME_LENGTH);
-      scene.draw();
+    let s =
+      DEFAULT_RATE_FUNC(i / this.num_frames) -
+      DEFAULT_RATE_FUNC((i - 1) / this.num_frames);
+    if (isVec2D(this.translate_vec)) {
+      tv = vec2_scale(this.translate_vec, s);
+    } else if (isVec3D(this.translate_vec)) {
+      tv = vec3_scale(this.translate_vec, s);
+    } else {
+      throw new Error("Invalid translation vector");
     }
-  }
-  async _play_frame(scene: Scene, tv: Vec2D | Vec3D) {
     (scene.get_mobj(this.mobj_name) as MObject).move_by(tv);
   }
 }
 
 // Performs a homothety of the mobject or MObjectGroup with respect to a center point.
-export class Homothety extends Animation {
+export class Homothety extends FixedLengthAnimation {
   mobj_name: string;
   mobj: MObject;
   center: Vec2D;
   scales: number[];
-  num_frames: number;
   constructor(
     mobj_name: string,
     mobj: MObject,
@@ -337,11 +291,10 @@ export class Homothety extends Animation {
     scale: number,
     num_frames: number,
   ) {
-    super();
+    super(num_frames);
     this.mobj_name = mobj_name;
     this.mobj = mobj;
     this.center = center;
-    this.num_frames = num_frames;
     this.scales = funspace(
       (x) => Math.exp(Math.log(scale) * DEFAULT_RATE_FUNC(x)),
       0,
@@ -349,17 +302,10 @@ export class Homothety extends Animation {
       this.num_frames + 1,
     );
   }
-  async play(scene: Scene): Promise<void> {
-    await this._play(scene);
-  }
   // Animates the fade in.
   async _play(scene: Scene): Promise<void> {
     scene.add(this.mobj_name, this.mobj);
-    for (let i = 1; i <= this.num_frames; i++) {
-      await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
-      scene.draw();
-    }
+    await super._play(scene);
   }
   _get_scale_factor(i: number): number {
     return (this.scales[i] as number) / (this.scales[i - 1] as number);
@@ -372,38 +318,26 @@ export class Homothety extends Animation {
 }
 
 // Varies a parameter continuously
-export class ChangeParameterSmoothly extends Animation {
+export class ChangeParameterSmoothly extends FixedLengthAnimation {
   parameter: Parameter;
+  init_val: number;
   to_val: number;
-  num_frames: number;
   rate_func: RateFunc = DEFAULT_RATE_FUNC;
   constructor(parameter: Parameter, to_val: number, num_frames: number) {
-    super();
+    super(num_frames);
     this.parameter = parameter;
+    this.init_val = parameter.get_value();
     this.to_val = to_val;
-    this.num_frames = num_frames;
   }
   set_rate_func(rate_func: RateFunc) {
     this.rate_func = rate_func;
     return this;
   }
-  async play(scene: Scene): Promise<void> {
-    await this._play(scene);
-  }
-  // Animates the transformation.
-  async _play(scene: Scene): Promise<void> {
-    let init_val = this.parameter.get_value();
-    let intermediate_vals: number[] = funspace(
-      (x: number) => init_val + DEFAULT_RATE_FUNC(x) * (this.to_val - init_val),
-      0,
-      1,
-      this.num_frames + 1,
+  async _play_frame(scene: Scene, i: number) {
+    this.parameter.set_value(
+      this.init_val +
+        this.rate_func(i / this.num_frames) * (this.to_val - this.init_val),
     );
-    for (let i = 1; i <= this.num_frames; i++) {
-      this.parameter.set_value(intermediate_vals[i] as number);
-      await delay(FRAME_LENGTH);
-      scene.draw();
-    }
   }
 }
 
@@ -426,9 +360,6 @@ export class Emphasize extends Animation {
     this.num_lines = n;
     return this;
   }
-  async play(scene: Scene): Promise<void> {
-    await this._play(scene);
-  }
   async _play(scene: Scene): Promise<void> {
     for (let theta = 0; theta < this.num_lines; theta++) {
       scene.add(
@@ -447,7 +378,7 @@ export class Emphasize extends Animation {
     }
     for (let i = 1; i <= this.num_frames; i++) {
       await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
+      await delay(this.frame_length);
       scene.draw();
     }
     for (let theta = 0; theta < this.num_lines; theta++) {
@@ -492,14 +423,11 @@ export class GrowShrinkDot extends Animation {
     this.radius = mobj.radius;
     this.num_frames = num_frames;
   }
-  async play(scene: Scene): Promise<void> {
-    await this._play(scene);
-  }
   async _play(scene: Scene): Promise<void> {
     scene.add(this.mobj_name, this.mobj);
     for (let i = 1; i <= this.num_frames; i++) {
       await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
+      await delay(this.frame_length);
       scene.draw();
     }
   }
@@ -524,14 +452,11 @@ export class GrowLineFromMidpoint extends Animation {
     this.end = mobj.end;
     this.num_frames = num_frames;
   }
-  async play(scene: Scene): Promise<void> {
-    await this._play(scene);
-  }
   async _play(scene: Scene): Promise<void> {
     scene.add(this.mobj_name, this.mobj);
     for (let i = 1; i <= this.num_frames; i++) {
       await this._play_frame(scene, i);
-      await delay(FRAME_LENGTH);
+      await delay(this.frame_length);
       scene.draw();
     }
   }
@@ -613,14 +538,11 @@ export class Transform extends Animation {
     this.target = target;
     this.num_frames = num_frames;
   }
-  async play(scene: Scene): Promise<void> {
-    await this._play(scene);
-  }
   async _play(scene: Scene): Promise<void> {
     let mobj = scene.get_mobj(this.mobj_name) as MObject;
     for (let i = 1; i <= this.num_frames; i++) {
       await this._play_frame(scene, i, mobj);
-      await delay(FRAME_LENGTH);
+      await delay(this.frame_length);
       scene.draw();
     }
   }
