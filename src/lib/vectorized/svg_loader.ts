@@ -99,6 +99,7 @@ export class SVGLoader {
    * Extract all path data from SVG
    */
   static extractPaths(svgElement: SVGElement): PathInfo[] {
+    console.log("Extracting paths from SVG", svgElement);
     const paths: PathInfo[] = [];
 
     // Helper function to get computed style
@@ -432,7 +433,7 @@ export interface MathJaxPathInfo {
 /**
  * Extract all graphical elements from MathJax SVG with proper handling
  */
-export function extractMathJaxPaths(svgElement: SVGElement): MathJaxPathInfo[] {
+export function extractSVGPaths(svgElement: SVGElement): MathJaxPathInfo[] {
   const paths: MathJaxPathInfo[] = [];
 
   // First, collect all path definitions from <defs>

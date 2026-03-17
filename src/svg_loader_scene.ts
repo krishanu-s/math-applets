@@ -6,7 +6,7 @@
 
 import { MoveBy, Write, WriteGroup } from "./lib/animation";
 import { delay, prepare_canvas, Scene } from "./lib/base";
-import { SVGPathMObject, TexMObject } from "./lib/vectorized";
+import { TeXMObject, SVGPathMObject } from "./lib/vectorized";
 import {
   SVGLoader,
   createSVGFileInput,
@@ -43,7 +43,7 @@ import {
           ctx.font = "16px Arial";
           ctx.fillText(`LaTeX: ${latex}`, 50, 125);
 
-          let latex_mobj = new TexMObject();
+          let latex_mobj = new TeXMObject();
           await latex_mobj.from_latex(latex, scene.scale());
           latex_mobj.set_center([-2, 4]);
           latex_mobj.set_width(4.0);

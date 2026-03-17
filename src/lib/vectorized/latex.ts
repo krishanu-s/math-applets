@@ -1,7 +1,7 @@
 // Vectorized MObjects which capture mathematical expressions, rendered from LaTeX code.
 // We use MathJax v4 to render LaTeX to SVG.
 
-import { extractMathJaxPaths, ParsedPathInfo, SVGLoader } from "./svg_loader";
+import { extractSVGPaths, ParsedPathInfo, SVGLoader } from "./svg_loader";
 import { SVGPathMObject, SVGPathMObjectGroup } from "./svg_mobject";
 import { MObjectGroup } from "../base";
 
@@ -21,7 +21,7 @@ function ensureSVGNamespace(svgString: string): string {
 }
 
 // Wait for MathJax to load (it's loaded in the HTML)
-function waitForMathJax(): Promise<void> {
+export function waitForMathJax(): Promise<void> {
   return new Promise((resolve) => {
     if (window.MathJax && window.MathJax.typesetPromise) {
       resolve();
@@ -49,8 +49,6 @@ async function renderLatexToSVG(
   latex: string,
   displayMode: boolean = true,
 ): Promise<string> {
-  await waitForMathJax();
-
   if (!window.MathJax || !window.MathJax.typesetPromise) {
     throw new Error(
       "MathJax not loaded. Make sure MathJax script is included in HTML.",
@@ -93,7 +91,7 @@ async function renderLatexToSVG(
 }
 
 // A MObjectGroup which contains a single SVGPathMObject for each character in the LaTeX expression.
-export class TexMObject extends SVGPathMObjectGroup {
+export class TeXMObject extends SVGPathMObjectGroup {
   async from_latex(latex: string, scale: number) {
     this.clear();
 
@@ -104,15 +102,26 @@ export class TexMObject extends SVGPathMObjectGroup {
     const svgElement = SVGLoader.parseSVG(svgString);
 
     // Extract individual path elements from the SVG and parse them
-    const paths = extractMathJaxPaths(svgElement).map((pathInfo) =>
+    const paths = extractSVGPaths(svgElement).map((pathInfo) =>
       SVGLoader.parsePathInfo(pathInfo),
     );
 
-    for (let i = 0; i < paths.length; i++) {
-      let mobj = new SVGPathMObject();
-      mobj.from_path(paths[i] as ParsedPathInfo, scale);
-      this.add_mobj(`expr_${i}`, mobj);
+    // Put all of the paths into a single path object so they're drawn sequentially.
+    // TODO In future, add more options to how a group of paths is drawn.
+    let mobj = new SVGPathMObject().from_svg_path(
+      paths[0] as ParsedPathInfo,
+      scale,
+    );
+    for (let i = 1; i < paths.length; i++) {
+      mobj.adjoin_to(
+        new SVGPathMObject().from_svg_path(paths[i] as ParsedPathInfo, scale),
+      );
+      // this.add_mobj(
+      //   `expr_${i}`,
+      //   new SVGPathMObject().from_svg_path(paths[i] as ParsedPathInfo, scale),
+      // );
     }
+    this.add_mobj("expr", mobj);
     // Calculate the width, height, and center of the LaTeX expression
     this._recalculate_size();
 

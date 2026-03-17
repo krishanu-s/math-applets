@@ -195,26 +195,32 @@ export class FadeOut extends Animation {
   }
 }
 
-// Progressively draw an SVGPathMObject, character-by-character
+// A mobject which can be progressively drawn.
+export interface Drawable {
+  set_progress(t: number): void;
+}
+
+// Progressively draw a collection of MObjects in parallel.
 export class Write extends FixedLengthAnimation {
-  svg_mobject_name: string;
-  svg_mobject: SVGPathMObject;
+  mobjects: Record<string, MObject & Drawable>;
   constructor(
-    svg_mobject_name: string,
-    svg_mobject: SVGPathMObject,
+    svg_mobjects: Record<string, MObject & Drawable>,
     num_frames: number,
   ) {
     super(num_frames);
-    this.svg_mobject_name = svg_mobject_name;
-    this.svg_mobject = svg_mobject;
+    this.mobjects = svg_mobjects;
   }
   // Animates the fade in.
   async _play(scene: Scene): Promise<void> {
-    scene.add(this.svg_mobject_name, this.svg_mobject);
+    Object.entries(this.mobjects).forEach(([key, elem]) => {
+      scene.add(key, elem);
+    });
     await super._play(scene);
   }
   async _play_frame(scene: Scene, i: number) {
-    this.svg_mobject.set_progress(i / this.num_frames);
+    Object.entries(this.mobjects).forEach(([key, elem]) => {
+      scene.get_mobj(key).set_progress(i / this.num_frames);
+    });
   }
 }
 
