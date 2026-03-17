@@ -4279,7 +4279,7 @@ async function renderLatexToSVG(latex, displayMode = true) {
     document.body.removeChild(div);
   }
 }
-var TexMObject = class extends SVGPathMObjectGroup {
+var TeXMObject = class extends SVGPathMObjectGroup {
   async from_latex(latex, scale) {
     this.clear();
     const svgString = await renderLatexToSVG(latex, true);
@@ -16734,7 +16734,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           scene.remove("segment");
           await new Write(
             {
-              eq_circle: (await new TexMObject().from_latex(
+              eq_circle: (await new TeXMObject().from_latex(
                 "x^2 + y^2 = 1",
                 scene.scale()
               )).set_height(0.3).set_center([1.5, 1.5])
@@ -16802,7 +16802,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           });
           await new Write(
             {
-              eq_line: (await new TexMObject().from_latex("y = -m(x-1)", scene.scale())).set_height(0.25).set_center([1.5, 1])
+              eq_line: (await new TeXMObject().from_latex("y = -m(x-1)", scene.scale())).set_height(0.25).set_center([1.5, 1])
             },
             10
           ).play(scene);
@@ -16843,7 +16843,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           await new Zoom([0, 2], 1 / 3, 30).play(scene);
           await new FadeIn(
             {
-              formula_1: (await new TexMObject().from_latex(
+              formula_1: (await new TeXMObject().from_latex(
                 "x^2 + (-m(x-1))^2 = 1",
                 scene.scale()
               )).set_height(0.8).set_center([-2, -3])
@@ -16852,7 +16852,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           ).play(scene);
           await new FadeIn(
             {
-              formula_2: (await new TexMObject().from_latex(
+              formula_2: (await new TeXMObject().from_latex(
                 "(m^2+1)x^2 - 2m^2x + (m^2-1) = 0",
                 scene.scale()
               )).set_height(0.8).set_center([-2, -4])
@@ -16861,7 +16861,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           ).play(scene);
           await new FadeIn(
             {
-              formula_3: (await new TexMObject().from_latex(
+              formula_3: (await new TeXMObject().from_latex(
                 "x = \\frac{2m^2 \\pm \\sqrt{(2m^2)^2 - 4(m^2+1)(m^2-1)}}{2(m^2+1)}",
                 scene.scale()
               )).set_height(0.8).set_center([-2, -5])
@@ -16870,7 +16870,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
           ).play(scene);
           await new FadeIn(
             {
-              formula: (await new TexMObject().from_latex(
+              formula: (await new TeXMObject().from_latex(
                 "(x, y) = (\\frac{m^2-1}{m^2+1}, \\frac{2m}{m^2+1})",
                 scene.scale()
               )).set_height(0.8).set_center([-2, -6])
@@ -17127,7 +17127,7 @@ function stereographic_projection(cart_eq, basepoint, slope) {
         );
         await new Write(
           {
-            formula: (await new TexMObject().from_latex(
+            formula: (await new TeXMObject().from_latex(
               "(x, y) = (\\frac{m^2-1}{m^2+1}, \\frac{2m}{m^2+1})",
               scene.scale()
             )).set_center([4, 2]).set_height(1)

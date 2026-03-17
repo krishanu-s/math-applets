@@ -2184,7 +2184,7 @@ async function renderLatexToSVG(latex, displayMode = true) {
     document.body.removeChild(div);
   }
 }
-var TexMObject = class extends SVGPathMObjectGroup {
+var TeXMObject = class extends SVGPathMObjectGroup {
   async from_latex(latex, scale) {
     this.clear();
     const svgString = await renderLatexToSVG(latex, true);
@@ -13668,7 +13668,7 @@ var subtableMakers$1 = new Array(10);
           ctx.fillStyle = "#000000";
           ctx.font = "16px Arial";
           ctx.fillText(`LaTeX: ${latex}`, 50, 125);
-          let latex_mobj = new TexMObject();
+          let latex_mobj = new TeXMObject();
           await latex_mobj.from_latex(latex, scene.scale());
           latex_mobj.set_center([-2, 4]);
           latex_mobj.set_width(4);
