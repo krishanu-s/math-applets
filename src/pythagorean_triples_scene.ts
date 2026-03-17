@@ -10,6 +10,7 @@ import {
   GrowLineFromMidpoint,
   GrowShrinkDot,
   Emphasize,
+  Write,
 } from "./lib/animation";
 import {
   MObjectGroup,
@@ -34,7 +35,9 @@ import { createSmoothOpenPathBezier } from "./rust-calc-browser";
 import { LaTeXMObject } from "./lib/base/latex";
 import { Parameter } from "./lib/interactive";
 import { CartEq, ConicSection, PolarEq } from "./lib/math";
-import { TexMObject } from "./lib/vectorized";
+import { TeXMObject, TextMObject } from "./lib/vectorized";
+import { waitForMathJax } from "./lib/vectorized";
+import { FONT_URLS, get_font_from_url } from "./lib/vectorized/text";
 
 // Makes a triangle representing a Pythagorean triple.
 // The offset vector is where the bottom-left corner is placed.
@@ -113,6 +116,12 @@ function stereographic_projection(
 
 (function () {
   document.addEventListener("DOMContentLoaded", async function () {
+    // Wait for MathJax to load before starting the scene
+    await waitForMathJax();
+
+    // Load a default font
+    const DEFAULT_FONT = await get_font_from_url(FONT_URLS.DEJAVU_SANS);
+
     // Define the solver for Bezier curves in this scene
     let num_pts = 200;
     let solver = await createSmoothOpenPathBezier(num_pts);
@@ -314,10 +323,10 @@ function stereographic_projection(
           scene.remove("segment");
           // await new FadeOut(["segment"], 20).play(scene);
 
-          await new FadeIn(
+          await new Write(
             {
               eq_circle: (
-                await new TexMObject().from_latex(
+                await new TeXMObject().from_latex(
                   "x^2 + y^2 = 1",
                   scene.scale(),
                 )
@@ -410,10 +419,10 @@ function stereographic_projection(
           });
 
           // Fade in the equation of the line
-          await new FadeIn(
+          await new Write(
             {
               eq_line: (
-                await new TexMObject().from_latex("y = -m(x-1)", scene.scale())
+                await new TeXMObject().from_latex("y = -m(x-1)", scene.scale())
               )
                 .set_height(0.25)
                 .set_center([1.5, 1.0]),
@@ -469,7 +478,7 @@ function stereographic_projection(
           await new FadeIn(
             {
               formula_1: (
-                await new TexMObject().from_latex(
+                await new TeXMObject().from_latex(
                   "x^2 + (-m(x-1))^2 = 1",
                   scene.scale(),
                 )
@@ -482,7 +491,7 @@ function stereographic_projection(
           await new FadeIn(
             {
               formula_2: (
-                await new TexMObject().from_latex(
+                await new TeXMObject().from_latex(
                   "(m^2+1)x^2 - 2m^2x + (m^2-1) = 0",
                   scene.scale(),
                 )
@@ -495,7 +504,7 @@ function stereographic_projection(
           await new FadeIn(
             {
               formula_3: (
-                await new TexMObject().from_latex(
+                await new TeXMObject().from_latex(
                   "x = \\frac{2m^2 \\pm \\sqrt{(2m^2)^2 - 4(m^2+1)(m^2-1)}}{2(m^2+1)}",
                   scene.scale(),
                 )
@@ -508,7 +517,7 @@ function stereographic_projection(
           await new FadeIn(
             {
               formula: (
-                await new TexMObject().from_latex(
+                await new TeXMObject().from_latex(
                   "(x, y) = (\\frac{m^2-1}{m^2+1}, \\frac{2m}{m^2+1})",
                   scene.scale(),
                 )
@@ -839,13 +848,16 @@ function stereographic_projection(
         );
 
         // Indicate the formula again
-        await new FadeIn(
+        await new Write(
           {
-            formula: new LaTeXMObject(
-              "(x, y) = (\\frac{m^2-1}{m^2+1}, \\frac{2m}{m^2+1})",
-              [0, -4],
-              cache,
-            ),
+            formula: (
+              await new TeXMObject().from_latex(
+                "(x, y) = (\\frac{m^2-1}{m^2+1}, \\frac{2m}{m^2+1})",
+                scene.scale(),
+              )
+            )
+              .set_center([4, 2])
+              .set_height(1.0),
           },
           10,
         ).play(scene);
@@ -900,7 +912,18 @@ function stereographic_projection(
       );
       playButton.textContent = "Play";
 
-      async function do_scene() {}
+      async function do_scene() {
+        let text_mobj = new TextMObject();
+        await text_mobj.from_text(
+          "Here's some text.",
+          scene.scale(),
+          DEFAULT_FONT,
+        );
+        text_mobj.set_center([0, 0]).set_width(3.0);
+
+        await new Write({ text_mobj: text_mobj }, 40).play(scene);
+        // await new FadeIn({ text_mobj: text_mobj }, 20).play(scene);
+      }
     })(500, 500);
 
     // SCENE 5:

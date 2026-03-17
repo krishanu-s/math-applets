@@ -1,4 +1,4 @@
 export { SVGLoader } from "./svg_loader";
-export { SVGPathMObject } from "./svg_mobject";
-export { TexMObject } from "./latex";
+export { SVGPathMObject, SVGPathMObjectGroup } from "./svg_mobject";
+export { TeXMObject, waitForMathJax } from "./latex";
 export { TextMObject } from "./text";
