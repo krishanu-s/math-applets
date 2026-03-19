@@ -2,13 +2,13 @@
 
 This document captures the core components and abstractions. If you want to use `math-applets` in anything more than a cursory way, I highly recommend reading this document. If you want to contribute to the codebase, this document is required reading.
 
-### High-level view
+# High-level view
 
 At a high level, math-applets is an engine which can be used to programmatically build mathematical applets. Similar to how LaTeX can be used to programmatically typeset mathematics (primarily symbolic), and [manim](https://www.manim.community/) can be used to programmatically create video animations, math-applets is used to create video components which a user can directly interact with, enhancing the learning experience. If LaTeX is used to write papers and books, and manim is used to make videos and movies, then math-applets can be used to make games.
 
 The core components are now introduced in natural sequence, progressively adding layers of complexity.
 
-### Components
+# Components
 
 ## `Scene` and `MObject`
 
@@ -134,14 +134,14 @@ This pattern has been stress-tested in the codebase by two canonical examples of
 
 At present, rendering is done within the `MObject._draw()` methods themselves, but eventually one should call to an external renderer class. I'd like support for multiple renderer classes. I'd also like to toggle between writing-to-screen versus writing-to-file.
 
-### Cross-cutting concerns
+# Cross-cutting concerns
 
 This is a list of meta-level comments about the structure and useability of the library.
 
-# Useability
+### Useability
 
 The useability of the library is wanting. It's not immediate to write a simple script and get a result out. At present, creating an interactive page requires writing two separate files: an HTML file which dictates the layout of the canvases and various other elements, and a Typescript file which populates and interacts with these elements. Moreover, the former must be placed in `dist/` while the latter must be placed in `src/`, and the latter must adhere to a certain naming convention. This is an annoyance to even me, so it's certain to be a headache for new users.
 
-# Testing
+### Testing
 
 No unit tests have been written, primarily because testing the functionality of new features amounts to manually seeing how they look in a rendered scene. The various existing `*_scene.ts` files serve this purpose: before merging any new feature, I re-compile all of these files and manually inspect that every scene loads and performs as expected. While I think this is the *right* testing paradigm for complex, end-to-end features, it is not a scalable model, and so the library (and its tests) should eventually be sequestered into individual modules. Most of the features for which unit tests could be easily written are trivial to verify by inspecting the appropriate method implementation (e.g., checking that `Dot.move_by([1, 0])` changes a Dot's center position by `[1, 0]`), but perhaps some number of automated "smoke tests", modeled after the code in the scenes above, are in order.
