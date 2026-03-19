@@ -6,6 +6,7 @@ import {
   Scene,
   mouse_event_coords,
   touch_event_coords,
+  clamp,
 } from "./base.js";
 import { colorval_to_rgba, rb_colormap_2 } from "./color.js";
 import {
@@ -93,16 +94,24 @@ export class Sector
     ctx.beginPath();
     ctx.arc(x, y, Math.abs(xr - x), this.start_angle, this.end_angle);
     if (this.fill_options.fill) {
-      ctx.globalAlpha *= this.fill_options.fill_alpha;
+      ctx.globalAlpha = clamp(
+        ctx.globalAlpha * this.fill_options.fill_alpha,
+        0,
+        1,
+      );
       ctx.fill();
-      ctx.globalAlpha /= this.fill_options.fill_alpha;
+      ctx.globalAlpha = clamp(
+        ctx.globalAlpha / this.fill_options.fill_alpha,
+        0,
+        1,
+      );
     }
   }
 }
 
 // A filled circular sector
 export class Dot extends Sector {
-  constructor(center: Vec2D, radius: number) {
+  constructor(center: Vec2D, radius: number = 0.08) {
     super(center, radius, 0, 2 * Math.PI);
   }
 }
@@ -191,7 +200,19 @@ export class Rectangle
     ctx.lineTo(px, py);
     ctx.closePath();
     ctx.stroke();
-    ctx.fill();
+    if (this.fill_options.fill) {
+      ctx.globalAlpha = clamp(
+        ctx.globalAlpha * this.fill_options.fill_alpha,
+        0,
+        1,
+      );
+      ctx.fill();
+      ctx.globalAlpha = clamp(
+        ctx.globalAlpha / this.fill_options.fill_alpha,
+        0,
+        1,
+      );
+    }
   }
 }
 
@@ -237,9 +258,17 @@ export class Polygon extends FillLikeMObject {
     ctx.closePath();
     ctx.stroke();
     if (this.fill_options.fill) {
-      ctx.globalAlpha *= this.fill_options.fill_alpha;
+      ctx.globalAlpha = clamp(
+        ctx.globalAlpha * this.fill_options.fill_alpha,
+        0,
+        1,
+      );
       ctx.fill();
-      ctx.globalAlpha /= this.fill_options.fill_alpha;
+      ctx.globalAlpha = clamp(
+        ctx.globalAlpha / this.fill_options.fill_alpha,
+        0,
+        1,
+      );
     }
   }
 }

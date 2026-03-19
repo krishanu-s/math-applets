@@ -14,7 +14,6 @@ import { ThreeDScene, Vec3D } from "../three_d";
 export interface DraggableMObject extends MObject {
   is_inside(p: Vec2D): boolean;
   is_almost_inside(p: Vec2D, tolerance: number): boolean;
-  move_by(p: Vec2D): void;
 }
 
 // Takes an existing MObject which has certain properties and methods, and makes it draggable.
